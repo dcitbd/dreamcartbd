@@ -1,16 +1,665 @@
 <!DOCTYPE html>
-<html lang="bn" data-theme="dark">
+<html lang="en">
 <head>
-  <base target="_top">
-  <meta charset="UTF-8">
-  <title>Dream Cart BD — Master OS</title>
-  
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  
-  <?!= include('Styles_Core'); ?>
-  <?!= include('Styles_Components'); ?>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Dream Cart BD — Coming Soon</title>
+
+    <meta name="description" content="Dream Cart BD is coming soon. Discover smart products, great deals and convenient shopping across Bangladesh.">
+    <meta name="keywords" content="Dream Cart BD, Dream Cart, Bangladesh Online Shopping, Ecommerce Bangladesh, Online Shop">
+    <meta name="author" content="Dream Cart BD">
+
+    <meta property="og:title" content="Dream Cart BD — Coming Soon">
+    <meta property="og:description" content="Something amazing is coming soon. Stay tuned with Dream Cart BD.">
+    <meta property="og:type" content="website">
+
+    <link rel="icon" href="https://dreamcartbd.com/favicon.ico">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #050816;
+            --bg2: #0b1026;
+            --text: #ffffff;
+            --muted: #a7aec4;
+            --primary: #7c5cff;
+            --secondary: #00d4ff;
+            --card: rgba(255,255,255,0.06);
+            --border: rgba(255,255,255,0.12);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: Arial, Helvetica, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 15% 20%, rgba(124,92,255,.20), transparent 30%),
+                radial-gradient(circle at 85% 70%, rgba(0,212,255,.15), transparent 30%),
+                linear-gradient(135deg, var(--bg), var(--bg2));
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        .background {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(2px);
+            opacity: .35;
+            animation: float 10s ease-in-out infinite;
+        }
+
+        .orb.one {
+            width: 320px;
+            height: 320px;
+            background: var(--primary);
+            top: -120px;
+            left: -100px;
+        }
+
+        .orb.two {
+            width: 280px;
+            height: 280px;
+            background: var(--secondary);
+            right: -100px;
+            bottom: -100px;
+            animation-delay: -3s;
+        }
+
+        .orb.three {
+            width: 160px;
+            height: 160px;
+            background: #ff4ecd;
+            right: 25%;
+            top: 15%;
+            opacity: .12;
+            animation-delay: -6s;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translate(0,0) scale(1);
+            }
+
+            50% {
+                transform: translate(25px,-30px) scale(1.08);
+            }
+        }
+
+        /* Main */
+        .page {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            width: 100%;
+            padding: 25px 6%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            color: white;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 23px;
+            font-weight: bold;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            box-shadow: 0 10px 35px rgba(124,92,255,.35);
+        }
+
+        .logo-text {
+            font-size: 21px;
+            font-weight: 800;
+            letter-spacing: -.5px;
+        }
+
+        .logo-text span {
+            color: var(--secondary);
+        }
+
+        .header-badge {
+            padding: 10px 17px;
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            background: rgba(255,255,255,.04);
+            color: var(--muted);
+            font-size: 13px;
+            backdrop-filter: blur(15px);
+        }
+
+        /* Hero */
+        main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 50px 20px 70px;
+        }
+
+        .hero {
+            width: min(950px, 100%);
+            text-align: center;
+        }
+
+        .status {
+            display: inline-flex;
+            align-items: center;
+            gap: 9px;
+            padding: 9px 16px;
+            border: 1px solid rgba(0,212,255,.25);
+            border-radius: 100px;
+            background: rgba(0,212,255,.06);
+            color: #b9f5ff;
+            font-size: 13px;
+            margin-bottom: 25px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00e5ff;
+            box-shadow: 0 0 15px #00e5ff;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+
+            50% {
+                opacity: .45;
+                transform: scale(.75);
+            }
+        }
+
+        h1 {
+            font-size: clamp(48px, 8vw, 92px);
+            line-height: .95;
+            letter-spacing: -4px;
+            font-weight: 900;
+            margin-bottom: 28px;
+        }
+
+        h1 .gradient {
+            background: linear-gradient(
+                90deg,
+                #ffffff,
+                #b7a8ff,
+                #5deaff,
+                #ffffff
+            );
+            background-size: 300% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: gradientMove 5s linear infinite;
+        }
+
+        @keyframes gradientMove {
+            to {
+                background-position: 300% center;
+            }
+        }
+
+        .subtitle {
+            max-width: 650px;
+            margin: auto;
+            color: var(--muted);
+            font-size: 17px;
+            line-height: 1.8;
+        }
+
+        /* Countdown */
+        .countdown {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            max-width: 620px;
+            margin: 45px auto 35px;
+        }
+
+        .time-box {
+            padding: 20px 10px;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--card);
+            backdrop-filter: blur(18px);
+            box-shadow:
+                inset 0 1px 0 rgba(255,255,255,.04),
+                0 15px 40px rgba(0,0,0,.18);
+        }
+
+        .time {
+            font-size: 34px;
+            font-weight: 800;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .label {
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        /* Buttons */
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            min-width: 155px;
+            padding: 14px 22px;
+            border-radius: 14px;
+            text-decoration: none;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            transition: .3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #9a7dff);
+            box-shadow: 0 12px 35px rgba(124,92,255,.25);
+        }
+
+        .btn-secondary {
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,.04);
+            backdrop-filter: blur(15px);
+        }
+
+        .btn:hover {
+            transform: translateY(-4px);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 18px 45px rgba(124,92,255,.4);
+        }
+
+        /* Features */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            max-width: 800px;
+            margin: 55px auto 0;
+        }
+
+        .feature {
+            padding: 22px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,.035);
+            backdrop-filter: blur(15px);
+            transition: .3s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-6px);
+            border-color: rgba(124,92,255,.35);
+            background: rgba(255,255,255,.06);
+        }
+
+        .feature-icon {
+            font-size: 25px;
+            margin-bottom: 12px;
+        }
+
+        .feature h3 {
+            font-size: 15px;
+            margin-bottom: 7px;
+        }
+
+        .feature p {
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 25px 20px;
+            color: #72798f;
+            font-size: 12px;
+            border-top: 1px solid rgba(255,255,255,.06);
+        }
+
+        footer strong {
+            color: #a7aec4;
+        }
+
+        /* Responsive */
+        @media (max-width: 700px) {
+
+            header {
+                padding: 20px;
+            }
+
+            .header-badge {
+                display: none;
+            }
+
+            .logo-text {
+                font-size: 18px;
+            }
+
+            .logo-icon {
+                width: 42px;
+                height: 42px;
+            }
+
+            main {
+                padding-top: 35px;
+            }
+
+            h1 {
+                letter-spacing: -2.5px;
+            }
+
+            .subtitle {
+                font-size: 15px;
+                padding: 0 10px;
+            }
+
+            .countdown {
+                gap: 8px;
+                margin-top: 35px;
+            }
+
+            .time-box {
+                padding: 16px 5px;
+                border-radius: 15px;
+            }
+
+            .time {
+                font-size: 25px;
+            }
+
+            .label {
+                font-size: 9px;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+            }
+        }
+
+        @media (max-width: 420px) {
+
+            h1 {
+                font-size: 45px;
+            }
+
+            .countdown {
+                grid-template-columns: repeat(2, 1fr);
+                max-width: 320px;
+            }
+        }
+    </style>
 </head>
+
 <body>
-<h1 style="text-align: center;"><Upcomming..... ></Upcomming></h1>
+
+    <div class="background">
+        <div class="orb one"></div>
+        <div class="orb two"></div>
+        <div class="orb three"></div>
+    </div>
+
+    <div class="page">
+
+        <!-- Header -->
+        <header>
+
+            <a href="#" class="logo">
+                <div class="logo-icon">D</div>
+
+                <div class="logo-text">
+                    Dream Cart <span>BD</span>
+                </div>
+            </a>
+
+            <div class="header-badge">
+                ✨ Something exciting is coming
+            </div>
+
+        </header>
+
+        <!-- Main -->
+        <main>
+
+            <section class="hero">
+
+                <div class="status">
+                    <span class="status-dot"></span>
+                    WEBSITE UNDER DEVELOPMENT
+                </div>
+
+                <h1>
+                    <span class="gradient">Something Amazing</span>
+                    <br>
+                    Is Coming.
+                </h1>
+
+                <p class="subtitle">
+                    We are working hard behind the scenes to bring you a
+                    better, smarter and more enjoyable shopping experience.
+                    Dream Cart BD will be launching soon.
+                </p>
+
+                <!-- Countdown -->
+                <div class="countdown">
+
+                    <div class="time-box">
+                        <span class="time" id="days">00</span>
+                        <span class="label">Days</span>
+                    </div>
+
+                    <div class="time-box">
+                        <span class="time" id="hours">00</span>
+                        <span class="label">Hours</span>
+                    </div>
+
+                    <div class="time-box">
+                        <span class="time" id="minutes">00</span>
+                        <span class="label">Minutes</span>
+                    </div>
+
+                    <div class="time-box">
+                        <span class="time" id="seconds">00</span>
+                        <span class="label">Seconds</span>
+                    </div>
+
+                </div>
+
+                <!-- Buttons -->
+                <div class="actions">
+
+                    <a
+                        href="https://www.facebook.com/"
+                        target="_blank"
+                        class="btn btn-primary"
+                    >
+                        Follow Us
+                    </a>
+
+                    <a
+                        href="mailto:hello@dreamcartbd.com"
+                        class="btn btn-secondary"
+                    >
+                        Contact Us
+                    </a>
+
+                </div>
+
+                <!-- Features -->
+                <div class="features">
+
+                    <div class="feature">
+                        <div class="feature-icon">🛍️</div>
+
+                        <h3>Smart Shopping</h3>
+
+                        <p>
+                            Discover useful products at great prices.
+                        </p>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-icon">🚚</div>
+
+                        <h3>Home Delivery</h3>
+
+                        <p>
+                            Convenient delivery across Bangladesh.
+                        </p>
+                    </div>
+
+                    <div class="feature">
+                        <div class="feature-icon">💎</div>
+
+                        <h3>Quality Products</h3>
+
+                        <p>
+                            Carefully selected products for you.
+                        </p>
+                    </div>
+
+                </div>
+
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer>
+
+            © <span id="year"></span>
+            <strong>Dream Cart BD</strong>.
+            All Rights Reserved.
+
+        </footer>
+
+    </div>
+
+    <script>
+
+        /* ===============================
+           COUNTDOWN
+           Change this date to your launch date
+        =============================== */
+
+        const launchDate = new Date("2026-09-30T00:00:00").getTime();
+
+        function updateCountdown() {
+
+            const now = new Date().getTime();
+
+            const distance = launchDate - now;
+
+            if (distance <= 0) {
+
+                document.getElementById("days").textContent = "00";
+                document.getElementById("hours").textContent = "00";
+                document.getElementById("minutes").textContent = "00";
+                document.getElementById("seconds").textContent = "00";
+
+                return;
+            }
+
+            const days = Math.floor(
+                distance / (1000 * 60 * 60 * 24)
+            );
+
+            const hours = Math.floor(
+                (distance % (1000 * 60 * 60 * 24))
+                / (1000 * 60 * 60)
+            );
+
+            const minutes = Math.floor(
+                (distance % (1000 * 60 * 60))
+                / (1000 * 60)
+            );
+
+            const seconds = Math.floor(
+                (distance % (1000 * 60))
+                / 1000
+            );
+
+            document.getElementById("days").textContent =
+                String(days).padStart(2, "0");
+
+            document.getElementById("hours").textContent =
+                String(hours).padStart(2, "0");
+
+            document.getElementById("minutes").textContent =
+                String(minutes).padStart(2, "0");
+
+            document.getElementById("seconds").textContent =
+                String(seconds).padStart(2, "0");
+        }
+
+        updateCountdown();
+
+        setInterval(updateCountdown, 1000);
+
+
+        /* ===============================
+           CURRENT YEAR
+        =============================== */
+
+        document.getElementById("year").textContent =
+            new Date().getFullYear();
+
+    </script>
+
 </body>
 </html>
