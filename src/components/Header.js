@@ -9,8 +9,15 @@ import { ProductAPI } from "../api/products.js";
 
 export const Header = {
   render: () => {
-    const user = store.state.user;
-    const cartCount = store.state.cart.items.reduce((sum, i) => sum + i.quantity, 0);
+    const user = store?.state?.user || null;
+    const cartItems = store?.state?.cart?.items || [];
+    const cartCount = Array.isArray(cartItems) 
+      ? cartItems.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0) 
+      : 0;
+
+    const isAdmin = user && user.role && String(user.role).toLowerCase().includes("admin");
+    const accountUrl = isAdmin ? "/admin/dashboard" : "/customer/account";
+    const currentTheme = store?.state?.theme || "light";
 
     return `
     <!-- Top Announcement Bar -->
@@ -30,8 +37,8 @@ export const Header = {
             <i data-lucide="truck" class="w-3.5 h-3.5"></i> অর্ডার ট্র্যাক করুন
           </a>
           ${user ? `
-            <a href="${user.role.includes('admin') ? '/admin/dashboard' : '/customer/account'}" class="text-brand-400 hover:text-brand-300 font-semibold flex items-center gap-1">
-              <i data-lucide="user-check" class="w-3.5 h-3.5"></i> ${user.name}
+            <a href="${accountUrl}" class="text-brand-400 hover:text-brand-300 font-semibold flex items-center gap-1">
+              <i data-lucide="user-check" class="w-3.5 h-3.5"></i> ${user.name || "আমার অ্যাকাউন্ট"}
             </a>
           ` : `
             <a href="/login" class="hover:text-white transition-colors flex items-center gap-1">
@@ -49,7 +56,7 @@ export const Header = {
           
           <!-- Logo & Mobile Drawer Toggle -->
           <div class="flex items-center gap-3">
-            <button id="mobile-menu-toggle" class="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <button id="mobile-menu-toggle" type="button" class="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <i data-lucide="menu" class="w-6 h-6"></i>
             </button>
             <a href="/" class="flex items-center gap-2.5 group">
@@ -73,13 +80,13 @@ export const Header = {
               <input 
                 type="text" 
                 id="global-search-input" 
-                placeholder="প্রোডাক্টের নাম, ক্যাটাগরি বা SKU দিয়ে খুঁজুন..." 
+                placeholder="প্রোডাক্টের নাম, ক্যাটাগরি বা SKU দিয়ে খুঁজুন..." 
                 class="w-full pl-11 pr-24 py-2.5 bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 font-bengali"
               />
               <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                 <i data-lucide="search" class="w-4 h-4"></i>
               </div>
-              <button id="search-btn" class="absolute inset-y-1 right-1 px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors font-bengali">
+              <button id="search-btn" type="button" class="absolute inset-y-1 right-1 px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors font-bengali">
                 সার্চ
               </button>
             </div>
@@ -87,20 +94,20 @@ export const Header = {
             <div id="search-results-dropdown" class="hidden absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-50 max-h-96 overflow-y-auto"></div>
           </div>
 
-          <!-- Action Icons (Theme Toggle, Wishlist, Cart) -->
+          <!-- Action Icons (Theme Toggle, Sync, Cart) -->
           <div class="flex items-center gap-2 sm:gap-3">
             <!-- Two-Way Sync Status Indicator -->
-            <button onclick="window.SyncEngine.forceSync()" title="গুগল শীট সিঙ্ক করুন" class="p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center">
+            <button onclick="window.SyncEngine && window.SyncEngine.forceSync ? window.SyncEngine.forceSync() : (window.store && window.store.showToast ? window.store.showToast('সিঙ্ক ইঞ্জিন রেডি হচ্ছে...', 'info') : null)" title="গুগল শীট সিঙ্ক করুন" type="button" class="p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center">
               <i data-lucide="refresh-cw" class="w-5 h-5"></i>
             </button>
 
             <!-- Dark / Light Theme Toggle -->
-            <button id="theme-toggle-btn" class="p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <i data-lucide="${store.state.theme === 'dark' ? 'sun' : 'moon'}" class="w-5 h-5"></i>
+            <button id="theme-toggle-btn" type="button" class="p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <i data-lucide="${currentTheme === 'dark' ? 'sun' : 'moon'}" class="w-5 h-5"></i>
             </button>
 
             <!-- Cart Drawer Trigger Button -->
-            <button id="cart-drawer-toggle" class="relative flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400 border border-brand-200/60 dark:border-brand-800/60 hover:bg-brand-100 transition-all">
+            <button id="cart-drawer-toggle" type="button" class="relative flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400 border border-brand-200/60 dark:border-brand-800/60 hover:bg-brand-100 transition-all">
               <i data-lucide="shopping-cart" class="w-5 h-5"></i>
               <span class="hidden sm:inline font-semibold text-sm font-bengali">কার্ট</span>
               <span id="header-cart-badge" class="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold bg-brand-600 text-white rounded-full">
@@ -116,17 +123,27 @@ export const Header = {
   },
 
   initEvents: () => {
+    if (typeof document === "undefined") return;
+
     // থিম টগল হ্যান্ডলার
     const themeBtn = document.getElementById("theme-toggle-btn");
-    if (themeBtn) {
+    if (themeBtn && store && typeof store.toggleTheme === "function") {
       themeBtn.addEventListener("click", () => store.toggleTheme());
     }
 
     // কার্ট ড্রয়ার টগল
     const cartBtn = document.getElementById("cart-drawer-toggle");
-    if (cartBtn) {
+    if (cartBtn && store && typeof store.emit === "function") {
       cartBtn.addEventListener("click", () => {
         store.emit("toggle_cart_drawer", true);
+      });
+    }
+
+    // মোবাইল মেনু টগল
+    const mobileMenuBtn = document.getElementById("mobile-menu-toggle");
+    if (mobileMenuBtn && store && typeof store.emit === "function") {
+      mobileMenuBtn.addEventListener("click", () => {
+        store.emit("toggle_mobile_menu", true);
       });
     }
 
@@ -148,35 +165,37 @@ export const Header = {
 
         debounceTimer = setTimeout(async () => {
           try {
-            const result = await ProductAPI.getAll();
-            const products = result.items || result || [];
-            const matches = products.filter(p => 
-              (p.product_name && p.product_name.toLowerCase().includes(query)) ||
-              (p.sku && p.sku.toLowerCase().includes(query))
-            ).slice(0, 5);
+            if (ProductAPI && typeof ProductAPI.getAll === "function") {
+              const result = await ProductAPI.getAll();
+              const products = Array.isArray(result) ? result : (result?.items || []);
+              const matches = products.filter(p => 
+                (p.product_name && p.product_name.toLowerCase().includes(query)) ||
+                (p.sku && p.sku.toLowerCase().includes(query))
+              ).slice(0, 5);
 
-            if (matches.length === 0) {
-              dropdown.innerHTML = `<div class="p-4 text-center text-sm text-slate-500 font-bengali">কোনো প্রোডাক্ট পাওয়া যায়নি।</div>`;
-            } else {
-              dropdown.innerHTML = matches.map(p => `
-                <a href="/product/${p.product_id}" class="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors">
-                  <img src="${p.thumbnail || 'https://placehold.co/80x80'}" class="w-12 h-12 rounded-lg object-cover bg-slate-100" />
-                  <div class="flex-1 min-w-0">
-                    <h4 class="text-sm font-semibold text-slate-900 dark:text-white truncate">${p.product_name}</h4>
-                    <p class="text-xs text-brand-600 dark:text-brand-400 font-bold">৳${p.selling_price || p.regular_price}</p>
-                  </div>
-                  <span class="badge-success text-[10px]">ইন স্টক</span>
-                </a>
-              `).join("");
+              if (matches.length === 0) {
+                dropdown.innerHTML = `<div class="p-4 text-center text-sm text-slate-500 font-bengali">কোনো প্রোডাক্ট পাওয়া যায়নি।</div>`;
+              } else {
+                dropdown.innerHTML = matches.map(p => `
+                  <a href="/product/${p.product_id}" class="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors">
+                    <img src="${p.thumbnail || 'https://placehold.co/80x80'}" alt="${p.product_name || 'Product'}" class="w-12 h-12 rounded-lg object-cover bg-slate-100" />
+                    <div class="flex-1 min-w-0">
+                      <h4 class="text-sm font-semibold text-slate-900 dark:text-white truncate">${p.product_name || ""}</h4>
+                      <p class="text-xs text-brand-600 dark:text-brand-400 font-bold">৳${p.selling_price || p.regular_price || 0}</p>
+                    </div>
+                    <span class="badge-success text-[10px]">ইন স্টক</span>
+                  </a>
+                `).join("");
+              }
+              dropdown.classList.remove("hidden");
             }
-            dropdown.classList.remove("hidden");
           } catch (err) {
             console.error("Search failed:", err);
           }
         }, 300);
       });
 
-      // বাইরে ক্লিক করলে সার্চ ড্রপডাউন বন্ধ হওয়া
+      // বাইরে ক্লিক করলে সার্চ ড্রপডাউন বন্ধ হওয়া
       document.addEventListener("click", (e) => {
         if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
           dropdown.classList.add("hidden");
@@ -185,3 +204,11 @@ export const Header = {
     }
   }
 };
+
+// গ্লোবাল উইন্ডোতে সেট করা
+if (typeof window !== "undefined") {
+  window.Header = Header;
+}
+
+// Default export যুক্ত করা হয়েছে
+export default Header;
