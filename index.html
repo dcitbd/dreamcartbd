@@ -10,7 +10,7 @@
 
   <!-- Global Environment API Config -->
   <script>
-    window.VITE_API_ENDPOINT = "https://script.google.com/macros/s/AKfycbyuyANFCLHnE-GGbGnx_1yr2Z_BOPWv-qBqh-1zQg4knzmMXnL15ERsbeOCfBNBZwys/exec";
+    window.VITE_API_ENDPOINT = "https://script.google.com/macros/s/AKfycbzzKAe_RBusYF1ZUThorAHSzkzjxD9bPqETyotFdOtaU8ZD9Lx2mB1sNUdiodGlmIRj/exec";
     window.VITE_SPREADSHEET_ID = "19tz5stOSkfR0pLbRRVBIbM-qdOMbUTk0QD8Xf4Of1Pc";
   </script>
 
@@ -70,7 +70,6 @@
 
   <!-- Standard Vite Production Module Bootstrapper with Safety Fallback -->
   <script>
-    // ৩ সেকেন্ডের মধ্যে লোড না হলে জোরপূর্বক লোডার সরিয়ে ফেলার সেফটি টাইমার
     const safetyTimer = setTimeout(() => {
       const loader = document.getElementById("global-loader");
       if (loader) {
