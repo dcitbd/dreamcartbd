@@ -8,7 +8,10 @@ import { store } from "../js/store.js";
 
 export const Sidebar = {
   render: (activeRoute = "/admin/dashboard") => {
-    const user = store.state.user || { name: "Admin", role: "super_admin" };
+    const currentUser = store?.state?.user || { name: "Admin", role: "super_admin" };
+    const userName = currentUser.name || "Admin";
+    const userRole = currentUser.role || "super_admin";
+    const initialChar = userName.trim().charAt(0) || "A";
 
     const navItems = [
       { section: "কোর কন্ট্রোল", roles: ["super_admin", "admin"] },
@@ -19,9 +22,9 @@ export const Sidebar = {
       { label: "নতুন প্রোডাক্ট যোগ", icon: "plus-circle", path: "/admin/products/create", roles: ["super_admin", "admin"] },
       { label: "ক্যাটাগরি কন্ট্রোল", icon: "folder-tree", path: "/admin/categories", roles: ["super_admin", "admin"] },
 
-      { section: "অর্ডার ও কুরিয়ার", roles: ["super_admin", "admin", "staff"] },
+      { section: "অর্ডার ও কুরিয়ার", roles: ["super_admin", "admin", "staff"] },
       { label: "মাস্টার অর্ডার্স", icon: "shopping-cart", path: "/admin/orders", roles: ["super_admin", "admin", "staff"] },
-      { label: "কুরিয়ার ও ফ্রড চেক", icon: "shield-alert", path: "/admin/couriers", roles: ["super_admin", "admin"] },
+      { label: "কুরিয়ার ও ফ্রড চেক", icon: "shield-alert", path: "/admin/couriers", roles: ["super_admin", "admin"] },
 
       { section: "ইনভেন্টরি ও স্টক", roles: ["super_admin", "admin"] },
       { label: "স্টক লেজার", icon: "boxes", path: "/admin/inventory", roles: ["super_admin", "admin"] },
@@ -43,13 +46,13 @@ export const Sidebar = {
       
       <!-- User Profile Header -->
       <div class="p-6 border-b border-slate-800 flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-sky-400 flex items-center justify-center text-white font-bold">
-          ${user.name.charAt(0)}
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-sky-400 flex items-center justify-center text-white font-bold shadow">
+          ${initialChar}
         </div>
         <div class="flex-1 min-w-0">
-          <h4 class="text-sm font-bold text-white truncate">${user.name}</h4>
+          <h4 class="text-sm font-bold text-white truncate">${userName}</h4>
           <span class="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-brand-500/20 text-brand-400 uppercase tracking-wider">
-            ${user.role}
+            ${userRole}
           </span>
         </div>
       </div>
@@ -76,10 +79,10 @@ export const Sidebar = {
 
       <!-- Bottom Sheet Sync & Logout -->
       <div class="p-4 border-t border-slate-800 space-y-2">
-        <button onclick="window.SyncEngine.forceSync()" class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors">
+        <button onclick="window.SyncEngine && window.SyncEngine.forceSync ? window.SyncEngine.forceSync() : (window.store && window.store.showToast ? window.store.showToast('সিঙ্ক ইঞ্জিন রেডি হচ্ছে...', 'info') : alert('সিঙ্ক হচ্ছে...'))" class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors">
           <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> গুগল শীট সিঙ্ক
         </button>
-        <button onclick="window.store.logout(); window.router.navigate('/login');" class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-xs font-semibold text-rose-400 transition-colors">
+        <button onclick="window.store && window.store.logout ? window.store.logout() : null; window.router && window.router.navigate ? window.router.navigate('/login') : (window.location.href = '/login');" class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-xs font-semibold text-rose-400 transition-colors">
           <i data-lucide="log-out" class="w-3.5 h-3.5"></i> লগআউট
         </button>
       </div>
@@ -88,3 +91,11 @@ export const Sidebar = {
     `;
   }
 };
+
+// গ্লোবাল উইন্ডোতে সেট করা
+if (typeof window !== "undefined") {
+  window.Sidebar = Sidebar;
+}
+
+// Default export যুক্ত করা হয়েছে
+export default Sidebar;
