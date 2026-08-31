@@ -10,7 +10,7 @@
 
 ## 🌟 এক্সিকিউটিভ ওভারভিউ (Executive Overview)
 
-**Dream Cart BD** একটি আল্ট্রা-ফাস্ট, স্কেলেবল এবং মডার্ন ডিজিটাল কমার্স প্ল্যাটফর্ম। কোনো ব্যয়বহুল ডেডিকেটেড ডাটাবেজ সার্ভার ছাড়াই এটি **Google Sheets**-কে একটি রিলেশনাল ডাটাবেজ হিসেবে ব্যবহার করে এবং **Google Apps Script Web App API Gateway** ও **Google Drive Storage**-এর সাথে স্বয়ংক্রিয় **Two-Way Real-time Sync** বজায় রাখে।
+**Dream Cart BD** একটি আল্ট্রা-ফাস্ট, স্কেলেবল এবং আধুনিক ডিজিটাল কমার্স প্ল্যাটফর্ম। কোনো ব্যয়বহুল ডেডিকেটেড ডাটাবেজ সার্ভার ছাড়াই এটি **Google Sheets**-কে রিলেশনাল ডাটাবেজ হিসেবে ব্যবহার করে এবং **Google Apps Script Web App API Gateway** ও **Google Drive Storage**-এর মাধ্যমে স্বয়ংক্রিয় **Two-Way Real-time Sync** বজায় রাখে।
 
 ---
 
