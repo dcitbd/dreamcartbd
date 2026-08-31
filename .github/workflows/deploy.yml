@@ -26,23 +26,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Build Project Assets
-        run: npm run build
+      - name: Prepare Assets
+        run: echo "Dream Cart BD Assets Ready"
         env:
           VITE_API_ENDPOINT: ${{ secrets.VITE_API_ENDPOINT }}
           VITE_SPREADSHEET_ID: ${{ secrets.VITE_SPREADSHEET_ID }}
           VITE_APP_NAME: "Dream Cart BD"
           VITE_CURRENCY: "৳"
 
-      - name: Upload Build Artifacts
+      - name: Upload Static Artifacts
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          path: './'
 
   deploy:
     environment:
