@@ -1,19 +1,13 @@
 import { defineConfig } from 'vite';
-import { resolve } from 'path';
 
 export default defineConfig({
-  root: './',
-  publicDir: 'public',
+  base: './', // গিটহাব পেজ ও কাস্টম ডোমেইনে রিলেটিভ পাথের জন্য
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: false,
     minify: 'esbuild',
-    rollupOptions: {
-      input: {
-        main: resolve(__dirname, 'index.html')
-      }
-    }
+    emptyOutDir: true
   },
   server: {
     port: 3000,
