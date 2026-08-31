@@ -21,12 +21,12 @@ import { CustomerPortal } from "./pages/customer/CustomerPortal.js";
 // ==================== PARTNER PORTALS ====================
 import SellerPortal from "./pages/partner/SellerPortal.js";
 import ResellerPortal from "./pages/partner/ResallerPortal.js";
-import WholesalePortal from "./pages/partner/WholeSalePortal.js";
+import WholeSalePortal from "./pages/partner/WholeSalePortal.js";
 
-// ==================== ADMIN CATALOG & INVENTORY ====================
-import ProductList from "./admin/catalog/ProductList.js";
-import VariantGenerator from "./admin/catalog/VariantGenerator.js";
-import CategoryManager from "./admin/catalog/CatagoryManager.js";
+// ==================== ADMIN CATALOG & INVENTORY (সঠিক Catalog ফোল্ডার নাম সহ) ====================
+import ProductList from "./admin/Catalog/ProductList.js";
+import VariantGenerator from "./admin/Catalog/VariantGenerator.js";
+import CatagoryManager from "./admin/Catalog/CatagoryManager.js";
 import StockLedger from "./admin/inventory/StockLedger.js";
 import StockMovements from "./admin/inventory/StockMovements.js";
 import LowStockAlarts from "./admin/inventory/LowStockAlarts.js";
@@ -78,13 +78,13 @@ router.addRoute("/customer/account", wrap(CustomerPortal));
 
 router.addRoute("/partner/seller", wrap(SellerPortal));
 router.addRoute("/partner/reseller", wrap(ResellerPortal));
-router.addRoute("/partner/wholesale", wrap(WholesalePortal));
+router.addRoute("/partner/wholesale", wrap(WholeSalePortal));
 
 router.addRoute("/admin/dashboard", wrap(Reports));
 router.addRoute("/admin/products", wrap(ProductList));
 router.addRoute("/admin/products/create", wrap(VariantGenerator));
 router.addRoute("/admin/products/edit/:id", wrap(VariantGenerator));
-router.addRoute("/admin/categories", wrap(CategoryManager));
+router.addRoute("/admin/categories", wrap(CatagoryManager));
 
 router.addRoute("/admin/inventory", wrap(StockLedger));
 router.addRoute("/admin/inventory/movements", wrap(StockMovements));
