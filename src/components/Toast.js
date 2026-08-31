@@ -30,29 +30,45 @@ export const Toast = {
     toast.innerHTML = `
       <i data-lucide="${conf.icon}" class="w-5 h-5 shrink-0"></i>
       <span class="flex-1">${message}</span>
-      <button type="button" class="toast-close p-1 hover:opacity-80"><i data-lucide="x" class="w-4 h-4"></i></button>
+      <button type="button" class="toast-close p-1 hover:opacity-80 transition-opacity cursor-pointer">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
     `;
 
     container.appendChild(toast);
 
+    // Lucide Icons রেন্ডার করা
     if (typeof window !== "undefined" && window.lucide && typeof window.lucide.createIcons === "function") {
       window.lucide.createIcons();
     }
 
     // Fade In
-    if (typeof requestAnimationFrame !== "undefined") {
-      requestAnimationFrame(() => {
-        toast.classList.remove("translate-y-3", "opacity-0");
-      });
-    } else {
+    const triggerFadeIn = () => {
       toast.classList.remove("translate-y-3", "opacity-0");
+    };
+
+    if (typeof requestAnimationFrame !== "undefined") {
+      requestAnimationFrame(triggerFadeIn);
+    } else {
+      setTimeout(triggerFadeIn, 10);
     }
 
+    let isClosed = false;
+    let timer = null;
+
     const closeToast = () => {
+      if (isClosed) return;
+      isClosed = true;
+      if (timer) clearTimeout(timer);
+
       toast.classList.add("opacity-0", "translate-y-3");
       setTimeout(() => {
-        if (toast.parentElement) {
+        if (toast && toast.parentElement) {
           toast.remove();
+        }
+        // কন্টেইনার খালি হলে সেটিও রিমুভ করে দেওয়া ভালো
+        if (container && container.children.length === 0) {
+          container.remove();
         }
       }, 300);
     };
@@ -62,7 +78,7 @@ export const Toast = {
       closeBtn.addEventListener("click", closeToast);
     }
 
-    setTimeout(closeToast, duration);
+    timer = setTimeout(closeToast, duration);
   }
 };
 
@@ -71,5 +87,4 @@ if (typeof window !== "undefined") {
   window.Toast = Toast;
 }
 
-// Default export যুক্ত করা হয়েছে
 export default Toast;
