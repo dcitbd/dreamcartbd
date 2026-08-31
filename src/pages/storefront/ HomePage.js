@@ -17,7 +17,7 @@ export function HomePage() {
                     আপনার বিশ্বস্ত স্মার্ট ডিজিটাল কমার্স প্ল্যাটফর্ম
                 </h1>
                 <p class="text-sm md:text-base text-brand-100 max-w-2xl mx-auto">
-                    সেরা দামে প্রিমিয়াম পণ্য, আধুনিক গেজেট এবং নিরাপদ শপিং অভিজ্ঞতা।
+                    সেরা দামে প্রিমিয়াম পণ্য, আধুনিক গেজেট এবং নিরাপদ শপিং অভিজ্ঞতা।
                 </p>
                 <div class="pt-4 flex flex-wrap justify-center gap-3">
                     <a href="/products" class="px-6 py-3 rounded-xl bg-white text-brand-600 font-bold shadow-lg hover:bg-slate-100 transition-all text-sm">
@@ -37,7 +37,7 @@ export function HomePage() {
                     <i data-lucide="shield-check" class="w-5 h-5"></i>
                 </div>
                 <h3 class="text-base font-bold text-slate-900 dark:text-white">১০০% আসল পণ্য</h3>
-                <p class="text-xs text-slate-500 mt-1">আমরা শতভাগ জেনুইন ও মানসম্মত পণ্যের নিশ্চয়তা প্রদান করি।</p>
+                <p class="text-xs text-slate-500 mt-1">আমরা শতভাগ জেনুইন ও মানসম্মত পণ্যের নিশ্চয়তা প্রদান করি।</p>
             </div>
 
             <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -45,7 +45,7 @@ export function HomePage() {
                     <i data-lucide="truck" class="w-5 h-5"></i>
                 </div>
                 <h3 class="text-base font-bold text-slate-900 dark:text-white">দ্রুত ডেলিভারি</h3>
-                <p class="text-xs text-slate-500 mt-1">দেশের যেকোনো প্রান্তে দ্রুততম সময়ে আপনার ঠিকানায় পণ্য পৌঁছে যায়।</p>
+                <p class="text-xs text-slate-500 mt-1">দেশের যেকোনো প্রান্তে দ্রুততম সময়ে আপনার ঠিকানায় পণ্য পৌঁছে যায়।</p>
             </div>
 
             <div class="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
@@ -53,7 +53,7 @@ export function HomePage() {
                     <i data-lucide="headphones" class="w-5 h-5"></i>
                 </div>
                 <h3 class="text-base font-bold text-slate-900 dark:text-white">ডেডিকেটেড সাপোর্ট</h3>
-                <p class="text-xs text-slate-500 mt-1">যেকোনো প্রয়োজনে আমাদের সাপোর্ট টিম সবসময় আপনার পাশে রয়েছে।</p>
+                <p class="text-xs text-slate-500 mt-1">যেকোনো প্রয়োজনে আমাদের সাপোর্ট টিম সবসময় আপনার পাশে রয়েছে।</p>
             </div>
         </section>
     </div>
