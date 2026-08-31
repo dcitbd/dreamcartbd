@@ -11,7 +11,10 @@ class Router {
     this.routes = [];
     this.currentRoute = null;
 
-    window.addEventListener("popstate", () => this.handleRoute());
+    // ব্রাউজার পরিবেশে popstate লিসেনার যুক্ত করা
+    if (typeof window !== "undefined") {
+      window.addEventListener("popstate", () => this.handleRoute());
+    }
   }
 
   // ডাইনামিক ইমপোর্ট কম্পোনেন্ট রেজিস্টার
@@ -25,12 +28,16 @@ class Router {
   }
 
   navigate(url) {
-    window.history.pushState(null, null, url);
-    this.handleRoute();
+    if (typeof window !== "undefined" && window.history) {
+      window.history.pushState(null, null, url);
+      this.handleRoute();
+    }
   }
 
   async handleRoute() {
-    const currentPath = window.location.pathname;
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+
+    const currentPath = window.location.pathname || "/";
     let matchedRoute = null;
     let params = {};
 
@@ -57,32 +64,54 @@ class Router {
       matchedRoute = this.routes.find(r => r.path === "/") || this.routes[0];
     }
 
+    if (!matchedRoute) return;
+
     // 🛡️ রোল ও সিকিউরিটি চেক
-    if (matchedRoute.requiresAuth && !store.isAuthenticated()) {
-      store.showToast("এই পেজটি দেখতে লগইন করুন।", "warning");
+    if (matchedRoute.requiresAuth && store && !store.isAuthenticated()) {
+      if (store.showToast) store.showToast("এই পেজটি দেখতে লগইন করুন।", "warning");
       this.navigate("/login");
       return;
     }
 
-    if (matchedRoute.allowedRoles.length > 0 && !store.hasRole(matchedRoute.allowedRoles)) {
-      store.showToast("আপনার এই পেজে প্রবেশের অনুমতি নেই।", "danger");
+    if (matchedRoute.allowedRoles && matchedRoute.allowedRoles.length > 0 && store && !store.hasRole(matchedRoute.allowedRoles)) {
+      if (store.showToast) store.showToast("আপনার এই পেজে প্রবেশের অনুমতি নেই।", "danger");
       this.navigate("/");
       return;
     }
 
     this.currentRoute = matchedRoute;
-    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    if (typeof window.scrollTo === "function") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
 
     const appRoot = document.getElementById("app");
     if (!appRoot) return;
 
     try {
-      // ⚡ ডাইনামিক Lazy Load
-      const componentRenderer = await matchedRoute.loader();
-      appRoot.innerHTML = await componentRenderer(params);
+      // ⚡ ডাইনামিক Lazy Load (default বা named export উভয়ের জন্য নিরাপদ)
+      let module = typeof matchedRoute.loader === "function" ? await matchedRoute.loader() : matchedRoute.loader;
+      let renderFn = null;
+
+      if (typeof module === "function") {
+        renderFn = module;
+      } else if (module && typeof module.default === "function") {
+        renderFn = module.default;
+      } else if (module && typeof module === "object") {
+        const firstKey = Object.keys(module)[0];
+        if (typeof module[firstKey] === "function") {
+          renderFn = module[firstKey];
+        }
+      }
+
+      if (typeof renderFn === "function") {
+        appRoot.innerHTML = await renderFn(params);
+      } else {
+        throw new Error("Page render function not found in module");
+      }
 
       // Lucide Icons Re-Init
-      if (window.lucide) {
+      if (typeof window !== "undefined" && window.lucide && typeof window.lucide.createIcons === "function") {
         window.lucide.createIcons();
       }
     } catch (err) {
@@ -94,14 +123,23 @@ class Router {
               <i data-lucide="clock" class="w-6 h-6"></i>
             </div>
             <h3 class="text-lg font-bold text-slate-900 dark:text-white">পেজটি প্রস্তুত হচ্ছে</h3>
-            <p class="text-xs text-slate-500 mt-2">এই মডিউলটির ফাইল গিটহাবে আপলোড সম্পন্ন হলে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।</p>
+            <p class="text-xs text-slate-500 mt-2">এই মডিউলটির ফাইল লোড হতে সমস্যা হয়েছে বা প্রস্তুত হচ্ছে।</p>
             <a href="/" class="btn-primary mt-6 inline-flex text-xs px-5 py-2.5">হোম পেজে ফিরে যান</a>
           </div>
         </div>
       `;
-      if (window.lucide) window.lucide.createIcons();
+      if (typeof window !== "undefined" && window.lucide && typeof window.lucide.createIcons === "function") {
+        window.lucide.createIcons();
+      }
     }
   }
 }
 
 export const router = new Router();
+
+// ব্রাউজারে window.router সেট করা
+if (typeof window !== "undefined") {
+  window.router = router;
+}
+
+export default router;
