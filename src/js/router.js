@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * DREAM CART BD — CLIENT-SIDE SPA ROUTER (router.js)
+ * DREAM CART BD — DYNAMIC LAZY-LOADING ROUTER (router.js)
  * ============================================================================
  */
 
@@ -14,30 +14,27 @@ class Router {
     window.addEventListener("popstate", () => this.handleRoute());
   }
 
-  // রুট রেজিস্টার করা
-  addRoute(path, component, options = {}) {
+  // ডাইনামিক ইমপোর্ট কম্পোনেন্ট রেজিস্টার
+  addRoute(path, loaderFn, options = {}) {
     this.routes.push({
       path,
-      component,
+      loader: loaderFn,
       requiresAuth: options.requiresAuth || false,
       allowedRoles: options.allowedRoles || []
     });
   }
 
-  // লিঙ্কে ক্লিক হ্যান্ডলার
   navigate(url) {
     window.history.pushState(null, null, url);
     this.handleRoute();
   }
 
-  // বর্তমান URL ম্যাচ এবং পেজ রেন্ডার করা
   async handleRoute() {
     const currentPath = window.location.pathname;
     let matchedRoute = null;
     let params = {};
 
     for (const route of this.routes) {
-      // ডাইনামিক প্যারামিটার পার্সিং (যেমন: /product/:id)
       const paramNames = [];
       const regexPath = route.path.replace(/:([a-zA-Z0-9_]+)/g, (_, key) => {
         paramNames.push(key);
@@ -56,14 +53,13 @@ class Router {
       }
     }
 
-    // কোনো রুট না মিললে হোমপেজে রিডাইরেক্ট
     if (!matchedRoute) {
       matchedRoute = this.routes.find(r => r.path === "/") || this.routes[0];
     }
 
-    // 🛡️ রোল ও সিকিউরিটি গার্ড চেক
+    // 🛡️ রোল ও সিকিউরিটি চেক
     if (matchedRoute.requiresAuth && !store.isAuthenticated()) {
-      store.showToast("এই পেজটি দেখতে অনুগ্রহ করে লগইন করুন।", "warning");
+      store.showToast("এই পেজটি দেখতে লগইন করুন।", "warning");
       this.navigate("/login");
       return;
     }
@@ -75,19 +71,35 @@ class Router {
     }
 
     this.currentRoute = matchedRoute;
-
-    // টপ স্ক্রোল
     window.scrollTo({ top: 0, behavior: "smooth" });
 
-    // পেজ মাউন্ট করা
     const appRoot = document.getElementById("app");
-    if (appRoot && matchedRoute.component) {
-      appRoot.innerHTML = await matchedRoute.component(params);
-      
-      // Lucide আইকন রি-ইনিশিয়ালাইজেশন
+    if (!appRoot) return;
+
+    try {
+      // ⚡ ডাইনামিক Lazy Load
+      const componentRenderer = await matchedRoute.loader();
+      appRoot.innerHTML = await componentRenderer(params);
+
+      // Lucide Icons Re-Init
       if (window.lucide) {
         window.lucide.createIcons();
       }
+    } catch (err) {
+      console.warn(`[Route Loader] Page load failed for ${currentPath}:`, err);
+      appRoot.innerHTML = `
+        <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center font-bengali">
+          <div class="glass-panel p-8 rounded-3xl max-w-md border border-slate-200 dark:border-slate-800 shadow-xl">
+            <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <i data-lucide="clock" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">পেজটি প্রস্তুত হচ্ছে</h3>
+            <p class="text-xs text-slate-500 mt-2">এই মডিউলটির ফাইল গিটহাবে আপলোড সম্পন্ন হলে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।</p>
+            <a href="/" class="btn-primary mt-6 inline-flex text-xs px-5 py-2.5">হোম পেজে ফিরে যান</a>
+          </div>
+        </div>
+      `;
+      if (window.lucide) window.lucide.createIcons();
     }
   }
 }
