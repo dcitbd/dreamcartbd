@@ -18,15 +18,15 @@ import { OrderSuccessPage } from "./pages/storefront/OrderSuccessPage.js";
 import { TrackOrderPage } from "./pages/storefront/TrackOrderPage.js";
 import { CustomerPortal } from "./pages/customer/CustomerPortal.js";
 
-// ==================== PARTNER PORTALS (সঠিক বানান ও পাথ) ====================
+// ==================== PARTNER PORTALS ====================
 import SellerPortal from "./pages/partner/SellerPortal.js";
 import ResellerPortal from "./pages/partner/ResallerPortal.js";
 import WholesalePortal from "./pages/partner/WholeSalePortal.js";
 
-// ==================== ADMIN CATALOG & INVENTORY (সঠিক ফোল্ডার ও ফাইল বানান) ====================
-import ProductList from "./admin/Catalog/ProductList.js";
-import VariantGenerator from "./admin/Catalog/VariantGenerator.js";
-import CategoryManager from "./admin/Catalog/CatagoryManager.js";
+// ==================== ADMIN CATALOG & INVENTORY ====================
+import ProductList from "./admin/catalog/ProductList.js";
+import VariantGenerator from "./admin/catalog/VariantGenerator.js";
+import CategoryManager from "./admin/catalog/CatagoryManager.js";
 import StockLedger from "./admin/inventory/StockLedger.js";
 import StockMovements from "./admin/inventory/StockMovements.js";
 import LowStockAlarts from "./admin/inventory/LowStockAlarts.js";
