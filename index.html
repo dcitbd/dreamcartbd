@@ -59,7 +59,7 @@
     </div>
   </div>
 
-  <!-- Cart Drawer Root Mounting Point (Added) -->
+  <!-- Cart Drawer Root Mounting Point -->
   <div id="cart-drawer-root"></div>
 
   <!-- Global Modal Root -->
@@ -68,14 +68,32 @@
   <!-- Toast Notification Container -->
   <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-3 pointer-events-none"></div>
 
-  <!-- Bootstrapper with Forced Cache-Busting -->
+  <!-- Bootstrapper with Forced Cache-Busting & Safety Fallback -->
   <script type="module">
+    // ৩ সেকেন্ডের মধ্যে লোড না হলে জোরপূর্বক লোডার সরিয়ে ফেলার সেফটি টাইমার
+    const safetyTimer = setTimeout(() => {
+      const loader = document.getElementById("global-loader");
+      if (loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.remove(), 300);
+      }
+    }, 3000);
+
     import(`./src/main.js?v=${Date.now()}`)
       .then(() => {
+        clearTimeout(safetyTimer);
         console.log('✅ Dream Cart BD Live Engine Connected.');
+        const loader = document.getElementById("global-loader");
+        if (loader) {
+          loader.style.opacity = '0';
+          setTimeout(() => loader.remove(), 300);
+        }
       })
       .catch((err) => {
+        clearTimeout(safetyTimer);
         console.error('App Load Error:', err);
+        const loader = document.getElementById("global-loader");
+        if (loader) loader.remove();
       });
   </script>
 </body>
