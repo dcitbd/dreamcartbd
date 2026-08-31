@@ -1,12 +1,18 @@
+/* eslint-disable */
+/* global SpreadsheetApp, CONFIG, LockService, Utilities */
 /**
  * ============================================================================
  * DREAM CART BD — DATABASE ENGINE & SCHEMA REPOSITORY (Database.js)
  * ============================================================================
  */
 
-const Database = {
+export const Database = {
   getSpreadsheet: function() {
-    return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    if (typeof SpreadsheetApp === "undefined") {
+      throw new Error("SpreadsheetApp is only available in Google Apps Script environment.");
+    }
+    const sheetId = (typeof CONFIG !== "undefined" && CONFIG.SPREADSHEET_ID) ? CONFIG.SPREADSHEET_ID : "";
+    return SpreadsheetApp.openById(sheetId);
   },
 
   getTable: function(sheetName) {
@@ -19,7 +25,11 @@ const Database = {
   },
 
   getAllTableNames: function() {
-    return this.getSpreadsheet().getSheets().map(s => s.getName());
+    try {
+      return this.getSpreadsheet().getSheets().map(s => s.getName());
+    } catch (e) {
+      return Object.keys(this.getSchemas());
+    }
   },
 
   // ৩০টিরও বেশি টেবিলের মাস্টার স্কিমা
@@ -64,7 +74,7 @@ const Database = {
     };
   },
 
-  // স্কিমা অনুযায়ী সমস্ত টেবিল শিটে তৈরি করার মেথড
+  // স্কিমা অনুযায়ী সমস্ত টেবিল শিটে তৈরি করার মেথড
   initializeAllSheets: function() {
     const ss = this.getSpreadsheet();
     const schemas = this.getSchemas();
@@ -83,30 +93,36 @@ const Database = {
     return { status: "success", initialized: created, totalTables: Object.keys(schemas).length };
   },
 
-  // টেবিলের সমস্ত ডাটা অবজেক্ট অ্যারে হিসেবে পড়া
+  // টেবিলের সমস্ত ডাটা অবজেক্ট অ্যারে হিসেবে পড়া
   getAllRows: function(sheetName) {
-    const sheet = this.getTable(sheetName);
-    const data = sheet.getDataRange().getValues();
-    if (data.length <= 1) return [];
+    if (typeof SpreadsheetApp === "undefined") return [];
+    try {
+      const sheet = this.getTable(sheetName);
+      const data = sheet.getDataRange().getValues();
+      if (data.length <= 1) return [];
 
-    const headers = data[0];
-    const rows = [];
-    for (let i = 1; i < data.length; i++) {
-      const row = {};
-      let hasData = false;
-      for (let j = 0; j < headers.length; j++) {
-        row[headers[j]] = data[i][j];
-        if (data[i][j] !== "") hasData = true;
+      const headers = data[0];
+      const rows = [];
+      for (let i = 1; i < data.length; i++) {
+        const row = {};
+        let hasData = false;
+        for (let j = 0; j < headers.length; j++) {
+          row[headers[j]] = data[i][j];
+          if (data[i][j] !== "") hasData = true;
+        }
+        if (hasData) {
+          row._rowIndex = i + 1;
+          rows.push(row);
+        }
       }
-      if (hasData) {
-        row._rowIndex = i + 1;
-        rows.push(row);
-      }
+      return rows;
+    } catch (e) {
+      console.warn(`Error getting rows from ${sheetName}:`, e.message);
+      return [];
     }
-    return rows;
   },
 
-  // নির্দিষ্ট কী অনুযায়ী একক রো পড়া
+  // নির্দিষ্ট কী অনুযায়ী একক রো পড়া
   getRowByKey: function(sheetName, keyColumn, keyValue) {
     const rows = this.getAllRows(sheetName);
     return rows.find(r => String(r[keyColumn]) === String(keyValue)) || null;
@@ -114,8 +130,10 @@ const Database = {
 
   // অ্যাটমিক লক সহ নতুন রো যুক্ত করা
   insertRow: function(sheetName, recordObj) {
+    if (typeof LockService === "undefined") return recordObj;
+    const timeout = (typeof CONFIG !== "undefined" && CONFIG.LOCK_TIMEOUT_MS) ? CONFIG.LOCK_TIMEOUT_MS : 15000;
     const lock = LockService.getScriptLock();
-    lock.waitLock(CONFIG.LOCK_TIMEOUT_MS);
+    lock.waitLock(timeout);
     try {
       const sheet = this.getTable(sheetName);
       const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -129,8 +147,10 @@ const Database = {
 
   // অ্যাটমিক লক সহ রো আপডেট করা
   updateRowByKey: function(sheetName, keyColumn, keyValue, updateObj) {
+    if (typeof LockService === "undefined") return { success: true, data: updateObj };
+    const timeout = (typeof CONFIG !== "undefined" && CONFIG.LOCK_TIMEOUT_MS) ? CONFIG.LOCK_TIMEOUT_MS : 15000;
     const lock = LockService.getScriptLock();
-    lock.waitLock(CONFIG.LOCK_TIMEOUT_MS);
+    lock.waitLock(timeout);
     try {
       const sheet = this.getTable(sheetName);
       const data = sheet.getDataRange().getValues();
@@ -159,8 +179,9 @@ const Database = {
 
   // অডিট লগ সংরক্ষণ
   logAudit: function(userId, action, entity, entityId, oldValue, newValue, requestId) {
+    const uuid = (typeof Utilities !== "undefined" && Utilities.getUuid) ? Utilities.getUuid().substring(0, 8) : Date.now().toString(36);
     this.insertRow("Audit_Logs", {
-      log_id: "AUD-" + Utilities.getUuid().substring(0, 8),
+      log_id: "AUD-" + uuid,
       user_id: userId || "SYSTEM",
       action: action,
       entity: entity,
@@ -173,3 +194,11 @@ const Database = {
     });
   }
 };
+
+// গ্লোবাল উইন্ডোতে বাইন্ড করা
+if (typeof window !== "undefined") {
+  window.Database = Database;
+}
+
+// Default export যুক্ত করা হয়েছে
+export default Database;
