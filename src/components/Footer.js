@@ -6,6 +6,8 @@
 
 export const Footer = {
   render: () => {
+    const currentYear = new Date().getFullYear();
+
     return `
     <footer class="bg-slate-950 text-slate-400 pt-16 pb-8 border-t border-slate-800 font-bengali">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -18,7 +20,7 @@ export const Footer = {
             </div>
             <div>
               <h4 class="text-sm font-bold text-white">১০০% অরিজিনাল পণ্য</h4>
-              <p class="text-xs text-slate-500">গ্যারান্টিযুক্ত সেরা কোয়ালিটি</p>
+              <p class="text-xs text-slate-500">গ্যারান্টিযুক্ত সেরা কোয়ালিটি</p>
             </div>
           </div>
 
@@ -48,7 +50,7 @@ export const Footer = {
             </div>
             <div>
               <h4 class="text-sm font-bold text-white">২৪/৭ কাস্টমার সাপোর্ট</h4>
-              <p class="text-xs text-slate-500">যেকোনো প্রয়োজনে পাশে আছি</p>
+              <p class="text-xs text-slate-500">যেকোনো প্রয়োজনে পাশে আছি</p>
             </div>
           </div>
         </div>
@@ -65,7 +67,7 @@ export const Footer = {
               <span class="text-2xl font-extrabold text-white tracking-tight">Dream Cart BD</span>
             </div>
             <p class="text-sm text-slate-400 leading-relaxed pr-6">
-              Dream Cart BD বাংলাদেশের অন্যতম স্মার্ট ও নির্ভরযোগ্য ডিজিটাল কমার্স প্ল্যাটফর্ম। কোয়ালিটি পণ্য ও দ্রুততম ডেলিভারি নিশ্চিত করাই আমাদের প্রধান লক্ষ্য।
+              Dream Cart BD বাংলাদেশের অন্যতম স্মার্ট ও নির্ভরযোগ্য ডিজিটাল কমার্স প্ল্যাটফর্ম। কোয়ালিটি পণ্য ও দ্রুততম ডেলিভারি নিশ্চিত করাই আমাদের প্রধান লক্ষ্য।
             </p>
             <div class="pt-2 text-sm space-y-2">
               <p class="flex items-center gap-2"><i data-lucide="map-pin" class="w-4 h-4 text-brand-400"></i> ঢাকা, বাংলাদেশ</p>
@@ -112,7 +114,7 @@ export const Footer = {
 
         <!-- Bottom Copyright & Payment Methods -->
         <div class="pt-8 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
-          <p>© ${new Date().getFullYear()} Dream Cart BD. সর্বস্বত্ব সংরক্ষিত।</p>
+          <p>© ${currentYear} Dream Cart BD. সর্বস্বত্ব সংরক্ষিত।</p>
           <div class="flex items-center gap-3 text-slate-400">
             <span class="bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">bKash</span>
             <span class="bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">Nagad</span>
@@ -126,3 +128,11 @@ export const Footer = {
     `;
   }
 };
+
+// গ্লোবাল উইন্ডোতে সেট করা
+if (typeof window !== "undefined") {
+  window.Footer = Footer;
+}
+
+// Default export যুক্ত করা হয়েছে
+export default Footer;
