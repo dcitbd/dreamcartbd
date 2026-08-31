@@ -1,22 +1,49 @@
-# 🛒 Dream Cart BD — Smart Commerce Platform
+# 🛒 Dream Cart BD — Smart Digital Commerce Platform
+> **Enterprise-Grade Headless E-Commerce OS with Real-Time Two-Way Google Sheets Sync**
 
-একটি আধুনিক, সুরক্ষিত এবং হাই-পারফরম্যান্স ই-কমার্স প্ল্যাটফর্ম যা **গুগল শীট ডাটাবেজ (Google Sheets)**, **গুগল ড্রাইভ স্টোরেজ (Google Drive)** এবং **গুগল অ্যাপস স্ক্রিপ্ট (Google Apps Script API)** ব্যাকএন্ডের মাধ্যমে পরিচালিত।
-
----
-
-## 🌟 প্রধান বৈশিষ্ট্যসমূহ (Key Features)
-
-- **Two-Way Real-time Sync:** সাইট থেকে কোনো অর্ডার বা এডিট হলে গুগল শীটে আপডেট হয়, আবার গুগল শীটে কোনো পরিবর্তন করলে স্বয়ংক্রিয়ভাবে লাইভ সাইটে আপডেট হয়।
-- **৫০+ মডুলার পেজ ও পোর্টাল:** কাস্টমার শপ, এডমিন কন্ট্রোল সেন্টার, সেলার, রিসেলার ও হোলসেলার পোর্টাল।
-- **কুরিয়ার ফ্রড ডিটেকশন:** এক ক্লিকে কাস্টমারের ডেলিভারি ও RTO রেশিও চেক করার ইঞ্জিন।
-- **ইনলাইন প্রাইস ও স্টক এডিটর:** টেবিল থেকেই সরাসরি প্রাইস ও ইনভেন্টরি দ্রুত এডিট করার সুবিধা।
-- **১০-ইমেজ ব্যাচ আপলোডার:** গুগল ড্রাইভের সাথে সরাসরি সংযুক্ত ইমেজ ম্যানেজমেন্ট।
+[![Live API](https://img.shields.io/badge/Google_Apps_Script-Live_API-0F9D58?style=for-the-badge&logo=google)](https://script.google.com/macros/s/AKfycbyuyANFCLHnE-GGbGnx_1yr2Z_BOPWv-qBqh-1zQg4knzmMXnL15ERsbeOCfBNBZwys/exec)
+[![Database](https://img.shields.io/badge/Database-Google_Sheets_(30+_Tables)-34A853?style=for-the-badge&logo=googlesheets)](https://docs.google.com/spreadsheets/d/19tz5stOSkfR0pLbRRVBIbM-qdOMbUTk0QD8Xf4Of1Pc/edit)
+[![Frontend](https://img.shields.io/badge/Frontend-Vite_+_Tailwind_CSS-06B6D4?style=for-the-badge&logo=vite)](https://vitejs.dev/)
+[![License](https://img.shields.io/badge/License-Proprietary_DCBD-0284C7?style=for-the-badge)](LICENSE)
 
 ---
 
-## 🚀 লোকাল সেটআপ গাইড (Local Setup)
+## 🌟 এক্সিকিউটিভ ওভারভিউ (Executive Overview)
 
-### ১. রিপোজিটরি ক্লোন করুন
-```bash
-git clone [https://github.com/YOUR_USERNAME/dream-cart-bd.git](https://github.com/YOUR_USERNAME/dream-cart-bd.git)
-cd dream-cart-bd
+**Dream Cart BD** একটি আল্ট্রা-ফাস্ট, স্কেলেবল এবং মডার্ন ডিজিটাল কমার্স প্ল্যাটফর্ম। কোনো ব্যয়বহুল ডেডিকেটেড ডাটাবেজ সার্ভার ছাড়াই এটি **Google Sheets**-কে একটি রিলেশনাল ডাটাবেজ হিসেবে ব্যবহার করে এবং **Google Apps Script Web App API Gateway** ও **Google Drive Storage**-এর সাথে স্বয়ংক্রিয় **Two-Way Real-time Sync** বজায় রাখে।
+
+---
+
+## 🏗️ সিস্টেম আর্কিটেকচার (System Architecture)
+
+```text
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │                      DREAM CART BD ARCHITECTURE                        │
+ └────────────────────────────────────────────────────────────────────────┘
+                                    │
+    ┌───────────────────────────────┴───────────────────────────────┐
+    ▼                                                               ▼
+┌──────────────────────────────┐              ┌──────────────────────────────┐
+│       CUSTOMER STOREFRONT    │              │    ADMIN & PARTNER SUITE     │
+│   • 1-Page Express Checkout  │              │   • Inline Price/Stock Editor│
+│   • 10-Image Gallery / Specs │              │   • Fraud Prevention Engine  │
+│   • Real-Time Order Tracking │              │   • Multi-Courier Automation │
+└──────────────┬───────────────┘              └──────────────┬───────────────┘
+               │                                             │
+               └──────────────────────┬──────────────────────┘
+                                      │ (REST JSON via SWR Client)
+                                      ▼
+             ┌──────────────────────────────────────────────────┐
+             │       GOOGLE APPS SCRIPT API GATEWAY (V8)        │
+             │   • Atomic Locks (LockService)                   │
+             │   • In-Memory Cache (CacheService)               │
+             │   • JWT Auth & Multi-Tier RBAC Engine            │
+             └────────────────────────┬─────────────────────────┘
+                                      │
+              ┌───────────────────────┴───────────────────────┐
+              ▼                                               ▼
+┌──────────────────────────────┐              ┌──────────────────────────────┐
+│  GOOGLE SHEETS (DATABASE)    │              │     GOOGLE DRIVE STORAGE     │
+│   • 30+ Relational Tables    │              │   • Product Images & CDN     │
+│   • onEdit Two-Way Triggers  │              │   • Encrypted JSON Backups   │
+└──────────────────────────────┘              └──────────────────────────────┘
