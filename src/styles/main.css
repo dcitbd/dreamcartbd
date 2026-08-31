@@ -1,0 +1,143 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary: #0f172a;
+    --primary-light: #1e293b;
+    --brand-blue: #0284c7;
+    --brand-accent: #0ea5e9;
+    --gold-accent: #f59e0b;
+    --emerald-green: #10b981;
+    --rose-danger: #f43f5e;
+    --bg-light: #f8fafc;
+    --bg-dark: #0b0f19;
+    --card-light: rgba(255, 255, 255, 0.9);
+    --card-dark: rgba(15, 23, 42, 0.85);
+    --border-light: #e2e8f0;
+    --border-dark: #334155;
+  }
+
+  body {
+    background-color: var(--bg-light);
+    color: #1e293b;
+    font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .dark body {
+    background-color: var(--bg-dark);
+    color: #f1f5f9;
+  }
+}
+
+/* ==================== GLASSMORPHISM & LUXURY CARDS ==================== */
+.glass-panel {
+  background: var(--card-light);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-light);
+}
+
+.dark .glass-panel {
+  background: var(--card-dark);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-dark);
+}
+
+.glass-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.08);
+}
+
+.dark .glass-card:hover {
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* ==================== CUSTOM BUTTONS ==================== */
+.btn-primary {
+  @apply inline-flex items-center justify-center px-5 py-2.5 rounded-xl font-semibold text-white bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 shadow-md shadow-brand-500/20 active:scale-95 transition-all duration-200;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center px-5 py-2.5 rounded-xl font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 active:scale-95 transition-all duration-200;
+}
+
+.btn-gold {
+  @apply inline-flex items-center justify-center px-5 py-2.5 rounded-xl font-semibold text-slate-900 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 shadow-md shadow-amber-500/20 active:scale-95 transition-all duration-200;
+}
+
+/* ==================== STATUS BADGES ==================== */
+.badge-success {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800;
+}
+
+.badge-warning {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800;
+}
+
+.badge-danger {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800;
+}
+
+.badge-info {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-400 border border-sky-200 dark:border-sky-800;
+}
+
+/* ==================== MODERN TABLES ==================== */
+.table-modern {
+  @apply w-full text-left border-collapse;
+}
+
+.table-modern th {
+  @apply px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800;
+}
+
+.table-modern td {
+  @apply px-4 py-3.5 text-sm text-slate-700 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800/60;
+}
+
+.table-modern tbody tr {
+  @apply transition-colors duration-150 hover:bg-slate-50/70 dark:hover:bg-slate-800/40;
+}
+
+/* ==================== SHIMMER SKELETON LOADER ==================== */
+.shimmer {
+  background: linear-gradient(90deg, rgba(226, 232, 240, 0.4) 0%, rgba(203, 213, 225, 0.8) 50%, rgba(226, 232, 240, 0.4) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .shimmer {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.4) 0%, rgba(51, 65, 85, 0.8) 50%, rgba(30, 41, 59, 0.4) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #334155;
+}
