@@ -4,7 +4,9 @@
  * ============================================================================
  */
 
-// SSR / বিল্ড টাইমে এরর এড়াতে নিরাপদ স্টোরেজ হেল্পার
+import { Toast } from "../components/Toast.js";
+
+// SSR / বিল্ড টাইমে এরর এড়াতে নিরাপদ স্টোরেজ হেল্পার
 const getStorageItem = (key, fallback = null) => {
   if (typeof window !== "undefined" && typeof window.localStorage !== "undefined") {
     try {
@@ -72,7 +74,21 @@ class GlobalStore {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, []);
     }
-    this.listeners.get(event).push(callback);
+    // ডুপ্লিকেট লিসেনার এড়াতে চেক করা
+    const callbacks = this.listeners.get(event);
+    if (!callbacks.includes(callback)) {
+      callbacks.push(callback);
+    }
+  }
+
+  off(event, callback) {
+    if (this.listeners.has(event)) {
+      const callbacks = this.listeners.get(event);
+      const index = callbacks.indexOf(callback);
+      if (index > -1) {
+        callbacks.splice(index, 1);
+      }
+    }
   }
 
   emit(event, data = {}) {
@@ -105,22 +121,23 @@ class GlobalStore {
         cartItemId: cartItemId,
         productId: product.product_id,
         variantId: selectedVariant ? selectedVariant.variant_id : null,
-        name: product.product_name || "পণ্য",
+        name: product.product_name || product.name || "পণ্য",
         variantName: selectedVariant ? selectedVariant.variant_name : null,
-        image: product.thumbnail || (product.images && product.images[0]?.image_url) || "",
+        image: product.thumbnail || product.image || (product.images && product.images[0]?.image_url) || "",
         unitPrice: unitPrice,
         quantity: Number(quantity)
       });
     }
 
     this.recalculateCart();
-    this.showToast(`${product.product_name || "পণ্য"} কার্টে যুক্ত হয়েছে!`, "success");
+    this.showToast(`${product.product_name || product.name || "পণ্য"} কার্টে যুক্ত হয়েছে!`, "success");
     this.emit("cart_updated", this.state.cart);
   }
 
   removeFromCart(cartItemId) {
     this.state.cart.items = this.state.cart.items.filter(item => item.cartItemId !== cartItemId);
     this.recalculateCart();
+    this.showToast("পণ্যটি কার트 থেকে মুছে ফেলা হয়েছে", "info");
     this.emit("cart_updated", this.state.cart);
   }
 
@@ -204,37 +221,15 @@ class GlobalStore {
     }
   }
 
-  // ==================== TOAST NOTIFICATIONS ====================
+  // ==================== TOAST NOTIFICATIONS CONNECTOR ====================
   showToast(message, type = "success", duration = 3500) {
-    if (typeof document === "undefined") return;
-    const container = document.getElementById("toast-container");
-    if (!container) return;
-
-    const toast = document.createElement("div");
-    const colors = {
-      success: "bg-emerald-600 text-white shadow-emerald-500/20",
-      danger: "bg-rose-600 text-white shadow-rose-500/20",
-      warning: "bg-amber-500 text-slate-900 shadow-amber-500/20",
-      info: "bg-brand-600 text-white shadow-brand-500/20"
-    };
-
-    toast.className = `pointer-events-auto flex items-center px-4 py-3 rounded-xl shadow-lg font-medium text-sm transition-all duration-300 transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
-    toast.innerHTML = `<span>${message}</span>`;
-
-    container.appendChild(toast);
-
-    if (typeof requestAnimationFrame !== "undefined") {
-      requestAnimationFrame(() => {
-        toast.classList.remove("translate-y-2", "opacity-0");
-      });
+    if (typeof window !== "undefined" && window.Toast && typeof window.Toast.show === "function") {
+      window.Toast.show(message, type, duration);
+    } else if (Toast && typeof Toast.show === "function") {
+      Toast.show(message, type, duration);
     } else {
-      toast.classList.remove("translate-y-2", "opacity-0");
+      console.log(`[Toast ${type}]:`, message);
     }
-
-    setTimeout(() => {
-      toast.classList.add("opacity-0", "translate-y-2");
-      setTimeout(() => toast.remove(), 300);
-    }, duration);
   }
 }
 
