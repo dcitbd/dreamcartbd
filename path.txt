@@ -40,6 +40,7 @@ dreamcartbd/
 │   │   ├── orders.js               # অর্ডার ও ফ্রড চেক API
 │   │   └── sync.js                 # টু-ওয়ে সিঙ্ক স্টেট ম্যানেজার
 │   ├── components/                 # রিইউজেবল UI কম্পোনেন্টস
+│   │   ├── HomePage.js
 │   │   ├── Header.js
 │   │   ├── Footer.js
 │   │   ├── Sidebar.js
