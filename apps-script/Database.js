@@ -6,13 +6,13 @@
  * ============================================================================
  */
 
-export const Database = {
+const Database = {
   getSpreadsheet: function() {
     if (typeof SpreadsheetApp === "undefined") {
       throw new Error("SpreadsheetApp is only available in Google Apps Script environment.");
     }
     const sheetId = (typeof CONFIG !== "undefined" && CONFIG.SPREADSHEET_ID) ? CONFIG.SPREADSHEET_ID : "";
-    return SpreadsheetApp.openById(sheetId);
+    return sheetId ? SpreadsheetApp.openById(sheetId) : SpreadsheetApp.getActiveSpreadsheet();
   },
 
   getTable: function(sheetName) {
@@ -136,7 +136,9 @@ export const Database = {
     lock.waitLock(timeout);
     try {
       const sheet = this.getTable(sheetName);
-      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      const lastCol = sheet.getLastColumn();
+      if (lastCol === 0) return recordObj;
+      const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
       const rowValues = headers.map(h => recordObj[h] !== undefined ? recordObj[h] : "");
       sheet.appendRow(rowValues);
       return recordObj;
@@ -195,10 +197,10 @@ export const Database = {
   }
 };
 
-// গ্লোবাল উইন্ডোতে বাইন্ড করা
+// Global / CommonJS compatibility checks
 if (typeof window !== "undefined") {
   window.Database = Database;
 }
-
-// Default export যুক্ত করা হয়েছে
-export default Database;
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = Database;
+}
