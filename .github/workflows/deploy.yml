@@ -25,10 +25,7 @@ jobs:
         run: npm install
 
       - name: Build Project
-        run: |
-          npm run build || true
-          mkdir -p dist
-          cp -r index.html src public dist/ 2>/dev/null || true
+        run: npm run build
 
       - name: Upload Artifacts
         uses: actions/upload-pages-artifact@v3
