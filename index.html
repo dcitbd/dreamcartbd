@@ -3,31 +3,71 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+  <link rel="icon" type="image/svg+xml" href="./public/favicon.ico" />
   <title>Dream Cart BD — Smart Digital Commerce Platform</title>
 
-  <!-- Google Fonts: Plus Jakarta Sans & Hind Siliguri (Bengali) -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <!-- Lucide Icons CDN -->
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              200: '#bae0fd',
+              300: '#7cc7fb',
+              400: '#36abf7',
+              500: '#0c8fe9',
+              600: '#0272c7',
+              700: '#035ba1',
+              800: '#074d85',
+              900: '#0b416e',
+              950: '#072a4a',
+            },
+            luxury: {
+              dark: '#0b0f19',
+              navy: '#0f172a',
+              card: '#1e293b',
+              accent: '#d97706',
+              gold: '#f59e0b',
+              emerald: '#10b981',
+              rose: '#f43f5e'
+            }
+          },
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '"Hind Siliguri"', 'sans-serif'],
+            bengali: ['"Hind Siliguri"', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- Global Design System -->
-  <link rel="stylesheet" href="/src/styles/main.css" />
+  <!-- Custom CSS Styles -->
+  <link rel="stylesheet" href="./src/styles/main.css" />
 </head>
-<body class="bg-slate-50 text-slate-900 dark:bg-luxury-dark dark:text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+<body class="bg-slate-50 text-slate-900 dark:bg-luxury-dark dark:text-slate-100 font-sans min-h-screen flex flex-col antialiased">
   
   <!-- Root SPA Mounting Point -->
   <div id="app" class="flex flex-col min-h-screen">
     <!-- Loading Screen Placeholder -->
     <div id="global-loader" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-luxury-dark transition-opacity duration-300">
-      <div class="relative w-16 h-16">
+      <div class="relative w-14 h-14">
         <div class="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-800"></div>
         <div class="absolute inset-0 rounded-full border-4 border-brand-500 border-t-transparent animate-spin"></div>
       </div>
-      <p class="mt-4 text-sm font-semibold tracking-wider text-slate-600 dark:text-slate-400 font-bengali">লোড হচ্ছে...</p>
+      <p class="mt-4 text-xs font-semibold tracking-wider text-slate-500 font-bengali">লোড হচ্ছে...</p>
     </div>
   </div>
 
@@ -38,6 +78,6 @@
   <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-3 pointer-events-none"></div>
 
   <!-- Main JavaScript Bootstrap -->
-  <script type="module" src="/src/main.js"></script>
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>
