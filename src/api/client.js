@@ -7,7 +7,7 @@
 
 const API_ENDPOINT = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_ENDPOINT)
   || (typeof window !== "undefined" && window.VITE_API_ENDPOINT)
-  || "https://script.google.com/macros/s/AKfycbyuyANFCLHnE-GGbGnx_1yr2Z_BOPWv-qBqh-1zQg4knzmMXnL15ERsbeOCfBNBZwys/exec";
+  || "https://script.google.com/macros/s/AKfycbzzKAe_RBusYF1ZUThorAHSzkzjxD9bPqETyotFdOtaU8ZD9Lx2mB1sNUdiodGlmIRj/exec";
 
 class ApiClient {
   constructor() {
@@ -24,6 +24,7 @@ class ApiClient {
     const url = new URL(API_ENDPOINT);
     const options = {
       method: method,
+      mode: 'cors',
       headers: { "Content-Type": "text/plain;charset=utf-8" }
     };
 
