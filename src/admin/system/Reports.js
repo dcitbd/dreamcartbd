@@ -4,24 +4,28 @@
  * ============================================================================
  */
 
-import { Sidebar } from "../../../components/Sidebar.js";
-import { OrderAPI } from "../../../api/orders.js";
+import { Sidebar } from "../../components/Sidebar.js";
+import { OrderAPI } from "../../api/orders.js";
 
 export const Reports = async () => {
   let orders = [];
   try {
-    orders = await OrderAPI.getAll() || [];
+    if (OrderAPI && typeof OrderAPI.getAll === "function") {
+      const res = await OrderAPI.getAll();
+      orders = Array.isArray(res) ? res : (res?.items || []);
+    }
   } catch (e) {
     console.error("Reports data fetch failed:", e);
   }
 
-  const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
-  const deliveredCount = orders.filter(o => o.order_status === 'delivered').length;
-  const rtoCount = orders.filter(o => o.order_status === 'rto').length;
+  const ordersList = Array.isArray(orders) ? orders : [];
+  const totalRevenue = ordersList.reduce((sum, o) => sum + Number(o.total || 0), 0);
+  const deliveredCount = ordersList.filter(o => o.order_status === 'delivered').length;
+  const rtoCount = ordersList.filter(o => o.order_status === 'rto').length;
 
   return `
     <div class="min-h-screen flex bg-slate-50 dark:bg-luxury-dark font-bengali">
-      ${Sidebar.render("/admin/dashboard")}
+      ${Sidebar?.render ? Sidebar.render("/admin/dashboard") : ""}
 
       <main class="flex-1 p-6 sm:p-10 max-w-7xl mx-auto overflow-y-auto">
         
@@ -30,9 +34,9 @@ export const Reports = async () => {
           <div>
             <span class="badge-success text-xs mb-1">অ্যানালিটিক্স ও BI</span>
             <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">বিজনেস ইন্টেলিজেন্স ও সেলস রিপোর্ট</h1>
-            <p class="text-xs text-slate-500 mt-1">আয়, প্রফিট মার্জিন এবং কুরিয়ার ডেলিভারি সাকসেস রেশিও বিশ্লেষণ</p>
+            <p class="text-xs text-slate-500 mt-1">আয়, প্রফিট মার্জিন এবং কুরিয়ার ডেলিভারি সাকসেস রেশিও বিশ্লেষণ</p>
           </div>
-          <button onclick="window.print()" class="btn-secondary py-2.5 px-4 text-xs font-bold flex items-center gap-1.5">
+          <button type="button" onclick="window.print ? window.print() : null" class="btn-secondary py-2.5 px-4 text-xs font-bold flex items-center gap-1.5 shadow-sm">
             <i data-lucide="printer" class="w-3.5 h-3.5"></i> রিপোর্ট প্রিন্ট
           </button>
         </div>
@@ -61,9 +65,9 @@ export const Reports = async () => {
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
           <!-- Courier Success Ratios -->
-          <div class="glass-panel p-6 sm:p-8 rounded-3xl space-y-4">
+          <div class="glass-panel p-6 sm:p-8 rounded-3xl space-y-4 border border-slate-200 dark:border-slate-800">
             <h3 class="text-base font-bold text-slate-900 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">
-              কুরিয়ারভিত্তিক ডেলিভারি পারফরম্যান্স
+              কুরিয়ারভিত্তিক ডেলিভারি পারফরম্যান্স
             </h3>
             
             <div class="space-y-4">
@@ -100,7 +104,7 @@ export const Reports = async () => {
           </div>
 
           <!-- Top Selling Leaderboard -->
-          <div class="glass-panel p-6 sm:p-8 rounded-3xl space-y-4">
+          <div class="glass-panel p-6 sm:p-8 rounded-3xl space-y-4 border border-slate-200 dark:border-slate-800">
             <h3 class="text-base font-bold text-slate-900 dark:text-white pb-3 border-b border-slate-100 dark:border-slate-800">
               টপ সেলিং প্রোডাক্টস
             </h3>
@@ -126,3 +130,6 @@ export const Reports = async () => {
     </div>
   `;
 };
+
+// Default export যুক্ত করা হয়েছে
+export default Reports;
