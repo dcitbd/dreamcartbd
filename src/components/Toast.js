@@ -6,6 +6,8 @@
 
 export const Toast = {
   show: (message, type = "success", duration = 3500) => {
+    if (typeof document === "undefined" || !document.body) return;
+
     let container = document.getElementById("toast-container");
     if (!container) {
       container = document.createElement("div");
@@ -28,23 +30,46 @@ export const Toast = {
     toast.innerHTML = `
       <i data-lucide="${conf.icon}" class="w-5 h-5 shrink-0"></i>
       <span class="flex-1">${message}</span>
-      <button class="toast-close p-1 hover:opacity-80"><i data-lucide="x" class="w-4 h-4"></i></button>
+      <button type="button" class="toast-close p-1 hover:opacity-80"><i data-lucide="x" class="w-4 h-4"></i></button>
     `;
 
     container.appendChild(toast);
-    if (window.lucide) window.lucide.createIcons();
+
+    if (typeof window !== "undefined" && window.lucide && typeof window.lucide.createIcons === "function") {
+      window.lucide.createIcons();
+    }
 
     // Fade In
-    requestAnimationFrame(() => {
+    if (typeof requestAnimationFrame !== "undefined") {
+      requestAnimationFrame(() => {
+        toast.classList.remove("translate-y-3", "opacity-0");
+      });
+    } else {
       toast.classList.remove("translate-y-3", "opacity-0");
-    });
+    }
 
     const closeToast = () => {
       toast.classList.add("opacity-0", "translate-y-3");
-      setTimeout(() => toast.remove(), 300);
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.remove();
+        }
+      }, 300);
     };
 
-    toast.querySelector(".toast-close").addEventListener("click", closeToast);
+    const closeBtn = toast.querySelector(".toast-close");
+    if (closeBtn) {
+      closeBtn.addEventListener("click", closeToast);
+    }
+
     setTimeout(closeToast, duration);
   }
 };
+
+// গ্লোবাল উইন্ডোতে সেট করা
+if (typeof window !== "undefined") {
+  window.Toast = Toast;
+}
+
+// Default export যুক্ত করা হয়েছে
+export default Toast;
