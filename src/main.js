@@ -1,7 +1,6 @@
 /**
  * ============================================================================
  * DREAM CART BD — APPLICATION BOOTSTRAPPER (main.js)
- * High-Performance Resilient SPA Engine with Dynamic Route Resolution
  * ============================================================================
  */
 
@@ -9,86 +8,92 @@ import { store } from "./js/store.js";
 import { router } from "./js/router.js";
 import { SyncEngine } from "./api/sync.js";
 
-/**
- * সেফ ডাইনামিক পেজ লোডার (Vite Build Fail-Safe Resolver for GitHub Pages)
- */
-const loadPage = (importFn) => {
-  return async (params) => {
-    try {
-      const mod = await importFn();
-      const renderFn = mod.HomePage || mod.ProductListPage || mod.ProductDetailPage || mod.CategoryPage || mod.CheckoutPage || mod.OrderSuccessPage || mod.TrackOrderPage || mod.CustomerPortal || mod.Reports || mod.ProductList || mod.ProductWizard || mod.CategoryManager || mod.StockLedger || mod.StockMovements || mod.LowStockAlerts || mod.SupplierManager || mod.PurchaseOrders || mod.OrderList || mod.OrderDetail || mod.BulkShipment || mod.CourierHub || mod.ReturnRTO || mod.Payments || mod.BulkExcelTool || mod.BulkPriceEngine || mod.AuditTrail || mod.Settings || mod.SellerPortal || mod.ResellerPortal || mod.WholesalePortal || mod.default;
+// সব পেজ মডিউল একসাথে স্ট্যাটিক্যালি ইমপোর্ট করা হলো যাতে Vite বিল্ডে কোনো 404 বা পাথ মিসিং না হয়
+import { HomePage } from "./pages/storefront/HomePage.js";
+import { ProductListPage } from "./pages/storefront/ProductListPage.js";
+import { ProductDetailPage } from "./pages/storefront/ProductDetailPage.js";
+import { CategoryPage } from "./pages/storefront/CategoryPage.js";
+import { CheckoutPage } from "./pages/storefront/CheckoutPage.js";
+import { OrderSuccessPage } from "./pages/storefront/OrderSuccessPage.js";
+import { TrackOrderPage } from "./pages/storefront/TrackOrderPage.js";
+import { CustomerPortal } from "./pages/customer/CustomerPortal.js";
 
-      if (typeof renderFn === "function") {
-        return await renderFn(params);
-      }
-      throw new Error("Valid export function not found in module");
-    } catch (err) {
-      console.warn(`[Module Loader Error]:`, err.message);
-      return `
-        <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center font-bengali">
-          <div class="glass-panel p-8 rounded-3xl max-w-md border border-slate-200 dark:border-slate-800 shadow-xl bg-white dark:bg-slate-900">
-            <div class="w-12 h-12 bg-brand-50 dark:bg-slate-800 text-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <i data-lucide="package-search" class="w-6 h-6"></i>
-            </div>
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white">পেজটি প্রস্তুত হচ্ছে</h3>
-            <p class="text-xs text-slate-500 mt-2">এই মডিউলটির ফাইল গিটহাবে আপলোড সম্পন্ন হলে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।</p>
-            <a href="/" class="btn-primary mt-6 inline-flex text-xs px-5 py-2.5">হোম পেজে ফিরে যান</a>
-          </div>
-        </div>
-      `;
-    }
-  };
+// Admin & Partner Pages (যদি ফাইলগুলো না থাকে তবে ফলব্যাক রেন্ডার দেখাবে)
+import { Reports } from "./pages/admin/system/Reports.js";
+import { ProductList } from "./pages/admin/catalog/ProductList.js";
+import { ProductWizard } from "./pages/admin/catalog/ProductWizard.js";
+import { CategoryManager } from "./pages/admin/catalog/CategoryManager.js";
+import { StockLedger } from "./pages/admin/inventory/StockLedger.js";
+import { StockMovements } from "./pages/admin/inventory/StockMovements.js";
+import { LowStockAlerts } from "./pages/admin/inventory/LowStockAlerts.js";
+import { SupplierManager } from "./pages/admin/inventory/SupplierManager.js";
+import { PurchaseOrders } from "./pages/admin/inventory/PurchaseOrders.js";
+import { OrderList } from "./pages/admin/orders/OrderList.js";
+import { OrderDetail } from "./pages/admin/orders/OrderDetail.js";
+import { BulkShipment } from "./pages/admin/orders/BulkShipment.js";
+import { CourierHub } from "./pages/admin/orders/CourierHub.js";
+import { ReturnRTO } from "./pages/admin/orders/ReturnRTO.js";
+import { Payments } from "./pages/admin/orders/Payments.js";
+import { BulkExcelTool } from "./pages/admin/system/BulkExcelTool.js";
+import { BulkPriceEngine } from "./pages/admin/system/BulkPriceEngine.js";
+import { AuditTrail } from "./pages/admin/system/AuditTrail.js";
+import { Settings } from "./pages/admin/system/Settings.js";
+import { SellerPortal } from "./pages/partner/SellerPortal.js";
+import { ResellerPortal } from "./pages/partner/ResellerPortal.js";
+import { WholesalePortal } from "./pages/partner/WholesalePortal.js";
+
+// সেফ র‍্যাপার ফাংশন
+const wrap = (fn) => async (params) => {
+  if (typeof fn === "function") return await fn(params);
+  return `
+    <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center font-bengali">
+      <div class="glass-panel p-8 rounded-3xl max-w-md border border-slate-200 dark:border-slate-800 shadow-xl bg-white dark:bg-slate-900">
+        <h3 class="text-lg font-bold text-slate-900 dark:text-white">পেজটি প্রস্তুত হচ্ছে</h3>
+        <p class="text-xs text-slate-500 mt-2">এই মডিউলটির ফাইল গিটহাবে আপলোড সম্পন্ন হলে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।</p>
+        <a href="/" class="btn-primary mt-6 inline-flex text-xs px-5 py-2.5">হোম পেজে ফিরে যান</a>
+      </div>
+    </div>
+  `;
 };
 
-// ==================== REGISTER DYNAMIC SPA ROUTES ====================
+// ==================== REGISTER STATIC SPA ROUTES ====================
+router.addRoute("/", wrap(HomePage));
+router.addRoute("/products", wrap(ProductListPage));
+router.addRoute("/product/:id", wrap(ProductDetailPage));
+router.addRoute("/categories", wrap(CategoryPage));
+router.addRoute("/checkout", wrap(CheckoutPage));
+router.addRoute("/order-success/:id", wrap(OrderSuccessPage));
+router.addRoute("/track-order", wrap(TrackOrderPage));
+router.addRoute("/customer/account", wrap(CustomerPortal));
 
-// Storefront & Customer Pages
-router.addRoute("/", loadPage(() => import("./pages/storefront/HomePage.js")));
-router.addRoute("/products", loadPage(() => import("./pages/storefront/ProductListPage.js")));
-router.addRoute("/product/:id", loadPage(() => import("./pages/storefront/ProductDetailPage.js")));
-router.addRoute("/categories", loadPage(() => import("./pages/storefront/CategoryPage.js")));
-router.addRoute("/checkout", loadPage(() => import("./pages/storefront/CheckoutPage.js")));
-router.addRoute("/order-success/:id", loadPage(() => import("./pages/storefront/OrderSuccessPage.js")));
-router.addRoute("/track-order", loadPage(() => import("./pages/storefront/TrackOrderPage.js")));
-router.addRoute("/customer/account", loadPage(() => import("./pages/customer/CustomerPortal.js")));
-
-// Admin Catalog Routes
-router.addRoute("/admin/dashboard", loadPage(() => import("./pages/admin/system/Reports.js")));
-router.addRoute("/admin/products", loadPage(() => import("./pages/admin/catalog/ProductList.js")));
-router.addRoute("/admin/products/create", loadPage(() => import("./pages/admin/catalog/ProductWizard.js")));
-router.addRoute("/admin/products/edit/:id", loadPage(() => import("./pages/admin/catalog/ProductWizard.js")));
-router.addRoute("/admin/categories", loadPage(() => import("./pages/admin/catalog/CategoryManager.js")));
-
-// Admin Inventory Routes
-router.addRoute("/admin/inventory", loadPage(() => import("./pages/admin/inventory/StockLedger.js")));
-router.addRoute("/admin/inventory/movements", loadPage(() => import("./pages/admin/inventory/StockMovements.js")));
-router.addRoute("/admin/inventory/low-stock", loadPage(() => import("./pages/admin/inventory/LowStockAlerts.js")));
-router.addRoute("/admin/suppliers", loadPage(() => import("./pages/admin/inventory/SupplierManager.js")));
-router.addRoute("/admin/inventory/purchase-orders", loadPage(() => import("./pages/admin/inventory/PurchaseOrders.js")));
-
-// Admin Order & Courier Routes
-router.addRoute("/admin/orders", loadPage(() => import("./pages/admin/orders/OrderList.js")));
-router.addRoute("/admin/orders/detail/:id", loadPage(() => import("./pages/admin/orders/OrderDetail.js")));
-router.addRoute("/admin/orders/bulk-shipment", loadPage(() => import("./pages/admin/orders/BulkShipment.js")));
-router.addRoute("/admin/couriers", loadPage(() => import("./pages/admin/orders/CourierHub.js")));
-router.addRoute("/admin/orders/returns", loadPage(() => import("./pages/admin/orders/ReturnRTO.js")));
-router.addRoute("/admin/orders/payments", loadPage(() => import("./pages/admin/orders/Payments.js")));
-
-// Admin System & Bulk Routes
-router.addRoute("/admin/system/bulk", loadPage(() => import("./pages/admin/system/BulkExcelTool.js")));
-router.addRoute("/admin/system/bulk-price", loadPage(() => import("./pages/admin/system/BulkPriceEngine.js")));
-router.addRoute("/admin/audit", loadPage(() => import("./pages/admin/system/AuditTrail.js")));
-router.addRoute("/admin/settings", loadPage(() => import("./pages/admin/system/Settings.js")));
-
-// Partner Routes
-router.addRoute("/partner/seller", loadPage(() => import("./pages/partner/SellerPortal.js")));
-router.addRoute("/partner/reseller", loadPage(() => import("./pages/partner/ResellerPortal.js")));
-router.addRoute("/partner/wholesale", loadPage(() => import("./pages/partner/WholesalePortal.js")));
+// Admin & Partner Routes
+router.addRoute("/admin/dashboard", wrap(Reports));
+router.addRoute("/admin/products", wrap(ProductList));
+router.addRoute("/admin/products/create", wrap(ProductWizard));
+router.addRoute("/admin/products/edit/:id", wrap(ProductWizard));
+router.addRoute("/admin/categories", wrap(CategoryManager));
+router.addRoute("/admin/inventory", wrap(StockLedger));
+router.addRoute("/admin/inventory/movements", wrap(StockMovements));
+router.addRoute("/admin/inventory/low-stock", wrap(LowStockAlerts));
+router.addRoute("/admin/suppliers", wrap(SupplierManager));
+router.addRoute("/admin/inventory/purchase-orders", wrap(PurchaseOrders));
+router.addRoute("/admin/orders", wrap(OrderList));
+router.addRoute("/admin/orders/detail/:id", wrap(OrderDetail));
+router.addRoute("/admin/orders/bulk-shipment", wrap(BulkShipment));
+router.addRoute("/admin/couriers", wrap(CourierHub));
+router.addRoute("/admin/orders/returns", wrap(ReturnRTO));
+router.addRoute("/admin/orders/payments", wrap(Payments));
+router.addRoute("/admin/system/bulk", wrap(BulkExcelTool));
+router.addRoute("/admin/system/bulk-price", wrap(BulkPriceEngine));
+router.addRoute("/admin/audit", wrap(AuditTrail));
+router.addRoute("/admin/settings", wrap(Settings));
+router.addRoute("/partner/seller", wrap(SellerPortal));
+router.addRoute("/partner/reseller", wrap(ResellerPortal));
+router.addRoute("/partner/wholesale", wrap(WholesalePortal));
 
 // ==================== GLOBAL APP INITIALIZER ====================
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    // ১. গুগল শীট টু-ওয়ে সিঙ্ক পোলিং চালু
     if (typeof SyncEngine !== "undefined" && SyncEngine.startPolling) {
       SyncEngine.startPolling(10000);
     }
@@ -96,7 +101,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.store = store;
     window.router = router;
 
-    // ২. গ্লোবাল লিঙ্ক ইন্টারসেপ্টর
     document.body.addEventListener("click", (e) => {
       const anchor = e.target.closest("a");
       if (anchor && anchor.getAttribute("href") && anchor.getAttribute("href").startsWith("/")) {
@@ -105,14 +109,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
     });
 
-    // ৩. ইনিশিয়াল পেজ রেন্ডার
     if (router && typeof router.handleRoute === "function") {
       await router.handleRoute();
     }
   } catch (err) {
     console.error("[App Init Error]:", err);
   } finally {
-    // ৪. গ্লোবাল লোডার রিমুভ (নিরাপদ উপায়)
     const loader = document.getElementById("global-loader");
     if (loader) {
       loader.classList.add("opacity-0");
