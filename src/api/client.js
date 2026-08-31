@@ -5,7 +5,6 @@
  * ============================================================================
  */
 
-// Safe API Endpoint Resolution (Works in Vite Dev, Node & Direct Static Browser)
 const API_ENDPOINT = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_ENDPOINT)
   || (typeof window !== "undefined" && window.VITE_API_ENDPOINT)
   || "https://script.google.com/macros/s/AKfycbyuyANFCLHnE-GGbGnx_1yr2Z_BOPWv-qBqh-1zQg4knzmMXnL15ERsbeOCfBNBZwys/exec";
@@ -13,13 +12,10 @@ const API_ENDPOINT = (typeof import.meta !== "undefined" && import.meta.env && i
 class ApiClient {
   constructor() {
     this.cache = new Map();
-    this.cacheTTL = 30000; // ৩০ সেকেন্ড লোকাল মেমোরি ক্যাশ
+    this.cacheTTL = 30000;
     this.maxRetries = 2;
   }
 
-  /**
-   * সেন্ট্রাল রিকোয়েস্ট মেথড
-   */
   async request(action, payload = {}, method = "POST", retryCount = 0) {
     if (!API_ENDPOINT) {
       throw new Error("Google Apps Script API Endpoint is missing.");
@@ -28,7 +24,7 @@ class ApiClient {
     const url = new URL(API_ENDPOINT);
     const options = {
       method: method,
-      headers: { "Content-Type": "text/plain;charset=utf-8" } // Apps Script CORS Preflight বাইপাস
+      headers: { "Content-Type": "text/plain;charset=utf-8" }
     };
 
     if (method === "GET") {
@@ -61,9 +57,6 @@ class ApiClient {
     }
   }
 
-  /**
-   * SWR ক্যাশ সহ GET রিকোয়েস্ট
-   */
   async get(action, params = {}, useCache = true) {
     const cacheKey = `${action}_${JSON.stringify(params)}`;
     const cached = this.cache.get(cacheKey);
@@ -77,11 +70,8 @@ class ApiClient {
     return data;
   }
 
-  /**
-   * POST রিকোয়েস্ট (ডাটা মিউটেশন হলে স্বয়ংক্রিয়ভাবে ক্যাশ ক্লিয়ার হয়)
-   */
   async post(action, body = {}) {
-    this.cache.clear(); // নতুন ডাটা যুক্ত/আপডেট হলে ক্যাশ ক্লিয়ার
+    this.cache.clear();
     return await this.request(action, body, "POST");
   }
 
