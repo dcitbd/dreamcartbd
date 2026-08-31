@@ -1,6 +1,7 @@
 /**
  * ============================================================================
  * DREAM CART BD — APPLICATION BOOTSTRAPPER (main.js)
+ * Clean, Fast & Lazy-Loaded SPA Routing
  * ============================================================================
  */
 
@@ -8,79 +9,50 @@ import { store } from "./js/store.js";
 import { router } from "./js/router.js";
 import { SyncEngine } from "./api/sync.js";
 
-// Pages Import
-import { HomePage } from "./pages/storefront/HomePage.js";
-import { ProductDetailPage } from "./pages/storefront/ProductDetailPage.js";
-import { ProductListPage } from "./pages/storefront/ProductListPage.js";
-import { CategoryPage } from "./pages/storefront/CategoryPage.js";
-import { CheckoutPage } from "./pages/storefront/CheckoutPage.js";
-import { OrderSuccessPage } from "./pages/storefront/OrderSuccessPage.js";
-import { TrackOrderPage } from "./pages/storefront/TrackOrderPage.js";
-import { CustomerPortal } from "./pages/customer/CustomerPortal.js";
+// ==================== DYNAMIC LAZY ROUTES ====================
 
-// Admin Pages
-import { ProductList } from "./pages/admin/catalog/ProductList.js";
-import { ProductWizard } from "./pages/admin/catalog/ProductWizard.js";
-import { CategoryManager } from "./pages/admin/catalog/CategoryManager.js";
-import { StockLedger } from "./pages/admin/inventory/StockLedger.js";
-import { StockMovements } from "./pages/admin/inventory/StockMovements.js";
-import { LowStockAlerts } from "./pages/admin/inventory/LowStockAlerts.js";
-import { SupplierManager } from "./pages/admin/inventory/SupplierManager.js";
-import { PurchaseOrders } from "./pages/admin/inventory/PurchaseOrders.js";
-import { OrderList } from "./pages/admin/orders/OrderList.js";
-import { OrderDetail } from "./pages/admin/orders/OrderDetail.js";
-import { CourierHub } from "./pages/admin/orders/CourierHub.js";
-import { BulkShipment } from "./pages/admin/orders/BulkShipment.js";
-import { ReturnRTO } from "./pages/admin/orders/ReturnRTO.js";
-import { Payments } from "./pages/admin/orders/Payments.js";
-import { BulkExcelTool } from "./pages/admin/system/BulkExcelTool.js";
-import { BulkPriceEngine } from "./pages/admin/system/BulkPriceEngine.js";
-import { Reports } from "./pages/admin/system/Reports.js";
-import { AuditTrail } from "./pages/admin/system/AuditTrail.js";
-import { BackupCenter } from "./pages/admin/system/BackupCenter.js";
-import { Settings } from "./pages/admin/system/Settings.js";
+// Storefront & Customer Pages
+router.addRoute("/", async () => (await import("./pages/storefront/HomePage.js")).HomePage);
+router.addRoute("/products", async () => (await import("./pages/storefront/ProductListPage.js")).ProductListPage);
+router.addRoute("/product/:id", async () => (await import("./pages/storefront/ProductDetailPage.js")).ProductDetailPage);
+router.addRoute("/categories", async () => (await import("./pages/storefront/CategoryPage.js")).CategoryPage);
+router.addRoute("/checkout", async () => (await import("./pages/storefront/CheckoutPage.js")).CheckoutPage);
+router.addRoute("/order-success/:id", async () => (await import("./pages/storefront/OrderSuccessPage.js")).OrderSuccessPage);
+router.addRoute("/track-order", async () => (await import("./pages/storefront/TrackOrderPage.js")).TrackOrderPage);
+router.addRoute("/customer/account", async () => (await import("./pages/customer/CustomerPortal.js")).CustomerPortal);
 
-// Partner Pages
-import { SellerPortal } from "./pages/partner/SellerPortal.js";
-import { ResellerPortal } from "./pages/partner/ResellerPortal.js";
-import { WholesalePortal } from "./pages/partner/WholesalePortal.js";
+// Admin Catalog Routes
+router.addRoute("/admin/dashboard", async () => (await import("./pages/admin/system/Reports.js")).Reports);
+router.addRoute("/admin/products", async () => (await import("./pages/admin/catalog/ProductList.js")).ProductList);
+router.addRoute("/admin/products/create", async () => (await import("./pages/admin/catalog/ProductWizard.js")).ProductWizard);
+router.addRoute("/admin/products/edit/:id", async () => (await import("./pages/admin/catalog/ProductWizard.js")).ProductWizard);
+router.addRoute("/admin/categories", async () => (await import("./pages/admin/catalog/CategoryManager.js")).CategoryManager);
 
-// ==================== REGISTER SPA ROUTES ====================
-router.addRoute("/", HomePage);
-router.addRoute("/products", ProductListPage);
-router.addRoute("/product/:id", ProductDetailPage);
-router.addRoute("/categories", CategoryPage);
-router.addRoute("/checkout", CheckoutPage);
-router.addRoute("/order-success/:id", OrderSuccessPage);
-router.addRoute("/track-order", TrackOrderPage);
-router.addRoute("/customer/account", CustomerPortal);
+// Admin Inventory Routes
+router.addRoute("/admin/inventory", async () => (await import("./pages/admin/inventory/StockLedger.js")).StockLedger);
+router.addRoute("/admin/inventory/movements", async () => (await import("./pages/admin/inventory/StockMovements.js")).StockMovements);
+router.addRoute("/admin/inventory/low-stock", async () => (await import("./pages/admin/inventory/LowStockAlerts.js")).LowStockAlerts);
+router.addRoute("/admin/suppliers", async () => (await import("./pages/admin/inventory/SupplierManager.js")).SupplierManager);
+router.addRoute("/admin/inventory/purchase-orders", async () => (await import("./pages/admin/inventory/PurchaseOrders.js")).PurchaseOrders);
 
-// Admin Routes
-router.addRoute("/admin/dashboard", Reports);
-router.addRoute("/admin/products", ProductList);
-router.addRoute("/admin/products/create", ProductWizard);
-router.addRoute("/admin/products/edit/:id", ProductWizard);
-router.addRoute("/admin/categories", CategoryManager);
-router.addRoute("/admin/inventory", StockLedger);
-router.addRoute("/admin/inventory/movements", StockMovements);
-router.addRoute("/admin/inventory/low-stock", LowStockAlerts);
-router.addRoute("/admin/suppliers", SupplierManager);
-router.addRoute("/admin/inventory/purchase-orders", PurchaseOrders);
-router.addRoute("/admin/orders", OrderList);
-router.addRoute("/admin/orders/detail/:id", OrderDetail);
-router.addRoute("/admin/orders/bulk-shipment", BulkShipment);
-router.addRoute("/admin/couriers", CourierHub);
-router.addRoute("/admin/orders/returns", ReturnRTO);
-router.addRoute("/admin/orders/payments", Payments);
-router.addRoute("/admin/system/bulk", BulkExcelTool);
-router.addRoute("/admin/system/bulk-price", BulkPriceEngine);
-router.addRoute("/admin/audit", AuditTrail);
-router.addRoute("/admin/settings", Settings);
+// Admin Order & Courier Routes
+router.addRoute("/admin/orders", async () => (await import("./pages/admin/orders/OrderList.js")).OrderList);
+router.addRoute("/admin/orders/detail/:id", async () => (await import("./pages/admin/orders/OrderDetail.js")).OrderDetail);
+router.addRoute("/admin/orders/bulk-shipment", async () => (await import("./pages/admin/orders/BulkShipment.js")).BulkShipment);
+router.addRoute("/admin/couriers", async () => (await import("./pages/admin/orders/CourierHub.js")).CourierHub);
+router.addRoute("/admin/orders/returns", async () => (await import("./pages/admin/orders/ReturnRTO.js")).ReturnRTO);
+router.addRoute("/admin/orders/payments", async () => (await import("./pages/admin/orders/Payments.js")).Payments);
+
+// Admin System & Bulk Routes
+router.addRoute("/admin/system/bulk", async () => (await import("./pages/admin/system/BulkExcelTool.js")).BulkExcelTool);
+router.addRoute("/admin/system/bulk-price", async () => (await import("./pages/admin/system/BulkPriceEngine.js")).BulkPriceEngine);
+router.addRoute("/admin/audit", async () => (await import("./pages/admin/system/AuditTrail.js")).AuditTrail);
+router.addRoute("/admin/settings", async () => (await import("./pages/admin/system/Settings.js")).Settings);
 
 // Partner Routes
-router.addRoute("/partner/seller", SellerPortal);
-router.addRoute("/partner/reseller", ResellerPortal);
-router.addRoute("/partner/wholesale", WholesalePortal);
+router.addRoute("/partner/seller", async () => (await import("./pages/partner/SellerPortal.js")).SellerPortal);
+router.addRoute("/partner/reseller", async () => (await import("./pages/partner/ResellerPortal.js")).ResellerPortal);
+router.addRoute("/partner/wholesale", async () => (await import("./pages/partner/WholesalePortal.js")).WholesalePortal);
 
 // ==================== GLOBAL APP INITIALIZER ====================
 document.addEventListener("DOMContentLoaded", () => {
