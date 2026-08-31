@@ -1,3 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+ * DREAM CART BD — CORE DESIGN SYSTEM TOKENS (main.css)
+ * ============================================================================
+ */
+
 :root {
   --primary: #0f172a;
   --primary-accent: #0284c7;
@@ -18,6 +27,7 @@
 body {
   font-family: 'Plus Jakarta Sans', 'Hind Siliguri', sans-serif;
   overflow-x: hidden;
+  background-color: var(--bg-main);
 }
 
 /* Glassmorphism Panels */
@@ -115,7 +125,7 @@ body {
   color: #0369a1;
 }
 
-/* Primary Button */
+/* Custom Buttons */
 .btn-primary {
   display: inline-flex;
   align-items: center;
