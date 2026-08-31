@@ -1,11 +1,14 @@
 /**
  * ============================================================================
  * DREAM CART BD — UNIFIED API CLIENT (client.js)
- * High-Performance Fetch Gateway with Auto-Retry & SWR Invalidation
+ * High-Performance Fetch Gateway with Fail-Safe Fallback & SWR Caching
  * ============================================================================
  */
 
-const API_ENDPOINT = import.meta.env.VITE_API_ENDPOINT;
+// Safe API Endpoint Resolution (Works in Vite Dev, Node & Direct Static Browser)
+const API_ENDPOINT = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_ENDPOINT)
+  || (typeof window !== "undefined" && window.VITE_API_ENDPOINT)
+  || "https://script.google.com/macros/s/AKfycbyuyANFCLHnE-GGbGnx_1yr2Z_BOPWv-qBqh-1zQg4knzmMXnL15ERsbeOCfBNBZwys/exec";
 
 class ApiClient {
   constructor() {
@@ -19,7 +22,7 @@ class ApiClient {
    */
   async request(action, payload = {}, method = "POST", retryCount = 0) {
     if (!API_ENDPOINT) {
-      throw new Error("VITE_API_ENDPOINT is not defined in .env file.");
+      throw new Error("Google Apps Script API Endpoint is missing.");
     }
 
     const url = new URL(API_ENDPOINT);
