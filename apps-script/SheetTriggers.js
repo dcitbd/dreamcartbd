@@ -5,7 +5,7 @@
  */
 
 /**
- * গুগল শীটে কোনো ইউজার ম্যানুয়ালি এডিট করলে এই ফাংশন স্বয়ংক্রিয়ভাবে এক্সিকিউট হয়
+ * গুগল শীটে কোনো ইউজার ম্যানুয়ালি এডিট করলে এই ফাংশন স্বয়ংক্রিয়ভাবে এক্সিকিউট হয়
  */
 function onEditTrigger(e) {
   if (!e || !e.range) return;
@@ -21,7 +21,7 @@ function onEditTrigger(e) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const editedField = headers[col - 1];
 
-  // ১. অ্যাপস স্ক্রিপ্টের ব্যাকএন্ড ক্যাশ ক্লিয়ার করা
+  // ১. অ্যাপস স্ক্রিপ্টের ব্যাকএন্ড ক্যাশ ক্লিয়ার করা
   const cache = CacheService.getScriptCache();
   cache.remove("cache_" + sheetName);
   cache.remove("cache_all_products");
@@ -38,7 +38,8 @@ function onEditTrigger(e) {
  * গুগল অ্যাপস স্ক্রিপ্ট কনসোলে এই ফাংশনটি একবার রান করে ইনস্টল করতে হবে
  */
 function setupSheetTriggers() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  // Fix: Use CONFIG.SPREADSHEET_ID for standalone script execution context
+  const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
   const triggers = ScriptApp.getProjectTriggers();
 
   // পূর্বের পুরনো ট্রিগার মুছে ফেলা
