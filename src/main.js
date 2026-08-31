@@ -18,13 +18,8 @@ import { OrderSuccessPage } from "./pages/storefront/OrderSuccessPage.js";
 import { TrackOrderPage } from "./pages/storefront/TrackOrderPage.js";
 import { CustomerPortal } from "./pages/customer/CustomerPortal.js";
 
-// ==================== PARTNER PORTALS ====================
-import SellerPortal from "./pages/partner/SellerPortal.js";
-import ResellerPortal from "./pages/partner/ResallerPortal.js";
-import WholesalePortal from "./pages/partner/WholeSalePortal.js";
-
 /**
- * সেফ মডিউল র‍্যাপার (অ্যাডমিন বা অনুপস্থিত পেজগুলোর জন্য ফলব্যাক মেসেজ)
+ * সেফ মডিউল র‍্যাপার
  */
 const wrap = (fn) => async (params) => {
   try {
@@ -34,10 +29,10 @@ const wrap = (fn) => async (params) => {
   } catch (err) {
     return `
       <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center font-bengali">
-        <div class="glass-panel p-8 rounded-3xl max-w-md border border-slate-200 dark:border-slate-800 shadow-xl bg-white dark:bg-slate-900">
-          <h3 class="text-lg font-bold text-slate-900 dark:text-white">পেজটি প্রস্তুত হচ্ছে</h3>
-          <p class="text-xs text-slate-500 mt-2">এই মডিউলটির ফাইল লোড হতে সমস্যা হয়েছে বা তৈরি করা হচ্ছে।</p>
-          <a href="/" class="btn-primary mt-6 inline-flex text-xs px-5 py-2.5">হোম পেজে ফিরে যান</a>
+        <div class="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md">
+          <h3 class="text-lg font-bold mb-2">পেজটি প্রস্তুত হচ্ছে</h3>
+          <p class="text-xs text-slate-500 mb-4">এই মডিউলটির ফাইল লোড হতে সমস্যা হয়েছে বা তৈরি করা হচ্ছে।</p>
+          <a href="/" class="px-5 py-2.5 bg-brand-600 text-white text-xs font-bold rounded-xl inline-block">হোম পেজে ফিরে যান</a>
         </div>
       </div>
     `;
@@ -54,27 +49,25 @@ router.addRoute("/order-success/:id", wrap(OrderSuccessPage));
 router.addRoute("/track-order", wrap(TrackOrderPage));
 router.addRoute("/customer/account", wrap(CustomerPortal));
 
-router.addRoute("/partner/seller", wrap(SellerPortal));
-router.addRoute("/partner/reseller", wrap(ResellerPortal));
-router.addRoute("/partner/wholesale", wrap(WholesalePortal));
-
-// অ্যাডমিন রাউটগুলোর জন্য সাময়িকভাবে ফলব্যাক হ্যান্ডলার
-const adminFallback = wrap(() => `
+// সাময়িকভাবে পার্টনার ও অ্যাডমিন পেজগুলোর জন্য ফলব্যাক রাউট
+const portalFallback = wrap(() => `
   <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center font-bengali">
     <div class="bg-white dark:bg-slate-900 p-8 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md">
-      <h3 class="text-lg font-bold mb-2">অ্যাডমিন ড্যাশবোর্ড আপডেট হচ্ছে</h3>
-      <p class="text-xs text-slate-500 mb-4">অ্যাডমিন প্যানেলের মডিউলগুলো শিঘ্রই যুক্ত করা হবে।</p>
+      <h3 class="text-lg font-bold mb-2">পোর্টালটি আপডেট হচ্ছে</h3>
+      <p class="text-xs text-slate-500 mb-4">এই সেকশনের মডিউলগুলো শিঘ্রই যুক্ত করা হবে।</p>
       <a href="/" class="px-5 py-2.5 bg-brand-600 text-white text-xs font-bold rounded-xl inline-block">হোম পেজে ফিরে যান</a>
     </div>
   </div>
 `);
 
-router.addRoute("/admin/dashboard", adminFallback);
-router.addRoute("/admin/products", adminFallback);
-router.addRoute("/admin/categories", adminFallback);
-router.addRoute("/admin/inventory", adminFallback);
-router.addRoute("/admin/orders", adminFallback);
-router.addRoute("/admin/settings", adminFallback);
+router.addRoute("/partner/seller", portalFallback);
+router.addRoute("/partner/reseller", portalFallback);
+router.addRoute("/partner/wholesale", portalFallback);
+router.addRoute("/admin/dashboard", portalFallback);
+router.addRoute("/admin/products", portalFallback);
+router.addRoute("/admin/categories", portalFallback);
+router.addRoute("/admin/inventory", portalFallback);
+router.addRoute("/admin/orders", portalFallback);
 
 // ==================== INITIALIZE ====================
 document.addEventListener("DOMContentLoaded", async () => {
