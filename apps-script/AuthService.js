@@ -5,7 +5,7 @@
  * ============================================================================
  */
 
-export const AuthService = {
+const AuthService = {
   // পাসওয়ার্ড হ্যাশ মেথড (SHA-256 + Secret Salt)
   hashPassword: function(password) {
     const secret = (typeof CONFIG !== "undefined" && CONFIG.JWT_SECRET) ? CONFIG.JWT_SECRET : "DCBD_DEFAULT_SALT_SECRET";
@@ -38,7 +38,7 @@ export const AuthService = {
     return `${header}.${payload}.${signature}`;
   },
 
-  // টোকেন ভ্যালিডেশন মেথড (ইনডেক্সিং ত্রুটি সংশোধন করা হয়েছে)
+  // টোকেন ভ্যালিডেশন মেথড (ইনডেক্সিং ত্রুটি সংশোধন করা হয়েছে)
   verifyToken: function(token) {
     if (!token) throw new Error("No authorization token provided.");
     const parts = token.split(".");
@@ -140,10 +140,10 @@ export const AuthService = {
   }
 };
 
-// গ্লোবাল উইন্ডোতে বাইন্ড করা
+// গ্লোবাল উইন্ডো এবং Node/Bundler পরিবেশের সাপোর্ট
 if (typeof window !== "undefined") {
   window.AuthService = AuthService;
 }
-
-// Default export যুক্ত করা হয়েছে
-export default AuthService;
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = AuthService;
+}
