@@ -50,11 +50,11 @@ export const CartDrawer = {
                   
                   <div class="flex items-center justify-between mt-2">
                     <div class="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900">
-                      <button type="button" onclick="window.store && window.store.updateCartQty ? window.store.updateCartQty('${item.cartItemId}', Math.max(1, ${(Number(item.quantity) || 1) - 1})) : null" class="px-2 py-0.5 text-slate-500 hover:text-brand-600">-</button>
+                      <button type="button" class="cart-qty-btn px-2 py-0.5 text-slate-500 hover:text-brand-600" data-id="${item.cartItemId}" data-qty="${(Number(item.quantity) || 1) - 1}">-</button>
                       <span class="px-2 text-xs font-bold">${item.quantity || 1}</span>
-                      <button type="button" onclick="window.store && window.store.updateCartQty ? window.store.updateCartQty('${item.cartItemId}', ${(Number(item.quantity) || 1) + 1}) : null" class="px-2 py-0.5 text-slate-500 hover:text-brand-600">+</button>
+                      <button type="button" class="cart-qty-btn px-2 py-0.5 text-slate-500 hover:text-brand-600" data-id="${item.cartItemId}" data-qty="${(Number(item.quantity) || 1) + 1}">+</button>
                     </div>
-                    <button type="button" onclick="window.store && window.store.removeFromCart ? window.store.removeFromCart('${item.cartItemId}') : null" class="text-rose-500 hover:text-rose-600 text-xs flex items-center gap-1">
+                    <button type="button" class="cart-remove-btn text-rose-500 hover:text-rose-600 text-xs flex items-center gap-1" data-id="${item.cartItemId}">
                       <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> মুছুন
                     </button>
                   </div>
@@ -98,15 +98,10 @@ export const CartDrawer = {
     const openDrawer = () => {
       if (backdrop && panel) {
         backdrop.classList.remove("hidden");
-        if (typeof requestAnimationFrame !== "undefined") {
-          requestAnimationFrame(() => {
-            backdrop.classList.remove("opacity-0");
-            panel.classList.remove("translate-x-full");
-          });
-        } else {
+        requestAnimationFrame(() => {
           backdrop.classList.remove("opacity-0");
           panel.classList.remove("translate-x-full");
-        }
+        });
       }
     };
 
@@ -127,6 +122,31 @@ export const CartDrawer = {
       });
     }
 
+    // Quantity update delegation
+    document.querySelectorAll(".cart-qty-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        const qty = parseInt(e.currentTarget.getAttribute("data-qty"), 10);
+        if (window.store && typeof window.store.updateCartQty === "function") {
+          window.store.updateCartQty(id, Math.max(1, qty));
+        } else if (store && typeof store.updateCartQty === "function") {
+          store.updateCartQty(id, Math.max(1, qty));
+        }
+      });
+    });
+
+    // Remove item delegation
+    document.querySelectorAll(".cart-remove-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        if (window.store && typeof window.store.removeFromCart === "function") {
+          window.store.removeFromCart(id);
+        } else if (store && typeof store.removeFromCart === "function") {
+          store.removeFromCart(id);
+        }
+      });
+    });
+
     if (checkoutBtn) {
       checkoutBtn.addEventListener("click", () => {
         closeDrawer();
@@ -138,7 +158,10 @@ export const CartDrawer = {
       });
     }
 
-    if (store && typeof store.on === "function") {
+    // Store Event Listeners (Prevent duplicate binding checks)
+    if (store && typeof store.on === "function" && !store._cartEventsInitialized) {
+      store._cartEventsInitialized = true;
+
       store.on("toggle_cart_drawer", (open) => {
         if (open) openDrawer(); else closeDrawer();
       });
@@ -146,8 +169,18 @@ export const CartDrawer = {
       store.on("cart_updated", () => {
         const drawerContainer = document.getElementById("cart-drawer-root");
         if (drawerContainer) {
+          // Keep track of whether it was open
+          const isOpen = backdrop && !backdrop.classList.contains("hidden");
           drawerContainer.innerHTML = CartDrawer.render();
           CartDrawer.initEvents();
+          if (isOpen) {
+            const newBackdrop = document.getElementById("cart-drawer-backdrop");
+            const newPanel = document.getElementById("cart-drawer-panel");
+            if (newBackdrop && newPanel) {
+              newBackdrop.classList.remove("hidden", "opacity-0");
+              newPanel.classList.remove("translate-x-full");
+            }
+          }
           if (typeof window !== "undefined" && window.lucide && typeof window.lucide.createIcons === "function") {
             window.lucide.createIcons();
           }
@@ -157,10 +190,8 @@ export const CartDrawer = {
   }
 };
 
-// গ্লোবাল উইন্ডোতে সেট করা
 if (typeof window !== "undefined") {
   window.CartDrawer = CartDrawer;
 }
 
-// Default export যুক্ত করা হয়েছে
 export default CartDrawer;
