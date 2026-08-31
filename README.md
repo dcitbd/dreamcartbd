@@ -1,2 +1,22 @@
-# dreamcartbd.com
-Dream Cart BD is a Laravel-based e-commerce platform for online shopping in Bangladesh, featuring product management, categories, cart, wishlist, quick orders, customer management, inventory, discounts, delivery, order tracking, and a powerful admin dashboard.
+# 🛒 Dream Cart BD — Smart Commerce Platform
+
+একটি আধুনিক, সুরক্ষিত এবং হাই-পারফরম্যান্স ই-কমার্স প্ল্যাটফর্ম যা **গুগল শীট ডাটাবেজ (Google Sheets)**, **গুগল ড্রাইভ স্টোরেজ (Google Drive)** এবং **গুগল অ্যাপস স্ক্রিপ্ট (Google Apps Script API)** ব্যাকএন্ডের মাধ্যমে পরিচালিত।
+
+---
+
+## 🌟 প্রধান বৈশিষ্ট্যসমূহ (Key Features)
+
+- **Two-Way Real-time Sync:** সাইট থেকে কোনো অর্ডার বা এডিট হলে গুগল শীটে আপডেট হয়, আবার গুগল শীটে কোনো পরিবর্তন করলে স্বয়ংক্রিয়ভাবে লাইভ সাইটে আপডেট হয়।
+- **৫০+ মডুলার পেজ ও পোর্টাল:** কাস্টমার শপ, এডমিন কন্ট্রোল সেন্টার, সেলার, রিসেলার ও হোলসেলার পোর্টাল।
+- **কুরিয়ার ফ্রড ডিটেকশন:** এক ক্লিকে কাস্টমারের ডেলিভারি ও RTO রেশিও চেক করার ইঞ্জিন।
+- **ইনলাইন প্রাইস ও স্টক এডিটর:** টেবিল থেকেই সরাসরি প্রাইস ও ইনভেন্টরি দ্রুত এডিট করার সুবিধা।
+- **১০-ইমেজ ব্যাচ আপলোডার:** গুগল ড্রাইভের সাথে সরাসরি সংযুক্ত ইমেজ ম্যানেজমেন্ট।
+
+---
+
+## 🚀 লোকাল সেটআপ গাইড (Local Setup)
+
+### ১. রিপোজিটরি ক্লোন করুন
+```bash
+git clone [https://github.com/YOUR_USERNAME/dream-cart-bd.git](https://github.com/YOUR_USERNAME/dream-cart-bd.git)
+cd dream-cart-bd
