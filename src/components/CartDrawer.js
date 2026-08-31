@@ -9,8 +9,8 @@ import { router } from "../js/router.js";
 
 export const CartDrawer = {
   render: () => {
-    const cart = store.state.cart;
-    const items = cart.items || [];
+    const cart = store?.state?.cart || { items: [], subtotal: 0, total: 0 };
+    const items = Array.isArray(cart.items) ? cart.items : [];
 
     return `
     <div id="cart-drawer-backdrop" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 transition-opacity duration-300 hidden opacity-0">
@@ -25,7 +25,7 @@ export const CartDrawer = {
               </div>
               <h3 class="text-lg font-bold text-slate-900 dark:text-white">আপনার শপিং কার্ট (${items.length})</h3>
             </div>
-            <button id="close-cart-drawer" class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <button id="close-cart-drawer" type="button" class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
               <i data-lucide="x" class="w-5 h-5"></i>
             </button>
           </div>
@@ -42,19 +42,19 @@ export const CartDrawer = {
               </div>
             ` : items.map(item => `
               <div class="flex gap-3.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                <img src="${item.image || 'https://placehold.co/80x80'}" class="w-16 h-16 rounded-xl object-cover bg-white" />
+                <img src="${item.image || 'https://placehold.co/80x80'}" alt="${item.name || 'Product'}" class="w-16 h-16 rounded-xl object-cover bg-white shrink-0" />
                 <div class="flex-1 min-w-0">
-                  <h4 class="text-sm font-semibold text-slate-900 dark:text-white truncate">${item.name}</h4>
+                  <h4 class="text-sm font-semibold text-slate-900 dark:text-white truncate">${item.name || 'পণ্য'}</h4>
                   ${item.variantName ? `<p class="text-xs text-slate-400">${item.variantName}</p>` : ''}
-                  <p class="text-sm font-bold text-brand-600 dark:text-brand-400 mt-1">৳${item.unitPrice}</p>
+                  <p class="text-sm font-bold text-brand-600 dark:text-brand-400 mt-1">৳${item.unitPrice || 0}</p>
                   
                   <div class="flex items-center justify-between mt-2">
                     <div class="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900">
-                      <button onclick="window.store.updateCartQty('${item.cartItemId}', ${item.quantity - 1})" class="px-2 py-0.5 text-slate-500 hover:text-brand-600">-</button>
-                      <span class="px-2 text-xs font-bold">${item.quantity}</span>
-                      <button onclick="window.store.updateCartQty('${item.cartItemId}', ${item.quantity + 1})" class="px-2 py-0.5 text-slate-500 hover:text-brand-600">+</button>
+                      <button type="button" onclick="window.store && window.store.updateCartQty ? window.store.updateCartQty('${item.cartItemId}', Math.max(1, ${(Number(item.quantity) || 1) - 1})) : null" class="px-2 py-0.5 text-slate-500 hover:text-brand-600">-</button>
+                      <span class="px-2 text-xs font-bold">${item.quantity || 1}</span>
+                      <button type="button" onclick="window.store && window.store.updateCartQty ? window.store.updateCartQty('${item.cartItemId}', ${(Number(item.quantity) || 1) + 1}) : null" class="px-2 py-0.5 text-slate-500 hover:text-brand-600">+</button>
                     </div>
-                    <button onclick="window.store.removeFromCart('${item.cartItemId}')" class="text-rose-500 hover:text-rose-600 text-xs flex items-center gap-1">
+                    <button type="button" onclick="window.store && window.store.removeFromCart ? window.store.removeFromCart('${item.cartItemId}') : null" class="text-rose-500 hover:text-rose-600 text-xs flex items-center gap-1">
                       <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> মুছুন
                     </button>
                   </div>
@@ -68,13 +68,13 @@ export const CartDrawer = {
             <div class="p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-3">
               <div class="flex justify-between text-sm text-slate-600 dark:text-slate-400">
                 <span>সাব-টোটাল:</span>
-                <span class="font-bold text-slate-900 dark:text-white">৳${cart.subtotal}</span>
+                <span class="font-bold text-slate-900 dark:text-white">৳${cart.subtotal || 0}</span>
               </div>
               <div class="flex justify-between text-base font-extrabold text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-slate-800">
                 <span>সর্বমোট:</span>
-                <span class="text-brand-600 dark:text-brand-400">৳${cart.total}</span>
+                <span class="text-brand-600 dark:text-brand-400">৳${cart.total || 0}</span>
               </div>
-              <button id="drawer-checkout-btn" class="w-full btn-primary py-3.5 text-base flex items-center justify-center gap-2">
+              <button id="drawer-checkout-btn" type="button" class="w-full btn-primary py-3.5 text-base flex items-center justify-center gap-2">
                 <span>অর্ডার কনফার্ম করুন (চেকআউট)</span>
                 <i data-lucide="arrow-right" class="w-4 h-4"></i>
               </button>
@@ -88,6 +88,8 @@ export const CartDrawer = {
   },
 
   initEvents: () => {
+    if (typeof document === "undefined") return;
+
     const backdrop = document.getElementById("cart-drawer-backdrop");
     const panel = document.getElementById("cart-drawer-panel");
     const closeBtn = document.getElementById("close-cart-drawer");
@@ -96,10 +98,15 @@ export const CartDrawer = {
     const openDrawer = () => {
       if (backdrop && panel) {
         backdrop.classList.remove("hidden");
-        requestAnimationFrame(() => {
+        if (typeof requestAnimationFrame !== "undefined") {
+          requestAnimationFrame(() => {
+            backdrop.classList.remove("opacity-0");
+            panel.classList.remove("translate-x-full");
+          });
+        } else {
           backdrop.classList.remove("opacity-0");
           panel.classList.remove("translate-x-full");
-        });
+        }
       }
     };
 
@@ -107,7 +114,9 @@ export const CartDrawer = {
       if (backdrop && panel) {
         backdrop.classList.add("opacity-0");
         panel.classList.add("translate-x-full");
-        setTimeout(() => backdrop.classList.add("hidden"), 300);
+        setTimeout(() => {
+          if (backdrop) backdrop.classList.add("hidden");
+        }, 300);
       }
     };
 
@@ -121,21 +130,37 @@ export const CartDrawer = {
     if (checkoutBtn) {
       checkoutBtn.addEventListener("click", () => {
         closeDrawer();
-        router.navigate("/checkout");
+        if (router && typeof router.navigate === "function") {
+          router.navigate("/checkout");
+        } else if (typeof window !== "undefined") {
+          window.location.href = "/checkout";
+        }
       });
     }
 
-    store.on("toggle_cart_drawer", (open) => {
-      if (open) openDrawer(); else closeDrawer();
-    });
+    if (store && typeof store.on === "function") {
+      store.on("toggle_cart_drawer", (open) => {
+        if (open) openDrawer(); else closeDrawer();
+      });
 
-    store.on("cart_updated", () => {
-      const drawerContainer = document.getElementById("cart-drawer-root");
-      if (drawerContainer) {
-        drawerContainer.innerHTML = CartDrawer.render();
-        CartDrawer.initEvents();
-        if (window.lucide) window.lucide.createIcons();
-      }
-    });
+      store.on("cart_updated", () => {
+        const drawerContainer = document.getElementById("cart-drawer-root");
+        if (drawerContainer) {
+          drawerContainer.innerHTML = CartDrawer.render();
+          CartDrawer.initEvents();
+          if (typeof window !== "undefined" && window.lucide && typeof window.lucide.createIcons === "function") {
+            window.lucide.createIcons();
+          }
+        }
+      });
+    }
   }
 };
+
+// গ্লোবাল উইন্ডোতে সেট করা
+if (typeof window !== "undefined") {
+  window.CartDrawer = CartDrawer;
+}
+
+// Default export যুক্ত করা হয়েছে
+export default CartDrawer;
