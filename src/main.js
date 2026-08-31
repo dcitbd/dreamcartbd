@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * DREAM CART BD — APPLICATION BOOTSTRAPPER (main.js)
- * Clean, Fast & Lazy-Loaded SPA Routing
+ * Clean, Fast & Lazy-Loaded SPA Routing (No Static Missing File Imports)
  * ============================================================================
  */
 
@@ -9,7 +9,7 @@ import { store } from "./js/store.js";
 import { router } from "./js/router.js";
 import { SyncEngine } from "./api/sync.js";
 
-// ==================== DYNAMIC LAZY ROUTES ====================
+// ==================== DYNAMIC LAZY ROUTER ====================
 
 // Storefront & Customer Pages
 router.addRoute("/", async () => (await import("./pages/storefront/HomePage.js")).HomePage);
