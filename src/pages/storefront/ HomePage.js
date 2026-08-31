@@ -1,10 +1,11 @@
 /**
  * ============================================================================
  * DREAM CART BD — HOMEPAGE (HomePage.js)
+ * File Path: src/pages/storefront/HomePage.js
  * ============================================================================
  */
 
-export function HomePage() {
+export async function HomePage(params = {}) {
     return `
     <div class="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 font-bengali">
         <!-- Hero Section -->
@@ -60,4 +61,5 @@ export function HomePage() {
     `;
 }
 
+// রাউটারের জন্য ডিফল্ট ও অ্যাসাইনড এক্সপোর্ট ব্যাকআপ
 export default HomePage;
