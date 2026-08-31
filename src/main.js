@@ -26,7 +26,7 @@ const loadPage = (modulePath, exportName) => {
               <i data-lucide="package-search" class="w-6 h-6"></i>
             </div>
             <h3 class="text-lg font-bold text-slate-900 dark:text-white">পেজটি প্রস্তুত হচ্ছে</h3>
-            <p class="text-xs text-slate-500 mt-2">এই মডিউলটির ফাইল গিটহাবে আপলোড সম্পন্ন হলে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।</p>
+            <p class="text-xs text-slate-500 mt-2">এই মডিউলটির ফাইল গিটহাবে আপলোড সম্পন্ন হলে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।</p>
             <a href="/" class="btn-primary mt-6 inline-flex text-xs px-5 py-2.5">হোম পেজে ফিরে যান</a>
           </div>
         </div>
@@ -81,29 +81,40 @@ router.addRoute("/partner/reseller", loadPage("./pages/partner/ResellerPortal.js
 router.addRoute("/partner/wholesale", loadPage("./pages/partner/WholesalePortal.js", "WholesalePortal"));
 
 // ==================== GLOBAL APP INITIALIZER ====================
-document.addEventListener("DOMContentLoaded", () => {
-  // ১. গুগল শীট টু-ওয়ে সিঙ্ক পোলিং চালু
-  SyncEngine.startPolling(10000);
-  window.SyncEngine = SyncEngine;
-  window.store = store;
-  window.router = router;
-
-  // ২. গ্লোবাল লিঙ্ক ইন্টারসেপ্টর
-  document.body.addEventListener("click", (e) => {
-    const anchor = e.target.closest("a");
-    if (anchor && anchor.getAttribute("href") && anchor.getAttribute("href").startsWith("/")) {
-      e.preventDefault();
-      router.navigate(anchor.getAttribute("href"));
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    // ১. গুগল শীট টু-ওয়ে সিঙ্ক পোলিং চালু
+    if (typeof SyncEngine !== "undefined" && SyncEngine.startPolling) {
+      SyncEngine.startPolling(10000);
     }
-  });
+    window.SyncEngine = SyncEngine;
+    window.store = store;
+    window.router = router;
 
-  // ৩. ইনিশিয়াল পেজ রেন্ডার
-  router.handleRoute();
+    // ২. গ্লোবাল লিঙ্ক ইন্টারসেপ্টর
+    document.body.addEventListener("click", (e) => {
+      const anchor = e.target.closest("a");
+      if (anchor && anchor.getAttribute("href") && anchor.getAttribute("href").startsWith("/")) {
+        e.preventDefault();
+        router.navigate(anchor.getAttribute("href"));
+      }
+    });
 
-  // ৪. গ্লোবাল লোডার রিমুভ
-  const loader = document.getElementById("global-loader");
-  if (loader) {
-    loader.classList.add("opacity-0");
-    setTimeout(() => loader.remove(), 300);
+    // ৩. ইনিশিয়াল পেজ রেন্ডার
+    if (router && typeof router.handleRoute === "function") {
+      await router.handleRoute();
+    }
+  } catch (err) {
+    console.error("[App Init Error]:", err);
+  } finally {
+    // ৪. গ্লোবাল লোডার রিমুভ (নিরাপদ উপায়)
+    const loader = document.getElementById("global-loader");
+    if (loader) {
+      loader.classList.add("opacity-0");
+      setTimeout(() => loader.remove(), 300);
+    } else {
+      // যদি id="global-loader" না থাকে, তবে স্ক্রিনের যেকোনো লোডিং এলিমেন্ট রিমুভ করে দেবো
+      document.querySelectorAll(".global-loading, #loading-screen").forEach(el => el.remove());
+    }
   }
 });
