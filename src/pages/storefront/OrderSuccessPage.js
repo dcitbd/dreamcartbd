@@ -11,7 +11,7 @@ import { ProductAPI } from "../../api/products.js";
 import { store } from "../../js/store.js";
 import { router } from "../../js/router.js";
 
-export const ProductDetailPage = async (params = {}) => {
+export async function ProductDetailPage(params = {}) {
   const productId = params.id;
   let product = null;
 
@@ -29,8 +29,8 @@ export const ProductDetailPage = async (params = {}) => {
           <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4">
             <i data-lucide="package-x" class="w-8 h-8"></i>
           </div>
-          <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-2">প্রোডাক্টটি পাওয়া যায়নি!</h2>
-          <p class="text-slate-500 text-xs mb-6">হয়তো প্রোডাক্টটি রিমুভ করা হয়েছে বা স্টক শেষ।</p>
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-2">প্রোডাক্টটি পাওয়া যায়নি!</h2>
+          <p class="text-slate-500 text-xs mb-6">হয়তো প্রোডাক্টটি রিমুভ করা হয়েছে বা স্টক শেষ।</p>
           <a href="/products" class="btn-primary text-xs px-6 py-2.5">অন্যান্য প্রোডাক্ট দেখুন</a>
         </div>
         ${Footer.render()}
@@ -101,7 +101,7 @@ export const ProductDetailPage = async (params = {}) => {
               </div>
               ${product.regular_price > product.selling_price ? `
                 <span class="badge-danger px-3 py-1.5 text-xs font-bold shadow-sm">
-                  ৳${product.regular_price - product.selling_price} সাশ্রয়
+                  ৳${product.regular_price - product.selling_price} সাশ্রয়
                 </span>
               ` : ''}
             </div>
@@ -153,11 +153,13 @@ export const ProductDetailPage = async (params = {}) => {
       ${Footer.render()}
     </div>
   `;
-};
+}
 
-window.directCheckoutOrder = (product) => {
-  store.addToCart(product, 1);
-  router.navigate("/checkout");
-};
+if (typeof window !== "undefined") {
+  window.directCheckoutOrder = (product) => {
+    store.addToCart(product, 1);
+    router.navigate("/checkout");
+  };
+}
 
 export default ProductDetailPage;
