@@ -14,7 +14,7 @@ import { ProductListPage } from "./pages/storefront/ProductListPage.js";
 import { ProductDetailPage } from "./pages/storefront/ProductDetailPage.js";
 import { CategoryPage } from "./pages/storefront/CategoryPage.js";
 import { CheckoutPage } from "./pages/storefront/CheckoutPage.js";
-import { OrderSuccessPage } from "./pages/storefront/OrderSuccessPage.js";
+import OrderSuccessPage from "./pages/storefront/OrderSuccessPage.js"; // ডিফল্ট ইমপোর্ট করা হলো
 import { TrackOrderPage } from "./pages/storefront/TrackOrderPage.js";
 import { CustomerPortal } from "./pages/customer/CustomerPortal.js";
 
