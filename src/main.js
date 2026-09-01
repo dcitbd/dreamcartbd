@@ -122,7 +122,7 @@ router.addRoute("/admin/settings", wrap(Settings));
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     if (typeof SyncEngine !== "undefined" && SyncEngine.startPolling) {
-      SyncEngine.startPolling(10000);
+      SyncEngine.startPolling(60000);
     }
     window.SyncEngine = SyncEngine;
     window.store = store;
