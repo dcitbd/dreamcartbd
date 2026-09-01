@@ -1,149 +1,108 @@
 /**
  * ============================================================================
- * DREAM CART BD — DYNAMIC LAZY-LOADING ROUTER (router.js)
+ * DREAM CART BD — FRONTEND SPA ROUTER (router.js)
  * ============================================================================
  */
 
-import { store } from "./store.js";
-
 class Router {
   constructor() {
-    this.routes = [];
+    this.routes = {};
     this.currentRoute = null;
 
-    // ব্রাউজার পরিবেশে popstate এবং custom pushstate লিসেনার যুক্ত করা
-    if (typeof window !== "undefined") {
-      window.addEventListener("popstate", () => this.handleRoute());
-      
-      // ইন্টারনাল নেভিগেশন ইভেন্ট হ্যান্ডেল করার জন্য
-      window.addEventListener("pushstate", () => this.handleRoute());
-    }
-  }
-
-  // ডাইনামিক ইমপোর্ট কম্পোনেন্ট রেজিস্টার
-  addRoute(path, loaderFn, options = {}) {
-    this.routes.push({
-      path,
-      loader: loaderFn,
-      requiresAuth: options.requiresAuth || false,
-      allowedRoles: options.allowedRoles || []
+    // ব্রাউজারের ব্যাক/ফরোয়ার্ড বাটন হ্যান্ডেল করা
+    window.addEventListener("popstate", () => {
+      this.handleRoute();
     });
   }
 
-  navigate(url) {
-    if (typeof window !== "undefined" && window.history) {
-      window.history.pushState(null, null, url);
-      this.handleRoute();
-    }
+  // রুট রেজিস্টার করার মেথড
+  addRoute(path, handler) {
+    this.routes[path] = handler;
   }
 
-  async handleRoute() {
-    if (typeof window === "undefined" || typeof document === "undefined") return;
+  // নির্দিষ্ট পেজে নেভিগেট করার মেথড
+  navigate(path) {
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, "", path);
+    }
+    this.handleRoute();
+  }
 
-    const currentPath = window.location.pathname || "/";
-    let matchedRoute = null;
+  // রুট ম্যাচ করে DOM-এ রেন্ডার করার মাস্টার মেথড
+  async handleRoute() {
+    const path = window.location.pathname || "/";
+    let handler = null;
     let params = {};
 
-    for (const route of this.routes) {
-      const paramNames = [];
-      const regexPath = route.path.replace(/:([a-zA-Z0-9_]+)/g, (_, key) => {
-        paramNames.push(key);
-        return "([^/]+)";
-      });
+    // ডাইনামিক রুট ম্যাচিং (যেমন: /product/:id বা /order-success/:id)
+    const matchedRoute = Object.keys(this.routes).find(route => {
+      const routeRegex = new RegExp("^" + route.replace(/:\w+/g, "([^/]+)") + "$");
+      return routeRegex.test(path);
+    });
 
-      const regex = new RegExp(`^${regexPath}$`);
-      const match = currentPath.match(regex);
-
-      if (match) {
-        matchedRoute = route;
-        paramNames.forEach((name, idx) => {
-          params[name] = match[idx + 1];
-        });
-        break;
-      }
-    }
-
-    if (!matchedRoute) {
-      matchedRoute = this.routes.find(r => r.path === "/") || this.routes[0];
-    }
-
-    if (!matchedRoute) return;
-
-    // 🛡️ রোল ও সিকিউরিটি চেক
-    if (matchedRoute.requiresAuth && store && !store.isAuthenticated()) {
-      if (store.showToast) store.showToast("এই পেজটি দেখতে লগইন করুন।", "warning");
-      this.navigate("/"); // লগইন পেজ না থাকলে হোমে রিডাইরেক্ট করা নিরাপদ
-      return;
-    }
-
-    if (matchedRoute.allowedRoles && matchedRoute.allowedRoles.length > 0 && store && !store.hasRole(matchedRoute.allowedRoles)) {
-      if (store.showToast) store.showToast("আপনার এই পেজে প্রবেশের অনুমতি নেই।", "danger");
-      this.navigate("/");
-      return;
-    }
-
-    this.currentRoute = matchedRoute;
-
-    if (typeof window.scrollTo === "function") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-
-    const appRoot = document.getElementById("app");
-    if (!appRoot) return;
-
-    try {
-      // ⚡ ডাইনামিক Lazy Load (default বা named export উভয়ের জন্য নিরাপদ)
-      let module = typeof matchedRoute.loader === "function" ? await matchedRoute.loader() : matchedRoute.loader;
-      let renderFn = null;
-
-      if (typeof module === "function") {
-        renderFn = module;
-      } else if (module && typeof module.default === "function") {
-        renderFn = module.default;
-      } else if (module && typeof module === "object") {
-        const firstKey = Object.keys(module)[0];
-        if (firstKey && typeof module[firstKey] === "function") {
-          renderFn = module[firstKey];
+    if (matchedRoute) {
+      handler = this.routes[matchedRoute];
+      
+      // ডায়নামিক প্যারামিটার এক্সট্রাক্ট করা
+      const routeSegments = matchedRoute.split("/");
+      const pathSegments = path.split("/");
+      
+      routeSegments.forEach((seg, idx) => {
+        if (seg.startsWith(":")) {
+          const paramName = seg.substring(1);
+          params[paramName] = pathSegments[idx];
         }
-      }
-
-      if (typeof renderFn === "function") {
-        const renderedContent = await renderFn(params);
-        appRoot.innerHTML = typeof renderedContent === "string" ? renderedContent : "";
-      } else {
-        throw new Error("Page render function not found in module");
-      }
-
-      // Lucide Icons Re-Init
-      if (typeof window !== "undefined" && window.lucide && typeof window.lucide.createIcons === "function") {
-        window.lucide.createIcons();
-      }
-    } catch (err) {
-      console.warn(`[Route Loader] Page load failed for ${currentPath}:`, err);
-      appRoot.innerHTML = `
+      });
+    } else if (this.routes["*"]) {
+      handler = this.routes["*"];
+    } else {
+      handler = () => `
         <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center font-bengali">
-          <div class="glass-panel p-8 rounded-3xl max-w-md border border-slate-200 dark:border-slate-800 shadow-xl bg-white dark:bg-slate-900">
-            <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <i data-lucide="clock" class="w-6 h-6"></i>
-            </div>
-            <h3 class="text-lg font-bold text-slate-900 dark:text-white">পেজটি প্রস্তুত হচ্ছে</h3>
-            <p class="text-xs text-slate-500 mt-2">এই মডিউলটির ফাইল লোড হতে সমস্যা হয়েছে বা প্রস্তুত হচ্ছে।</p>
-            <a href="/" class="btn-primary mt-6 inline-flex text-xs px-5 py-2.5">হোম পেজে ফিরে যান</a>
+          <div class="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md">
+            <h2 class="text-2xl font-black text-slate-900 dark:text-white mb-2">৪০০৪ - পেজ পাওয়া যায়নি</h2>
+            <p class="text-xs text-slate-500 mb-6">আপনি যে পেজটি খুঁজছেন তা বিদ্যমান নয় বা সরিয়ে ফেলা হয়েছে।</p>
+            <a href="/" class="px-6 py-2.5 bg-brand-600 text-white text-xs font-bold rounded-xl inline-block">হোম পেজে ফিরে যান</a>
           </div>
         </div>
       `;
-      if (typeof window !== "undefined" && window.lucide && typeof window.lucide.createIcons === "function") {
-        window.lucide.createIcons();
+    }
+
+    const appContainer = document.getElementById("app");
+    if (!appContainer) {
+      console.error("Root element #app not found in DOM!");
+      return;
+    }
+
+    try {
+      // লোডিং স্টেট বা আগের কনটেন্ট ক্লিয়ার করা
+      let htmlContent = "";
+      if (typeof handler === "function") {
+        htmlContent = await handler(params);
       }
+
+      appContainer.innerHTML = htmlContent;
+
+      // Lucide Icons রেন্ডার করা (যদি থাকে)
+      if (typeof lucide !== "undefined" && typeof lucide.createIcons === "function") {
+        lucide.createIcons();
+      }
+
+      // পেজ পরিবর্তনের পর স্ক্রিন উপরে স্ক্রোল করা
+      window.scrollTo(0, 0);
+    } catch (err) {
+      console.error(`[Router Error] Failed to render path '${path}':`, err);
+      appContainer.innerHTML = `
+        <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center font-bengali">
+          <div class="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-800 max-w-md">
+            <h3 class="text-lg font-bold mb-2">রেন্ডারিং ত্রুটি</h3>
+            <p class="text-xs text-slate-500 mb-4">এই পেজটি লোড করার সময় একটি অপ্রত্যাশিত সমস্যা ঘটেছে।</p>
+            <a href="/" class="px-5 py-2.5 bg-brand-600 text-white text-xs font-bold rounded-xl inline-block">হোম পেজে ফিরে যান</a>
+          </div>
+        </div>
+      `;
     }
   }
 }
 
 export const router = new Router();
-
-// ব্রাউজারে window.router সেট করা
-if (typeof window !== "undefined") {
-  window.router = router;
-}
-
 export default router;
