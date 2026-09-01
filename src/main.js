@@ -19,9 +19,9 @@ import { TrackOrderPage } from "./pages/storefront/TrackOrderPage.js";
 import { CustomerPortal } from "./pages/customer/CustomerPortal.js";
 
 // ==================== PARTNER PORTALS (সঠিক বানান: ResellerPortal ও WholesalePortal) ====================
-import SellerPortal from "./pages/partner/SellerPortal.js";
-import ResellerPortal from "./pages/partner/ResellerPortal.js";
-import WholesalePortal from "./pages/partner/WholesalePortal.js";
+import SellerPortal from "./src/pages/partner/SellerPortal.js";
+import ResellerPortal from "./src/pages/partner/ResellerPortal.js";
+import WholesalePortal from "./src/pages/partner/WholesalePortal.js";
 
 // ==================== ADMIN CATALOG & INVENTORY ====================
 import ProductList from "./admin/catalog/ProductList.js";
