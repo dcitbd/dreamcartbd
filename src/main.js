@@ -18,12 +18,12 @@ import { OrderSuccessPage } from "./pages/storefront/OrderSuccessPage.js";
 import { TrackOrderPage } from "./pages/storefront/TrackOrderPage.js";
 import { CustomerPortal } from "./pages/customer/CustomerPortal.js";
 
-// ==================== PARTNER PORTALS ====================
+// ==================== PARTNER PORTALS (সঠিক বানান: ResellerPortal ও WholesalePortal) ====================
 import SellerPortal from "./pages/partner/SellerPortal.js";
-import ResellerPortal from "./pages/partner/ResallerPortal.js";
-import WholeSalePortal from "./pages/partner/WholeSalePortal.js";
+import ResellerPortal from "./pages/partner/ResellerPortal.js";
+import WholesalePortal from "./pages/partner/WholesalePortal.js";
 
-// ==================== ADMIN CATALOG & INVENTORY (সঠিক ছোট হাতের catalog ফোল্ডার সহ) ====================
+// ==================== ADMIN CATALOG & INVENTORY ====================
 import ProductList from "./admin/catalog/ProductList.js";
 import VariantGenerator from "./admin/catalog/VariantGenerator.js";
 import CategoryManager from "./admin/catalog/CategoryManager.js";
@@ -32,7 +32,7 @@ import ImageUploader from "./admin/catalog/ImageUploader.js";
 
 import StockLedger from "./admin/inventory/StockLedger.js";
 import StockMovements from "./admin/inventory/StockMovements.js";
-import LowStockAlarts from "./admin/inventory/LowStockAlarts.js";
+import LowStockAlerts from "./admin/inventory/LowStockAlerts.js";
 import SupplierManager from "./admin/inventory/SupplierManager.js";
 import PurchaseOrders from "./admin/inventory/PurchaseOrders.js";
 
@@ -81,7 +81,7 @@ router.addRoute("/customer/account", wrap(CustomerPortal));
 
 router.addRoute("/partner/seller", wrap(SellerPortal));
 router.addRoute("/partner/reseller", wrap(ResellerPortal));
-router.addRoute("/partner/wholesale", wrap(WholeSalePortal));
+router.addRoute("/partner/wholesale", wrap(WholesalePortal));
 
 router.addRoute("/admin/dashboard", wrap(Reports));
 router.addRoute("/admin/products", wrap(ProductList));
@@ -91,20 +91,20 @@ router.addRoute("/admin/categories", wrap(CategoryManager));
 
 router.addRoute("/admin/inventory", wrap(StockLedger));
 router.addRoute("/admin/inventory/movements", wrap(StockMovements));
-router.addRoute("/admin/inventory/low-stock", wrap(LowStockAlarts));
+router.addRoute("/admin/inventory/low-stock", wrap(LowStockAlerts));
 router.addRoute("/admin/suppliers", wrap(SupplierManager));
 router.addRoute("/admin/inventory/purchase-orders", wrap(PurchaseOrders));
 
 router.addRoute("/admin/orders", wrap(OrderList));
 router.addRoute("/admin/orders/detail/:id", wrap(OrderDetails));
 router.addRoute("/admin/orders/bulk-shipment", wrap(BulkShipment));
-router.addRoute("/admin/couriers", wrap(CourierHub));
+router.addRoute("/admin/orders/couriers", wrap(CourierHub));
 router.addRoute("/admin/orders/returns", wrap(ReturnRTO));
 router.addRoute("/admin/orders/payments", wrap(Payments));
 
 router.addRoute("/admin/system/bulk", wrap(BulkExcelTool));
-router.addRoute("/admin/audit", wrap(AuditTrail));
-router.addRoute("/admin/settings", wrap(Settings));
+router.addRoute("/admin/system/audit", wrap(AuditTrail));
+router.addRoute("/admin/system/settings", wrap(Settings));
 
 // ==================== INITIALIZE ====================
 document.addEventListener("DOMContentLoaded", async () => {
