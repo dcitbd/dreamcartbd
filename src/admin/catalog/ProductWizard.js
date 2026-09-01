@@ -5,8 +5,8 @@
  */
 
 import { Sidebar } from "../../components/Sidebar.js";
-import { ImageUploader } from "../../components/ImageUploader.js";
-import { VariantGenerator } from "../../components/VariantGenerator.js";
+import { ImageUploader } from "./ImageUploader.js";
+import { VariantGenerator } from "./VariantGenerator.js";
 import { ProductAPI } from "../../api/products.js";
 
 export const ProductWizard = async (params = {}) => {
@@ -123,5 +123,4 @@ export const ProductWizard = async (params = {}) => {
   `;
 };
 
-// Default export যুক্ত করা হয়েছে
 export default ProductWizard;
