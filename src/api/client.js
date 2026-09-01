@@ -25,6 +25,7 @@ class ApiClient {
     const options = {
       method: method,
       mode: 'cors',
+      redirect: 'follow', // গুগল স্ক্রিপ্টের রিডাইরেক্ট বাফার সঠিকভাবে হ্যান্ডেল করতে
       headers: { "Content-Type": "text/plain;charset=utf-8" }
     };
 
@@ -41,7 +42,15 @@ class ApiClient {
         throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
       }
 
-      const result = await response.json();
+      const textData = await response.text();
+      let result;
+      try {
+        result = JSON.parse(textData);
+      } catch (err) {
+        console.error("Non-JSON raw response received:", textData);
+        throw new Error("Invalid server response format from Apps Script.");
+      }
+
       if (!result.ok) {
         throw new Error(result.error?.message || "Operation failed on server");
       }
@@ -82,3 +91,4 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
+export default api;
