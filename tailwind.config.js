@@ -1,54 +1,47 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx,html}",
+    "./src/**/*.{js,ts,jsx,tsx,html}"
   ],
-  darkMode: 'class',
   theme: {
     extend: {
       colors: {
         brand: {
-          50: '#f0f7ff',
-          100: '#e0effe',
-          200: '#bae0fd',
-          300: '#7cc7fb',
-          400: '#36abf7',
-          500: '#0c8fe9',
-          600: '#0272c7',
-          700: '#035ba1',
-          800: '#074d85',
-          900: '#0b416e',
-          950: '#072a4a',
+          50: '#ecfdf5',
+          100: '#d1fae5',
+          200: '#a7f3d0',
+          500: '#10b981',
+          600: '#059669',
+          700: '#047857',
+          900: '#064e3b'
         },
-        luxury: {
-          dark: '#0b0f19',
-          navy: '#0f172a',
-          card: '#1e293b',
-          cardLight: '#ffffff',
-          accent: '#d97706',
-          gold: '#f59e0b',
-          emerald: '#10b981',
+        primary: {
+          50: '#f0fdf4',
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d'
+        },
+        accent: {
+          amber: '#f59e0b',
           rose: '#f43f5e',
-          border: '#e2e8f0',
-          borderDark: '#334155'
+          indigo: '#6366f1'
+        },
+        dark: {
+          800: '#1e293b',
+          900: '#0f172a',
+          950: '#020617'
         }
       },
       fontFamily: {
-        sans: ['"Plus Jakarta Sans"', '"Hind Siliguri"', 'Inter', 'sans-serif'],
-        bengali: ['"Hind Siliguri"', 'sans-serif'],
-        display: ['"Plus Jakarta Sans"', 'sans-serif']
+        sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif']
       },
       boxShadow: {
-        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.06)',
-        'glass-dark': '0 8px 32px 0 rgba(0, 0, 0, 0.35)',
-        'card-hover': '0 20px 35px -10px rgba(0, 0, 0, 0.08)',
-        'glow': '0 0 20px rgba(12, 143, 233, 0.35)'
+        'glow': '0 0 25px -5px rgba(16, 185, 129, 0.3)',
+        'glow-indigo': '0 0 25px -5px rgba(99, 102, 241, 0.3)',
+        'card': '0 10px 30px -10px rgba(0, 0, 0, 0.08)'
       }
     },
   },
-  plugins: [
-    require('@tailwindcss/forms'),
-    require('@tailwindcss/typography')
-  ],
-};
+  plugins: [],
+}

@@ -1,95 +1,39 @@
 <!DOCTYPE html>
-<html lang="bn" class="scroll-smooth">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Dream Cart BD — Smart Digital Commerce & Multi-Vendor Platform</title>
   
-  <!-- Embedded SVG Favicon (No 404) -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛒</text></svg>">
-  <title>Dream Cart BD — Smart Digital Commerce Platform</title>
-
-  <!-- Global Environment API Config -->
-  <script>
-    window.VITE_API_ENDPOINT = "https://script.google.com/macros/s/AKfycbzzKAe_RBusYF1ZUThorAHSzkzjxD9bPqETyotFdOtaU8ZD9Lx2mB1sNUdiodGlmIRj/exec";
-    window.VITE_SPREADSHEET_ID = "19tz5stOSkfR0pLbRRVBIbM-qdOMbUTk0QD8Xf4Of1Pc";
-  </script>
-
-  <!-- Google Fonts: Plus Jakarta Sans & Hind Siliguri -->
+  <meta name="description" content="Bangladesh's premier high-reliability smart commerce platform: Smartwatches, organic health supplements, tactical lighting, and home accessories." />
+  <meta property="og:title" content="Dream Cart BD — Smart Digital Commerce" />
+  <meta property="og:description" content="Multi-Vendor E-Commerce Platform powered by Google Sheets & Google Apps Script API Gateway." />
+  <meta property="og:type" content="website" />
+  
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <!-- Tailwind CSS Engine -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#f0f7ff', 100: '#e0effe', 200: '#bae0fd', 300: '#7cc7fb', 400: '#36abf7',
-              500: '#0c8fe9', 600: '#0272c7', 700: '#035ba1', 800: '#074d85', 900: '#0b416e',
-            },
-            luxury: { dark: '#0b0f19', navy: '#0f172a', card: '#1e293b', accent: '#d97706', gold: '#f59e0b', emerald: '#10b981', rose: '#f43f5e' }
-          },
-          fontFamily: { sans: ['"Plus Jakarta Sans"', '"Hind Siliguri"', 'sans-serif'], bengali: ['"Hind Siliguri"', 'sans-serif'] }
-        }
-      }
-    }
-  </script>
-
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   
-  <!-- Standalone Styles -->
+  <!-- Pure Standalone Production CSS (Zero External CDN Warnings) -->
   <link rel="stylesheet" href="./src/styles/main.css" />
+  <link rel="stylesheet" href="./src/styles/admin.css" />
+  <link rel="stylesheet" href="./src/styles/responsive.css" />
 </head>
-<body class="bg-slate-50 text-slate-900 dark:bg-luxury-dark dark:text-slate-100 font-sans min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+<body class="bg-slate-50 text-slate-900 min-h-screen antialiased selection:bg-emerald-500 selection:text-white">
   
-  <!-- Root SPA Mounting Point -->
-  <div id="app" class="flex flex-col min-h-screen">
-    <!-- Initial Loading Screen -->
-    <div id="global-loader" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-luxury-dark transition-opacity duration-300">
-      <div class="relative w-14 h-14">
-        <div class="absolute inset-0 rounded-full border-4 border-slate-200 dark:border-slate-800"></div>
-        <div class="absolute inset-0 rounded-full border-4 border-brand-500 border-t-transparent animate-spin"></div>
+  <!-- Main App Root Mount Point with instant preloader -->
+  <div id="app-root">
+    <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc;">
+      <div style="width: 50px; height: 50px; border-radius: 14px; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 22px; box-shadow: 0 10px 25px rgba(5,150,105,0.3); margin-bottom: 16px;">
+        DC
       </div>
-      <p class="mt-4 text-xs font-semibold tracking-wider text-slate-500 font-bengali">লোড হচ্ছে...</p>
+      <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0;">Dream Cart BD</h2>
+      <p style="font-size: 13px; color: #64748b; margin-top: 6px;">Loading platform and live catalog...</p>
     </div>
   </div>
 
-  <!-- Cart Drawer Root Mounting Point -->
-  <div id="cart-drawer-root"></div>
-
-  <!-- Global Modal Root -->
-  <div id="modal-root" class="relative z-50"></div>
-
-  <!-- Toast Notification Container -->
-  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-3 pointer-events-none"></div>
-
-  <!-- Standard Vite Production Module Bootstrapper with Safety Fallback -->
-  <script>
-    const safetyTimer = setTimeout(() => {
-      const loader = document.getElementById("global-loader");
-      if (loader) {
-        loader.style.opacity = '0';
-        setTimeout(() => loader.remove(), 300);
-      }
-    }, 3000);
-
-    window.addEventListener('DOMContentLoaded', () => {
-      clearTimeout(safetyTimer);
-      console.log('✅ Dream Cart BD Live Engine Connected.');
-      const loader = document.getElementById("global-loader");
-      if (loader) {
-        loader.style.opacity = '0';
-        setTimeout(() => loader.remove(), 300);
-      }
-    });
-  </script>
-
-  <!-- Main Entry Point Script (Static Import for Vite Build) -->
+  <!-- Main ES Module Bootstrapper with Relative Path -->
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

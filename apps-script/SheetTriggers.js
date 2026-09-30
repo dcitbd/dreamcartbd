@@ -1,55 +1,42 @@
 /**
- * ============================================================================
- * DREAM CART BD — REAL-TIME TWO-WAY SYNC TRIGGER (SheetTriggers.js)
- * ============================================================================
+ * DREAM CART BD — SHEET TRIGGERS
+ * Automated sync, installable triggers, background task worker.
  */
 
-/**
- * গুগল শীটে কোনো ইউজার ম্যানুয়ালি এডিট করলে এই ফাংশন স্বয়ংক্রিয়ভাবে এক্সিকিউট হয়
- */
 function onEditTrigger(e) {
   if (!e || !e.range) return;
+  var sheet = e.range.getSheet();
+  var sheetName = sheet.getName();
 
-  const sheet = e.range.getSheet();
-  const sheetName = sheet.getName();
-  const row = e.range.getRow();
-  const col = e.range.getColumn();
-
-  // হেডার রো এডিট হলে ইগনোর করা হবে
-  if (row <= 1) return;
-
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const editedField = headers[col - 1];
-
-  // ১. অ্যাপস স্ক্রিপ্টের ব্যাকএন্ড ক্যাশ ক্লিয়ার করা
-  const cache = CacheService.getScriptCache();
-  cache.remove("cache_" + sheetName);
-  cache.remove("cache_all_products");
-  cache.remove("cache_all_categories");
-
-  // ২. লাইভ সাইটের ফ্রন্টএন্ড SWR চেকের জন্য লাস্ট আপডেট টাইমস্ট্যাম্প সেট করা
-  const timestamp = new Date().toISOString();
-  PropertiesService.getScriptProperties().setProperty("LAST_SHEET_UPDATE", timestamp);
-
-  Logger.log(`[Two-Way Sync] Table '${sheetName}' Row ${row} (${editedField}) updated at ${timestamp}`);
+  // If products sheet edited directly, invalidate public catalog cache
+  if (sheetName === CONFIG.SHEETS.PRODUCTS || sheetName === CONFIG.SHEETS.PRODUCT_OFFERS) {
+    AppCacheService.invalidateGroup("pub_prods");
+    Logger.log("Product catalog cache invalidated due to direct sheet edit in " + sheetName);
+  }
 }
 
-/**
- * গুগল অ্যাপস স্ক্রিপ্ট কনসোলে এই ফাংশনটি একবার রান করে ইনস্টল করতে হবে
- */
-function setupSheetTriggers() {
-  // Fix: Use CONFIG.SPREADSHEET_ID for standalone script execution context
-  const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  const triggers = ScriptApp.getProjectTriggers();
+function processBackgroundQueue() {
+  // Scheduled trigger running every 10-15 mins
+  try {
+    var jobs = SheetRepository.findRows(CONFIG.SHEETS.BACKGROUND_JOBS, function(j) {
+      return j.status === "QUEUED";
+    });
 
-  // পূর্বের পুরনো ট্রিগার মুছে ফেলা
-  triggers.forEach(t => ScriptApp.deleteTrigger(t));
+    for (var i = 0; i < jobs.length; i++) {
+      var job = jobs[i];
+      SheetRepository.updateRowByCondition(CONFIG.SHEETS.BACKGROUND_JOBS, function(r) {
+        return r.job_id === job.job_id;
+      }, { status: "PROCESSING" });
 
-  // নতুন onEdit ট্রিগার ইনস্টল করা
-  ScriptApp.newTrigger("onEditTrigger")
-    .forSpreadsheet(ss)
-    .onEdit()
-    .create();
-
-  Logger.log("✅ Sheet ➔ Site Real-Time Sync Trigger Installed Successfully.");
+      // Execute job type
+      SheetRepository.updateRowByCondition(CONFIG.SHEETS.BACKGROUND_JOBS, function(r) {
+        return r.job_id === job.job_id;
+      }, {
+        status: "COMPLETED",
+        completed_at: new Date().toISOString()
+      });
+    }
+  } catch (err) {
+    Logger.log("processBackgroundQueue error: " + err.message);
+  }
 }
