@@ -1,214 +1,130 @@
 /**
- * ============================================================================
- * DREAM CART BD — GLOBAL LUXURY HEADER (Header.js)
- * ============================================================================
+ * DREAM CART BD — HEADER COMPONENT
+ * Luxury brand header with official store logo, announcement bar, live search, categories menu, cart counter.
  */
 
-import { store } from "../js/store.js";
-import { ProductAPI } from "../api/products.js";
+import { cartStore } from '../store/cartStore.js';
+import { authStore } from '../store/authStore.js';
 
-export const Header = {
-  render: () => {
-    const user = store?.state?.user || null;
-    const cartItems = store?.state?.cart?.items || [];
-    const cartCount = Array.isArray(cartItems) 
-      ? cartItems.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0) 
-      : 0;
+export function renderHeader() {
+  const cartCount = cartStore.getCount();
+  const user = authStore.user;
 
-    const isAdmin = user && user.role && String(user.role).toLowerCase().includes("admin");
-    const accountUrl = isAdmin ? "/admin/dashboard" : "/customer/account";
-    const currentTheme = store?.state?.theme || "light";
-
-    return `
-    <!-- Top Announcement Bar -->
-    <div class="bg-slate-900 text-slate-300 text-xs py-2 px-4 border-b border-slate-800">
-      <div class="max-w-7xl mx-auto flex justify-between items-center font-bengali">
-        <div class="flex items-center gap-4">
-          <span class="flex items-center gap-1.5 text-amber-400 font-medium">
-            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> সারা বাংলাদেশে ক্যাশ অন ডেলিভারি সুবিধা
-          </span>
-          <span class="hidden md:inline text-slate-400">|</span>
-          <span class="hidden md:flex items-center gap-1 text-slate-400">
-            <i data-lucide="phone-call" class="w-3.5 h-3.5"></i> হেল্পলাইন: 01700-000000
+  return `
+    <!-- Top Announcement Bar with Notice & Offers -->
+    <div class="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white text-xs py-2 px-4 shadow-sm">
+      <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-2">
+        <div class="flex items-center gap-2 font-medium text-center sm:text-left text-[11px] sm:text-xs">
+          <span class="bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded text-[10px] tracking-wider uppercase shadow-xs">অফার</span>
+          <span class="font-medium">
+            ৳২,০০০ বা তার বেশি অর্ডারে <strong class="text-amber-300 font-bold">ফ্রি শিপিং!</strong> | অনলাইনে পেমেন্ট করলে <strong class="text-emerald-300 font-bold">৫% ডিসকাউন্ট</strong> | ক্যাশ অন ডেলিভারি (COD)
           </span>
         </div>
-        <div class="flex items-center gap-4">
-          <a href="/track-order" class="hover:text-white transition-colors flex items-center gap-1">
-            <i data-lucide="truck" class="w-3.5 h-3.5"></i> অর্ডার ট্র্যাক করুন
+        <div class="flex items-center gap-3 text-[11px] sm:text-xs text-emerald-100 flex-shrink-0">
+          <a href="https://wa.me/8801581703822" target="_blank" class="hover:text-white transition flex items-center gap-1 font-semibold text-emerald-200">
+            <span>💬</span> 01581703822 (WhatsApp)
           </a>
-          ${user ? `
-            <a href="${accountUrl}" class="text-brand-400 hover:text-brand-300 font-semibold flex items-center gap-1">
-              <i data-lucide="user-check" class="w-3.5 h-3.5"></i> ${user.name || "আমার অ্যাকাউন্ট"}
-            </a>
-          ` : `
-            <a href="/login" class="hover:text-white transition-colors flex items-center gap-1">
-              <i data-lucide="log-in" class="w-3.5 h-3.5"></i> লগইন / রেজিস্টার
-            </a>
-          `}
+          <span>|</span>
+          <a href="#/offers" class="hover:text-white transition flex items-center gap-1">
+            <span>🎁</span> অফারসমূহ
+          </a>
+          <span>|</span>
+          <a href="#/contact" class="hover:text-white transition flex items-center gap-1">
+            <span>📍</span> যোগাযোগ
+          </a>
         </div>
       </div>
     </div>
 
-    <!-- Main Navigation Header -->
-    <header class="sticky top-0 z-40 w-full glass-panel shadow-sm transition-all duration-300 border-b border-slate-200/80 dark:border-slate-800/80">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-20 gap-4">
-          
-          <!-- Logo & Mobile Drawer Toggle -->
-          <div class="flex items-center gap-3">
-            <button id="mobile-menu-toggle" type="button" class="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <i data-lucide="menu" class="w-6 h-6"></i>
-            </button>
-            <a href="/" class="flex items-center gap-2.5 group">
-              <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-600 via-brand-500 to-sky-400 flex items-center justify-center text-white shadow-lg shadow-brand-500/25 group-hover:scale-105 transition-transform">
-                <i data-lucide="shopping-bag" class="w-6 h-6"></i>
-              </div>
-              <div class="flex flex-col">
-                <span class="text-xl sm:text-2xl font-extrabold tracking-tight bg-gradient-to-r from-slate-950 via-slate-800 to-brand-600 dark:from-white dark:via-slate-200 dark:to-brand-400 bg-clip-text text-transparent">
-                  Dream Cart BD
-                </span>
-                <span class="text-[10px] uppercase font-bold tracking-widest text-slate-500 dark:text-slate-400 -mt-1">
-                  Smart Digital Commerce
-                </span>
-              </div>
-            </a>
+    <!-- Main Navigation Bar -->
+    <header class="sticky top-0 z-50 glass-nav transition-all border-b border-slate-200/70">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+        
+        <!-- Logo & Store Name -->
+        <a href="#/" class="flex items-center gap-2.5 group flex-shrink-0">
+          <div class="w-11 h-11 rounded-xl bg-white p-1 border border-slate-200 shadow-md group-hover:shadow-emerald-500/20 group-hover:scale-105 transition flex items-center justify-center overflow-hidden">
+            <img 
+              src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" 
+              alt="Dream Cart BD Logo" 
+              class="w-full h-full object-contain rounded-lg"
+              onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';"
+            />
           </div>
-
-          <!-- Live Search Bar with Instant Results Dropdown -->
-          <div class="hidden md:flex flex-1 max-w-xl mx-4 relative">
-            <div class="relative w-full">
-              <input 
-                type="text" 
-                id="global-search-input" 
-                placeholder="প্রোডাক্টের নাম, ক্যাটাগরি বা SKU দিয়ে খুঁজুন..." 
-                class="w-full pl-11 pr-24 py-2.5 bg-slate-100/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm focus:ring-2 focus:ring-brand-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 font-bengali"
-              />
-              <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <i data-lucide="search" class="w-4 h-4"></i>
-              </div>
-              <button id="search-btn" type="button" class="absolute inset-y-1 right-1 px-4 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1 transition-colors font-bengali">
-                সার্চ
-              </button>
+          <div class="flex flex-col">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xl sm:text-2xl font-black tracking-tight text-slate-900 group-hover:text-emerald-600 transition">Dream Cart <span class="text-emerald-600">BD</span></span>
             </div>
-            <!-- Search Results Dropdown -->
-            <div id="search-results-dropdown" class="hidden absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden z-50 max-h-96 overflow-y-auto"></div>
+            <span class="text-[10px] uppercase font-bold tracking-widest text-slate-500 -mt-1">Smart Digital Commerce</span>
           </div>
+        </a>
 
-          <!-- Action Icons (Theme Toggle, Sync, Cart) -->
-          <div class="flex items-center gap-2 sm:gap-3">
-            <!-- Two-Way Sync Status Indicator -->
-            <button onclick="window.SyncEngine && window.SyncEngine.forceSync ? window.SyncEngine.forceSync() : (window.store && window.store.showToast ? window.store.showToast('সিঙ্ক ইঞ্জিন রেডি হচ্ছে...', 'info') : null)" title="গুগল শীট সিঙ্ক করুন" type="button" class="p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center">
-              <i data-lucide="refresh-cw" class="w-5 h-5"></i>
-            </button>
+        <!-- Search Bar -->
+        <div class="hidden md:flex flex-1 max-w-xl relative">
+          <input 
+            type="text" 
+            id="global-search-input"
+            placeholder="স্মার্টওয়াচ, অর্গানিক পাউডার, এলইডি লাইট বা পণ্য সার্চ করুন..." 
+            class="w-full pl-11 pr-24 py-2.5 bg-slate-100/90 hover:bg-slate-100 focus:bg-white rounded-full border border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 text-xs sm:text-sm outline-none transition"
+          />
+          <svg class="w-5 h-5 text-slate-400 absolute left-3.5 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+          <button id="global-search-btn" class="absolute right-1.5 top-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-full transition shadow-sm">
+            Search
+          </button>
+        </div>
 
-            <!-- Dark / Light Theme Toggle -->
-            <button id="theme-toggle-btn" type="button" class="p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <i data-lucide="${currentTheme === 'dark' ? 'sun' : 'moon'}" class="w-5 h-5"></i>
-            </button>
+        <!-- Action Items -->
+        <div class="flex items-center gap-2.5 sm:gap-3">
+          
+          <!-- Fraud Check Tool button for quick demo/access -->
+          <button id="btn-open-fraud-tool" class="hidden lg:flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 px-3 py-1.5 rounded-full text-xs font-semibold transition" title="Check Customer Courier Success Rate">
+            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            Fraud Checker
+          </button>
 
-            <!-- Cart Drawer Trigger Button -->
-            <button id="cart-drawer-toggle" type="button" class="relative flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-brand-50 dark:bg-brand-950/40 text-brand-600 dark:text-brand-400 border border-brand-200/60 dark:border-brand-800/60 hover:bg-brand-100 transition-all">
-              <i data-lucide="shopping-cart" class="w-5 h-5"></i>
-              <span class="hidden sm:inline font-semibold text-sm font-bengali">কার্ট</span>
-              <span id="header-cart-badge" class="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold bg-brand-600 text-white rounded-full">
-                ${cartCount}
-              </span>
-            </button>
-          </div>
+          <!-- Contact Link -->
+          <a href="#/contact" class="hidden sm:flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full text-xs font-semibold transition">
+            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+            Contact
+          </a>
+
+          <!-- Admin Portal Link -->
+          <a href="#/admin" class="hidden sm:flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full text-xs font-semibold transition">
+            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            Admin
+          </a>
+
+          <!-- Cart Trigger Button -->
+          <button id="btn-open-cart" class="relative p-2.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition flex items-center justify-center" title="View Cart">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+            <span id="header-cart-badge" class="absolute -top-1 -right-1 bg-emerald-600 text-white font-bold text-[11px] w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
+              ${cartCount}
+            </span>
+          </button>
 
         </div>
       </div>
+
+      <!-- Categories & Navigation Sub-header -->
+      <nav class="border-t border-slate-100 bg-white/70 hidden sm:block">
+        <div class="max-w-7xl mx-auto px-4 flex items-center gap-6 overflow-x-auto py-2 text-xs font-semibold text-slate-700">
+          <a href="#/shop" class="hover:text-emerald-600 flex items-center gap-1 transition text-emerald-700 font-bold">
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            All Products
+          </a>
+          <a href="#/shop?cat=CAT-SMARTWATCH" class="hover:text-emerald-600 transition">Smartwatches</a>
+          <a href="#/shop?cat=CAT-ORGANIC" class="hover:text-emerald-600 transition">Organic & Health</a>
+          <a href="#/shop?cat=CAT-ELECTRONICS" class="hover:text-emerald-600 transition">Tools & LED Lights</a>
+          <a href="#/offers" class="hover:text-emerald-600 text-amber-600 font-bold transition flex items-center gap-1">
+            <span>🔥</span> Offers & Deals
+          </a>
+          <a href="#/partner" class="hover:text-emerald-600 text-indigo-700 font-bold transition">Partner Hub (Seller / Reseller)</a>
+          <a href="#/contact" class="hover:text-emerald-600 transition">Store Address & Contact</a>
+          <a href="#/track" class="hover:text-emerald-600 transition ml-auto flex items-center gap-1 text-slate-500">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            Order Tracking
+          </a>
+        </div>
+      </nav>
     </header>
-    `;
-  },
-
-  initEvents: () => {
-    if (typeof document === "undefined") return;
-
-    // থিম টগল হ্যান্ডলার
-    const themeBtn = document.getElementById("theme-toggle-btn");
-    if (themeBtn && store && typeof store.toggleTheme === "function") {
-      themeBtn.addEventListener("click", () => store.toggleTheme());
-    }
-
-    // কার্ট ড্রয়ার টগল
-    const cartBtn = document.getElementById("cart-drawer-toggle");
-    if (cartBtn && store && typeof store.emit === "function") {
-      cartBtn.addEventListener("click", () => {
-        store.emit("toggle_cart_drawer", true);
-      });
-    }
-
-    // মোবাইল মেনু টগল
-    const mobileMenuBtn = document.getElementById("mobile-menu-toggle");
-    if (mobileMenuBtn && store && typeof store.emit === "function") {
-      mobileMenuBtn.addEventListener("click", () => {
-        store.emit("toggle_mobile_menu", true);
-      });
-    }
-
-    // লাইভ সার্চ ইঞ্জিন
-    const searchInput = document.getElementById("global-search-input");
-    const dropdown = document.getElementById("search-results-dropdown");
-    let debounceTimer;
-
-    if (searchInput && dropdown) {
-      searchInput.addEventListener("input", (e) => {
-        clearTimeout(debounceTimer);
-        const query = e.target.value.trim().toLowerCase();
-
-        if (query.length < 2) {
-          dropdown.classList.add("hidden");
-          dropdown.innerHTML = "";
-          return;
-        }
-
-        debounceTimer = setTimeout(async () => {
-          try {
-            if (ProductAPI && typeof ProductAPI.getAll === "function") {
-              const result = await ProductAPI.getAll();
-              const products = Array.isArray(result) ? result : (result?.items || []);
-              const matches = products.filter(p => 
-                (p.product_name && p.product_name.toLowerCase().includes(query)) ||
-                (p.sku && p.sku.toLowerCase().includes(query))
-              ).slice(0, 5);
-
-              if (matches.length === 0) {
-                dropdown.innerHTML = `<div class="p-4 text-center text-sm text-slate-500 font-bengali">কোনো প্রোডাক্ট পাওয়া যায়নি।</div>`;
-              } else {
-                dropdown.innerHTML = matches.map(p => `
-                  <a href="/product/${p.product_id}" class="flex items-center gap-3 p-3 hover:bg-slate-50 dark:hover:bg-slate-800/60 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors">
-                    <img src="${p.thumbnail || 'https://placehold.co/80x80'}" alt="${p.product_name || 'Product'}" class="w-12 h-12 rounded-lg object-cover bg-slate-100" />
-                    <div class="flex-1 min-w-0">
-                      <h4 class="text-sm font-semibold text-slate-900 dark:text-white truncate">${p.product_name || ""}</h4>
-                      <p class="text-xs text-brand-600 dark:text-brand-400 font-bold">৳${p.selling_price || p.regular_price || 0}</p>
-                    </div>
-                    <span class="badge-success text-[10px]">ইন স্টক</span>
-                  </a>
-                `).join("");
-              }
-              dropdown.classList.remove("hidden");
-            }
-          } catch (err) {
-            console.error("Search failed:", err);
-          }
-        }, 300);
-      });
-
-      // বাইরে ক্লিক করলে সার্চ ড্রপডাউন বন্ধ হওয়া
-      document.addEventListener("click", (e) => {
-        if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
-          dropdown.classList.add("hidden");
-        }
-      });
-    }
-  }
-};
-
-// গ্লোবাল উইন্ডোতে সেট করা
-if (typeof window !== "undefined") {
-  window.Header = Header;
+  `;
 }
-
-// Default export যুক্ত করা হয়েছে
-export default Header;

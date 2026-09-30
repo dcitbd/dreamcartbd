@@ -1,197 +1,150 @@
 /**
- * ============================================================================
- * DREAM CART BD — SMART CART DRAWER (CartDrawer.js)
- * ============================================================================
+ * DREAM CART BD — SLIDING CART DRAWER COMPONENT
+ * Real-time calculation, free delivery progress (threshold ৳2,000), coupon codes, checkout button.
  */
 
-import { store } from "../js/store.js";
-import { router } from "../js/router.js";
+import { cartStore } from '../store/cartStore.js';
+import { formatCurrency } from '../utils/format.js';
 
-export const CartDrawer = {
-  render: () => {
-    const cart = store?.state?.cart || { items: [], subtotal: 0, total: 0 };
-    const items = Array.isArray(cart.items) ? cart.items : [];
+export function renderCartDrawer() {
+  const items = cartStore.items;
+  const subtotal = cartStore.getSubtotal();
+  const delivery = cartStore.getDeliveryCharge();
+  const couponDiscount = cartStore.getCouponDiscount();
+  const onlineDiscount = cartStore.getOnlinePaymentDiscount();
+  const grandTotal = cartStore.getGrandTotal();
 
-    return `
-    <div id="cart-drawer-backdrop" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 transition-opacity duration-300 hidden opacity-0">
-      <div class="absolute inset-y-0 right-0 max-w-full flex pl-10">
-        <div id="cart-drawer-panel" class="w-screen max-w-md bg-white dark:bg-slate-900 shadow-2xl flex flex-col font-bengali transform translate-x-full transition-transform duration-300">
-          
-          <!-- Header -->
-          <div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-              <div class="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400 flex items-center justify-center">
-                <i data-lucide="shopping-bag" class="w-5 h-5"></i>
-              </div>
-              <h3 class="text-lg font-bold text-slate-900 dark:text-white">আপনার শপিং কার্ট (${items.length})</h3>
-            </div>
-            <button id="close-cart-drawer" type="button" class="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-              <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
+  const freeDeliveryThreshold = 2000;
+  const amountNeeded = Math.max(0, freeDeliveryThreshold - subtotal);
+  const progressPercent = Math.min(100, Math.round((subtotal / freeDeliveryThreshold) * 100));
+
+  return `
+    <div id="cart-drawer-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden transition-opacity duration-300">
+      
+      <div id="cart-drawer-panel" class="fixed inset-y-0 right-0 max-w-full w-full sm:max-w-md bg-white shadow-2xl flex flex-col z-50 transform translate-x-full transition-transform duration-300 ease-in-out">
+        
+        <!-- Drawer Header -->
+        <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+          <div class="flex items-center gap-2">
+            <span class="text-xl">🛒</span>
+            <h3 class="font-black text-slate-900 text-base">Your Shopping Cart</h3>
+            <span class="badge badge-info text-xs">${cartStore.getCount()} items</span>
           </div>
+          <button id="btn-close-cart" class="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
 
-          <!-- Items List -->
-          <div class="flex-1 overflow-y-auto p-6 space-y-4">
-            ${items.length === 0 ? `
-              <div class="text-center py-16">
-                <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
-                  <i data-lucide="shopping-cart" class="w-8 h-8"></i>
+        <!-- Free Delivery Progress Bar (৳2,000 threshold) -->
+        <div class="p-3.5 bg-emerald-50/70 border-b border-emerald-100 text-xs">
+          <div class="flex justify-between items-center text-emerald-800 font-semibold mb-1.5">
+            <span>${amountNeeded > 0 ? `৳${amountNeeded} আরও যোগ করলে ডেলিভারি চার্জ সম্পূর্ণ ফ্রি!` : "🎉 অভিনন্দন! আপনি ফ্রি ডেলিভারি পাচ্ছেন!"}</span>
+            <span>${progressPercent}%</span>
+          </div>
+          <div class="w-full bg-emerald-200/60 h-2 rounded-full overflow-hidden">
+            <div class="bg-emerald-600 h-full rounded-full transition-all duration-500" style="width: ${progressPercent}%"></div>
+          </div>
+          <div class="text-[11px] text-emerald-700 mt-1 flex justify-between">
+            <span>২০০০ টাকার বেশি শপিং করলে ডেলিভারি চার্জ ফ্রি</span>
+            <span class="font-bold">টার্গেট: ৳২,০০০</span>
+          </div>
+        </div>
+
+        <!-- Items List -->
+        <div class="flex-1 overflow-y-auto p-4 sm:p-5 divide-y divide-slate-100 space-y-4">
+          ${items.length === 0 ? `
+            <div class="py-16 text-center text-slate-400 space-y-3">
+              <div class="text-5xl">🛍️</div>
+              <p class="text-sm font-semibold text-slate-600">Your cart is currently empty</p>
+              <p class="text-xs">Explore our premium smartwatches, organic supplements, and gadgets!</p>
+              <a href="#/shop" class="btn-primary inline-flex text-xs py-2 px-5 mt-2">
+                Start Shopping →
+              </a>
+            </div>
+          ` : items.map(item => `
+            <div class="pt-4 first:pt-0 flex gap-3.5 items-start">
+              <img src="${item.thumbnail}" alt="${item.name}" class="w-16 h-16 rounded-xl object-cover bg-slate-100 border border-slate-200 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <div class="flex justify-between items-start">
+                  <h4 class="text-xs font-bold text-slate-800 truncate pr-2">${item.name}</h4>
+                  <button class="btn-cart-remove text-slate-300 hover:text-rose-500 transition text-sm" data-product-id="${item.product_id}" data-variant-id="${item.variant_id}">×</button>
                 </div>
-                <h4 class="text-base font-bold text-slate-800 dark:text-slate-200">কার্ট খালি আছে!</h4>
-                <p class="text-xs text-slate-500 mt-1">পছন্দের পণ্য কার্টে যুক্ত করুন।</p>
-              </div>
-            ` : items.map(item => `
-              <div class="flex gap-3.5 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                <img src="${item.image || 'https://placehold.co/80x80'}" alt="${item.name || 'Product'}" class="w-16 h-16 rounded-xl object-cover bg-white shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <h4 class="text-sm font-semibold text-slate-900 dark:text-white truncate">${item.name || 'পণ্য'}</h4>
-                  ${item.variantName ? `<p class="text-xs text-slate-400">${item.variantName}</p>` : ''}
-                  <p class="text-sm font-bold text-brand-600 dark:text-brand-400 mt-1">৳${item.unitPrice || 0}</p>
-                  
-                  <div class="flex items-center justify-between mt-2">
-                    <div class="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900">
-                      <button type="button" class="cart-qty-btn px-2 py-0.5 text-slate-500 hover:text-brand-600" data-id="${item.cartItemId}" data-qty="${(Number(item.quantity) || 1) - 1}">-</button>
-                      <span class="px-2 text-xs font-bold">${item.quantity || 1}</span>
-                      <button type="button" class="cart-qty-btn px-2 py-0.5 text-slate-500 hover:text-brand-600" data-id="${item.cartItemId}" data-qty="${(Number(item.quantity) || 1) + 1}">+</button>
-                    </div>
-                    <button type="button" class="cart-remove-btn text-rose-500 hover:text-rose-600 text-xs flex items-center gap-1" data-id="${item.cartItemId}">
-                      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> মুছুন
-                    </button>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                  <span class="text-[11px] text-slate-400">Dream Cart BD Official</span>
+                </div>
+                <div class="flex items-center justify-between mt-3">
+                  <span class="text-xs font-extrabold text-emerald-700">${formatCurrency(item.price)}</span>
+                  <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
+                    <button class="btn-cart-qty px-2 py-0.5 text-slate-500 hover:bg-slate-100 text-xs" data-delta="-1" data-product-id="${item.product_id}" data-variant-id="${item.variant_id}">-</button>
+                    <span class="px-2.5 text-xs font-bold text-slate-700">${item.quantity}</span>
+                    <button class="btn-cart-qty px-2 py-0.5 text-slate-500 hover:bg-slate-100 text-xs" data-delta="1" data-product-id="${item.product_id}" data-variant-id="${item.variant_id}">+</button>
                   </div>
                 </div>
               </div>
-            `).join("")}
-          </div>
+            </div>
+          `).join("")}
+        </div>
 
-          <!-- Bottom Checkout Summary -->
-          ${items.length > 0 ? `
-            <div class="p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-3">
-              <div class="flex justify-between text-sm text-slate-600 dark:text-slate-400">
-                <span>সাব-টোটাল:</span>
-                <span class="font-bold text-slate-900 dark:text-white">৳${cart.subtotal || 0}</span>
-              </div>
-              <div class="flex justify-between text-base font-extrabold text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-slate-800">
-                <span>সর্বমোট:</span>
-                <span class="text-brand-600 dark:text-brand-400">৳${cart.total || 0}</span>
-              </div>
-              <button id="drawer-checkout-btn" type="button" class="w-full btn-primary py-3.5 text-base flex items-center justify-center gap-2">
-                <span>অর্ডার কনফার্ম করুন (চেকআউট)</span>
-                <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        <!-- Drawer Footer Summary -->
+        ${items.length > 0 ? `
+          <div class="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/50 space-y-3">
+            
+            <!-- Quick Voucher Input -->
+            <div class="flex gap-2">
+              <input 
+                type="text" 
+                id="cart-coupon-input" 
+                placeholder="Promo code (e.g. DREAM10)" 
+                class="flex-1 px-3 py-1.5 text-xs rounded-xl border border-slate-200 outline-none focus:border-emerald-500 uppercase"
+              />
+              <button id="btn-apply-coupon" class="btn-secondary text-xs py-1.5 px-3 whitespace-nowrap">
+                Apply
               </button>
             </div>
-          ` : ''}
 
-        </div>
+            <!-- Calculation Rows -->
+            <div class="space-y-1.5 text-xs text-slate-600">
+              <div class="flex justify-between">
+                <span>Subtotal:</span>
+                <span class="font-bold text-slate-800">${formatCurrency(subtotal)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span>Estimated Delivery:</span>
+                <span class="font-bold ${delivery === 0 ? 'text-emerald-600' : 'text-slate-800'}">
+                  ${delivery === 0 ? '<span class="text-emerald-600 font-bold">ফ্রি (৳০)</span>' : formatCurrency(delivery)}
+                </span>
+              </div>
+              ${couponDiscount > 0 ? `
+                <div class="flex justify-between text-emerald-600 font-bold">
+                  <span>Coupon Discount:</span>
+                  <span>-${formatCurrency(couponDiscount)}</span>
+                </div>
+              ` : ""}
+              ${onlineDiscount > 0 ? `
+                <div class="flex justify-between text-emerald-600 font-bold">
+                  <span>Online Prepayment (5% OFF):</span>
+                  <span>-${formatCurrency(onlineDiscount)}</span>
+                </div>
+              ` : ""}
+              <div class="flex justify-between text-sm font-black text-slate-900 pt-2 border-t border-slate-200">
+                <span>Total:</span>
+                <span class="text-emerald-700">${formatCurrency(grandTotal)}</span>
+              </div>
+            </div>
+
+            <!-- Checkout CTA Button -->
+            <a href="#/checkout" id="btn-drawer-checkout" class="btn-primary w-full py-3.5 text-center text-xs font-black shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2">
+              <span>Proceed to Checkout</span>
+              <span>(${formatCurrency(grandTotal)}) →</span>
+            </a>
+            
+            <p class="text-[10px] text-center text-slate-400">
+              🔒 100% Cash On Delivery & Online Payment Available Nationwide.
+            </p>
+          </div>
+        ` : ""}
+
       </div>
     </div>
-    `;
-  },
-
-  initEvents: () => {
-    if (typeof document === "undefined") return;
-
-    const backdrop = document.getElementById("cart-drawer-backdrop");
-    const panel = document.getElementById("cart-drawer-panel");
-    const closeBtn = document.getElementById("close-cart-drawer");
-    const checkoutBtn = document.getElementById("drawer-checkout-btn");
-
-    const openDrawer = () => {
-      if (backdrop && panel) {
-        backdrop.classList.remove("hidden");
-        requestAnimationFrame(() => {
-          backdrop.classList.remove("opacity-0");
-          panel.classList.remove("translate-x-full");
-        });
-      }
-    };
-
-    const closeDrawer = () => {
-      if (backdrop && panel) {
-        backdrop.classList.add("opacity-0");
-        panel.classList.add("translate-x-full");
-        setTimeout(() => {
-          if (backdrop) backdrop.classList.add("hidden");
-        }, 300);
-      }
-    };
-
-    if (closeBtn) closeBtn.addEventListener("click", closeDrawer);
-    if (backdrop) {
-      backdrop.addEventListener("click", (e) => {
-        if (e.target === backdrop) closeDrawer();
-      });
-    }
-
-    // Quantity update delegation
-    document.querySelectorAll(".cart-qty-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const id = e.currentTarget.getAttribute("data-id");
-        const qty = parseInt(e.currentTarget.getAttribute("data-qty"), 10);
-        if (window.store && typeof window.store.updateCartQty === "function") {
-          window.store.updateCartQty(id, Math.max(1, qty));
-        } else if (store && typeof store.updateCartQty === "function") {
-          store.updateCartQty(id, Math.max(1, qty));
-        }
-      });
-    });
-
-    // Remove item delegation
-    document.querySelectorAll(".cart-remove-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const id = e.currentTarget.getAttribute("data-id");
-        if (window.store && typeof window.store.removeFromCart === "function") {
-          window.store.removeFromCart(id);
-        } else if (store && typeof store.removeFromCart === "function") {
-          store.removeFromCart(id);
-        }
-      });
-    });
-
-    if (checkoutBtn) {
-      checkoutBtn.addEventListener("click", () => {
-        closeDrawer();
-        if (router && typeof router.navigate === "function") {
-          router.navigate("/checkout");
-        } else if (typeof window !== "undefined") {
-          window.location.href = "/checkout";
-        }
-      });
-    }
-
-    // Store Event Listeners (Prevent duplicate binding checks)
-    if (store && typeof store.on === "function" && !store._cartEventsInitialized) {
-      store._cartEventsInitialized = true;
-
-      store.on("toggle_cart_drawer", (open) => {
-        if (open) openDrawer(); else closeDrawer();
-      });
-
-      store.on("cart_updated", () => {
-        const drawerContainer = document.getElementById("cart-drawer-root");
-        if (drawerContainer) {
-          // Keep track of whether it was open
-          const isOpen = backdrop && !backdrop.classList.contains("hidden");
-          drawerContainer.innerHTML = CartDrawer.render();
-          CartDrawer.initEvents();
-          if (isOpen) {
-            const newBackdrop = document.getElementById("cart-drawer-backdrop");
-            const newPanel = document.getElementById("cart-drawer-panel");
-            if (newBackdrop && newPanel) {
-              newBackdrop.classList.remove("hidden", "opacity-0");
-              newPanel.classList.remove("translate-x-full");
-            }
-          }
-          if (typeof window !== "undefined" && window.lucide && typeof window.lucide.createIcons === "function") {
-            window.lucide.createIcons();
-          }
-        }
-      });
-    }
-  }
-};
-
-if (typeof window !== "undefined") {
-  window.CartDrawer = CartDrawer;
+  `;
 }
-
-export default CartDrawer;

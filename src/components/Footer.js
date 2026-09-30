@@ -1,138 +1,195 @@
 /**
- * ============================================================================
- * DREAM CART BD — GLOBAL LUXURY FOOTER (Footer.js)
- * ============================================================================
+ * DREAM CART BD — FOOTER COMPONENT
+ * Complete official shop profile, address, owners, contact details, payment options, bank account, and developer credits.
  */
 
-export const Footer = {
-  render: () => {
-    const currentYear = new Date().getFullYear();
-
-    return `
-    <footer class="bg-slate-950 text-slate-400 pt-16 pb-8 border-t border-slate-800 font-bengali">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+export function renderFooter() {
+  return `
+    <footer class="bg-slate-900 text-slate-300 pt-16 pb-24 md:pb-12 mt-20 border-t border-slate-800">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
         
-        <!-- Trust Badges Bar -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 pb-12 mb-12 border-b border-slate-800 text-center sm:text-left">
-          <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center shrink-0">
-              <i data-lucide="shield-check" class="w-6 h-6"></i>
+        <!-- Col 1: Brand & Contact Info -->
+        <div class="space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-white p-1 border border-slate-700 shadow-md flex items-center justify-center overflow-hidden flex-shrink-0">
+              <img 
+                src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" 
+                alt="Dream Cart BD" 
+                class="w-full h-full object-contain rounded-lg"
+                onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';"
+              />
             </div>
             <div>
-              <h4 class="text-sm font-bold text-white">১০০% অরিজিনাল পণ্য</h4>
-              <p class="text-xs text-slate-500">গ্যারান্টিযুক্ত সেরা কোয়ালিটি</p>
+              <span class="text-xl font-black text-white tracking-tight">Dream Cart <span class="text-emerald-400">BD</span></span>
+              <p class="text-[11px] text-emerald-400 font-semibold">Trusted Smart Commerce Platform</p>
             </div>
           </div>
 
-          <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-              <i data-lucide="truck" class="w-6 h-6"></i>
-            </div>
-            <div>
-              <h4 class="text-sm font-bold text-white">দ্রুত ডেলিভারি</h4>
-              <p class="text-xs text-slate-500">সারা বাংলাদেশে হোম ডেলিভারি</p>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0">
-              <i data-lucide="refresh-cw" class="w-6 h-6"></i>
-            </div>
-            <div>
-              <h4 class="text-sm font-bold text-white">সহজ রিটার্ন পলিসি</h4>
-              <p class="text-xs text-slate-500">৭ দিনের মধ্যে রিটার্ন সুবিধা</p>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-3.5">
-            <div class="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0">
-              <i data-lucide="headphones" class="w-6 h-6"></i>
-            </div>
-            <div>
-              <h4 class="text-sm font-bold text-white">২৪/৭ কাস্টমার সাপোর্ট</h4>
-              <p class="text-xs text-slate-500">যেকোনো প্রয়োজনে পাশে আছি</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- 4-Column Main Footer Links -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12">
-          
-          <!-- Brand Info -->
-          <div class="lg:col-span-2 space-y-4">
-            <div class="flex items-center gap-2.5">
-              <div class="w-10 h-10 rounded-xl bg-brand-500 text-white flex items-center justify-center shadow-lg shadow-brand-500/25">
-                <i data-lucide="shopping-bag" class="w-5 h-5"></i>
-              </div>
-              <span class="text-2xl font-extrabold text-white tracking-tight">Dream Cart BD</span>
-            </div>
-            <p class="text-sm text-slate-400 leading-relaxed pr-6">
-              Dream Cart BD বাংলাদেশের অন্যতম স্মার্ট ও নির্ভরযোগ্য ডিজিটাল কমার্স প্ল্যাটফর্ম। কোয়ালিটি পণ্য ও দ্রুততম ডেলিভারি নিশ্চিত করাই আমাদের প্রধান লক্ষ্য।
+          <div class="text-xs text-slate-300 space-y-2 border-t border-slate-800 pt-3">
+            <p class="flex items-start gap-2">
+              <span class="text-emerald-400 flex-shrink-0">👑</span>
+              <span><strong>Shop Owners:</strong> Jainal Abedin & MD. Saiful Islam</span>
             </p>
-            <div class="pt-2 text-sm space-y-2">
-              <p class="flex items-center gap-2"><i data-lucide="map-pin" class="w-4 h-4 text-brand-400"></i> ঢাকা, বাংলাদেশ</p>
-              <p class="flex items-center gap-2"><i data-lucide="phone" class="w-4 h-4 text-brand-400"></i> +880 1700-000000</p>
-              <p class="flex items-center gap-2"><i data-lucide="mail" class="w-4 h-4 text-brand-400"></i> support@dreamcartbd.com</p>
+            <p class="flex items-start gap-2">
+              <span class="text-emerald-400 flex-shrink-0">📍</span>
+              <span><strong>Address:</strong> Chawdhury Plaza, ground floor, room#03, Paduar Bazar, Bishwa Road, Sadar Dakshin, Cumilla-3500.</span>
+            </p>
+            <p class="flex items-center gap-2">
+              <span class="text-emerald-400 flex-shrink-0">📞</span>
+              <span><strong>Phone 1:</strong> <a href="tel:01581703822" class="hover:text-emerald-400 transition">01581703822</a> (<a href="https://wa.me/8801581703822" target="_blank" class="text-emerald-400 underline">WhatsApp</a>)</span>
+            </p>
+            <p class="flex items-center gap-2">
+              <span class="text-emerald-400 flex-shrink-0">📞</span>
+              <span><strong>Phone 2:</strong> <a href="tel:01818273838" class="hover:text-emerald-400 transition">01818273838</a> (<a href="https://wa.me/8801818273838" target="_blank" class="text-emerald-400 underline">WhatsApp</a>)</span>
+            </p>
+            <p class="flex items-center gap-2">
+              <span class="text-emerald-400 flex-shrink-0">⏰</span>
+              <span><strong>Office Time:</strong> Every Day 8:00 AM to 10:00 PM</span>
+            </p>
+            <p class="flex items-center gap-2">
+              <span class="text-emerald-400 flex-shrink-0">🚚</span>
+              <span><strong>Delivery Area:</strong> Whole Bangladesh (সারা বাংলাদেশ)</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Col 2: Customer Care & Quick Links -->
+        <div>
+          <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-2">Customer Care</h4>
+          <ul class="space-y-2.5 text-xs sm:text-sm text-slate-400">
+            <li><a href="#/track" class="hover:text-emerald-400 transition flex items-center gap-1.5"><span>📦</span> Track Your Order</a></li>
+            <li><a href="#/shop" class="hover:text-emerald-400 transition flex items-center gap-1.5"><span>🛍️</span> Browse All Products</a></li>
+            <li><a href="#/offers" class="hover:text-emerald-400 text-amber-300 transition flex items-center gap-1.5"><span>🔥</span> Exclusive Offers & Discounts</a></li>
+            <li><a href="#/contact" class="hover:text-emerald-400 transition flex items-center gap-1.5"><span>📞</span> Contact & Store Location</a></li>
+            <li><a href="#/partner" class="hover:text-emerald-400 transition flex items-center gap-1.5"><span>💼</span> Become a Seller / Reseller</a></li>
+            <li>
+              <a href="https://shop.bkash.com/j-a-sagor-computer01581703822/paymentlink" target="_blank" class="hover:text-pink-400 text-pink-300 font-semibold transition flex items-center gap-1.5 mt-2">
+                <span>💳</span> bKash Direct Payment Link →
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Col 3: Delivery Zones & Offers -->
+        <div>
+          <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-2">Delivery & Charges</h4>
+          <div class="space-y-2 text-xs text-slate-300 mb-4">
+            <div class="flex justify-between items-center py-1 border-b border-slate-800">
+              <span>In Cumilla (কুমিল্লা সদর):</span>
+              <span class="font-bold text-emerald-400">৳70</span>
+            </div>
+            <div class="flex justify-between items-center py-1 border-b border-slate-800">
+              <span>In Dhaka (ঢাকার ভেতরে):</span>
+              <span class="font-bold text-emerald-400">৳90</span>
+            </div>
+            <div class="flex justify-between items-center py-1 border-b border-slate-800">
+              <span>Out of Dhaka (ঢাকার বাইরে):</span>
+              <span class="font-bold text-emerald-400">৳120</span>
+            </div>
+            <div class="flex justify-between items-center py-1 border-b border-slate-800">
+              <span>Office Pickup (অফিস পিকআপ):</span>
+              <span class="font-bold text-emerald-400">৳0 (Free)</span>
             </div>
           </div>
 
-          <!-- Quick Navigation -->
-          <div>
-            <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-4">কুইক লিঙ্কস</h4>
-            <ul class="space-y-2.5 text-sm">
-              <li><a href="/" class="hover:text-brand-400 transition-colors">হোম পেজ</a></li>
-              <li><a href="/products" class="hover:text-brand-400 transition-colors">সমস্ত প্রোডাক্ট</a></li>
-              <li><a href="/track-order" class="hover:text-brand-400 transition-colors">অর্ডার ট্র্যাকিং</a></li>
-              <li><a href="/login" class="hover:text-brand-400 transition-colors">কাস্টমার অ্যাকাউন্ট</a></li>
-              <li><a href="/admin/products" class="hover:text-brand-400 transition-colors">এডমিন প্যানেল</a></li>
-            </ul>
+          <div class="p-3 bg-emerald-950/60 rounded-xl border border-emerald-700/60 text-xs text-emerald-300 space-y-1">
+            <p class="font-bold">🎉 বিশেষ ডেলিভারি অফার:</p>
+            <p>২০০০ টাকার বেশি শপিং করলে ডেলিভারি চার্জ সম্পূর্ণ ফ্রি!</p>
           </div>
-
-          <!-- Customer Service -->
-          <div>
-            <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-4">গ্রাহক সেবা</h4>
-            <ul class="space-y-2.5 text-sm">
-              <li><a href="/privacy-policy" class="hover:text-brand-400 transition-colors">প্রাইভেসি পলিসি</a></li>
-              <li><a href="/terms" class="hover:text-brand-400 transition-colors">শর্তাবলী</a></li>
-              <li><a href="/refund-policy" class="hover:text-brand-400 transition-colors">রিটার্ন ও রিফান্ড</a></li>
-              <li><a href="/shipping-policy" class="hover:text-brand-400 transition-colors">ডেলিভারি তথ্য</a></li>
-              <li><a href="/faq" class="hover:text-brand-400 transition-colors">সাধারণ জিজ্ঞাসা (FAQ)</a></li>
-            </ul>
+          <div class="mt-2 p-2.5 bg-amber-950/40 rounded-xl border border-amber-700/50 text-[11px] text-amber-200">
+            ⚡ অনলাইনে পেমেন্ট করলে তাৎক্ষণিক ৫% ডিসকাউন্ট!
           </div>
-
-          <!-- Partner Portals -->
-          <div>
-            <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-4">পার্টনার হাব</h4>
-            <ul class="space-y-2.5 text-sm">
-              <li><a href="/partner/seller" class="hover:text-brand-400 transition-colors">সেলার পোর্টাল</a></li>
-              <li><a href="/partner/reseller" class="hover:text-brand-400 transition-colors">রিসেলার হাব</a></li>
-              <li><a href="/partner/wholesale" class="hover:text-brand-400 transition-colors">হোলসেল অর্ডার</a></li>
-            </ul>
-          </div>
-
         </div>
 
-        <!-- Bottom Copyright & Payment Methods -->
-        <div class="pt-8 border-t border-slate-800/80 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
-          <p>© ${currentYear} Dream Cart BD. সর্বস্বত্ব সংরক্ষিত।</p>
-          <div class="flex items-center gap-3 text-slate-400">
-            <span class="bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">bKash</span>
-            <span class="bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">Nagad</span>
-            <span class="bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">Rocket</span>
-            <span class="bg-slate-900 px-3 py-1 rounded-lg border border-slate-800">Cash On Delivery</span>
+        <!-- Col 4: Payment Accounts & Developer Info -->
+        <div>
+          <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-4 border-l-2 border-emerald-500 pl-2">Payment & Accounts</h4>
+          
+          <div class="space-y-2 text-xs text-slate-300 mb-4">
+            <div class="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
+              <div class="text-pink-400 font-bold flex justify-between">
+                <span>bKash Merchant</span>
+                <span class="font-mono">01581703822</span>
+              </div>
+              <div class="text-[11px] text-slate-400">Make Payment / Merchant Pay</div>
+            </div>
+
+            <div class="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
+              <div class="text-pink-300 font-bold flex justify-between">
+                <span>bKash Personal</span>
+                <span class="font-mono">01879653143</span>
+              </div>
+              <div class="text-[11px] text-slate-400">Send Money</div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-1.5">
+              <div class="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
+                <div class="text-orange-400 font-bold text-[11px]">Nagad Personal</div>
+                <div class="font-mono text-[11px] text-slate-300">01879653143</div>
+              </div>
+              <div class="bg-slate-800/80 p-2 rounded-lg border border-slate-700">
+                <div class="text-purple-400 font-bold text-[11px]">Rocket Personal</div>
+                <div class="font-mono text-[11px] text-slate-300">01581703822</div>
+              </div>
+            </div>
+
+            <div class="bg-slate-800/80 p-2.5 rounded-lg border border-slate-700 text-[11px] space-y-0.5">
+              <div class="text-emerald-400 font-bold">Bank Account (Islami Bank PLC):</div>
+              <div class="text-slate-300">A/C Name: <strong>Jainal Abedin</strong></div>
+              <div class="text-slate-300 font-mono">A/C No: <strong>20508070200030208</strong></div>
+              <div class="text-slate-400 text-[10px]">Maheshkhali Sub branch | Routing: 125260525 | IBBLBDDH</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Developer Info Card & Bottom Bar -->
+      <div class="max-w-7xl mx-auto px-4 mt-12 pt-8 border-t border-slate-800 space-y-6">
+        
+        <!-- Developer Profile Badge -->
+        <div class="bg-slate-800/60 rounded-2xl p-4 border border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="flex items-center gap-3.5">
+            <img 
+              src="https://scontent.fdac24-5.fna.fbcdn.net/v/t39.99422-6/748763443_1355179329312781_3762544494183960829_n.png?stp=dst-jpg_tt6&cstp=mx876x1414&ctp=s876x1414&_nc_cat=101&ccb=1-7&_nc_sid=127cfc&_nc_eui2=AeEgpskzgAVWN3ZiohXZA-RhiddumrjTx6WJ126auNPHpRbk_pIDiYLXfo5UR9FYrkKKGwNHxgicb8fdqAfCdAzm&_nc_ohc=ulolVsVxolUQ7kNvwFbbn_s&_nc_oc=Adqwy7DrnjEKjOAfZPttbAGnlBGmXslovULfm4dCZditFerwrSiULyvnQBwCwT-ctOY&_nc_zt=14&_nc_ht=scontent.fdac24-5.fna&_nc_gid=QjQg-WZiaHQGDcl9YGAVCA&_nc_ss=7b2a8&oh=00_AQOthzROIPmAhM-IMyLs5b5IxRzmoCsj5_Ucs02h26YSdw&oe=6AC34270" 
+              alt="Developer Jainal Abedin" 
+              class="w-12 h-12 rounded-full object-cover border-2 border-emerald-500 shadow-md flex-shrink-0"
+              onerror="this.style.display='none'"
+            />
+            <div>
+              <div class="text-xs text-slate-400 uppercase tracking-wider">System Architect & Lead Developer</div>
+              <div class="text-sm font-bold text-white flex items-center gap-2">
+                <span>Jainal Abedin</span>
+                <span class="text-xs text-emerald-400 font-normal">— CEO, Dream Career IT BD</span>
+              </div>
+              <div class="text-xs text-slate-400 mt-0.5 flex flex-wrap gap-3">
+                <a href="https://dcitbd.github.io/Jainal-Abedin/" target="_blank" class="text-emerald-400 hover:underline flex items-center gap-1">
+                  <span>🌐</span> Developer Portfolio
+                </a>
+                <span>•</span>
+                <a href="https://dcitbd.github.io/dcitbd/" target="_blank" class="text-emerald-400 hover:underline flex items-center gap-1">
+                  <span>🏢</span> Dream Career IT BD Official
+                </a>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-xs text-slate-400 text-center sm:text-right">
+            <div>Platform Version: <span class="font-mono text-emerald-400 font-bold">2.5.0 Production</span></div>
+            <div class="text-[11px] text-slate-500">Built with High-Reliability Architecture</div>
+          </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row justify-between items-center text-xs text-slate-500 gap-4 pt-2">
+          <p>© 2026 Dream Cart BD. All rights reserved. Chawdhury Plaza, Sadar Dakshin, Cumilla-3500.</p>
+          <div class="flex gap-4">
+            <a href="#/" class="hover:text-slate-400">Privacy Policy</a>
+            <a href="#/" class="hover:text-slate-400">Terms of Service</a>
+            <a href="#/contact" class="hover:text-slate-400">Contact Us</a>
           </div>
         </div>
 
       </div>
     </footer>
-    `;
-  }
-};
-
-// গ্লোবাল উইন্ডোতে সেট করা
-if (typeof window !== "undefined") {
-  window.Footer = Footer;
+  `;
 }
-
-// Default export যুক্ত করা হয়েছে
-export default Footer;
