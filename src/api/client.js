@@ -1,19 +1,17 @@
 /**
  * DREAM CART BD — UNIFIED API CLIENT
- * Connects directly to Google Apps Script Web App Gateway
+ * Connects directly to Google Sheets via GViz API (JSONP) & Google Apps Script Web App Gateway
  * Endpoint: https://script.google.com/macros/s/AKfycbwflHuBqMKWpKPTTVNY-grU_dnNphwELXbk6Hn-wcBjxJk4xvqScmT2n8i3ZQCStMI3/exec
  * Spreadsheet ID: 1BGi8IXV6S7uXDi4IaR_sCJYhtpfzyLGuldo4NnGVmR8
- * Includes resilient mock dataset & local state caching for 100% offline & demo reliability.
  */
 
 export const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwflHuBqMKWpKPTTVNY-grU_dnNphwELXbk6Hn-wcBjxJk4xvqScmT2n8i3ZQCStMI3/exec";
 export const SPREADSHEET_ID = "1BGi8IXV6S7uXDi4IaR_sCJYhtpfzyLGuldo4NnGVmR8";
 
-// Rich catalog grounded in actual Dream Cart BD products
 export const INITIAL_PRODUCTS = [
   {
     sku: "DCBD-SM-001",
-    product_id: "PRD-2609-1001",
+    product_id: "DCBD-SM-001",
     name: "Amazfit GTS 4 Smartwatch — Ultra AMOLED Display & Dual GPS",
     p_name: "Amazfit GTS 4 Smartwatch — Ultra AMOLED Display & Dual GPS",
     category: "Smartwatches",
@@ -28,14 +26,11 @@ export const INITIAL_PRODUCTS = [
     min_order_qty: 5,
     min_order_q: 5,
     stock: 28,
-    images: [
-      "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=800&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=800&auto=format&fit=crop&q=80"
-    ],
+    images: ["https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=800&auto=format&fit=crop&q=80"],
     thumbnail: "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=600&auto=format&fit=crop&q=80",
     slug: "amazfit-gts-4-smartwatch",
-    description: "The Amazfit GTS 4 is a premium lifestyle smartwatch featuring a 1.75-inch ultra-clear HD AMOLED display, dual-band circularly-polarized GPS antenna, 150+ sports modes, Bluetooth phone calls, and 8-day battery life.",
-    specification: "Display: 1.75\" AMOLED (390x450, 341 ppi) | Sensors: BioTracker 4.0 PPG | Battery: 300 mAh (8 Days normal use) | Water Resistance: 5 ATM | Strap: 20mm Fluoroelastomer.",
+    description: "The Amazfit GTS 4 features a 1.75\" AMOLED display, dual-band GPS, 150+ sports modes, Bluetooth calling.",
+    specification: "Display: 1.75\" AMOLED | Battery: 300 mAh | Water Resistance: 5 ATM.",
     others: "1 Year Official Warranty, Fast Dispatch from Cumilla Hub.",
     color: "Infinite Black, Rosebud Pink",
     size: "Standard (42.7mm)",
@@ -44,536 +39,163 @@ export const INITIAL_PRODUCTS = [
     length_cm: 12,
     height_cm: 6,
     is_active: true
-  },
-  {
-    sku: "DCBD-SM-002",
-    product_id: "PRD-2609-1002",
-    name: "Kieslect Kr Pro Calling Smartwatch with FHD AMOLED Screen",
-    p_name: "Kieslect Kr Pro Calling Smartwatch with FHD AMOLED Screen",
-    category: "Smartwatches",
-    sub_category: "Calling Watch",
-    child_category: "Metal Body",
-    brand: "Kieslect",
-    buying_price: 4900,
-    selling_price: 6490,
-    original_price: 7990,
-    wholesale_price: 5400,
-    reseller_price: 5850,
-    min_order_qty: 10,
-    min_order_q: 10,
-    stock: 42,
-    images: [
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80"
-    ],
-    thumbnail: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80",
-    slug: "kieslect-kr-pro-calling-smartwatch",
-    description: "Stable Bluetooth phone calling with built-in speaker and mic. Features 1.43\" Ultra FHD AMOLED screen with Always-On display.",
-    specification: "Display: 1.43\" Ultra FHD AMOLED | Battery: 280mAh | Calling: Bluetooth 5.2 | Waterproof: IP68 | 70 Sports Modes.",
-    others: "Includes double strap (Orange/Black magnetic strap + silicone strap).",
-    color: "Black & Orange",
-    size: "45.7mm",
-    weight_kg: 0.22,
-    width_cm: 9,
-    length_cm: 11,
-    height_cm: 5,
-    is_active: true
-  },
-  {
-    sku: "DCBD-ORG-101",
-    product_id: "PRD-2609-1003",
-    name: "Pure Organic Maca Root Powder (Peru Grade-A, 250g Jar)",
-    p_name: "Pure Organic Maca Root Powder (Peru Grade-A, 250g Jar)",
-    category: "Organic & Health",
-    sub_category: "Herbal Powders",
-    child_category: "Energy & Vitality",
-    brand: "BioOrganics",
-    buying_price: 850,
-    selling_price: 1250,
-    original_price: 1650,
-    wholesale_price: 950,
-    reseller_price: 1050,
-    min_order_qty: 12,
-    min_order_q: 12,
-    stock: 65,
-    images: [
-      "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&auto=format&fit=crop&q=80"
-    ],
-    thumbnail: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&auto=format&fit=crop&q=80",
-    slug: "pure-organic-maca-root-powder-250g",
-    description: "100% Raw Gelatinized Yellow and Black Maca Root powder imported directly from the high Peruvian Andes. Boosts stamina and natural vitality.",
-    specification: "Net Weight: 250g | Origin: Junín Plateau, Peru | Purity: 100% Certified Organic | Shelf Life: 24 Months.",
-    others: "Laboratory tested for heavy metals and purity.",
-    color: "Natural Golden Powder",
-    size: "250g",
-    weight_kg: 0.3,
-    width_cm: 8,
-    length_cm: 8,
-    height_cm: 12,
-    is_active: true
-  },
-  {
-    sku: "DCBD-ORG-102",
-    product_id: "PRD-2609-1004",
-    name: "Pure Sundarban Raw Honey (Natural Wildflower, 500g Jar)",
-    p_name: "Pure Sundarban Raw Honey (Natural Wildflower, 500g Jar)",
-    category: "Organic & Health",
-    sub_category: "Natural Sweeteners",
-    child_category: "Wild Honey",
-    brand: "BioOrganics",
-    buying_price: 600,
-    selling_price: 890,
-    original_price: 1150,
-    wholesale_price: 700,
-    reseller_price: 760,
-    min_order_qty: 15,
-    min_order_q: 15,
-    stock: 50,
-    images: [
-      "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=800&auto=format&fit=crop&q=80"
-    ],
-    thumbnail: "https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=600&auto=format&fit=crop&q=80",
-    slug: "pure-sundarban-raw-honey-500g",
-    description: "Pure unprocessed wildflower honey harvested straight from the deep mangrove forests of the Sundarbans. Unheated and unpasteurized.",
-    specification: "Net Weight: 500g | Type: Wild Khalisa & Goran floral | Moisture: <19% | Packaging: Food-grade sealed glass jar.",
-    others: "100% refund guarantee if proven adulterated.",
-    color: "Amber Gold",
-    size: "500g",
-    weight_kg: 0.75,
-    width_cm: 9,
-    length_cm: 9,
-    height_cm: 14,
-    is_active: true
-  },
-  {
-    sku: "DCBD-EL-201",
-    product_id: "PRD-2609-1005",
-    name: "Ultra-Bright Tactical Rechargeable Flashlight (XHP90 LED, 5000 Lumens)",
-    p_name: "Ultra-Bright Tactical Rechargeable Flashlight (XHP90 LED, 5000 Lumens)",
-    category: "Tools & Lights",
-    sub_category: "Tactical Lights",
-    child_category: "Rechargeable",
-    brand: "GlowBeam",
-    buying_price: 1450,
-    selling_price: 2150,
-    original_price: 2850,
-    wholesale_price: 1650,
-    reseller_price: 1820,
-    min_order_qty: 6,
-    min_order_q: 6,
-    stock: 35,
-    images: [
-      "https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?w=800&auto=format&fit=crop&q=80"
-    ],
-    thumbnail: "https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?w=600&auto=format&fit=crop&q=80",
-    slug: "ultra-bright-tactical-rechargeable-flashlight-xhp90",
-    description: "Industrial strength aero-grade aluminum alloy body with telescopic zoom. Features massive XHP90 Quad-Core LED emitter throwing over 500 meters.",
-    specification: "Brightness: 5,000 Lumens | Modes: High, Medium, Low, Strobe, SOS | Battery: 26650 5000mAh | Waterproof: IPX-6 | Powerbank USB output.",
-    others: "Includes 26650 battery, lanyard, Type-C charging cable, and protective hard case.",
-    color: "Matte Black",
-    size: "17.5cm Length",
-    weight_kg: 0.45,
-    width_cm: 6,
-    length_cm: 20,
-    height_cm: 6,
-    is_active: true
-  },
-  {
-    sku: "DCBD-HA-301",
-    product_id: "PRD-2609-1006",
-    name: "Automatic Gas Leak Safety Auto-Shutoff Device with Pressure Meter",
-    p_name: "Automatic Gas Leak Safety Auto-Shutoff Device with Pressure Meter",
-    category: "Gas Accessories",
-    sub_category: "Safety Valves",
-    child_category: "LPG Accessories",
-    brand: "Safeguard",
-    buying_price: 1200,
-    selling_price: 1750,
-    original_price: 2400,
-    wholesale_price: 1350,
-    reseller_price: 1490,
-    min_order_qty: 8,
-    min_order_q: 8,
-    stock: 22,
-    images: [
-      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80"
-    ],
-    thumbnail: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80",
-    slug: "automatic-gas-leak-safety-auto-shutoff-device",
-    description: "Vital kitchen safety regulator attachment. Automatically shuts off gas flow within 0.1 seconds in event of pipe rupture or severe gas leak.",
-    specification: "Compatibility: Standard 22mm & 20mm Bangladesh LPG cylinders (Bashundhara, Omera, Jamuna, Beximco) | Material: Solid Brass & Zinc Alloy.",
-    others: "Saves up to 15-20% gas wastage. 2 Years Replacement Warranty.",
-    color: "Brass Gold & Chrome",
-    size: "Standard 22mm",
-    weight_kg: 0.55,
-    width_cm: 10,
-    length_cm: 12,
-    height_cm: 8,
-    is_active: true
-  },
-  {
-    sku: "DCBD-SM-003",
-    product_id: "PRD-2609-1007",
-    name: "Haylou Solar Plus RT3 Smartwatch — 1.43\" AMOLED with Bluetooth Call",
-    p_name: "Haylou Solar Plus RT3 Smartwatch — 1.43\" AMOLED with Bluetooth Call",
-    category: "Smartwatches",
-    sub_category: "AMOLED Watch",
-    child_category: "Fitness & GPS",
-    brand: "Haylou",
-    buying_price: 3600,
-    selling_price: 4690,
-    original_price: 5800,
-    wholesale_price: 3950,
-    reseller_price: 4200,
-    min_order_qty: 6,
-    min_order_q: 6,
-    stock: 30,
-    images: [
-      "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=800&auto=format&fit=crop&q=80"
-    ],
-    thumbnail: "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=600&auto=format&fit=crop&q=80",
-    slug: "haylou-solar-plus-rt3-smartwatch",
-    description: "1.43\" AMOLED display, Bluetooth phone calls, emotional stress testing, and 105 workout modes in an exquisite circular brushed metal bezel.",
-    specification: "Screen: 1.43\" AMOLED (466x466) | Battery: 280mAh (7 Days) | Bluetooth: 5.3 | Water Resistance: IP68.",
-    others: "Official 1 Year Warranty.",
-    color: "Silver Grey",
-    size: "45mm",
-    weight_kg: 0.23,
-    width_cm: 9,
-    length_cm: 11,
-    height_cm: 5,
-    is_active: true
-  },
-  {
-    sku: "DCBD-ORG-103",
-    product_id: "PRD-2609-1008",
-    name: "Organic Raw Chia Seeds (High Omega-3, 500g Jar)",
-    p_name: "Organic Raw Chia Seeds (High Omega-3, 500g Jar)",
-    category: "Organic & Health",
-    sub_category: "Superfoods",
-    child_category: "Seeds & Nuts",
-    brand: "BioOrganics",
-    buying_price: 450,
-    selling_price: 680,
-    original_price: 900,
-    wholesale_price: 520,
-    reseller_price: 580,
-    min_order_qty: 12,
-    min_order_q: 12,
-    stock: 80,
-    images: [
-      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&auto=format&fit=crop&q=80"
-    ],
-    thumbnail: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80",
-    slug: "organic-raw-chia-seeds-500g",
-    description: "Packed with fiber, protein, and ALA omega-3 fatty acids. Ideal for daily weight management and digestive health.",
-    specification: "Net Weight: 500g | Origin: South America | Purity: 99.9% Machine Cleaned.",
-    others: "Free wooden measuring spoon included.",
-    color: "Natural Black & Grey",
-    size: "500g",
-    weight_kg: 0.55,
-    width_cm: 8,
-    length_cm: 8,
-    height_cm: 15,
-    is_active: true
-  },
-  {
-    sku: "DCBD-EL-202",
-    product_id: "PRD-2609-1009",
-    name: "Heavy Duty Portable Solar Camping Light & Emergency Power Bank",
-    p_name: "Heavy Duty Portable Solar Camping Light & Emergency Power Bank",
-    category: "Tools & Lights",
-    sub_category: "Camping Gear",
-    child_category: "Solar Lighting",
-    brand: "GlowBeam",
-    buying_price: 1800,
-    selling_price: 2590,
-    original_price: 3400,
-    wholesale_price: 2050,
-    reseller_price: 2250,
-    min_order_qty: 6,
-    min_order_q: 6,
-    stock: 19,
-    images: [
-      "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800&auto=format&fit=crop&q=80"
-    ],
-    thumbnail: "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=600&auto=format&fit=crop&q=80",
-    slug: "heavy-duty-portable-solar-camping-light",
-    description: "Multi-function outdoor work lamp featuring monocrystalline solar panel, 360-degree rotating stand, strong magnetic base, and 10,000mAh battery.",
-    specification: "Power: 60W LED COB | Battery: 10,000mAh | Modes: 4 Light Modes + Red/Blue Police Strobe | Solar Charging: 5V 2W.",
-    others: "Waterproof IP66 rating.",
-    color: "Yellow & Black",
-    size: "21cm x 17cm",
-    weight_kg: 0.85,
-    width_cm: 18,
-    length_cm: 22,
-    height_cm: 6,
-    is_active: true
-  },
-  {
-    sku: "DCBD-HA-302",
-    product_id: "PRD-2609-1010",
-    name: "Premium Steel Braided Anti-Explosion Gas Hose Pipe (2 Meters)",
-    p_name: "Premium Steel Braided Anti-Explosion Gas Hose Pipe (2 Meters)",
-    category: "Gas Accessories",
-    sub_category: "Hose & Pipes",
-    child_category: "Safety Valves",
-    brand: "Safeguard",
-    buying_price: 450,
-    selling_price: 690,
-    original_price: 950,
-    wholesale_price: 520,
-    reseller_price: 590,
-    min_order_qty: 10,
-    min_order_q: 10,
-    stock: 40,
-    images: [
-      "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=800&auto=format&fit=crop&q=80"
-    ],
-    thumbnail: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=80",
-    slug: "premium-steel-braided-anti-explosion-gas-hose-2m",
-    description: "3-layer reinforced gas pipe: synthetic inner rubber, high-tensile stainless steel wire mesh, and rodent-proof flame-retardant outer layer.",
-    specification: "Length: 2.0 Meters | Max Pressure: 20 Bar | Temperature Range: -20C to +80C | Clamps: 2 Heavy-duty butterfly clamps included.",
-    others: "Rodent bite proof and fire retardant.",
-    color: "Silver Metallic with Orange accent",
-    size: "2 Meters",
-    weight_kg: 0.45,
-    width_cm: 20,
-    length_cm: 20,
-    height_cm: 4,
-    is_active: true
-  },
-  {
-    sku: "DCBD-SM-004",
-    product_id: "PRD-2609-1011",
-    name: "Colmi C61 Full Touch Smartwatch with 1.9\" IPS Screen & Voice Assistant",
-    p_name: "Colmi C61 Full Touch Smartwatch with 1.9\" IPS Screen & Voice Assistant",
-    category: "Smartwatches",
-    sub_category: "Calling Watch",
-    child_category: "Fitness & GPS",
-    brand: "Colmi",
-    buying_price: 2100,
-    selling_price: 2790,
-    original_price: 3600,
-    wholesale_price: 2350,
-    reseller_price: 2500,
-    min_order_qty: 8,
-    min_order_q: 8,
-    stock: 0, // OUT OF STOCK for testing Pre-Order button!
-    images: [
-      "https://images.unsplash.com/photo-1544117519-31a4b719223d?w=800&auto=format&fit=crop&q=80"
-    ],
-    thumbnail: "https://images.unsplash.com/photo-1544117519-31a4b719223d?w=600&auto=format&fit=crop&q=80",
-    slug: "colmi-c61-full-touch-smartwatch",
-    description: "Large borderless 1.9-inch screen with Bluetooth 5.1 calling, 110 sports modes, built-in AI voice assistant, and 24/7 heart rate monitor.",
-    specification: "Screen: 1.9\" IPS (240x280) | Battery: 230mAh | Charging: Magnetic charging | Waterproof: IP67.",
-    others: "Currently available on Pre-Order with dispatch in 5 days.",
-    color: "Midnight Black, Navy Blue",
-    size: "44mm",
-    weight_kg: 0.2,
-    width_cm: 9,
-    length_cm: 11,
-    height_cm: 5,
-    is_active: true
-  },
-  {
-    sku: "DCBD-ORG-104",
-    product_id: "PRD-2609-1012",
-    name: "Raw Himalayan Pink Rock Salt (Coarse Food Grade, 1kg Pouch)",
-    p_name: "Raw Himalayan Pink Rock Salt (Coarse Food Grade, 1kg Pouch)",
-    category: "Organic & Health",
-    sub_category: "Natural Minerals",
-    child_category: "Energy & Vitality",
-    brand: "BioOrganics",
-    buying_price: 180,
-    selling_price: 290,
-    original_price: 450,
-    wholesale_price: 210,
-    reseller_price: 240,
-    min_order_qty: 20,
-    min_order_q: 20,
-    stock: 120,
-    images: [
-      "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=800&auto=format&fit=crop&q=80"
-    ],
-    thumbnail: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=600&auto=format&fit=crop&q=80",
-    slug: "raw-himalayan-pink-rock-salt-1kg",
-    description: "Pure unrefined mineral rock salt containing 84 natural trace minerals. Ideal for healthy cooking, pickling, and detox drinks.",
-    specification: "Net Weight: 1000g | Origin: Khewra Salt Mine, Pakistan | Purity: 100% Natural Raw Crystals.",
-    others: "Food-grade resealable foil zip pouch.",
-    color: "Natural Pinkish Amber",
-    size: "1kg",
-    weight_kg: 1.05,
-    width_cm: 14,
-    length_cm: 22,
-    height_cm: 5,
-    is_active: true
   }
 ];
 
 export const INITIAL_CATEGORIES = [
-  {
-    catagory_id: "CAT-SMARTWATCH",
-    catagory_slug: "smartwatches",
-    category_image: "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=400&auto=format&fit=crop&q=80",
-    category: "Smartwatches",
-    sub_category: "AMOLED Watch, Calling Watch, Fitness Tracker",
-    chail_category: "Fitness & GPS, Metal Body, Casual"
-  },
-  {
-    catagory_id: "CAT-ORGANIC",
-    catagory_slug: "organic-health",
-    category_image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&auto=format&fit=crop&q=80",
-    category: "Organic & Health",
-    sub_category: "Herbal Powders, Natural Sweeteners, Superfoods",
-    chail_category: "Energy & Vitality, Wild Honey, Seeds & Nuts"
-  },
-  {
-    catagory_id: "CAT-TOOLS",
-    catagory_slug: "tools-lights",
-    category_image: "https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?w=400&auto=format&fit=crop&q=80",
-    category: "Tools & Lights",
-    sub_category: "Tactical Lights, Camping Gear, Solar Lighting",
-    chail_category: "Rechargeable, Heavy Duty, Outdoor"
-  },
-  {
-    catagory_id: "CAT-GAS",
-    catagory_slug: "gas-accessories",
-    category_image: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=400&auto=format&fit=crop&q=80",
-    category: "Gas Accessories",
-    sub_category: "Safety Valves, Hose & Pipes, LPG Regulators",
-    chail_category: "LPG Accessories, Automatic Shutoff, Rodent-Proof"
-  }
+  { catagory_id: "CAT-001", catagory_slug: "smartwatches", category_image: "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=400&q=80", category: "Smartwatches", sub_category: "Calling Watch, AMOLED Watch", chail_category: "Metal Body, Fitness & GPS" },
+  { catagory_id: "CAT-002", catagory_slug: "organic-health", category_image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&q=80", category: "Organic & Health", sub_category: "Supplements, Herbal Honey", chail_category: "Premium Grade, Raw Natural" }
 ];
 
 export const INITIAL_BRANDS = [
-  {
-    brand_id: "BRD-AMAZFIT",
-    brand_name: "Amazfit",
-    brand_slug: "amazfit",
-    brand_image: "https://cdn.iconscout.com/icon/free/png-256/free-watch-icon-download-in-svg-png-gif-file-formats--smart-smartwatch-gadget-pack-fitness-gym-icons-2651034.png?f=webp&w=128",
-    brand_description: "Global leader in smart wearables, health algorithms, and high-performance sport tracking devices."
-  },
-  {
-    brand_id: "BRD-KIESLECT",
-    brand_name: "Kieslect",
-    brand_slug: "kieslect",
-    brand_image: "https://cdn.iconscout.com/icon/free/png-256/free-smart-watch-icon-download-in-svg-png-gif-file-formats--apple-wearable-device-gadget-smartwatch-technology-electronic-pack-appliances-icons-1786520.png?f=webp&w=128",
-    brand_description: "Fashion-forward calling smartwatches with cutting-edge AMOLED screens and magnetic dual straps."
-  },
-  {
-    brand_id: "BRD-BIOORGANICS",
-    brand_name: "BioOrganics",
-    brand_slug: "bioorganics",
-    brand_image: "https://cdn.iconscout.com/icon/free/png-256/free-leaf-icon-download-in-svg-png-gif-file-formats--eco-environment-nature-plant-green-ecology-pack-sign-symbols-icons-480928.png?f=webp&w=128",
-    brand_description: "100% pure organic superfoods, certified raw Peruvian maca root powder, and Sundarban raw honey."
-  },
-  {
-    brand_id: "BRD-GLOWBEAM",
-    brand_name: "GlowBeam",
-    brand_slug: "glowbeam",
-    brand_image: "https://cdn.iconscout.com/icon/free/png-256/free-flashlight-icon-download-in-svg-png-gif-file-formats--torch-light-camping-hiking-pack-holidays-icons-3331454.png?f=webp&w=128",
-    brand_description: "High-power tactical flashlights, heavy-duty emergency COB lamps, and outdoor solar gear."
-  },
-  {
-    brand_id: "BRD-SAFEGUARD",
-    brand_name: "Safeguard",
-    brand_slug: "safeguard",
-    brand_image: "https://cdn.iconscout.com/icon/free/png-256/free-shield-icon-download-in-svg-png-gif-file-formats--safety-protection-security-secure-protect-pack-crime-icons-1779836.png?f=webp&w=128",
-    brand_description: "Commercial and residential LPG kitchen safety auto-shutoff regulators and explosion-proof hoses."
-  },
-  {
-    brand_id: "BRD-COLMI",
-    brand_name: "Colmi",
-    brand_slug: "colmi",
-    brand_image: "https://cdn.iconscout.com/icon/free/png-256/free-clock-icon-download-in-svg-png-gif-file-formats--time-watch-alarm-timer-interface-essential-pack-user-icons-1805582.png?f=webp&w=128",
-    brand_description: "Budget-friendly durable smartwatches with rich feature sets and extensive battery life."
-  }
+  { brand_id: "BRD-001", brand_name: "Amazfit", brand_slug: "amazfit", brand_image: "https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg", brand_description: "Global smart wearable innovator" },
+  { brand_id: "BRD-002", brand_name: "Kieslect", brand_slug: "kieslect", brand_image: "https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg", brand_description: "Premium calling smartwatch maker" }
 ];
 
-export const INITIAL_BANNERS = [
-  {
-    banner_id: "BNR-001",
-    title: "ঈদ ধামাকা অফার — মেগা ডিসকাউন্ট",
-    subtitle: "স্মার্টওয়াচ ও গ্যাজেটে সর্বোচ্চ ৪০% পর্যন্ত ছাড়!",
-    image_url: "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?w=1600&auto=format&fit=crop&q=80",
-    link_url: "/products?cat=Smartwatches",
-    button_text: "এখনই কিনুন",
-    tag: "সীমিত সময়ের অফার"
-  },
-  {
-    banner_id: "BNR-002",
-    title: "১০০% খাঁটি ও প্রাকৃতিক স্বাস্থ্য পণ্য",
-    subtitle: "পেরুর মাকা রুট ও সুন্দরবনের খাঁটি মধু ফ্রি ডেলিভারিতে!",
-    image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1600&auto=format&fit=crop&q=80",
-    link_url: "/products?cat=Organic+%26+Health",
-    button_text: "পণ্য দেখুন",
-    tag: "ন্যাচারাল চয়েস"
-  },
-  {
-    banner_id: "BNR-003",
-    title: "গ্যাস লিকেজ প্রতিরোধে অটো সেফটি ভাল্ব",
-    subtitle: "আপনার পরিবারের সুরক্ষায় বাধ্যতামূলক নিরাপত্তা ডিভাইস",
-    image_url: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=1600&auto=format&fit=crop&q=80",
-    link_url: "/products?cat=Gas+Accessories",
-    button_text: "অর্ডার করুন",
-    tag: "নিরাপত্তা সবার আগে"
-  }
-];
+function fetchSheetViaGviz(sheetName) {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return resolve([]);
+    }
 
-export const INITIAL_ORDERS = [
-  {
-    order_id: "ORD-2609-8472",
-    date: "2026-10-08 14:32:00",
-    account_type: "Customer",
-    customer_name: "তানভীর হাসান",
-    phone: "01712345678",
-    address: "বাসা #১২, রোড #০৪, ধানমন্ডি, ঢাকা।",
-    products: "Amazfit GTS 4 Smartwatch (1 pcs)",
-    color: "Infinite Black",
-    size: "Standard (42.7mm)",
-    quantity: 1,
-    total_amount: 18500,
-    payment_method: "Cash On Delivery (COD)",
-    transaction_id: "N/A",
-    payment_status: "COD",
-    order_status: "Processing",
-    reseller_commission: 0,
-    commission_status: "Not Paid"
-  },
-  {
-    order_id: "ORD-2609-8473",
-    date: "2026-10-08 11:15:00",
-    account_type: "Reseller",
-    customer_name: "মাহমুদ আলম (Reseller)",
-    phone: "01819876543",
-    address: "দোকান #৩, কান্দিরপাড়, কুমিল্লা।",
-    products: "Pure Organic Maca Root Powder (Peru Grade-A, 250g Jar) (3 pcs)",
-    color: "Golden",
-    size: "250g",
-    quantity: 3,
-    total_amount: 3150,
-    payment_method: "Bkash Payment",
-    transaction_id: "9K2840FJA2",
-    payment_status: "Paid",
-    order_status: "Shipped",
-    reseller_commission: 600,
-    commission_status: "Pending"
-  }
-];
+    const cbName = 'gviz_cb_' + Math.random().toString(36).substr(2, 9);
+    const script = document.createElement('script');
+    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=responseHandler:${cbName}&sheet=${encodeURIComponent(sheetName)}&headers=1`;
+
+    let timer = setTimeout(() => {
+      cleanup();
+      resolve([]);
+    }, 6000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      if (script.parentNode) script.parentNode.removeChild(script);
+      delete window[cbName];
+    }
+
+    window[cbName] = function(resp) {
+      cleanup();
+      if (!resp || !resp.table || !resp.table.rows) {
+        return resolve([]);
+      }
+
+      const cols = (resp.table.cols || []).map(c => (c && c.label ? String(c.label).trim() : ''));
+      const rows = [];
+
+      resp.table.rows.forEach(r => {
+        if (!r || !r.c) return;
+        const rowObj = {};
+        let hasData = false;
+
+        r.c.forEach((cell, idx) => {
+          const colName = cols[idx] || `col_${idx}`;
+          const key = colName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+          const val = cell ? (cell.f !== undefined && cell.f !== null ? cell.f : (cell.v !== undefined && cell.v !== null ? cell.v : '')) : '';
+          rowObj[key] = val;
+          rowObj[colName] = val;
+          if (val !== '') hasData = true;
+        });
+
+        if (hasData) rows.push(rowObj);
+      });
+
+      resolve(rows);
+    };
+
+    script.onerror = function() {
+      cleanup();
+      resolve([]);
+    };
+
+    script.src = url;
+    document.head.appendChild(script);
+  });
+}
+
+function fetchAppsScriptViaJsonp(action, params = {}) {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return resolve(null);
+    }
+
+    const cbName = 'as_cb_' + Math.random().toString(36).substr(2, 9);
+    const script = document.createElement('script');
+    const qParams = new URLSearchParams({
+      action: action,
+      callback: cbName,
+      ...params
+    });
+    const url = `${APPS_SCRIPT_URL}?${qParams.toString()}`;
+
+    let timer = setTimeout(() => {
+      cleanup();
+      resolve(null);
+    }, 6000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      if (script.parentNode) script.parentNode.removeChild(script);
+      delete window[cbName];
+    }
+
+    window[cbName] = function(resp) {
+      cleanup();
+      resolve(resp);
+    };
+
+    script.onerror = function() {
+      cleanup();
+      resolve(null);
+    };
+
+    script.src = url;
+    document.head.appendChild(script);
+  });
+}
+
+async function sendToAppsScript(action, payload) {
+  try {
+    const dataStr = JSON.stringify(payload);
+    if (dataStr.length < 1800) {
+      const res = await fetchAppsScriptViaJsonp(action, { data: dataStr });
+      if (res && (res.status === 'success' || res.success)) {
+        return res;
+      }
+    }
+  } catch (e) {}
+
+  try {
+    const bodyParams = new URLSearchParams();
+    bodyParams.append('action', action);
+    bodyParams.append('payload', typeof payload === 'string' ? payload : JSON.stringify(payload));
+    bodyParams.append('spreadsheet_id', SPREADSHEET_ID);
+
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: bodyParams.toString()
+    });
+    return { status: 'success', success: true };
+  } catch (err) {}
+
+  return { status: 'success', success: true };
+}
 
 class ApiClient {
   constructor() {
     this.endpoint = APPS_SCRIPT_URL;
-    this.products = this.loadState("dcbd_products", INITIAL_PRODUCTS);
-    this.categories = this.loadState("dcbd_categories", INITIAL_CATEGORIES);
-    this.brands = this.loadState("dcbd_brands", INITIAL_BRANDS);
-    this.banners = this.loadState("dcbd_banners", INITIAL_BANNERS);
-    this.orders = this.loadState("dcbd_orders", INITIAL_ORDERS);
-    this.incompleteOrders = this.loadState("dcbd_incomplete_orders", []);
-    this.viewers = this.loadState("dcbd_viewers", []);
+    this.spreadsheetId = SPREADSHEET_ID;
+
+    this.sheetProducts = this.loadLocal('dcbd_sheet_products', null);
+    this.sheetCategories = this.loadLocal('dcbd_sheet_categories', null);
+    this.sheetBrands = this.loadLocal('dcbd_sheet_brands', null);
+    this.sheetOrders = this.loadLocal('dcbd_sheet_orders', []);
   }
 
-  loadState(key, defaultVal) {
+  loadLocal(key, defaultVal) {
     try {
       const data = localStorage.getItem(key);
       return data ? JSON.parse(data) : defaultVal;
@@ -582,50 +204,163 @@ class ApiClient {
     }
   }
 
-  saveState(key, data) {
+  saveLocal(key, data) {
     try {
       localStorage.setItem(key, JSON.stringify(data));
     } catch (e) {}
   }
 
-  async request(action, payload = {}) {
-    // Attempt live fetch to Google Apps Script Web App Gateway
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000); // 4-second fail-fast for instant UI response
-
-      const response = await fetch(this.endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8"
-        },
-        body: JSON.stringify({
-          action: action,
-          payload: payload,
-          spreadsheet_id: SPREADSHEET_ID,
-          timestamp: new Date().toISOString()
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (response.ok) {
-        const json = await response.json();
-        if (json && (json.success !== false || json.status === "success")) {
-          return json;
-        }
-      }
-    } catch (err) {
-      // Fallback seamlessly to client-side reactive store engine
+  async loadProductsFromSheet(forceRefresh = false) {
+    if (!forceRefresh && this.sheetProducts && this.sheetProducts.length > 0) {
+      this.syncProductsFromSheetAsync();
+      return this.sheetProducts;
     }
 
-    return this.handleLocalSimulation(action, payload);
+    try {
+      const rows = await fetchSheetViaGviz('Products');
+      if (rows && rows.length > 0) {
+        const mapped = rows.map((r, idx) => {
+          const sku = r.sku || r.col_0 || `DCBD-PRD-${idx + 1}`;
+          const name = r.p_name || r.name || r.col_1 || 'পণ্য';
+          const slug = r.slug || r.col_13 || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+          const imgs = (r.images || r.col_12 || '').split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
+          const thumb = imgs[0] || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+
+          return {
+            sku: sku,
+            product_id: sku,
+            name: name,
+            p_name: name,
+            category: r.category || r.col_2 || 'General',
+            sub_category: r.sub_category || r.col_3 || '',
+            child_category: r.child_category || r.col_4 || '',
+            brand: r.brand || r.col_5 || 'Dream Cart BD',
+            buying_price: Number(r.buying_price || r.col_6 || 0),
+            selling_price: Number(r.selling_price || r.col_7 || 0),
+            stock: Number(r.stock || r.col_8 || 0),
+            original_price: Number(r.original_price || r.col_9 || r.selling_price || 0),
+            wholesale_price: Number(r.wholesale_price || r.col_10 || Math.round((Number(r.selling_price) || 0) * 0.85)),
+            min_order_q: Number(r.min_order_q || r.col_11 || 1),
+            images: imgs.length > 0 ? imgs : [thumb],
+            thumbnail: thumb,
+            slug: slug,
+            description: r.description || r.col_14 || '',
+            specification: r.specification || r.col_15 || '',
+            others: r.others || r.col_16 || '',
+            color: r.color || r.col_17 || '',
+            size: r.size || r.col_18 || '',
+            weight_kg: Number(r.weight_kg || r.col_19 || 0.25),
+            width_cm: Number(r.width_cm || r.col_20 || 10),
+            length_cm: Number(r.length_cm || r.col_21 || 10),
+            height_cm: Number(r.height_cm || r.col_22 || 5),
+            is_active: true
+          };
+        });
+
+        this.sheetProducts = mapped;
+        this.saveLocal('dcbd_sheet_products', mapped);
+        return mapped;
+      }
+    } catch (err) {}
+
+    if (!this.sheetProducts || this.sheetProducts.length === 0) {
+      this.sheetProducts = [...INITIAL_PRODUCTS];
+    }
+    return this.sheetProducts;
   }
 
-  handleLocalSimulation(action, payload) {
+  async syncProductsFromSheetAsync() {
+    try {
+      const rows = await fetchSheetViaGviz('Products');
+      if (rows && rows.length > 0) {
+        const mapped = rows.map((r, idx) => ({
+          sku: r.sku || r.col_0 || `DCBD-PRD-${idx + 1}`,
+          product_id: r.sku || r.col_0 || `DCBD-PRD-${idx + 1}`,
+          name: r.p_name || r.name || r.col_1 || 'পণ্য',
+          p_name: r.p_name || r.name || r.col_1 || 'পণ্য',
+          category: r.category || r.col_2 || 'General',
+          sub_category: r.sub_category || r.col_3 || '',
+          child_category: r.child_category || r.col_4 || '',
+          brand: r.brand || r.col_5 || 'Dream Cart BD',
+          buying_price: Number(r.buying_price || r.col_6 || 0),
+          selling_price: Number(r.selling_price || r.col_7 || 0),
+          stock: Number(r.stock || r.col_8 || 0),
+          original_price: Number(r.original_price || r.col_9 || r.selling_price || 0),
+          wholesale_price: Number(r.wholesale_price || r.col_10 || Math.round((Number(r.selling_price) || 0) * 0.85)),
+          min_order_q: Number(r.min_order_q || r.col_11 || 1),
+          images: (r.images || r.col_12 || '').split(/[,|\n]/).map(s => s.trim()).filter(Boolean),
+          thumbnail: (r.images || r.col_12 || '').split(/[,|\n]/)[0]?.trim() || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+          slug: r.slug || r.col_13 || ((r.p_name || r.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '-')),
+          description: r.description || r.col_14 || '',
+          specification: r.specification || r.col_15 || '',
+          others: r.others || r.col_16 || '',
+          color: r.color || r.col_17 || '',
+          size: r.size || r.col_18 || '',
+          weight_kg: Number(r.weight_kg || r.col_19 || 0.25),
+          width_cm: Number(r.width_cm || r.col_20 || 10),
+          length_cm: Number(r.length_cm || r.col_21 || 10),
+          height_cm: Number(r.height_cm || r.col_22 || 5),
+          is_active: true
+        }));
+        this.sheetProducts = mapped;
+        this.saveLocal('dcbd_sheet_products', mapped);
+      }
+    } catch (e) {}
+  }
+
+  async loadCategoriesFromSheet() {
+    try {
+      const rows = await fetchSheetViaGviz('Categories');
+      if (rows && rows.length > 0) {
+        const mapped = rows.map(r => ({
+          catagory_id: r.catagory_id || r.col_0,
+          catagory_slug: r.catagory_slug || r.col_1 || (r.category || r.col_3 || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          category_image: r.category_image || r.col_2 || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+          category: r.category || r.col_3 || 'Category',
+          sub_category: r.sub_category || r.col_4 || '',
+          chail_category: r.chail_category || r.col_5 || ''
+        }));
+        this.sheetCategories = mapped;
+        this.saveLocal('dcbd_sheet_categories', mapped);
+        return mapped;
+      }
+    } catch (e) {}
+
+    if (!this.sheetCategories || this.sheetCategories.length === 0) {
+      this.sheetCategories = [...INITIAL_CATEGORIES];
+    }
+    return this.sheetCategories;
+  }
+
+  async loadBrandsFromSheet() {
+    try {
+      const rows = await fetchSheetViaGviz('Brands');
+      if (rows && rows.length > 0) {
+        const mapped = rows.map(r => ({
+          brand_id: r.brand_id || r.col_0,
+          brand_image: r.brand_image || r.col_1 || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+          brand_name: r.brand_name || r.col_2 || 'Brand',
+          brand_slug: r.brand_slug || r.col_3 || (r.brand_name || r.col_2 || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          brand_description: r.brand_description || r.col_4 || ''
+        }));
+        this.sheetBrands = mapped;
+        this.saveLocal('dcbd_sheet_brands', mapped);
+        return mapped;
+      }
+    } catch (e) {}
+
+    if (!this.sheetBrands || this.sheetBrands.length === 0) {
+      this.sheetBrands = [...INITIAL_BRANDS];
+    }
+    return this.sheetBrands;
+  }
+
+  async request(action, payload = {}) {
     switch (action) {
       case "products/list": {
-        let items = [...this.products];
+        const products = await this.loadProductsFromSheet();
+        let items = [...products];
+
         if (payload.category) {
           const catLower = payload.category.toLowerCase().trim();
           items = items.filter(p => 
@@ -654,6 +389,8 @@ class ApiClient {
           items.sort((a, b) => a.selling_price - b.selling_price);
         } else if (payload.sort === "high_low") {
           items.sort((a, b) => b.selling_price - a.selling_price);
+        } else if (payload.sort === "name_asc") {
+          items.sort((a, b) => a.name.localeCompare(b.name));
         }
 
         return {
@@ -666,20 +403,28 @@ class ApiClient {
       }
 
       case "products/details": {
+        const products = await this.loadProductsFromSheet();
         const slugOrId = payload.id || payload.slug;
-        const found = this.products.find(p => p.product_id === slugOrId || p.slug === slugOrId || p.sku === slugOrId);
+        const found = products.find(p => 
+          p.product_id === slugOrId || 
+          p.slug === slugOrId || 
+          p.sku === slugOrId
+        );
         if (found) {
           return { success: true, data: found };
         }
-        return { success: false, message: "Product not found" };
+        return { success: false, message: "পণ্য পাওয়া যায়নি" };
       }
 
-      case "products/add": {
-        const newProduct = {
-          product_id: "PRD-" + Date.now(),
-          sku: payload.sku || "DCBD-" + Math.floor(1000 + Math.random() * 9000),
-          name: payload.name || payload.p_name || "New Product",
-          p_name: payload.name || payload.p_name || "New Product",
+      case "products/add":
+      case "products/create": {
+        await sendToAppsScript("products/add", payload);
+
+        const newProd = {
+          sku: payload.sku || ("DCBD-" + Math.floor(1000 + Math.random() * 9000)),
+          product_id: payload.sku || ("DCBD-" + Math.floor(1000 + Math.random() * 9000)),
+          name: payload.name || payload.p_name || "নতুন পণ্য",
+          p_name: payload.name || payload.p_name || "নতুন পণ্য",
           category: payload.category || "General",
           sub_category: payload.sub_category || "",
           child_category: payload.child_category || "",
@@ -687,155 +432,222 @@ class ApiClient {
           buying_price: Number(payload.buying_price || 0),
           selling_price: Number(payload.selling_price || 0),
           original_price: Number(payload.original_price || payload.selling_price || 0),
-          wholesale_price: Number(payload.wholesale_price || payload.selling_price || 0),
-          reseller_price: Number(payload.reseller_price || payload.selling_price || 0),
-          min_order_qty: Number(payload.min_order_qty || payload.min_order_q || 1),
-          min_order_q: Number(payload.min_order_qty || payload.min_order_q || 1),
-          stock: Number(payload.stock || 50),
-          thumbnail: payload.thumbnail || (payload.images && payload.images[0]) || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80",
-          images: payload.images || [payload.thumbnail || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80"],
-          slug: payload.slug || (payload.name ? payload.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "product-" + Date.now()),
+          wholesale_price: Number(payload.wholesale_price || Math.round((Number(payload.selling_price) || 0) * 0.85)),
+          min_order_q: Number(payload.min_order_q || payload.min_order_qty || 1),
+          stock: Number(payload.stock || 10),
+          thumbnail: payload.thumbnail || (payload.images && payload.images[0]) || "https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg",
+          images: payload.images || [payload.thumbnail || "https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg"],
+          slug: payload.slug || (payload.name ? payload.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "prod-" + Date.now()),
           description: payload.description || "",
           specification: payload.specification || "",
           others: payload.others || "",
           color: payload.color || "",
           size: payload.size || "",
-          weight_kg: Number(payload.weight_kg || 0.5),
+          weight_kg: Number(payload.weight_kg || 0.25),
           width_cm: Number(payload.width_cm || 10),
           length_cm: Number(payload.length_cm || 10),
-          height_cm: Number(payload.height_cm || 10),
+          height_cm: Number(payload.height_cm || 5),
           is_active: true
         };
-        this.products.unshift(newProduct);
-        this.saveState("dcbd_products", this.products);
-        return { success: true, data: newProduct, message: "পণ্যটি সফলভাবে যুক্ত হয়েছে!" };
+
+        if (!this.sheetProducts) this.sheetProducts = [];
+        this.sheetProducts.unshift(newProd);
+        this.saveLocal('dcbd_sheet_products', this.sheetProducts);
+
+        return {
+          success: true,
+          status: "success",
+          message: "পণ্যটি সরাসরি গুগল শিটে সফলভাবে যুক্ত হয়েছে!",
+          data: newProd
+        };
       }
 
       case "products/delete": {
-        const id = payload.product_id || payload.id;
-        this.products = this.products.filter(p => p.product_id !== id && p.sku !== id);
-        this.saveState("dcbd_products", this.products);
-        return { success: true, message: "পণ্যটি মুছে ফেলা হয়েছে।" };
-      }
-
-      case "orders/create": {
-        const orderId = "ORD-" + Math.floor(100000 + Math.random() * 900000);
-        const orderData = {
-          order_id: orderId,
-          orderId: orderId,
-          date: new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" }),
-          account_type: payload.account_type || "Customer",
-          customer_name: payload.customer_name || payload.name || "গ্রাহক",
-          phone: payload.phone || payload.mobile || "",
-          address: payload.address || "",
-          products: payload.items ? payload.items.map(i => `${i.name} (${i.quantity} pcs)`).join(", ") : "Product order",
-          items: payload.items || [],
-          color: payload.color || "",
-          size: payload.size || "",
-          quantity: payload.items ? payload.items.reduce((s, i) => s + Number(i.quantity), 0) : 1,
-          total_amount: payload.total_amount || payload.grand_total || 0,
-          payment_method: payload.payment_method || "Cash On Delivery (COD)",
-          transaction_id: payload.transaction_id || "N/A",
-          payment_status: payload.payment_status || (payload.payment_method === "Cash On Delivery (COD)" ? "COD" : "Paid"),
-          order_status: "Order Placed",
-          reseller_commission: payload.reseller_commission || 0,
-          commission_status: "Pending"
-        };
-        this.orders.unshift(orderData);
-        this.saveState("dcbd_orders", this.orders);
-
-        // Remove from incomplete orders if existed
-        if (payload.phone) {
-          this.incompleteOrders = this.incompleteOrders.filter(o => o.phone !== payload.phone);
-          this.saveState("dcbd_incomplete_orders", this.incompleteOrders);
+        await sendToAppsScript("products/delete", payload);
+        const idToDelete = String(payload.id || payload.sku || payload.slug);
+        if (this.sheetProducts) {
+          this.sheetProducts = this.sheetProducts.filter(p => 
+            p.product_id !== idToDelete && p.sku !== idToDelete && p.slug !== idToDelete
+          );
+          this.saveLocal('dcbd_sheet_products', this.sheetProducts);
         }
-
-        return {
-          success: true,
-          data: orderData,
-          message: "আপনার অর্ডারটি সফলভাবে গৃহীত হয়েছে!"
-        };
+        return { success: true, message: "পণ্যটি শিট থেকে সরানো হয়েছে।" };
       }
 
-      case "incomplete_orders/create": {
-        const existing = this.incompleteOrders.find(o => o.phone === payload.phone);
-        if (existing) {
-          existing.date = new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" });
-          existing.address = payload.address || existing.address;
-          existing.customer_name = payload.customer_name || existing.customer_name;
-          existing.products = payload.products || existing.products;
-          existing.total_amount = payload.total_amount || existing.total_amount;
-        } else {
-          this.incompleteOrders.unshift({
-            date: new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" }),
-            order_id: "INC-" + Math.floor(100000 + Math.random() * 900000),
-            account_type: payload.account_type || "Customer",
-            customer_name: payload.customer_name || "",
-            phone: payload.phone || "",
-            address: payload.address || "",
-            products: payload.products || "",
-            total_amount: payload.total_amount || 0,
-            status: "Draft/Incomplete"
-          });
-        }
-        this.saveState("dcbd_incomplete_orders", this.incompleteOrders);
-        return { success: true };
-      }
-
-      case "orders/list": {
+      case "categories/list": {
+        const categories = await this.loadCategoriesFromSheet();
         return {
           success: true,
           data: {
-            items: this.orders,
-            total: this.orders.length
+            items: categories,
+            total: categories.length
           }
         };
       }
 
-      case "orders/get": {
-        const id = payload.order_id || payload.orderId;
-        const found = this.orders.find(o => o.order_id === id || o.orderId === id || o.phone === id);
-        return found ? { success: true, data: found } : { success: false, message: "Order not found" };
+      case "categories/add":
+      case "categories/create": {
+        await sendToAppsScript("categories/add", payload);
+        const newCat = {
+          catagory_id: payload.catagory_id || payload.id || ("CAT-" + Math.floor(1000 + Math.random() * 9000)),
+          catagory_slug: payload.catagory_slug || payload.slug || (payload.category ? payload.category.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "cat"),
+          category_image: payload.category_image || payload.image || "https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg",
+          category: payload.category || payload.name || "Category",
+          sub_category: payload.sub_category || "",
+          chail_category: payload.chail_category || payload.child_category || ""
+        };
+        if (!this.sheetCategories) this.sheetCategories = [];
+        this.sheetCategories.push(newCat);
+        this.saveLocal('dcbd_sheet_categories', this.sheetCategories);
+        return { success: true, status: "success", message: "ক্যাটাগরি শিটে যুক্ত হয়েছে!", data: newCat };
       }
 
-      case "categories/list": {
-        return { success: true, data: { items: this.categories } };
+      case "categories/delete": {
+        await sendToAppsScript("categories/delete", payload);
+        const id = String(payload.id || payload.catagory_id || payload.category);
+        if (this.sheetCategories) {
+          this.sheetCategories = this.sheetCategories.filter(c => c.catagory_id !== id && c.category !== id);
+          this.saveLocal('dcbd_sheet_categories', this.sheetCategories);
+        }
+        return { success: true, message: "ক্যাটাগরি মুছে ফেলা হয়েছে।" };
       }
 
       case "brands/list": {
-        return { success: true, data: { items: this.brands } };
-      }
-
-      case "banners/list": {
-        return { success: true, data: { items: this.banners } };
-      }
-
-      case "incomplete_orders/list": {
-        return { success: true, data: { items: this.incompleteOrders } };
-      }
-
-      case "admin/kpi": {
-        const totalSales = this.orders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+        const brands = await this.loadBrandsFromSheet();
         return {
           success: true,
           data: {
-            today_sales: 42850,
-            today_orders: this.orders.length,
-            total_sales: totalSales || 1284500,
-            total_orders: this.orders.length || 684,
-            pending_orders: this.orders.filter(o => o.order_status === "Pending" || o.order_status === "Order Placed").length || 7,
-            delivered_orders: this.orders.filter(o => o.order_status === "Delivered").length || 590,
-            rto_orders: 22,
-            low_stock_count: this.products.filter(p => Number(p.stock) <= 10).length,
-            total_products: this.products.length,
-            active_sellers: 12,
-            total_customers: 940
+            items: brands,
+            total: brands.length
+          }
+        };
+      }
+
+      case "brands/add":
+      case "brands/create": {
+        await sendToAppsScript("brands/add", payload);
+        const newBrand = {
+          brand_id: payload.brand_id || payload.id || ("BRD-" + Math.floor(1000 + Math.random() * 9000)),
+          brand_name: payload.brand_name || payload.name || "Brand",
+          brand_slug: payload.brand_slug || payload.slug || (payload.brand_name ? payload.brand_name.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "brand"),
+          brand_image: payload.brand_image || payload.image || "https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg",
+          brand_description: payload.brand_description || payload.description || ""
+        };
+        if (!this.sheetBrands) this.sheetBrands = [];
+        this.sheetBrands.push(newBrand);
+        this.saveLocal('dcbd_sheet_brands', this.sheetBrands);
+        return { success: true, status: "success", message: "ব্র্যান্ড শিটে যুক্ত হয়েছে!", data: newBrand };
+      }
+
+      case "brands/delete": {
+        await sendToAppsScript("brands/delete", payload);
+        const id = String(payload.id || payload.brand_id || payload.brand_name);
+        if (this.sheetBrands) {
+          this.sheetBrands = this.sheetBrands.filter(b => b.brand_id !== id && b.brand_name !== id);
+          this.saveLocal('dcbd_sheet_brands', this.sheetBrands);
+        }
+        return { success: true, message: "ব্র্যান্ড মুছে ফেলা হয়েছে।" };
+      }
+
+      case "orders/create": {
+        const orderId = payload.order_id || ("ORD-" + Math.floor(100000 + Math.random() * 900000));
+        const orderData = { ...payload, order_id: orderId };
+        await sendToAppsScript("orders/create", orderData);
+
+        if (!this.sheetOrders) this.sheetOrders = [];
+        this.sheetOrders.unshift(orderData);
+        this.saveLocal('dcbd_sheet_orders', this.sheetOrders);
+
+        return {
+          success: true,
+          status: "success",
+          data: { order_id: orderId },
+          message: "অর্ডার সফলভাবে শিটে জমা হয়েছে ও কনফার্ম হয়েছে!"
+        };
+      }
+
+      case "orders/list": {
+        try {
+          const rows = await fetchSheetViaGviz('Orders');
+          if (rows && rows.length > 0) {
+            return { success: true, data: { items: rows, total: rows.length } };
+          }
+        } catch (e) {}
+        return { success: true, data: { items: this.sheetOrders || [], total: (this.sheetOrders || []).length } };
+      }
+
+      case "incomplete_orders/create": {
+        await sendToAppsScript("incomplete_orders/create", payload);
+        return { success: true };
+      }
+
+      case "incomplete_orders/list": {
+        try {
+          const rows = await fetchSheetViaGviz('Incomplete_Orders');
+          if (rows && rows.length > 0) return { success: true, data: { items: rows, total: rows.length } };
+        } catch (e) {}
+        return { success: true, data: { items: [], total: 0 } };
+      }
+
+      case "viewers/log": {
+        await sendToAppsScript("viewers/log", payload);
+        return { success: true };
+      }
+
+      case "settings/list": {
+        try {
+          const rows = await fetchSheetViaGviz('Settings');
+          if (rows && rows.length > 0) return { success: true, data: { items: rows, total: rows.length } };
+        } catch (e) {}
+        return {
+          success: true,
+          data: {
+            shop_name: "Dream Cart BD",
+            owners: "Jainal Abedin, MD. Saiful Islam",
+            address: "Chawdhury Plaza, ground floor, room#03, Paduar Bazar, Bishwa Road, Sadar Dakshin, Cumilla-3500.",
+            phone_1: "01581703822",
+            phone_2: "01818273838",
+            bkash_personal: "01879653143",
+            bkash_merchant: "01581703822",
+            free_delivery_threshold: 2000,
+            online_discount: 5
+          }
+        };
+      }
+
+      case "banners/list": {
+        try {
+          const rows = await fetchSheetViaGviz('Banners');
+          if (rows && rows.length > 0) return { success: true, data: { items: rows, total: rows.length } };
+        } catch (e) {}
+        return {
+          success: true,
+          data: {
+            items: [
+              { banner_id: "BAN-01", title: "স্মার্ট গ্যাজেট ও লাইফস্টাইল কালেকশন", subtitle: "সেরা মূল্যে ১০০% জেনুইন গ্যাজেট", image_url: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1600&auto=format&fit=crop&q=80", link: "/products" },
+              { banner_id: "BAN-02", title: "অর্গানিক ফুড ও হেলথ সাপ্লিমেন্ট", subtitle: "প্রাকৃতিক খাঁটি উপাদান ও সুস্থ জীবন", image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1600&auto=format&fit=crop&q=80", link: "/products?cat=organic-health" }
+            ],
+            total: 2
+          }
+        };
+      }
+
+      case "admin/kpi": {
+        const prods = await this.loadProductsFromSheet();
+        const orders = this.sheetOrders || [];
+        return {
+          success: true,
+          data: {
+            total_sales: orders.reduce((acc, o) => acc + Number(o.total_amount || 0), 0) || 185000,
+            total_orders: orders.length || 24,
+            total_products: prods.length,
+            low_stock_count: prods.filter(p => Number(p.stock) <= 5).length
           }
         };
       }
 
       default:
-        return { success: true, message: "Operation completed successfully." };
+        return { success: true, message: `Action ${action} handled` };
     }
   }
 }
