@@ -28,13 +28,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci || npm install
+        run: npm install
 
       - name: Build Application
-        run: npm run build
+        run: |
+          npm run build
+          # Copy clean URL routing and hosting files into dist
+          cp 404.html dist/ 2>/dev/null || true
+          cp .htaccess dist/ 2>/dev/null || true
+          cp _redirects dist/ 2>/dev/null || true
+          cp _routes.json dist/ 2>/dev/null || true
+          cp -r products shop cart checkout order-success track favourite wishlist categories brands others-market chat live-chat landing terms privacy customer reseller wholesaler admin dist/ 2>/dev/null || true
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
