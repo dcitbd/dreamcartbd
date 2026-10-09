@@ -1290,3 +1290,130 @@ header.site-header, header {
 .dark .dark\:bg-emerald-950\/40 { background-color: rgba(2, 44, 34, 0.4) !important; }
 .dark .dark\:bg-emerald-950\/30 { background-color: rgba(2, 44, 34, 0.3) !important; }
 .dark .dark\:bg-emerald-950\/20 { background-color: rgba(2, 44, 34, 0.2) !important; }
+
+
+
+
+
+
+/* ==========================================================================
+   ENHANCED SEARCH BAR STYLES
+   ========================================================================== */
+.search-bar-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  border-radius: 9999px;
+  background-color: #f1f5f9;
+  border: 1.5px solid #e2e8f0;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.search-bar-wrap:hover {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
+
+.search-bar-wrap:focus-within {
+  background-color: #ffffff;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15), 0 4px 12px rgba(16, 185, 129, 0.08) !important;
+}
+
+.dark .search-bar-wrap {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.dark .search-bar-wrap:hover {
+  border-color: #475569 !important;
+  background-color: #243248 !important;
+}
+
+.dark .search-bar-wrap:focus-within {
+  background-color: #0f172a !important;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2), 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+.search-preview-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.search-preview-item:hover {
+  background-color: #ecfdf5 !important;
+}
+
+.dark .search-preview-item {
+  border-bottom-color: #1e293b !important;
+}
+
+.dark .search-preview-item:hover {
+  background-color: rgba(6, 78, 59, 0.3) !important;
+}
+
+.search-preview-item img {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.dark .search-preview-item img {
+  border-color: #334155 !important;
+}
+
+/* ==========================================================================
+   ADJUSTABLE FLOATING ACTIONS DOCK
+   ========================================================================== */
+:root {
+  --dock-bg: rgba(255, 255, 255, 0.94);
+  --dock-border: #e2e8f0;
+  --dock-shadow: 0 12px 35px -8px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.05);
+  --dock-btn-bg: #ffffff;
+  --dock-btn-border: #e2e8f0;
+  --dock-btn-hover: #f8fafc;
+}
+
+.dark {
+  --dock-bg: rgba(15, 23, 42, 0.94);
+  --dock-border: #334155;
+  --dock-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.6);
+  --dock-btn-bg: #1e293b;
+  --dock-btn-border: #334155;
+  --dock-btn-hover: #243248;
+}
+
+.floating-dock {
+  background: var(--dock-bg) !important;
+  border: 1px solid var(--dock-border) !important;
+  box-shadow: var(--dock-shadow) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+}
+
+.floating-btn {
+  background: var(--dock-btn-bg) !important;
+  border: 1px solid var(--dock-btn-border) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.floating-btn:hover {
+  background: var(--dock-btn-hover) !important;
+  transform: translateY(-2px) scale(1.05) !important;
+}
+
+.floating-btn:active {
+  transform: scale(0.95) !important;
+}
