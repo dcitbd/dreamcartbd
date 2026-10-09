@@ -176,10 +176,10 @@ export function renderCartPage() {
             <div class="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200 dark:border-emerald-800/50 text-xs space-y-1.5">
               <div class="flex items-center justify-between font-bold text-emerald-800 dark:text-emerald-300">
                 <span>৳২,০০০ শপিংয়ে ফ্রি ডেলিভারি!</span>
-                <span>${subtotal >= 2000 ? '✓ অর্জিত!' : `আরও ৳${2000 - subtotal}`}</span>
+                <span id="cart-free-shipping-notice">${subtotal >= 2000 ? '✓ অর্জিত!' : `আরও ৳${2000 - subtotal}`}</span>
               </div>
               <div class="w-full bg-emerald-200 dark:bg-emerald-900 rounded-full h-1.5 overflow-hidden">
-                <div class="bg-emerald-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, (subtotal / 2000) * 100)}%"></div>
+                <div id="cart-progress-bar" class="bg-emerald-600 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, (subtotal / 2000) * 100)}%"></div>
               </div>
             </div>
 
@@ -187,22 +187,20 @@ export function renderCartPage() {
             <div class="space-y-2 text-xs text-slate-600 dark:text-slate-400 pt-1">
               <div class="flex justify-between">
                 <span>পণ্যের মোট মূল্য:</span>
-                <span class="font-bold text-slate-900 dark:text-white">${formatCurrency(subtotal)}</span>
+                <span id="cart-subtotal" class="font-bold text-slate-900 dark:text-white">${formatCurrency(subtotal)}</span>
               </div>
 
               <div class="flex justify-between">
                 <span>ডেলিভারি চার্জ:</span>
-                <span class="font-bold text-slate-900 dark:text-white">
+                <span id="cart-delivery-charge" class="font-bold text-slate-900 dark:text-white">
                   ${isFreeDelivery ? '<span class="text-emerald-600 font-bold">ফ্রি (৳০)</span>' : formatCurrency(deliveryFee)}
                 </span>
               </div>
 
-              ${onlineDiscount > 0 ? `
-                <div class="flex justify-between text-emerald-600 font-bold">
-                  <span>অনলাইন পেমেন্ট ছাড় (৫%):</span>
-                  <span>-${formatCurrency(onlineDiscount)}</span>
-                </div>
-              ` : ""}
+              <div id="cart-online-discount-row" class="flex justify-between text-emerald-600 font-bold ${onlineDiscount > 0 ? '' : 'hidden'}">
+                <span>অনলাইন পেমেন্ট ছাড় (৫%):</span>
+                <span id="cart-online-discount-amount">-${formatCurrency(onlineDiscount)}</span>
+              </div>
 
               ${couponDiscount > 0 ? `
                 <div class="flex justify-between text-indigo-600 font-bold">
@@ -213,7 +211,7 @@ export function renderCartPage() {
 
               <div class="border-t border-slate-200 dark:border-slate-800 pt-3 flex justify-between items-baseline text-sm sm:text-base font-black text-slate-900 dark:text-white">
                 <span>সর্বমোট:</span>
-                <span class="text-emerald-600 dark:text-emerald-400 font-bold text-lg">${formatCurrency(grandTotal)}</span>
+                <span id="cart-grand-total" class="text-emerald-600 dark:text-emerald-400 font-bold text-lg font-mono">${formatCurrency(grandTotal)}</span>
               </div>
             </div>
 

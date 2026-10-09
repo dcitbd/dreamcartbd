@@ -8,6 +8,7 @@
 
 import { apiClient } from '../../api/client.js';
 import { formatCurrency } from '../../utils/format.js';
+import { renderVoucher } from '../../components/Voucher.js';
 
 export async function renderTrackOrderPage(orderIdOrPhone = "") {
   let matchedOrder = null;
@@ -140,6 +141,17 @@ export async function renderTrackOrderPage(orderIdOrPhone = "") {
           </div>
         </div>
 
+        <!-- Action Toolbar: Print/View Voucher Button -->
+        <div class="pt-2 flex flex-wrap items-center justify-center gap-3 print:hidden">
+          <button 
+            type="button"
+            class="btn-secondary text-xs py-2 px-4 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 font-bold hover:text-emerald-600"
+            onclick="const v = document.getElementById('track-voucher-section'); if(v) { v.classList.toggle('hidden'); if(!v.classList.contains('hidden')) v.scrollIntoView({ behavior: 'smooth' }); }"
+          >
+            <span>📄</span> অফিশিয়াল ইনভয়েস ভাউচার দেখুন / ডাউনলোড
+          </button>
+        </div>
+
         <!-- Help Desk Footer -->
         <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between text-xs text-slate-500 gap-2">
           <span>ডেলিভারি সংক্রান্ত সহায়তায়:</span>
@@ -153,6 +165,14 @@ export async function renderTrackOrderPage(orderIdOrPhone = "") {
           </div>
         </div>
 
+      </div>
+
+      <!-- Collapsible Official Invoice Voucher Section -->
+      <div id="track-voucher-section" class="hidden space-y-3 pt-2">
+        <div class="text-center print:hidden">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-400">অফিশিয়াল ডিজিটাল ইনভয়েস ভাউচার</span>
+        </div>
+        ${renderVoucher(order)}
       </div>
 
     </div>

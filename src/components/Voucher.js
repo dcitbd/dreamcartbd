@@ -1,5 +1,10 @@
 /**
  * DREAM CART BD — OFFICIAL INVOICE / VOUCHER COMPONENT
+ * Implements:
+ * - Centered subtle watermark logo behind content without blocking text
+ * - Dynamic order calculation (subtotal, delivery fee, grand total)
+ * - Barcode tracker
+ * - Print / download support
  */
 
 import { formatCurrency } from '../utils/format.js';
@@ -17,20 +22,25 @@ export function renderVoucher(order) {
   ];
 
   const subtotal = items.reduce((s, it) => s + (Number(it.price) * Number(it.quantity)), 0);
-  const totalAmount = Number(order.total_amount || subtotal);
-  const deliveryFee = totalAmount >= 2000 ? 0 : 90;
+  const totalAmount = Number(order.total_amount !== undefined ? order.total_amount : subtotal);
+  const deliveryFee = order.delivery_fee !== undefined 
+    ? Number(order.delivery_fee) 
+    : (order.delivery_charge !== undefined 
+        ? Number(order.delivery_charge) 
+        : (subtotal >= 2000 ? 0 : Math.max(0, totalAmount - subtotal)));
+
   const orderId = order.order_id || order.orderId || "ORD-" + Math.floor(100000 + Math.random() * 900000);
   const dateStr = order.date || new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" });
 
   return `
     <div class="voucher-wrapper bg-white text-slate-900 rounded-3xl border border-slate-200/90 shadow-xl p-6 sm:p-10 max-w-2xl mx-auto relative overflow-hidden font-sans my-6 print:m-0 print:p-6 print:border-none print:shadow-none">
       
-      <!-- Watermark Logo -->
-      <div class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.04] select-none z-0">
+      <!-- Watermark Logo (Center faint watermark behind text) -->
+      <div class="voucher-watermark pointer-events-none select-none z-0">
         <img 
           src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" 
           alt="Watermark" 
-          class="w-96 h-96 object-contain"
+          class="voucher-watermark-img"
         />
       </div>
 

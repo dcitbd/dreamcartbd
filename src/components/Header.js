@@ -25,7 +25,7 @@ export function renderHeader() {
 
   return `
     <!-- Top Notice Bar (Offer, Contact, Free Delivery Alert) -->
-    <div class="notice-bar bg-gradient-to-r from-emerald-950 via-emerald-800 to-teal-950 text-white text-xs py-2 px-3 sm:px-4 shadow-sm relative z-50">
+    <div class="notice-bar bg-slate-900 dark:bg-slate-950 text-white text-xs py-2 px-3 sm:px-4 border-b border-emerald-800/40 relative z-50">
       <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
         <div class="flex items-center gap-2 text-center md:text-left text-[11px] sm:text-xs">
           <span class="bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded text-[10px] tracking-wider uppercase shadow-xs">নোটিশ</span>
@@ -50,7 +50,7 @@ export function renderHeader() {
     </div>
 
     <!-- Main Navigation Bar -->
-    <header class="sticky top-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 transition-colors shadow-xs">
+    <header class="sticky top-0 z-40 site-header bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors shadow-xs">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3 sm:gap-6">
         
         <!-- Logo + Shop Name -->
@@ -60,7 +60,7 @@ export function renderHeader() {
               src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10" 
               alt="Dream Cart BD Logo" 
               class="w-full h-full object-contain rounded-lg"
-              onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';"
+              onerror="this.onerror=null; this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';"
             />
           </div>
           <div class="flex flex-col">
@@ -83,7 +83,7 @@ export function renderHeader() {
               id="global-search-input"
               placeholder="পণ্য, ক্যাটাগরি, ব্র্যান্ড বা SKU দিয়ে সার্চ করুন..." 
               autocomplete="off"
-              class="w-full pl-10 pr-24 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-100/90 dark:hover:bg-slate-800/90 focus:bg-white dark:focus:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-700 focus:border-emerald-500 text-xs sm:text-sm text-slate-800 dark:text-white outline-none transition shadow-inner"
+              class="w-full pl-10 pr-24 py-2 bg-slate-100 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-700 focus:border-emerald-500 text-xs sm:text-sm text-slate-800 dark:text-white outline-none transition shadow-inner"
             />
             <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -162,7 +162,7 @@ export function renderHeader() {
               ` : `
                 <a href="/customer/login" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Customer Login</a>
                 <a href="/reseller/login" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Reseller Hub</a>
-                <a href="/wholesaler/login" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Wholesaler Hub</a>
+                <a href="/wholesaler/login" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Wholesale Portal</a>
                 <div class="border-t border-slate-100 dark:border-slate-800 my-1"></div>
                 <a href="/admin/login" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 font-semibold">Admin / Worker Login</a>
               `}
@@ -176,8 +176,8 @@ export function renderHeader() {
             title="${isDark ? 'লাইট মোড চালু করুন' : 'ডার্ক মোড চালু করুন'}"
             aria-label="Toggle Dark Mode"
           >
-            <span class="dark:hidden text-base">🌙</span>
-            <span class="hidden dark:inline text-base">☀️</span>
+            <span class="dark-hidden text-base">🌙</span>
+            <span class="dark-inline text-base">☀️</span>
           </button>
 
           <!-- Mobile Hamburger Toggle -->
@@ -194,7 +194,7 @@ export function renderHeader() {
       </div>
 
       <!-- Mobile Search Bar (under header for small mobile screens) -->
-      <div class="md:hidden px-4 pb-2.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+      <div class="md:hidden px-4 pb-2.5 pt-1 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
         <div class="relative w-full">
           <input 
             type="text" 
@@ -225,8 +225,7 @@ export function renderHeader() {
         <div class="border-t border-slate-100 dark:border-slate-800 my-2"></div>
         <a href="/customer/login" class="block py-2 text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600">👤 Customer Login / Register</a>
         <a href="/reseller/login" class="block py-2 text-indigo-600 dark:text-indigo-400 font-bold">💼 Reseller Portal</a>
-        <a href="/wholesaler/login" class="block py-2 text-amber-600 dark:text-amber-400 font-bold">📦 Wholesaler Portal</a>
-        <a href="/admin/login" class="block py-2 text-slate-500 font-bold">⚙️ Admin / Worker Portal</a>
+        <a href="/wholesaler/login" class="block py-2 text-amber-600 dark:text-amber-400 font-bold">📦 Wholesale Portal</a>
       </div>
 
     </header>

@@ -17,8 +17,33 @@ import { favouriteStore } from '../../store/favouriteStore.js';
 import { renderProductCard } from '../../components/ProductCard.js';
 
 export async function renderProductDetailPage(slugOrId) {
-  const res = await apiClient.request("products/details", { slug: slugOrId, id: slugOrId });
-  const product = res.data;
+  const cleanId = (slugOrId || '').toString().trim();
+  let decodedId = cleanId;
+  try { decodedId = decodeURIComponent(cleanId); } catch(e){}
+
+  let res = await apiClient.request("products/details", { slug: cleanId, id: cleanId });
+  let product = res.data;
+
+  if (!product && decodedId !== cleanId) {
+    res = await apiClient.request("products/details", { slug: decodedId, id: decodedId });
+    product = res.data;
+  }
+
+  if (!product) {
+    const all = await apiClient.loadProductsFromSheet();
+    const target = cleanId.toLowerCase();
+    const decodedTarget = decodedId.toLowerCase();
+    product = all.find(p => {
+      const pId = (p.product_id || '').toString().trim().toLowerCase();
+      const sku = (p.sku || '').toString().trim().toLowerCase();
+      const slug = (p.slug || '').toString().trim().toLowerCase();
+      const name = (p.name || p.p_name || '').toString().trim().toLowerCase();
+      return pId === target || pId === decodedTarget ||
+             sku === target || sku === decodedTarget ||
+             slug === target || slug === decodedTarget ||
+             name === target || name === decodedTarget;
+    });
+  }
 
   if (!product) {
     return `
@@ -94,7 +119,7 @@ export async function renderProductDetailPage(slugOrId) {
               id="detail-main-img"
               src="${mainImage}" 
               alt="${product.name}" 
-              class="w-full h-full object-cover transition-all duration-300"
+              class="w-full h-full object-cover transition-all duration-300" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80';"
             />
             
             ${discountPercent > 0 ? `

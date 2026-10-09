@@ -338,26 +338,24 @@ export function renderCheckoutPage() {
             <div class="space-y-2 text-xs text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3">
               <div class="flex justify-between">
                 <span>পণ্যের মোট মূল্য (Subtotal):</span>
-                <span class="font-bold text-slate-900 dark:text-white">${formatCurrency(subtotal)}</span>
+                <span id="summary-subtotal" class="font-bold text-slate-900 dark:text-white">${formatCurrency(subtotal)}</span>
               </div>
 
               <div class="flex justify-between">
                 <span>ডেলিভারি চার্জ:</span>
-                <span class="font-bold text-slate-900 dark:text-white">
-                  ${isFreeDelivery ? '<span class="text-emerald-600 font-bold">ফ্রি (৳০)</span>' : formatCurrency(deliveryFee)}
+                <span id="summary-delivery-charge" class="font-bold text-slate-900 dark:text-white">
+                  ${isFreeDelivery ? '<span class="text-emerald-600 dark:text-emerald-400 font-bold">ফ্রি (৳০)</span>' : formatCurrency(deliveryFee)}
                 </span>
               </div>
 
-              ${onlineDiscount > 0 ? `
-                <div class="flex justify-between text-emerald-600 font-bold">
-                  <span>অনলাইন পেমেন্ট ৫% ছাড়:</span>
-                  <span>-${formatCurrency(onlineDiscount)}</span>
-                </div>
-              ` : ""}
+              <div id="summary-online-discount-row" class="flex justify-between text-emerald-600 font-bold ${onlineDiscount > 0 ? '' : 'hidden'}">
+                <span>অনলাইন পেমেন্ট ৫% ছাড়:</span>
+                <span id="summary-online-discount-amount">-${formatCurrency(onlineDiscount)}</span>
+              </div>
 
               <div class="border-t border-slate-200 dark:border-slate-800 pt-3 flex justify-between items-baseline text-base font-black text-slate-900 dark:text-white">
                 <span>সর্বমোট প্রদেয়:</span>
-                <span class="text-emerald-600 dark:text-emerald-400 font-bold text-xl">${formatCurrency(grandTotal)}</span>
+                <span id="summary-grand-total" class="text-emerald-600 dark:text-emerald-400 font-bold text-xl font-mono">${formatCurrency(grandTotal)}</span>
               </div>
             </div>
 
@@ -365,9 +363,9 @@ export function renderCheckoutPage() {
             <button 
               type="submit" 
               id="btn-confirm-order" 
-              class="btn-primary w-full py-3.5 text-center text-sm font-black shadow-lg flex items-center justify-center gap-2"
+              class="btn-primary w-full py-3.5 text-center text-sm font-black shadow-lg flex items-center justify-center gap-2 transition active:scale-98"
             >
-              <span>✓</span> অর্ডার নিশ্চিত করুন (${formatCurrency(grandTotal)})
+              <span>✓</span> <span id="btn-confirm-order-text">অর্ডার নিশ্চিত করুন (${formatCurrency(grandTotal)})</span>
             </button>
 
             <div class="text-center text-[10px] text-slate-400 leading-tight">

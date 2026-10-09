@@ -50,7 +50,7 @@ export function renderProductCard(product) {
   const brandName = product.brand || "Dream Cart BD";
   const sku = product.sku || product.product_id;
   const productName = product.name || product.p_name || "পণ্য";
-  const slug = product.slug || product.product_id;
+  const slug = product.slug || product.product_id || product.sku || "prod";
 
   // WhatsApp Message payloads
   const pageUrl = window.location.origin + "/product/" + slug;
@@ -62,7 +62,7 @@ export function renderProductCard(product) {
     <div class="product-card group relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-sm hover:shadow-card-hover transition-all duration-300 flex flex-col overflow-hidden" data-product-id="${product.product_id}">
       
       <!-- Product Image with badges & Love icon in front -->
-      <div class="relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-pointer card-img-click" data-slug="${slug}">
+      <div class="relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-pointer card-img-click" data-slug="${slug}" data-product-id="${product.product_id}">
         <img 
           src="${thumbnail}" 
           alt="${productName}" 
@@ -119,7 +119,7 @@ export function renderProductCard(product) {
           <!-- Product Name (2 line only clamp) -->
           <h3 
             class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition line-clamp-2 leading-snug cursor-pointer card-img-click mb-2" 
-            data-slug="${slug}"
+            data-slug="${slug}" data-product-id="${product.product_id}"
             title="${productName}"
           >
             ${productName}
