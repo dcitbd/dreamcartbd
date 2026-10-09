@@ -1,15 +1,10 @@
 /**
  * DREAM CART BD — MAIN NAVIGATION BAR (Header.js)
- * Implements user requirements:
- * - Top Notice / Announcement bar (Offer, Contact, Free shipping notice)
- * - logo + shop name
- * - Live predictive search bar with interactive instant preview cards
- * - Products link
- * - Cart button with live count badge
- * - Favourite Icon with live count badge
- * - Customer Login / Profile menu
- * - Darkmode toggle icon with persistence
- * - Fully responsive for mobile, tablet, laptop, desktop, and TV
+ * Implements:
+ * - Premium Pill-shaped search bar with ambient focus glow
+ * - Modern action icons with live badges
+ * - Darkmode toggle
+ * - Fully responsive for mobile, tablet, and desktop
  */
 
 import { cartStore } from '../store/cartStore.js';
@@ -20,7 +15,6 @@ export function renderHeader() {
   const cartCount = cartStore.getCount();
   const favCount = favouriteStore.getCount();
   const isAuthenticated = authStore.isAuthenticated();
-  const user = authStore.user;
   const isDark = document.documentElement.classList.contains('dark');
 
   return `
@@ -76,25 +70,31 @@ export function renderHeader() {
         </a>
 
         <!-- Live Predictive Search Bar with Dropdown Preview -->
-        <div class="hidden md:flex flex-1 max-w-xl relative search-container">
-          <div class="w-full relative">
+        <div class="hidden md:flex flex-1 max-w-xl mx-2 lg:mx-6 relative search-container">
+          <div class="search-bar-wrap">
+            <div class="pl-4 pr-1.5 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+            </div>
             <input 
               type="text" 
               id="global-search-input"
-              placeholder="পণ্য, ক্যাটাগরি, ব্র্যান্ড বা SKU দিয়ে সার্চ করুন..." 
+              placeholder="পণ্য, ব্র্যান্ড বা মডেল লিখে খুঁজুন..." 
               autocomplete="off"
-              class="w-full pl-10 pr-24 py-2 bg-slate-100 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 rounded-full border border-slate-200 dark:border-slate-700 focus:border-emerald-500 text-xs sm:text-sm text-slate-800 dark:text-white outline-none transition shadow-inner"
+              class="w-full py-2.5 pr-28 text-xs sm:text-sm bg-transparent text-slate-800 dark:text-white placeholder-slate-400 outline-none"
             />
-            <svg class="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-            <button id="global-search-btn" class="absolute right-1 top-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-full transition shadow-xs">
-              Search
+            <button 
+              id="global-search-btn" 
+              class="absolute right-1.5 top-1.5 bottom-1.5 bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs px-4 rounded-full transition-all duration-200 shadow-sm flex items-center gap-1.5 active:scale-95"
+            >
+              <span>সার্চ</span>
+              <span class="text-[11px] opacity-80">🔍</span>
             </button>
           </div>
 
           <!-- Live Search Preview Popup Container -->
-          <div id="search-preview-popup" class="hidden absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden z-50 max-h-96 overflow-y-auto">
+          <div id="search-preview-popup" class="hidden absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto">
             <!-- Dynamically populated via JavaScript -->
           </div>
         </div>
@@ -194,23 +194,25 @@ export function renderHeader() {
       </div>
 
       <!-- Mobile Search Bar (under header for small mobile screens) -->
-      <div class="md:hidden px-4 pb-2.5 pt-1 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div class="relative w-full">
+      <div class="md:hidden px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <div class="search-bar-wrap">
+          <div class="pl-3.5 pr-1.5 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
           <input 
             type="text" 
             id="mobile-search-input"
-            placeholder="পণ্য সার্চ করুন..." 
+            placeholder="পণ্য বা মডেল সার্চ করুন..." 
             autocomplete="off"
-            class="w-full pl-9 pr-16 py-2 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-white outline-none"
+            class="w-full py-2 pr-20 text-xs bg-transparent text-slate-800 dark:text-white placeholder-slate-400 outline-none"
           />
-          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-          </svg>
-          <button id="mobile-search-btn" class="absolute right-1 top-1 bg-emerald-600 text-white text-[11px] font-bold px-3 py-1 rounded-full">
-            Search
+          <button id="mobile-search-btn" class="absolute right-1 top-1 bottom-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[11px] font-bold px-3.5 rounded-full shadow-xs active:scale-95 transition-transform flex items-center gap-1">
+            <span>সার্চ</span>
           </button>
         </div>
-        <div id="mobile-search-preview-popup" class="hidden mt-1 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl overflow-hidden z-50 max-h-72 overflow-y-auto"></div>
+        <div id="mobile-search-preview-popup" class="hidden mt-1.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto"></div>
       </div>
 
       <!-- Mobile Navigation Drawer / Menu -->
