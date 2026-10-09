@@ -60,7 +60,7 @@ function fetchSheetViaGviz(sheetName) {
 
     const cbName = 'gviz_cb_' + Math.random().toString(36).substr(2, 9);
     const script = document.createElement('script');
-    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=responseHandler:${cbName}&sheet=${encodeURIComponent(sheetName)}&headers=1`;
+    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json&tqx=responseHandler:${cbName}&sheet=${encodeURIComponent(sheetName)}&headers=1`;
 
     let timer = setTimeout(() => {
       cleanup();
@@ -168,13 +168,11 @@ async function sendToAppsScript(action, payload) {
     const dataStr = JSON.stringify(payload);
     if (dataStr.length < 1800) {
       const res = await fetchAppsScriptViaJsonp(action, { data: dataStr });
-      if (res && (res.status === 'success' || res.success)) {
+      if (res && res.status === 'success') {
         return res;
       }
     }
-  } catch (e) {}
 
-  try {
     const bodyParams = new URLSearchParams();
     bodyParams.append('action', action);
     bodyParams.append('payload', typeof payload === 'string' ? payload : JSON.stringify(payload));
@@ -195,6 +193,10 @@ async function sendToAppsScript(action, payload) {
 }
 
 class ApiClient {
+  get products() {
+    return this.sheetProducts || this.loadLocal('dcbd_sheet_products', []) || [];
+  }
+
   constructor() {
     this.endpoint = APPS_SCRIPT_URL;
     this.spreadsheetId = SPREADSHEET_ID;
@@ -325,7 +327,19 @@ class ApiClient {
     } catch (e) {}
   }
 
-  async loadCategoriesFromSheet() {
+  async loadCategoriesFromSheet(forceRefresh = false) {
+    if (!this.sheetCategories || this.sheetCategories.length === 0) {
+      const cached = this.loadLocal('dcbd_sheet_categories', null);
+      if (cached && cached.length > 0) {
+        this.sheetCategories = cached;
+      }
+    }
+
+    if (!forceRefresh && this.sheetCategories && this.sheetCategories.length > 0) {
+      this.syncCategoriesFromSheetAsync();
+      return this.sheetCategories;
+    }
+
     try {
       const rows = await fetchSheetViaGviz('Categories');
       if (rows && rows.length > 0) {
@@ -349,7 +363,37 @@ class ApiClient {
     return this.sheetCategories;
   }
 
-  async loadBrandsFromSheet() {
+  async syncCategoriesFromSheetAsync() {
+    try {
+      const rows = await fetchSheetViaGviz('Categories');
+      if (rows && rows.length > 0) {
+        const mapped = rows.map(r => ({
+          catagory_id: r.catagory_id || r.col_0,
+          catagory_slug: r.catagory_slug || r.col_1 || (r.category || r.col_3 || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          category_image: r.category_image || r.col_2 || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+          category: r.category || r.col_3 || 'Category',
+          sub_category: r.sub_category || r.col_4 || '',
+          chail_category: r.chail_category || r.col_5 || ''
+        }));
+        this.sheetCategories = mapped;
+        this.saveLocal('dcbd_sheet_categories', mapped);
+      }
+    } catch (e) {}
+  }
+
+  async loadBrandsFromSheet(forceRefresh = false) {
+    if (!this.sheetBrands || this.sheetBrands.length === 0) {
+      const cached = this.loadLocal('dcbd_sheet_brands', null);
+      if (cached && cached.length > 0) {
+        this.sheetBrands = cached;
+      }
+    }
+
+    if (!forceRefresh && this.sheetBrands && this.sheetBrands.length > 0) {
+      this.syncBrandsFromSheetAsync();
+      return this.sheetBrands;
+    }
+
     try {
       const rows = await fetchSheetViaGviz('Brands');
       if (rows && rows.length > 0) {
@@ -372,6 +416,23 @@ class ApiClient {
     return this.sheetBrands;
   }
 
+  async syncBrandsFromSheetAsync() {
+    try {
+      const rows = await fetchSheetViaGviz('Brands');
+      if (rows && rows.length > 0) {
+        const mapped = rows.map(r => ({
+          brand_id: r.brand_id || r.col_0,
+          brand_image: r.brand_image || r.col_1 || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+          brand_name: r.brand_name || r.col_2 || 'Brand',
+          brand_slug: r.brand_slug || r.col_3 || (r.brand_name || r.col_2 || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          brand_description: r.brand_description || r.col_4 || ''
+        }));
+        this.sheetBrands = mapped;
+        this.saveLocal('dcbd_sheet_brands', mapped);
+      }
+    } catch (e) {}
+  }
+
   async request(action, payload = {}) {
     switch (action) {
       case "products/list": {
@@ -379,35 +440,19 @@ class ApiClient {
         let items = [...products];
 
         if (payload.category) {
-          const catLower = payload.category.toLowerCase().trim();
-          items = items.filter(p => 
-            (p.category && p.category.toLowerCase() === catLower) ||
-            (p.sub_category && p.sub_category.toLowerCase() === catLower) ||
-            (p.child_category && p.child_category.toLowerCase() === catLower)
-          );
+          items = items.filter(p => p.category && p.category.toLowerCase() === payload.category.toLowerCase());
         }
         if (payload.brand) {
-          const brandLower = payload.brand.toLowerCase().trim();
-          items = items.filter(p => p.brand && p.brand.toLowerCase() === brandLower);
-        }
-        if (payload.in_stock) {
-          items = items.filter(p => Number(p.stock) > 0);
+          items = items.filter(p => p.brand && p.brand.toLowerCase() === payload.brand.toLowerCase());
         }
         if (payload.search) {
-          const q = payload.search.toLowerCase().trim();
+          const q = payload.search.toLowerCase();
           items = items.filter(p => 
-            p.name.toLowerCase().includes(q) || 
-            (p.sku && p.sku.toLowerCase().includes(q)) ||
+            p.name.toLowerCase().includes(q) ||
+            p.sku.toLowerCase().includes(q) ||
             (p.brand && p.brand.toLowerCase().includes(q)) ||
             (p.category && p.category.toLowerCase().includes(q))
           );
-        }
-        if (payload.sort === "low_high") {
-          items.sort((a, b) => a.selling_price - b.selling_price);
-        } else if (payload.sort === "high_low") {
-          items.sort((a, b) => b.selling_price - a.selling_price);
-        } else if (payload.sort === "name_asc") {
-          items.sort((a, b) => a.name.localeCompare(b.name));
         }
 
         return {
@@ -499,21 +544,9 @@ class ApiClient {
         return {
           success: true,
           status: "success",
-          message: "পণ্যটি সরাসরি গুগল শিটে সফলভাবে যুক্ত হয়েছে!",
-          data: newProd
+          data: newProd,
+          message: "পণ্য সফলভাবে শিটে যুক্ত হয়েছে!"
         };
-      }
-
-      case "products/delete": {
-        await sendToAppsScript("products/delete", payload);
-        const idToDelete = String(payload.id || payload.sku || payload.slug);
-        if (this.sheetProducts) {
-          this.sheetProducts = this.sheetProducts.filter(p => 
-            p.product_id !== idToDelete && p.sku !== idToDelete && p.slug !== idToDelete
-          );
-          this.saveLocal('dcbd_sheet_products', this.sheetProducts);
-        }
-        return { success: true, message: "পণ্যটি শিট থেকে সরানো হয়েছে।" };
       }
 
       case "categories/list": {
@@ -591,7 +624,7 @@ class ApiClient {
         return { success: true, message: "ব্র্যান্ড মুছে ফেলা হয়েছে।" };
       }
 
-            case "orders/get":
+      case "orders/get":
       case "orders/details": {
         const queryId = (payload.orderId || payload.order_id || payload.id || payload.phone || '').toString().trim().toLowerCase();
         
@@ -679,7 +712,15 @@ class ApiClient {
           const rows = await fetchSheetViaGviz('Incomplete_Orders');
           if (rows && rows.length > 0) return { success: true, data: { items: rows, total: rows.length } };
         } catch (e) {}
-        return { success: true, data: { items: [], total: 0 } };
+        return { success: true, data: { items: [] } };
+      }
+
+      case "viewers/list": {
+        try {
+          const rows = await fetchSheetViaGviz('Viewers');
+          if (rows && rows.length > 0) return { success: true, data: { items: rows, total: rows.length } };
+        } catch (e) {}
+        return { success: true, data: { items: [] } };
       }
 
       case "viewers/log": {
@@ -690,39 +731,40 @@ class ApiClient {
       case "settings/list": {
         try {
           const rows = await fetchSheetViaGviz('Settings');
-          if (rows && rows.length > 0) return { success: true, data: { items: rows, total: rows.length } };
+          if (rows && rows.length > 0) return { success: true, data: rows };
         } catch (e) {}
-        return {
-          success: true,
-          data: {
-            shop_name: "Dream Cart BD",
-            owners: "Jainal Abedin, MD. Saiful Islam",
-            address: "Chawdhury Plaza, ground floor, room#03, Paduar Bazar, Bishwa Road, Sadar Dakshin, Cumilla-3500.",
-            phone_1: "01581703822",
-            phone_2: "01818273838",
-            bkash_personal: "01879653143",
-            bkash_merchant: "01581703822",
-            free_delivery_threshold: 2000,
-            online_discount: 5
-          }
-        };
+        return { success: true, data: [] };
       }
 
       case "banners/list": {
+        const defaultBanners = [
+          { banner_id: "BAN-01", title: "স্মার্ট গ্যাজেট ও লাইফস্টাইল কালেকশন", subtitle: "সেরা মূল্যে ১০০% জেনুইন গ্যাজেট", image_url: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1600&auto=format&fit=crop&q=80", link_url: "/products", tag: "বিশেষ অফার", button_text: "এখনই অর্ডার করুন" },
+          { banner_id: "BAN-02", title: "অর্গানিক ফুড ও হেলথ সাপ্লিমেন্ট", subtitle: "প্রাকৃতিক খাঁটি উপাদান ও সুস্থ জীবন", image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1600&auto=format&fit=crop&q=80", link_url: "/products?cat=organic-health", tag: "স্বাস্থ্যকর জীবন", button_text: "কালেকশন দেখুন" }
+        ];
+
+        let banners = this.sheetBanners || this.loadLocal('dcbd_sheet_banners', null);
+        if (banners && banners.length > 0) {
+          fetchSheetViaGviz('Banners').then(rows => {
+            if (rows && rows.length > 0) {
+              this.sheetBanners = rows;
+              this.saveLocal('dcbd_sheet_banners', rows);
+            }
+          }).catch(() => {});
+          return { success: true, data: { items: banners, total: banners.length } };
+        }
+
         try {
           const rows = await fetchSheetViaGviz('Banners');
-          if (rows && rows.length > 0) return { success: true, data: { items: rows, total: rows.length } };
-        } catch (e) {}
-        return {
-          success: true,
-          data: {
-            items: [
-              { banner_id: "BAN-01", title: "স্মার্ট গ্যাজেট ও লাইফস্টাইল কালেকশন", subtitle: "সেরা মূল্যে ১০০% জেনুইন গ্যাজেট", image_url: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1600&auto=format&fit=crop&q=80", link: "/products" },
-              { banner_id: "BAN-02", title: "অর্গানিক ফুড ও হেলথ সাপ্লিমেন্ট", subtitle: "প্রাকৃতিক খাঁটি উপাদান ও সুস্থ জীবন", image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1600&auto=format&fit=crop&q=80", link: "/products?cat=organic-health" }
-            ],
-            total: 2
+          if (rows && rows.length > 0) {
+            this.sheetBanners = rows;
+            this.saveLocal('dcbd_sheet_banners', rows);
+            return { success: true, data: { items: rows, total: rows.length } };
           }
-        };
+        } catch (e) {}
+
+        this.sheetBanners = defaultBanners;
+        this.saveLocal('dcbd_sheet_banners', defaultBanners);
+        return { success: true, data: { items: defaultBanners, total: defaultBanners.length } };
       }
 
       case "admin/kpi": {
@@ -731,16 +773,16 @@ class ApiClient {
         return {
           success: true,
           data: {
-            total_sales: orders.reduce((acc, o) => acc + Number(o.total_amount || 0), 0) || 185000,
-            total_orders: orders.length || 24,
+            total_sales: orders.reduce((s, o) => s + Number(o.total_amount || 0), 0),
+            total_orders: orders.length,
             total_products: prods.length,
-            low_stock_count: prods.filter(p => Number(p.stock) <= 5).length
+            total_customers: new Set(orders.map(o => o.phone).filter(Boolean)).size
           }
         };
       }
 
       default:
-        return { success: true, message: `Action ${action} handled` };
+        return { success: false, message: `অজানা অ্যাকশন: ${action}` };
     }
   }
 }
