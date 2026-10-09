@@ -5,7 +5,7 @@
  * - Auto-sliding banners (unlimited banners supported)
  * - Extra Notice / opportunities (small card system)
  * - Brands small cards (from Brands sheet)
- * - Category product show (6*2 auto sliding / grid) for all categories from sheet
+ * - Category product show: Unique categories only (each category appears once, products appear once)
  * - Responsive layout for mobile, tablet, laptop, and TV
  */
 
@@ -24,6 +24,71 @@ export async function renderHomePage() {
   const categories = (catRes.data && catRes.data.items) || [];
   const brands = (brandRes.data && brandRes.data.items) || [];
   const banners = (bannerRes.data && bannerRes.data.items) || [];
+
+  // Group and deduplicate by Main Category name
+  // Each unique category name appears EXACTLY ONCE on the homepage!
+  const uniqueCategoryMap = new Map();
+
+  // 1. First populate from categories sheet (preserving order, subcategories and images)
+  categories.forEach(c => {
+    const rawName = (c.category || '').trim();
+    if (!rawName || rawName.toLowerCase() === 'test id') return;
+
+    const key = rawName.toLowerCase();
+    if (!uniqueCategoryMap.has(key)) {
+      uniqueCategoryMap.set(key, {
+        name: rawName,
+        category_image: c.category_image || '',
+        subCategories: new Set(),
+        products: []
+      });
+    }
+
+    const catObj = uniqueCategoryMap.get(key);
+    if (c.sub_category) {
+      c.sub_category.split(/[,|\n]/).map(s => s.trim()).filter(Boolean).forEach(s => catObj.subCategories.add(s));
+    }
+    if (c.chail_category || c.child_category) {
+      (c.chail_category || c.child_category).split(/[,|\n]/).map(s => s.trim()).filter(Boolean).forEach(s => catObj.subCategories.add(s));
+    }
+    if (c.category_image && !catObj.category_image) {
+      catObj.category_image = c.category_image;
+    }
+  });
+
+  // 2. Map all products into their respective category and collect product-level subcategories
+  products.forEach(p => {
+    const rawCat = (p.category || '').trim();
+    if (!rawCat || rawCat.toLowerCase() === 'test id') return;
+
+    const key = rawCat.toLowerCase();
+    if (!uniqueCategoryMap.has(key)) {
+      uniqueCategoryMap.set(key, {
+        name: rawCat,
+        category_image: p.thumbnail || '',
+        subCategories: new Set(),
+        products: []
+      });
+    }
+
+    const catObj = uniqueCategoryMap.get(key);
+    // Ensure product is added only once to this category
+    const pId = p.product_id || p.sku || p.name;
+    const exists = catObj.products.some(it => (it.product_id && it.product_id === pId) || (it.sku && it.sku === p.sku));
+    if (!exists) {
+      catObj.products.push(p);
+    }
+
+    if (p.sub_category && p.sub_category.trim()) {
+      catObj.subCategories.add(p.sub_category.trim());
+    }
+    if (p.child_category && p.child_category.trim()) {
+      catObj.subCategories.add(p.child_category.trim());
+    }
+  });
+
+  // 3. Filter only categories that actually have products (each category appears ONLY ONCE)
+  const uniqueCategories = Array.from(uniqueCategoryMap.values()).filter(c => c.products.length > 0);
 
   return `
     <div class="space-y-10 sm:space-y-14 pb-16">
@@ -78,15 +143,16 @@ export async function renderHomePage() {
                 class="slider-dot w-8 h-2 rounded-full transition-all ${i === 0 ? 'bg-emerald-500 w-10' : 'bg-white/30'}"
                 data-slide-target="${i}"
                 aria-label="Go to slide ${i + 1}"
+                onclick="window.__dcbdGoSlide && window.__dcbdGoSlide(${i})"
               ></button>
             `).join("")}
           </div>
 
           <!-- Prev/Next Arrow Buttons -->
-          <button id="slider-btn-prev" class="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white items-center justify-center backdrop-blur-sm transition" aria-label="Previous Slide">
+          <button id="slider-btn-prev" class="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white items-center justify-center backdrop-blur-sm transition" aria-label="Previous Slide" onclick="window.__dcbdPrevSlide && window.__dcbdPrevSlide()">
             ‹
           </button>
-          <button id="slider-btn-next" class="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white items-center justify-center backdrop-blur-sm transition" aria-label="Next Slide">
+          <button id="slider-btn-next" class="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white items-center justify-center backdrop-blur-sm transition" aria-label="Next Slide" onclick="window.__dcbdNextSlide && window.__dcbdNextSlide()">
             ›
           </button>
 
@@ -174,14 +240,9 @@ export async function renderHomePage() {
         </div>
       </section>
 
-      <!-- 4. Category Product Show (6*2 Layout & Auto Sliding) for all categories from sheet -->
-      ${categories.map(cat => {
-        const catProducts = products.filter(p => 
-          (p.category && p.category.toLowerCase() === cat.category.toLowerCase()) ||
-          (p.sub_category && p.sub_category.toLowerCase().includes(cat.category.toLowerCase()))
-        );
-
-        if (catProducts.length === 0) return "";
+      <!-- 4. Category Product Show: Each Unique Category Appears ONLY ONCE -->
+      ${uniqueCategories.map(cat => {
+        const subList = Array.from(cat.subCategories).slice(0, 4).join(", ");
 
         return `
           <section class="space-y-4">
@@ -194,24 +255,24 @@ export async function renderHomePage() {
                 </div>
                 <div>
                   <h2 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
-                    ${cat.category}
+                    ${cat.name}
                   </h2>
                   <p class="text-[11px] text-slate-500 dark:text-slate-400">
-                    ${cat.sub_category || "সেরা কালেকশন থেকে বেছে নিন"}
+                    ${subList ? `${subList} সহ সেরা কালেকশন` : "সেরা কালেকশন থেকে বেছে নিন"}
                   </p>
                 </div>
               </div>
 
               <div class="flex items-center gap-3">
-                <a href="/products?cat=${encodeURIComponent(cat.category)}" class="btn-secondary text-xs py-1.5 px-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-slate-700 dark:text-slate-200 hover:text-emerald-600 transition">
-                  সবগুলো দেখুন (${catProducts.length}) →
+                <a href="/products?cat=${encodeURIComponent(cat.name)}" class="btn-secondary text-xs py-1.5 px-3.5 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950 text-slate-700 dark:text-slate-200 hover:text-emerald-600 transition font-semibold">
+                  সবগুলো দেখুন (${cat.products.length}) →
                 </a>
               </div>
             </div>
 
-            <!-- 6*2 Product Grid (Adaptive to screen size: 1 col on mobile, 2 col on phablet, 3 on tab, 4 on desktop, 6 on ultra-wide) -->
+            <!-- Product Grid (Up to 12 products per category) -->
             <div class="product-grid">
-              ${catProducts.slice(0, 12).map(p => renderProductCard(p)).join("")}
+              ${cat.products.slice(0, 12).map(p => renderProductCard(p)).join("")}
             </div>
 
           </section>
@@ -227,7 +288,7 @@ export async function renderHomePage() {
             </h2>
             <p class="text-xs text-slate-500 dark:text-slate-400">আমাদের সেরা সেলিং আইটেমসমূহ</p>
           </div>
-          <a href="/products" class="btn-primary text-xs py-1.5 px-4">
+          <a href="/products" class="btn-primary text-xs py-1.5 px-4 font-bold">
             সকল পণ্য (${products.length}) →
           </a>
         </div>
