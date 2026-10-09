@@ -78,7 +78,7 @@ export async function renderCustomerPortal(params = {}) {
           </button>
           <button 
             class="btn-secondary text-xs py-2 px-3.5 text-rose-600 dark:text-rose-400 border-rose-200 hover:bg-rose-50"
-            onclick="import('../../store/authStore.js').then(m => { m.authStore.logout(); window.location.href='/customer/login'; });"
+            id="btn-customer-logout" class="btn-secondary btn-logout text-xs py-2 px-3.5 text-rose-600 dark:text-rose-400 border-rose-200 hover:bg-rose-50 cursor-pointer"
           >
             লগআউট ✕
           </button>
@@ -274,7 +274,7 @@ export async function renderCustomerPortal(params = {}) {
           <h3 class="text-base font-bold text-slate-900 dark:text-white">প্রোফাইল সম্পাদনা করুন</h3>
           <button class="text-slate-400 hover:text-slate-600 font-bold" onclick="document.getElementById('customer-profile-edit-modal').classList.remove('active');">✕</button>
         </div>
-        <form onsubmit="event.preventDefault(); const name=document.getElementById('edit-c-name').value; const mail=document.getElementById('edit-c-mail').value; const addr=document.getElementById('edit-c-addr').value; import('../../store/authStore.js').then(m => { m.authStore.setUser({...m.authStore.user, name, mail, address: addr}, m.authStore.token, 'CUSTOMER'); alert('প্রোফাইল আপডেট হয়েছে!'); location.reload(); });">
+        <form id="customer-profile-edit-form" class="space-y-3"> { m.authStore.setUser({...m.authStore.user, name, mail, address: addr}, m.authStore.token, 'CUSTOMER'); alert('প্রোফাইল আপডেট হয়েছে!'); location.reload(); });">
           <div class="space-y-3">
             <div>
               <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পূর্ণ নাম</label>
@@ -334,19 +334,7 @@ function renderAuthView(view = 'login') {
 
       <div class="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-4 text-xs">
         
-        <form 
-          id="customer-auth-form" 
-          class="space-y-3.5"
-          onsubmit="event.preventDefault(); 
-            const phone = document.getElementById('auth-phone').value;
-            const name = document.getElementById('auth-name') ? document.getElementById('auth-name').value : 'সম্মানিত গ্রাহক';
-            const mail = document.getElementById('auth-mail') ? document.getElementById('auth-mail').value : '';
-            const addr = document.getElementById('auth-addr') ? document.getElementById('auth-addr').value : '';
-            import('../../store/authStore.js').then(m => {
-              m.authStore.setUser({ name, mobile: phone, phone, mail, address: addr, account_type: 'CUSTOMER' }, 'TOKEN-CUST-1', 'CUSTOMER');
-              alert('সফলভাবে লগইন হয়েছে!');
-              window.location.href = '/customer/dashboard';
-            });"
+        <form id="customer-auth-form" class="space-y-3.5" data-auth-mode="${isRegister ? 'register' : 'login'}"
         >
           ${isRegister ? `
             <div>

@@ -1,10 +1,15 @@
 /**
  * DREAM CART BD — MAIN NAVIGATION BAR (Header.js)
- * Implements:
- * - Premium Pill-shaped search bar with ambient focus glow
- * - Modern action icons with live badges
- * - Darkmode toggle
- * - Fully responsive for mobile, tablet, and desktop
+ * Implements user requirements:
+ * - Top Notice / Announcement bar (Offer, Contact, Free shipping notice)
+ * - logo + shop name
+ * - Enhanced Live predictive search bar with interactive instant preview cards
+ * - Products link
+ * - Cart button with live count badge
+ * - Favourite Icon with live count badge
+ * - Customer Login / Profile menu
+ * - Darkmode toggle icon with persistence
+ * - Fully responsive for mobile, tablet, laptop, desktop, and TV
  */
 
 import { cartStore } from '../store/cartStore.js';
@@ -15,6 +20,7 @@ export function renderHeader() {
   const cartCount = cartStore.getCount();
   const favCount = favouriteStore.getCount();
   const isAuthenticated = authStore.isAuthenticated();
+  const user = authStore.user;
   const isDark = document.documentElement.classList.contains('dark');
 
   return `
@@ -71,8 +77,8 @@ export function renderHeader() {
 
         <!-- Live Predictive Search Bar with Dropdown Preview -->
         <div class="hidden md:flex flex-1 max-w-xl mx-2 lg:mx-6 relative search-container">
-          <div class="search-bar-wrap">
-            <div class="pl-4 pr-1.5 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400">
+          <div class="search-bar-wrap w-full flex items-center bg-slate-100 dark:bg-slate-800/90 rounded-full border border-slate-200 dark:border-slate-700 hover:border-emerald-500 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/20 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all duration-200 relative shadow-inner">
+            <div class="pl-4 pr-2 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
               </svg>
@@ -82,14 +88,21 @@ export function renderHeader() {
               id="global-search-input"
               placeholder="পণ্য, ব্র্যান্ড বা মডেল লিখে খুঁজুন..." 
               autocomplete="off"
-              class="w-full py-2.5 pr-28 text-xs sm:text-sm bg-transparent text-slate-800 dark:text-white placeholder-slate-400 outline-none"
+              class="w-full py-2.5 pr-28 text-xs sm:text-sm bg-transparent text-slate-900 dark:text-white placeholder-slate-400 outline-none"
             />
             <button 
+              id="global-search-clear-btn" 
+              class="hidden absolute right-24 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold transition rounded-full hover:bg-slate-200 dark:hover:bg-slate-700" 
+              type="button" 
+              title="ক্লিয়ার করুন"
+            >✕</button>
+            <button 
               id="global-search-btn" 
-              class="absolute right-1.5 top-1.5 bottom-1.5 bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs px-4 rounded-full transition-all duration-200 shadow-sm flex items-center gap-1.5 active:scale-95"
+              type="button"
+              class="absolute right-1.5 top-1.5 bottom-1.5 bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs px-4 rounded-full transition-all duration-200 shadow-sm flex items-center gap-1.5 active:scale-95 cursor-pointer"
             >
               <span>সার্চ</span>
-              <span class="text-[11px] opacity-80">🔍</span>
+              <span class="text-[11px] opacity-90">🔍</span>
             </button>
           </div>
 
@@ -108,7 +121,7 @@ export function renderHeader() {
           </a>
 
           <!-- Cart Button -->
-          <button id="btn-open-cart" class="relative p-2 sm:px-3 sm:py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5" title="কার্ট দেখুন">
+          <button id="btn-open-cart" class="relative p-2 sm:px-3 sm:py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer" title="কার্ট দেখুন">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
             </svg>
@@ -132,7 +145,7 @@ export function renderHeader() {
           <!-- Customer Login / Account Menu -->
           <div class="relative auth-dropdown-container">
             ${isAuthenticated ? `
-              <button id="btn-user-menu" class="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-xl text-xs font-bold transition hover:bg-emerald-100">
+              <button id="btn-user-menu" class="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-xl text-xs font-bold transition hover:bg-emerald-100 cursor-pointer">
                 <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
                   ${(authStore.getUserDisplayName() || "U").charAt(0).toUpperCase()}
                 </span>
@@ -158,9 +171,10 @@ export function renderHeader() {
                 ${authStore.isWholesaler() ? `<a href="/wholesaler/dashboard" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-amber-600">Wholesale Portal</a>` : ""}
                 <a href="/customer/dashboard" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">My Orders & Profile</a>
                 <a href="/customer/settings" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">Settings</a>
-                <button id="btn-logout" class="w-full text-left px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 font-bold border-t border-slate-100 dark:border-slate-800">লগআউট</button>
+                <button id="btn-logout" class="w-full text-left px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 font-bold border-t border-slate-100 dark:border-slate-800 cursor-pointer">লগআউট</button>
               ` : `
                 <a href="/customer/login" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Customer Login</a>
+                <a href="/customer/register" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Customer Register</a>
                 <a href="/reseller/login" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Reseller Hub</a>
                 <a href="/wholesaler/login" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Wholesale Portal</a>
                 <div class="border-t border-slate-100 dark:border-slate-800 my-1"></div>
@@ -172,7 +186,7 @@ export function renderHeader() {
           <!-- Darkmode Toggle Icon -->
           <button 
             id="btn-toggle-darkmode" 
-            class="p-2 sm:p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center"
+            class="p-2 sm:p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer"
             title="${isDark ? 'লাইট মোড চালু করুন' : 'ডার্ক মোড চালু করুন'}"
             aria-label="Toggle Dark Mode"
           >
@@ -183,7 +197,7 @@ export function renderHeader() {
           <!-- Mobile Hamburger Toggle -->
           <button 
             id="btn-mobile-menu-toggle" 
-            class="md:hidden p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            class="md:hidden p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
             aria-label="Toggle Navigation Menu"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
@@ -194,8 +208,8 @@ export function renderHeader() {
       </div>
 
       <!-- Mobile Search Bar (under header for small mobile screens) -->
-      <div class="md:hidden px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div class="search-bar-wrap">
+      <div class="md:hidden px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 relative">
+        <div class="search-bar-wrap w-full flex items-center bg-slate-100 dark:bg-slate-800/90 rounded-full border border-slate-200 dark:border-slate-700 hover:border-emerald-500 focus-within:border-emerald-500 focus-within:ring-3 focus-within:ring-emerald-500/20 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all duration-200 relative shadow-inner">
           <div class="pl-3.5 pr-1.5 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -206,13 +220,23 @@ export function renderHeader() {
             id="mobile-search-input"
             placeholder="পণ্য বা মডেল সার্চ করুন..." 
             autocomplete="off"
-            class="w-full py-2 pr-20 text-xs bg-transparent text-slate-800 dark:text-white placeholder-slate-400 outline-none"
+            class="w-full py-2.5 pr-20 text-xs bg-transparent text-slate-900 dark:text-white placeholder-slate-400 outline-none"
           />
-          <button id="mobile-search-btn" class="absolute right-1 top-1 bottom-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[11px] font-bold px-3.5 rounded-full shadow-xs active:scale-95 transition-transform flex items-center gap-1">
+          <button 
+            id="mobile-search-clear-btn" 
+            class="hidden absolute right-16 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold transition rounded-full hover:bg-slate-200 dark:hover:bg-slate-700" 
+            type="button" 
+            title="ক্লিয়ার করুন"
+          >✕</button>
+          <button 
+            id="mobile-search-btn" 
+            type="button"
+            class="absolute right-1 top-1 bottom-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[11px] font-bold px-3.5 rounded-full shadow-xs active:scale-95 transition-transform flex items-center gap-1 cursor-pointer"
+          >
             <span>সার্চ</span>
           </button>
         </div>
-        <div id="mobile-search-preview-popup" class="hidden mt-1.5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto"></div>
+        <div id="mobile-search-preview-popup" class="hidden absolute top-full left-4 right-4 mt-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto"></div>
       </div>
 
       <!-- Mobile Navigation Drawer / Menu -->
@@ -225,7 +249,8 @@ export function renderHeader() {
         <a href="/track" class="block py-2 text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600">🚚 Track Order</a>
         <a href="/chat" class="block py-2 text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600">💬 Live Support</a>
         <div class="border-t border-slate-100 dark:border-slate-800 my-2"></div>
-        <a href="/customer/login" class="block py-2 text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600">👤 Customer Login / Register</a>
+        <a href="/customer/login" class="block py-2 text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600">👤 Customer Login</a>
+        <a href="/customer/register" class="block py-2 text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600">📝 Customer Register</a>
         <a href="/reseller/login" class="block py-2 text-indigo-600 dark:text-indigo-400 font-bold">💼 Reseller Portal</a>
         <a href="/wholesaler/login" class="block py-2 text-amber-600 dark:text-amber-400 font-bold">📦 Wholesale Portal</a>
       </div>

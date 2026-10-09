@@ -67,7 +67,7 @@ export async function renderWholesalePortal(params = {}) {
           </button>
           <button 
             class="btn-secondary text-xs py-2 px-3.5 text-rose-600 dark:text-rose-400 border-rose-200 hover:bg-rose-50"
-            onclick="import('../../store/authStore.js').then(m => { m.authStore.logout(); window.location.href='/wholesaler/login'; });"
+            class="btn-secondary btn-logout text-xs py-2 px-3.5 text-rose-600 dark:text-rose-400 border-rose-200 hover:bg-rose-50 cursor-pointer"
           >
             লগআউট ✕
           </button>
@@ -221,18 +221,7 @@ function renderWholesaleAuthView(view = 'login') {
 
       <div class="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-4 text-xs">
         
-        <form 
-          id="wholesale-auth-form" 
-          class="space-y-3.5"
-          onsubmit="event.preventDefault(); 
-            const phone = document.getElementById('w-phone').value;
-            const name = document.getElementById('w-name') ? document.getElementById('w-name').value : 'পাইকারি ক্রেতা';
-            const shop = document.getElementById('w-shop') ? document.getElementById('w-shop').value : 'পাইকারি প্রতিষ্ঠান';
-            import('../../store/authStore.js').then(m => {
-              m.authStore.setUser({ name, shop_name: shop, mobile: phone, phone, account_type: 'WHOLESALER' }, 'TOKEN-WHOLESALE-1', 'WHOLESALER');
-              alert('হোলসেলার পোর্টালে সফলভাবে লগইন হয়েছে!');
-              window.location.href = '/wholesaler/dashboard';
-            });"
+        <form id="wholesale-auth-form" class="space-y-3.5" data-auth-mode="${isRegister ? 'register' : 'login'}"
         >
           ${isRegister ? `
             <div>

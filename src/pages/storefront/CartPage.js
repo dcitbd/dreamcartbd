@@ -2,6 +2,7 @@
  * DREAM CART BD — CART PAGE (CartPage.js)
  * Implements user requirements:
  * - Cart item list with thumbnail, title, unit price, quantity increment/decrement, line total
+ * - Prominent Color & Size badges on each cart item
  * - Complete order button (proceed to checkout)
  * - Dynamic delivery zone selection & fee auto-calculation
  * - Free shipping for orders >= ৳2,000
@@ -22,7 +23,6 @@ export function renderCartPage() {
   const couponDiscount = cartStore.getCouponDiscount();
   const grandTotal = cartStore.getGrandTotal();
   const currentZone = cartStore.deliveryZone;
-  const currentPayment = cartStore.paymentMethod;
 
   if (items.length === 0) {
     return `
@@ -54,7 +54,7 @@ export function renderCartPage() {
         </h1>
       </div>
 
-      <!-- Main Layout: Items Table (7 cols) + Order Summary (5 cols) -->
+      <!-- Main Layout: Items Table (8 cols) + Order Summary (4 cols) -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
         <!-- Left: Cart Items List -->
@@ -70,7 +70,7 @@ export function renderCartPage() {
                     <img 
                       src="${it.thumbnail || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&auto=format&fit=crop&q=80'}" 
                       alt="${it.name}" 
-                      class="w-16 h-16 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0"
+                      class="w-16 h-16 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0 bg-slate-50 dark:bg-slate-800"
                     />
                     <div>
                       <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white leading-snug">
@@ -78,9 +78,10 @@ export function renderCartPage() {
                           ${it.name}
                         </a>
                       </h4>
-                      <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                        একক মূল্য: <span class="font-bold text-slate-800 dark:text-slate-200">${formatCurrency(it.price)}</span>
-                        ${it.color ? ` | কালার: ${it.color}` : ''}
+                      <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
+                        <span>একক মূল্য: <strong class="font-bold text-slate-800 dark:text-slate-200">${formatCurrency(it.price)}</strong></span>
+                        ${it.color ? `<span class="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md text-[10px] font-bold border border-slate-200 dark:border-slate-700">🎨 ${it.color}</span>` : ''}
+                        ${it.size ? `<span class="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-md text-[10px] font-bold border border-slate-200 dark:border-slate-700">📏 ${it.size}</span>` : ''}
                       </div>
                     </div>
                   </div>
@@ -89,9 +90,9 @@ export function renderCartPage() {
                   <div class="flex items-center justify-between w-full sm:w-auto gap-4 self-end sm:self-center">
                     
                     <!-- Stepper -->
-                    <div class="flex items-center border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800">
+                    <div class="flex items-center border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-800 shadow-2xs">
                       <button 
-                        class="btn-cart-minus px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs"
+                        class="btn-cart-minus px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs cursor-pointer"
                         data-product-id="${it.product_id}"
                         data-color="${it.color || ''}"
                         data-size="${it.size || ''}"
@@ -102,7 +103,7 @@ export function renderCartPage() {
                         ${it.quantity}
                       </span>
                       <button 
-                        class="btn-cart-plus px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs"
+                        class="btn-cart-plus px-2.5 py-1.5 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold text-xs cursor-pointer"
                         data-product-id="${it.product_id}"
                         data-color="${it.color || ''}"
                         data-size="${it.size || ''}"
@@ -120,7 +121,7 @@ export function renderCartPage() {
 
                     <!-- Remove Item Button -->
                     <button 
-                      class="btn-cart-remove text-slate-400 hover:text-rose-600 p-1 rounded-lg transition"
+                      class="btn-cart-remove text-slate-400 hover:text-rose-600 p-1 rounded-lg transition hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
                       data-product-id="${it.product_id}"
                       data-color="${it.color || ''}"
                       data-size="${it.size || ''}"
@@ -140,7 +141,7 @@ export function renderCartPage() {
               <a href="/products" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
                 ← আরও পণ্য যোগ করুন
               </a>
-              <button id="btn-clear-cart" class="text-rose-600 dark:text-rose-400 hover:underline">
+              <button id="btn-clear-cart" class="text-rose-600 dark:text-rose-400 hover:underline cursor-pointer">
                 সম্পূর্ণ কার্ট খালি করুন
               </button>
             </div>

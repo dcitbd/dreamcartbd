@@ -2,6 +2,7 @@
  * DREAM CART BD — PRODUCT DETAIL PAGE (ProductDetailPage.js)
  * Implements user requirements:
  * - Full product details from Products sheet (omitting confidential buying price)
+ * - Interactive Color & Size selection chips with live preview
  * - Selling Price showing according to account type (Customer, Reseller, Wholesaler)
  * - Wholesaler minimum order quantity validation (cannot order under MOQ)
  * - Out of Stock state: shows Pre Order button and hides Order Now button
@@ -15,6 +16,22 @@ import { authStore } from '../../store/authStore.js';
 import { cartStore } from '../../store/cartStore.js';
 import { favouriteStore } from '../../store/favouriteStore.js';
 import { renderProductCard } from '../../components/ProductCard.js';
+
+function getColorHex(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('black') || n.includes('কালো') || n.includes('ব্ল্যাক')) return '#18181b';
+  if (n.includes('silver') || n.includes('সিলভার') || n.includes('গ্রে') || n.includes('gray') || n.includes('grey')) return '#94a3b8';
+  if (n.includes('blue') || n.includes('ব্লু') || n.includes('নীল') || n.includes('navy')) return '#2563eb';
+  if (n.includes('red') || n.includes('লাল') || n.includes('রেড')) return '#dc2626';
+  if (n.includes('green') || n.includes('সবুজ') || n.includes('গ্রিন') || n.includes('emerald')) return '#10b981';
+  if (n.includes('white') || n.includes('সাদা') || n.includes('হোয়াইট')) return '#ffffff';
+  if (n.includes('gold') || n.includes('গোল্ড') || n.includes('golden') || n.includes('হলুদ') || n.includes('yellow')) return '#f59e0b';
+  if (n.includes('pink') || n.includes('গোলাপি') || n.includes('রোজ') || n.includes('rose')) return '#f43f5e';
+  if (n.includes('purple') || n.includes('বেগুনী')) return '#9333ea';
+  if (n.includes('orange') || n.includes('কমলা')) return '#ea580c';
+  if (n.includes('brown') || n.includes('বাদামী')) return '#78350f';
+  return '#10b981';
+}
 
 export async function renderProductDetailPage(slugOrId) {
   const cleanId = (slugOrId || '').toString().trim();
@@ -85,6 +102,21 @@ export async function renderProductDetailPage(slugOrId) {
   const images = Array.isArray(product.images) && product.images.length > 0 ? product.images : [product.thumbnail || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80"];
   const mainImage = images[0];
 
+  // Options Parsing (Color & Size)
+  const parseOptions = (val, defaults) => {
+    if (!val) return defaults;
+    if (Array.isArray(val)) return val.filter(Boolean);
+    const s = String(val).trim();
+    if (!s) return defaults;
+    const parts = s.split(/[,|\/]+/).map(p => p.trim()).filter(Boolean);
+    return parts.length > 0 ? parts : defaults;
+  };
+
+  const availableColors = parseOptions(product.colors || product.color, ['Black', 'Silver', 'Navy Blue']);
+  const availableSizes = parseOptions(product.sizes || product.size, ['Standard (ফ্রি সাইজ)', 'Medium (M)', 'Large (L)']);
+  const defaultColor = availableColors[0] || 'Black';
+  const defaultSize = availableSizes[0] || 'Standard';
+
   // WhatsApp link preparation
   const currentUrl = window.location.href;
   const waMessage = encodeURIComponent(`হ্যালো Dream Cart BD, আমি এই পণ্যটি সম্পর্কে জানতে বা অর্ডার করতে চাই:\nপণ্য: ${product.name}\nSKU: ${product.sku}\nমূল্য: ৳${activePrice}\nলিঙ্ক: ${currentUrl}`);
@@ -130,7 +162,7 @@ export async function renderProductDetailPage(slugOrId) {
 
             <!-- Favourite Toggle Button -->
             <button 
-              class="btn-toggle-favourite absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md flex items-center justify-center shadow-md text-slate-400 hover:text-rose-500 transition ${isFavourite ? 'text-rose-500 !bg-rose-50 dark:!bg-rose-950/40' : ''}"
+              class="btn-toggle-favourite absolute top-4 left-4 w-10 h-10 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md flex items-center justify-center shadow-md text-slate-400 hover:text-rose-500 transition cursor-pointer ${isFavourite ? 'text-rose-500 !bg-rose-50 dark:!bg-rose-950/40' : ''}"
               data-product-id="${product.product_id}"
               title="পছন্দের তালিকায় রাখুন"
             >
@@ -143,7 +175,7 @@ export async function renderProductDetailPage(slugOrId) {
             <div class="flex items-center gap-3 overflow-x-auto pb-1">
               ${images.map((img, i) => `
                 <button 
-                  class="thumb-btn w-16 h-16 rounded-xl overflow-hidden border-2 transition flex-shrink-0 ${i === 0 ? 'border-emerald-500' : 'border-slate-200 dark:border-slate-700 opacity-70 hover:opacity-100'}"
+                  class="thumb-btn w-16 h-16 rounded-xl overflow-hidden border-2 transition flex-shrink-0 cursor-pointer ${i === 0 ? 'border-emerald-500' : 'border-slate-200 dark:border-slate-700 opacity-70 hover:opacity-100'}"
                   onclick="document.getElementById('detail-main-img').src='${img}'; document.querySelectorAll('.thumb-btn').forEach(b => b.classList.remove('border-emerald-500')); this.classList.add('border-emerald-500');"
                 >
                   <img src="${img}" alt="Thumbnail" class="w-full h-full object-cover" />
@@ -200,21 +232,58 @@ export async function renderProductDetailPage(slugOrId) {
             ` : ""}
           </div>
 
-          <!-- Key Options: Color & Size -->
-          <div class="space-y-3">
-            ${product.color ? `
-              <div class="text-xs">
-                <span class="font-bold text-slate-700 dark:text-slate-300">উপলব্ধ কালার:</span>
-                <span class="text-slate-900 dark:text-white font-medium ml-1.5">${product.color}</span>
+          <!-- Interactive Color & Size Selectors -->
+          <div class="space-y-4 pt-1 border-t border-b border-slate-100 dark:border-slate-800 py-3.5">
+            
+            <!-- Color Selector -->
+            <div>
+              <div class="flex items-center justify-between text-xs mb-2">
+                <span class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <span>🎨</span> কালার নির্বাচন করুন:
+                </span>
+                <span id="selected-color-label" class="font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-lg text-[11px] border border-emerald-200 dark:border-emerald-800">
+                  ${defaultColor}
+                </span>
               </div>
-            ` : ""}
+              <div class="flex items-center gap-2 flex-wrap" id="color-chips-container">
+                ${availableColors.map((c, idx) => `
+                  <button 
+                    type="button" 
+                    class="variant-chip color-select-btn px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${idx === 0 ? 'active' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'}"
+                    data-color="${c}"
+                  >
+                    <span class="w-3 h-3 rounded-full border border-slate-300 dark:border-slate-600 shadow-2xs" style="background-color: ${getColorHex(c)}"></span>
+                    <span>${c}</span>
+                  </button>
+                `).join("")}
+              </div>
+              <input type="hidden" id="selected-color" value="${defaultColor}" />
+            </div>
 
-            ${product.size ? `
-              <div class="text-xs">
-                <span class="font-bold text-slate-700 dark:text-slate-300">সাইজ / পরিমাপ:</span>
-                <span class="text-slate-900 dark:text-white font-medium ml-1.5">${product.size}</span>
+            <!-- Size Selector -->
+            <div>
+              <div class="flex items-center justify-between text-xs mb-2">
+                <span class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <span>📏</span> সাইজ নির্বাচন করুন:
+                </span>
+                <span id="selected-size-label" class="font-black text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-lg text-[11px] border border-emerald-200 dark:border-emerald-800">
+                  ${defaultSize}
+                </span>
               </div>
-            ` : ""}
+              <div class="flex items-center gap-2 flex-wrap" id="size-chips-container">
+                ${availableSizes.map((s, idx) => `
+                  <button 
+                    type="button" 
+                    class="variant-chip size-select-btn px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${idx === 0 ? 'active' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300'}"
+                    data-size="${s}"
+                  >
+                    <span>${s}</span>
+                  </button>
+                `).join("")}
+              </div>
+              <input type="hidden" id="selected-size" value="${defaultSize}" />
+            </div>
+
           </div>
 
           <!-- Quantity Selector -->
@@ -222,7 +291,7 @@ export async function renderProductDetailPage(slugOrId) {
             <span class="font-bold text-slate-700 dark:text-slate-300">অর্ডার পরিমাণ:</span>
             <div class="flex items-center border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800">
               <button 
-                class="px-3 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold"
+                class="px-3 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold cursor-pointer"
                 onclick="let inp = document.getElementById('product-qty-input'); let min = ${isWholesale ? minOrderQty : 1}; if(inp.value > min) inp.value--;"
               >
                 -
@@ -236,13 +305,13 @@ export async function renderProductDetailPage(slugOrId) {
                 class="w-14 text-center font-bold text-xs bg-transparent border-none outline-none text-slate-900 dark:text-white"
               />
               <button 
-                class="px-3 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold"
+                class="px-3 py-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 font-bold cursor-pointer"
                 onclick="let inp = document.getElementById('product-qty-input'); inp.value++;"
               >
                 +
               </button>
             </div>
-            ${isWholesale ? `<span class="text-[11px] text-amber-600">হোলসেল ন্যূনতম ${minOrderQty} পিস</span>` : ""}
+            ${isWholesale ? `<span class="text-[11px] text-amber-600 font-bold">হোলসেল ন্যূনতম ${minOrderQty} পিস</span>` : ""}
           </div>
 
           <!-- Primary Call to Action Buttons -->
@@ -253,7 +322,7 @@ export async function renderProductDetailPage(slugOrId) {
               ${isOutOfStock ? `
                 <button 
                   id="btn-detail-preorder" 
-                  class="btn-primary py-3.5 px-6 text-sm font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-2 shadow-md"
+                  class="btn-primary py-3.5 px-6 text-sm font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 flex items-center justify-center gap-2 shadow-md cursor-pointer"
                   data-product-id="${product.product_id}"
                 >
                   <span>⏳</span> প্রি-অর্ডার করুন (অগ্রিম বুকিং)
@@ -261,7 +330,7 @@ export async function renderProductDetailPage(slugOrId) {
               ` : `
                 <button 
                   id="btn-detail-order-now" 
-                  class="btn-primary py-3.5 px-6 text-sm font-bold flex items-center justify-center gap-2 shadow-md"
+                  class="btn-primary py-3.5 px-6 text-sm font-bold flex items-center justify-center gap-2 shadow-md cursor-pointer"
                   data-product-id="${product.product_id}"
                 >
                   <span>⚡</span> এখনই অর্ডার করুন
@@ -271,7 +340,7 @@ export async function renderProductDetailPage(slugOrId) {
               <!-- Add to Cart -->
               <button 
                 id="btn-detail-add-cart" 
-                class="btn-secondary py-3.5 px-6 text-sm font-bold flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-slate-800 dark:text-white border-slate-300 dark:border-slate-700"
+                class="btn-secondary py-3.5 px-6 text-sm font-bold flex items-center justify-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/60 text-slate-800 dark:text-white border-slate-300 dark:border-slate-700 cursor-pointer"
                 data-product-id="${product.product_id}"
               >
                 <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
@@ -321,32 +390,28 @@ export async function renderProductDetailPage(slugOrId) {
 
       </div>
 
-      <!-- Description & Specification Tabs -->
+      <!-- Product Description & Specifications -->
       <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-8 shadow-xs space-y-6">
-        
         <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-          <h2 class="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <span>📝</span> পণ্যের বিবরণ ও স্পেসিফিকেশন (Details & Specs)
-          </h2>
+          <h2 class="text-lg font-black text-slate-900 dark:text-white">পণ্যের পূর্ণ বিবরণ ও স্পেসিফিকেশন</h2>
         </div>
 
-        <div class="prose dark:prose-invert max-w-none text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed space-y-4">
-          <p>${product.description || 'এই পণ্যটি ড্রিম কার্ট বিডি-র অথেন্টিক কালেকশনভুক্ত।'}</p>
-
-          ${product.specification ? `
-            <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700">
-              <h4 class="font-bold text-slate-900 dark:text-white text-xs uppercase tracking-wider mb-2">প্রযুক্তিগত স্পেসিফিকেশন:</h4>
-              <p class="font-mono text-xs leading-relaxed text-slate-700 dark:text-slate-300">${product.specification}</p>
-            </div>
-          ` : ""}
-
-          ${product.others ? `
-            <div class="text-xs text-slate-600 dark:text-slate-400">
-              <strong>অন্যান্য তথ্য:</strong> ${product.others}
-            </div>
-          ` : ""}
+        <div class="prose dark:prose-invert max-w-none text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+          ${product.description || 'পণ্যটির বিস্তারিত বিবরণ শীঘ্রই যুক্ত করা হচ্ছে। পণ্য সংক্রান্ত যেকোনো তথ্যের জন্য আমাদের হেল্পলাইনে কল করুন।'}
         </div>
 
+        ${product.specification ? `
+          <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl space-y-2">
+            <h4 class="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">স্পেসিফিকেশন হাইলাইটস:</h4>
+            <p class="font-mono text-xs leading-relaxed text-slate-700 dark:text-slate-300">${product.specification}</p>
+          </div>
+        ` : ""}
+
+        ${product.others ? `
+          <div class="text-xs text-slate-600 dark:text-slate-400">
+            <strong>অন্যান্য তথ্য:</strong> ${product.others}
+          </div>
+        ` : ""}
       </div>
 
       <!-- Customer Reviews & Rating Section -->

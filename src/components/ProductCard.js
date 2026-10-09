@@ -1,6 +1,7 @@
 /**
  * DREAM CART BD — PRODUCT CARD COMPONENT
  * Implements exact user specifications:
+ * - Direct clickable product link on Image and Title to open Product Details
  * - Hover animation & responsive scaling
  * - Product image with Love/Wishlist icon in front and Discount percentage badge
  * - Brand Name + SKU
@@ -62,7 +63,7 @@ export function renderProductCard(product) {
     <div class="product-card group relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-sm hover:shadow-card-hover transition-all duration-300 flex flex-col overflow-hidden" data-product-id="${product.product_id}">
       
       <!-- Product Image with badges & Love icon in front -->
-      <div class="relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-pointer card-img-click" data-slug="${slug}" data-product-id="${product.product_id}">
+      <a href="/product/${slug}" class="block relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-pointer card-img-click" data-slug="${slug}" data-product-id="${product.product_id}">
         <img 
           src="${thumbnail}" 
           alt="${productName}" 
@@ -77,6 +78,7 @@ export function renderProductCard(product) {
           data-product-id="${product.product_id}"
           title="${isFavourite ? 'ফেভারিট থেকে সরান' : 'ফেভারিট তালিকায় যোগ করুন'}"
           aria-label="Wishlist"
+          onclick="event.stopPropagation();"
         >
           <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
@@ -104,7 +106,7 @@ export function renderProductCard(product) {
           `}
         </div>
 
-      </div>
+      </a>
 
       <!-- Card Body -->
       <div class="p-3.5 sm:p-4 flex-1 flex flex-col justify-between">
@@ -116,13 +118,14 @@ export function renderProductCard(product) {
             <span class="font-mono text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded">${sku}</span>
           </div>
 
-          <!-- Product Name (2 line only clamp) -->
+          <!-- Product Name (2 line only clamp with clickable link) -->
           <h3 
-            class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition line-clamp-2 leading-snug cursor-pointer card-img-click mb-2" 
-            data-slug="${slug}" data-product-id="${product.product_id}"
+            class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition line-clamp-2 leading-snug mb-2" 
             title="${productName}"
           >
-            ${productName}
+            <a href="/product/${slug}" class="hover:text-emerald-600 transition card-img-click" data-slug="${slug}" data-product-id="${product.product_id}">
+              ${productName}
+            </a>
           </h3>
         </div>
 
@@ -164,14 +167,14 @@ export function renderProductCard(product) {
         <div class="space-y-2">
           ${isOutOfStock ? `
             <button 
-              class="btn-pre-order w-full py-2 px-3 bg-amber-500 hover:bg-amber-600 active:scale-98 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5"
+              class="btn-pre-order w-full py-2 px-3 bg-amber-500 hover:bg-amber-600 active:scale-98 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
               data-product-id="${product.product_id}"
             >
               <span>⏳</span> প্রি-অর্ডার করুন
             </button>
           ` : `
             <button 
-              class="btn-order-now w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1.5"
+              class="btn-order-now w-full py-2 px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer"
               data-product-id="${product.product_id}"
             >
               <span>⚡</span> অর্ডার করুন
@@ -183,7 +186,7 @@ export function renderProductCard(product) {
             
             <!-- Cart Icon -->
             <button 
-              class="btn-quick-add bg-slate-100 hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-emerald-950/50 text-slate-700 hover:text-emerald-600 dark:text-slate-300 p-2 rounded-xl border border-slate-200/80 dark:border-slate-700 transition flex items-center justify-center"
+              class="btn-quick-add bg-slate-100 hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-emerald-950/50 text-slate-700 hover:text-emerald-600 dark:text-slate-300 p-2 rounded-xl border border-slate-200/80 dark:border-slate-700 transition flex items-center justify-center cursor-pointer"
               data-product-id="${product.product_id}"
               title="কার্টে যোগ করুন"
               aria-label="Add to Cart"
@@ -193,10 +196,11 @@ export function renderProductCard(product) {
 
             <!-- Favourite Icon -->
             <button 
-              class="btn-toggle-favourite bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/50 text-slate-700 hover:text-rose-600 dark:text-slate-300 p-2 rounded-xl border border-slate-200/80 dark:border-slate-700 transition flex items-center justify-center ${isFavourite ? 'text-rose-500 !bg-rose-50 dark:!bg-rose-950/40' : ''}"
+              class="btn-toggle-favourite bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/50 text-slate-700 hover:text-rose-600 dark:text-slate-300 p-2 rounded-xl border border-slate-200/80 dark:border-slate-700 transition flex items-center justify-center cursor-pointer ${isFavourite ? 'text-rose-500 !bg-rose-50 dark:!bg-rose-950/40' : ''}"
               data-product-id="${product.product_id}"
               title="পছন্দের তালিকায় রাখুন"
               aria-label="Wishlist"
+              onclick="event.stopPropagation();"
             >
               <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
             </button>

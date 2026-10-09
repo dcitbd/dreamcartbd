@@ -1,8 +1,10 @@
-export function renderRegisterPage() {
-  return `<div class="py-8 max-w-5xl mx-auto space-y-4">
-    <h1 class="text-2xl font-black text-slate-900">Register</h1>
-    <div class="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm text-sm text-slate-600">
-      Explore Register on Dream Cart BD.
-    </div>
-  </div>`;
+/**
+ * DREAM CART BD — REGISTER PAGE (RegisterPage.js)
+ * Routes customer directly to customer registration interface
+ */
+
+import { renderCustomerPortal } from '../customer/CustomerPortal.js';
+
+export async function renderRegisterPage(params = {}) {
+  return renderCustomerPortal({ ...params, subview: 'register' });
 }

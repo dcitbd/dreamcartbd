@@ -69,7 +69,7 @@ export async function renderAdminPortal(params = {}) {
           </a>
           <button 
             class="btn-secondary text-xs py-2 px-3.5 text-rose-600 dark:text-rose-400 border-rose-200 hover:bg-rose-50"
-            onclick="import('../../store/authStore.js').then(m => { m.authStore.logout(); window.location.href='/admin/login'; });"
+            class="btn-secondary btn-logout text-xs py-2 px-3.5 text-rose-600 dark:text-rose-400 border-rose-200 hover:bg-rose-50 cursor-pointer"
           >
             লগআউট ✕
           </button>
@@ -778,29 +778,7 @@ function renderAdminLoginView() {
 
       <div class="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-4 text-xs">
         
-        <form 
-          id="admin-login-form" 
-          class="space-y-3.5"
-          onsubmit="event.preventDefault();
-            const captchaInput = parseInt(document.getElementById('adm-captcha-input').value, 10);
-            const expected = parseInt(document.getElementById('adm-captcha-expected').value, 10);
-            if (captchaInput !== expected) {
-              alert('ভুল ক্যাপচা উত্তর! আবার চেষ্টা করুন।');
-              return;
-            }
-            const workerType = document.getElementById('adm-worker-type').value;
-            const userName = document.getElementById('adm-username').value;
-            import('../../store/authStore.js').then(m => {
-              m.authStore.setUser({
-                name: userName,
-                user_name: userName,
-                worker_type: workerType,
-                role: 'Full Access',
-                account_type: 'ADMIN'
-              }, 'TOKEN-ADMIN-MASTER', 'ADMIN');
-              alert('অ্যাডমিন প্যানেলে স্বাগতম!');
-              window.location.href = '/admin/dashboard';
-            });"
+        <form id="admin-login-form" class="space-y-3.5"
         >
           <!-- Worker_Type Dropdown -->
           <div>

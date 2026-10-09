@@ -36,7 +36,7 @@ export function renderWishlistPage() {
           <button 
             id="btn-clear-wishlist" 
             class="btn-secondary text-xs py-2 px-4 text-rose-600 dark:text-rose-400 border-rose-200 self-start sm:self-auto hover:bg-rose-50 dark:hover:bg-rose-950/40"
-            onclick="import('../../store/favouriteStore.js').then(m => { m.favouriteStore.clear(); window.location.reload(); });"
+            id="btn-clear-wishlist-action" class="btn-secondary text-xs py-2 px-4 text-rose-600 dark:text-rose-400 border-rose-200 self-start sm:self-auto hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer"
           >
             সবগুলো মুছে ফেলুন ✕
           </button>
