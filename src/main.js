@@ -32,6 +32,8 @@ function initApp() {
     }
 
     // Apply saved theme (Dark / Light)
+    window.router = router;
+
     const savedTheme = localStorage.getItem("dcbd_theme");
     if (savedTheme === "dark") {
       document.documentElement.classList.add("dark");
@@ -66,6 +68,7 @@ function initApp() {
       updateCartDrawer();
       updateFloatingActions();
       updateCheckoutSummary();
+      updateCartPageSummary();
     });
 
     favouriteStore.subscribe(() => {
@@ -135,21 +138,32 @@ function closeCartDrawer() {
 }
 
 function updateCheckoutSummary() {
+  const subtotalEl = document.getElementById('summary-subtotal');
   const chargeEl = document.getElementById('summary-delivery-charge');
   const grandTotalEl = document.getElementById('summary-grand-total');
   const onlineRowEl = document.getElementById('summary-online-discount-row');
   const onlineAmtEl = document.getElementById('summary-online-discount-amount');
+  const btnTextEl = document.getElementById('btn-confirm-order-text');
+  const btnEl = document.getElementById('btn-confirm-order');
+
+  const subtotal = cartStore.getSubtotal();
+  const fee = cartStore.getDeliveryCharge();
+  const isFree = cartStore.isFreeDelivery();
+  const onlineDiscount = cartStore.getOnlinePaymentDiscount();
+  const grandTotal = cartStore.getGrandTotal();
+
+  if (subtotalEl) {
+    subtotalEl.textContent = formatCurrency(subtotal);
+  }
 
   if (chargeEl) {
-    const fee = cartStore.getDeliveryCharge();
-    if (fee === 0) {
-      chargeEl.innerHTML = '<span class="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[11px]">ফ্রি (৳০)</span>';
+    if (isFree) {
+      chargeEl.innerHTML = '<span class="text-emerald-600 dark:text-emerald-400 font-bold">ফ্রি (৳০)</span>';
     } else {
       chargeEl.textContent = formatCurrency(fee);
     }
   }
 
-  const onlineDiscount = cartStore.getOnlinePaymentDiscount();
   if (onlineRowEl) {
     if (onlineDiscount > 0) {
       onlineRowEl.classList.remove('hidden');
@@ -160,7 +174,49 @@ function updateCheckoutSummary() {
   }
 
   if (grandTotalEl) {
-    grandTotalEl.textContent = formatCurrency(cartStore.getGrandTotal());
+    grandTotalEl.textContent = formatCurrency(grandTotal);
+  }
+
+  if (btnTextEl) {
+    btnTextEl.textContent = `অর্ডার নিশ্চিত করুন (${formatCurrency(grandTotal)})`;
+  } else if (btnEl && !btnEl.disabled) {
+    btnEl.innerHTML = `<span>✓</span> <span id="btn-confirm-order-text">অর্ডার নিশ্চিত করুন (${formatCurrency(grandTotal)})</span>`;
+  }
+}
+
+function updateCartPageSummary() {
+  const subtotalEl = document.getElementById('cart-subtotal');
+  const feeEl = document.getElementById('cart-delivery-charge');
+  const onlineRowEl = document.getElementById('cart-online-discount-row');
+  const onlineAmtEl = document.getElementById('cart-online-discount-amount');
+  const grandTotalEl = document.getElementById('cart-grand-total');
+  const freeNoticeEl = document.getElementById('cart-free-shipping-notice');
+  const progressBarEl = document.getElementById('cart-progress-bar');
+
+  const subtotal = cartStore.getSubtotal();
+  const fee = cartStore.getDeliveryCharge();
+  const isFree = cartStore.isFreeDelivery();
+  const onlineDiscount = cartStore.getOnlinePaymentDiscount();
+  const grandTotal = cartStore.getGrandTotal();
+
+  if (subtotalEl) subtotalEl.textContent = formatCurrency(subtotal);
+  if (feeEl) {
+    feeEl.innerHTML = isFree ? '<span class="text-emerald-600 font-bold">ফ্রি (৳০)</span>' : formatCurrency(fee);
+  }
+  if (onlineRowEl) {
+    if (onlineDiscount > 0) {
+      onlineRowEl.classList.remove('hidden');
+      if (onlineAmtEl) onlineAmtEl.textContent = `-${formatCurrency(onlineDiscount)}`;
+    } else {
+      onlineRowEl.classList.add('hidden');
+    }
+  }
+  if (grandTotalEl) grandTotalEl.textContent = formatCurrency(grandTotal);
+  if (freeNoticeEl) {
+    freeNoticeEl.textContent = subtotal >= 2000 ? '✓ অর্জিত!' : `আরও ৳${2000 - subtotal}`;
+  }
+  if (progressBarEl) {
+    progressBarEl.style.width = `${Math.min(100, (subtotal / 2000) * 100)}%`;
   }
 }
 
@@ -365,6 +421,7 @@ function attachEventListeners() {
       const item = cartStore.items.find(i => i.product_id === pId && (i.color || '') === color && (i.size || '') === size);
       if (item) {
         cartStore.updateQuantity(pId, item.quantity + 1, { color, size });
+        if (window.location.pathname.includes('/cart')) router.resolve();
       }
       return;
     }
@@ -377,6 +434,7 @@ function attachEventListeners() {
       const item = cartStore.items.find(i => i.product_id === pId && (i.color || '') === color && (i.size || '') === size);
       if (item) {
         cartStore.updateQuantity(pId, item.quantity - 1, { color, size });
+        if (window.location.pathname.includes('/cart')) router.resolve();
       }
       return;
     }
@@ -387,6 +445,7 @@ function attachEventListeners() {
       const color = removeBtn.getAttribute('data-color') || '';
       const size = removeBtn.getAttribute('data-size') || '';
       cartStore.removeItem(pId, { color, size });
+      if (window.location.pathname.includes('/cart') || window.location.pathname.includes('/checkout')) router.resolve();
       return;
     }
 
@@ -400,10 +459,11 @@ function attachEventListeners() {
 
     // Product Card / Image Click -> Navigate to details
     const cardClick = e.target.closest('.card-img-click');
-    if (cardClick && !e.target.closest('.btn-toggle-favourite') && !e.target.closest('button')) {
-      const slug = cardClick.getAttribute('data-slug');
+    if (cardClick && !e.target.closest('.btn-toggle-favourite') && !e.target.closest('button') && !e.target.closest('a')) {
+      e.preventDefault();
+      const slug = cardClick.getAttribute('data-slug') || cardClick.getAttribute('data-product-id');
       if (slug) {
-        router.navigate('/product/' + slug);
+        router.navigate('/product/' + encodeURIComponent(slug));
       }
       return;
     }
@@ -414,9 +474,30 @@ function attachEventListeners() {
   document.addEventListener('change', (e) => {
     if (e.target.name === 'delivery_zone') {
       cartStore.setDeliveryZone(e.target.value);
+      document.querySelectorAll('.delivery-option').forEach(opt => {
+        const rad = opt.querySelector('input[name="delivery_zone"]');
+        if (rad && rad.checked) {
+          opt.classList.add('border-emerald-500', 'bg-emerald-50/50');
+          opt.classList.remove('border-slate-200');
+        } else {
+          opt.classList.remove('border-emerald-500', 'bg-emerald-50/50');
+          opt.classList.add('border-slate-200');
+        }
+      });
+      updateCheckoutSummary();
     }
     if (e.target.name === 'payment_method') {
       cartStore.setPaymentMethod(e.target.value);
+      document.querySelectorAll('.payment-option').forEach(opt => {
+        const rad = opt.querySelector('input[name="payment_method"]');
+        if (rad && rad.checked) {
+          opt.classList.add('border-emerald-500', 'bg-emerald-50/40');
+          opt.classList.remove('border-slate-200');
+        } else {
+          opt.classList.remove('border-emerald-500', 'bg-emerald-50/40');
+          opt.classList.add('border-slate-200');
+        }
+      });
       const box = document.getElementById('payment-details-box');
       if (box) {
         if (cartStore.isOnlinePayment()) {
@@ -425,9 +506,11 @@ function attachEventListeners() {
           box.classList.add('hidden');
         }
       }
+      updateCheckoutSummary();
     }
     if (e.target.id === 'cart-zone-select') {
       cartStore.setDeliveryZone(e.target.value);
+      updateCartPageSummary();
     }
   });
 
@@ -541,7 +624,7 @@ function attachEventListeners() {
           color,
           size
         }],
-        total_amount: (prodPrice * qty) + 90,
+        total_amount: (prodPrice * qty) >= 2000 ? (prodPrice * qty) : ((prodPrice * qty) + 90),
         payment_method: payment,
         transaction_id: "N/A",
         payment_status: payment === 'Cash On Delivery (COD)' ? 'COD' : 'Paid',

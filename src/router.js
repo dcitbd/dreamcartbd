@@ -192,10 +192,19 @@ export const router = {
 
       // Dynamic Product Detail routing: /product/<slug>
       if (path.startsWith('/product/')) {
-        const slug = path.replace('/product/', '');
+        const rawSlug = path.replace('/product/', '');
+        let slug = rawSlug;
+        try { slug = decodeURIComponent(rawSlug); } catch (e) {}
         viewHtml = await renderProductDetailPage(slug);
       } else if (path === '/product') {
-        const slug = params.slug || params.id || 'amazfit-gts-4-smartwatch';
+        const rawSlug = params.slug || params.id || params.sku || 'amazfit-gts-4-smartwatch';
+        let slug = rawSlug;
+        try { slug = decodeURIComponent(rawSlug); } catch (e) {}
+        viewHtml = await renderProductDetailPage(slug);
+      } else if ((path === '/products' || path === '/shop') && (params.id || params.slug)) {
+        const rawSlug = params.slug || params.id;
+        let slug = rawSlug;
+        try { slug = decodeURIComponent(rawSlug); } catch (e) {}
         viewHtml = await renderProductDetailPage(slug);
       } else if (path === '/order-success') {
         viewHtml = await renderOrderSuccessPage(params.orderId || params.order_id || 'ORD-2609-8472');
