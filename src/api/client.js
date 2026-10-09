@@ -65,12 +65,17 @@ function fetchSheetViaGviz(sheetName) {
     let timer = setTimeout(() => {
       cleanup();
       resolve([]);
-    }, 6000);
+    }, 15000);
 
     function cleanup() {
       clearTimeout(timer);
       if (script.parentNode) script.parentNode.removeChild(script);
-      delete window[cbName];
+      window[cbName] = function() {
+        try { delete window[cbName]; } catch (e) {}
+      };
+      setTimeout(() => {
+        try { delete window[cbName]; } catch (e) {}
+      }, 30000);
     }
 
     window[cbName] = function(resp) {
@@ -130,12 +135,17 @@ function fetchAppsScriptViaJsonp(action, params = {}) {
     let timer = setTimeout(() => {
       cleanup();
       resolve(null);
-    }, 6000);
+    }, 15000);
 
     function cleanup() {
       clearTimeout(timer);
       if (script.parentNode) script.parentNode.removeChild(script);
-      delete window[cbName];
+      window[cbName] = function() {
+        try { delete window[cbName]; } catch (e) {}
+      };
+      setTimeout(() => {
+        try { delete window[cbName]; } catch (e) {}
+      }, 30000);
     }
 
     window[cbName] = function(resp) {
@@ -211,6 +221,13 @@ class ApiClient {
   }
 
   async loadProductsFromSheet(forceRefresh = false) {
+    if (!this.sheetProducts || this.sheetProducts.length === 0) {
+      const cached = this.loadLocal('dcbd_sheet_products', null);
+      if (cached && cached.length > 0) {
+        this.sheetProducts = cached;
+      }
+    }
+
     if (!forceRefresh && this.sheetProducts && this.sheetProducts.length > 0) {
       this.syncProductsFromSheetAsync();
       return this.sheetProducts;
@@ -404,15 +421,40 @@ class ApiClient {
 
       case "products/details": {
         const products = await this.loadProductsFromSheet();
-        const slugOrId = payload.id || payload.slug;
-        const found = products.find(p => 
-          p.product_id === slugOrId || 
-          p.slug === slugOrId || 
-          p.sku === slugOrId
-        );
+        const rawTarget = (payload.id || payload.slug || payload.sku || '').toString().trim();
+        const target = rawTarget.toLowerCase();
+        let decodedTarget = target;
+        try { decodedTarget = decodeURIComponent(target); } catch(e){}
+
+        const found = products.find(p => {
+          const pId = (p.product_id || '').toString().trim().toLowerCase();
+          const sku = (p.sku || '').toString().trim().toLowerCase();
+          const slug = (p.slug || '').toString().trim().toLowerCase();
+          const name = (p.name || p.p_name || '').toString().trim().toLowerCase();
+          const normName = name.replace(/[^a-z0-9]+/g, '-');
+          
+          return pId === target || pId === decodedTarget ||
+                 sku === target || sku === decodedTarget ||
+                 slug === target || slug === decodedTarget ||
+                 name === target || name === decodedTarget ||
+                 normName === target || normName === decodedTarget;
+        });
+
         if (found) {
           return { success: true, data: found };
         }
+
+        const partial = products.find(p => {
+          const pId = (p.product_id || '').toString().trim().toLowerCase();
+          const slug = (p.slug || '').toString().trim().toLowerCase();
+          return (slug && (target.includes(slug) || slug.includes(target))) ||
+                 (pId && (target.includes(pId) || pId.includes(target)));
+        });
+
+        if (partial) {
+          return { success: true, data: partial };
+        }
+
         return { success: false, message: "পণ্য পাওয়া যায়নি" };
       }
 
@@ -547,6 +589,57 @@ class ApiClient {
           this.saveLocal('dcbd_sheet_brands', this.sheetBrands);
         }
         return { success: true, message: "ব্র্যান্ড মুছে ফেলা হয়েছে।" };
+      }
+
+            case "orders/get":
+      case "orders/details": {
+        const queryId = (payload.orderId || payload.order_id || payload.id || payload.phone || '').toString().trim().toLowerCase();
+        
+        let orders = this.sheetOrders || this.loadLocal('dcbd_sheet_orders', []) || [];
+        let matched = orders.find(o => {
+          const oId = (o.order_id || o.orderId || o.OrderID || '').toString().trim().toLowerCase();
+          const oPhone = (o.phone || o.Phone || '').toString().trim().toLowerCase();
+          return (queryId && (oId === queryId || oPhone === queryId));
+        });
+
+        if (!matched) {
+          try {
+            const rows = await fetchSheetViaGviz('Orders');
+            if (rows && rows.length > 0) {
+              matched = rows.find(r => {
+                const rId = (r.orderid || r.order_id || r.col_1 || '').toString().trim().toLowerCase();
+                const rPhone = (r.phone || r.col_4 || '').toString().trim().toLowerCase();
+                return (queryId && (rId === queryId || rPhone === queryId));
+              });
+              if (matched) {
+                matched = {
+                  order_id: matched.orderid || matched.order_id || matched.col_1 || queryId,
+                  date: matched.date || matched.col_0 || '',
+                  account_type: matched.account_type || matched.col_2 || 'Customer',
+                  customer_name: matched.customer_name || matched.col_3 || 'সম্মানিত গ্রাহক',
+                  phone: matched.phone || matched.col_4 || '',
+                  address: matched.address || matched.col_5 || '',
+                  products: matched.products || matched.col_6 || '',
+                  color: matched.color || matched.col_7 || '',
+                  size: matched.size || matched.col_8 || '',
+                  quantity: Number(matched.quantity || matched.col_9 || 1),
+                  total_amount: Number(matched.total_amount || matched.col_10 || 0),
+                  payment_method: matched.payment_method || matched.col_11 || 'Cash On Delivery (COD)',
+                  transaction_id: matched.transaction_id || matched.col_12 || 'N/A',
+                  payment_status: matched.payment_status || matched.col_13 || 'COD',
+                  order_status: matched.order_status || matched.col_14 || 'Order Placed',
+                  reseller_commission: Number(matched.reseller_commission || matched.col_15 || 0),
+                  commission_status: matched.commission_status || matched.col_16 || 'Pending'
+                };
+              }
+            }
+          } catch (e) {}
+        }
+
+        if (matched) {
+          return { success: true, data: matched };
+        }
+        return { success: false, message: "অর্ডার পাওয়া যায়নি" };
       }
 
       case "orders/create": {
