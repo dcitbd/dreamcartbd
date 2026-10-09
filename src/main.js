@@ -2,8 +2,10 @@
  * DREAM CART BD — MASTER FRONTEND BOOTSTRAPPER (main.js)
  * Implements:
  * - HTML5 History API Path Router (ZERO hash '#', domain/products clean URLs)
- * - Live predictive search dropdown with interactive preview cards
- * - Floating fixed actions dock (Cart, Call sub-buttons, WhatsApp sub-buttons, Live Chat)
+ * - Highly responsive Live predictive search with interactive preview cards & search buttons
+ * - Floating fixed actions dock (Cart with live bounce badge, WhatsApp sub-menu, Call sub-menu, Live Chat)
+ * - Product variant selection (Interactive Color & Size selector on Product Details, Cart, Checkout)
+ * - Robust Auth form submissions (Customer login/register, Reseller, Wholesale, Admin, Profile edit)
  * - Dark mode toggle & theme persistence
  * - Reactive stores wiring (Cart, Favourites, Auth)
  * - Incomplete order tracking
@@ -31,9 +33,13 @@ function initApp() {
       return;
     }
 
-    // Apply saved theme (Dark / Light)
+    // Expose globals for debugging & compatibility
     window.router = router;
+    window.authStore = authStore;
+    window.cartStore = cartStore;
+    window.apiClient = apiClient;
 
+    // Apply saved theme (Dark / Light)
     const savedTheme = localStorage.getItem("dcbd_theme");
     if (savedTheme === "dark") {
       document.documentElement.classList.add("dark");
@@ -81,9 +87,12 @@ function initApp() {
       router.resolve();
     });
 
-    // Attach global click & event delegates
+    // Attach global click, input & form submit event delegates
     attachEventListeners();
     attachLiveSearchHandlers();
+
+    // Pre-warm product catalogue cache in background
+    apiClient.loadProductsFromSheet().catch(() => {});
 
     // Handle History navigation
     window.addEventListener('popstate', () => router.resolve());
@@ -221,7 +230,7 @@ function updateCartPageSummary() {
 }
 
 function attachEventListeners() {
-  // 1. Intercept all internal anchor navigation for clean path URLs (NO #)
+  // 1. Intercept internal anchor clicks for SPA Clean Path Routing (Zero '#' in URLs)
   document.addEventListener('click', (e) => {
     const link = e.target.closest('a');
     if (!link) return;
@@ -229,7 +238,6 @@ function attachEventListeners() {
     const href = link.getAttribute('href');
     if (!href) return;
 
-    // Check if external, protocol, target blank, or anchor jump
     if (
       href.startsWith('http://') ||
       href.startsWith('https://') ||
@@ -242,17 +250,15 @@ function attachEventListeners() {
       return;
     }
 
-    // If anchor on same page, let browser handle
     if (href.startsWith('#') && !href.startsWith('#/')) {
       return;
     }
 
-    // Internal navigation
     e.preventDefault();
     router.navigate(href);
   });
 
-  // 2. Global delegate for interactive triggers
+  // 2. Global delegate for interactive triggers (clicks)
   document.addEventListener('click', async (e) => {
     
     // Toggle Dark Mode
@@ -277,10 +283,10 @@ function attachEventListeners() {
       return;
     }
 
-    // Logout
-    if (e.target.closest('#btn-logout')) {
+    // Global Logout handlers
+    if (e.target.closest('#btn-logout') || e.target.closest('.btn-logout') || e.target.closest('#btn-customer-logout')) {
       authStore.logout();
-      toast.show({ type: "info", title: "লগআউট", message: "আপনি সফলভাবে লগআউট হয়েছেন।" });
+      toast.show({ type: "info", title: "লগআউট সম্পন্ন", message: "আপনি আপনার অ্যাকাউন্ট থেকে সফলভাবে লগআউট হয়েছেন।" });
       router.navigate('/');
       return;
     }
@@ -309,12 +315,26 @@ function attachEventListeners() {
       return;
     }
 
-    // Close floating submenus when clicked outside
+    // Close floating submenus & auth dropdown when clicked outside
     if (!e.target.closest('#call-menu-group') && !e.target.closest('#wa-menu-group')) {
       const callMenu = document.getElementById('call-sub-menu');
       const waMenu = document.getElementById('wa-sub-menu');
       if (callMenu) callMenu.classList.add('hidden');
       if (waMenu) waMenu.classList.add('hidden');
+    }
+    if (!e.target.closest('.auth-dropdown-container')) {
+      const authPanel = document.getElementById('auth-dropdown-panel');
+      if (authPanel) authPanel.classList.add('hidden');
+    }
+
+    // Product card click to open details
+    const cardClick = e.target.closest('.card-img-click');
+    if (cardClick && !e.target.closest('.btn-toggle-favourite') && !e.target.closest('.btn-quick-add') && !e.target.closest('a')) {
+      const slug = cardClick.getAttribute('data-slug') || cardClick.getAttribute('data-product-id');
+      if (slug) {
+        router.navigate('/product/' + encodeURIComponent(slug));
+        return;
+      }
     }
 
     // Toggle Favourite / Wishlist
@@ -336,7 +356,55 @@ function attachEventListeners() {
       return;
     }
 
-    // Quick Add to Cart Button
+    // Clear Wishlist
+    if (e.target.closest('#btn-clear-wishlist') || e.target.closest('#btn-clear-wishlist-action')) {
+      favouriteStore.clear();
+      toast.show({
+        type: 'info',
+        title: 'পছন্দের তালিকা খালি করা হয়েছে',
+        message: 'সব পণ্য তালিকা থেকে মুছে ফেলা হয়েছে।'
+      });
+      router.resolve();
+      return;
+    }
+
+    // Interactive Color Chip Selection on Product Details
+    const colorBtn = e.target.closest('.color-select-btn');
+    if (colorBtn) {
+      const selectedColor = colorBtn.getAttribute('data-color');
+      document.querySelectorAll('.color-select-btn').forEach(b => {
+        b.classList.remove('active');
+        b.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
+      });
+      colorBtn.classList.add('active');
+      colorBtn.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
+      
+      const hiddenInput = document.getElementById('selected-color');
+      if (hiddenInput) hiddenInput.value = selectedColor;
+      const label = document.getElementById('selected-color-label');
+      if (label) label.textContent = selectedColor;
+      return;
+    }
+
+    // Interactive Size Chip Selection on Product Details
+    const sizeBtn = e.target.closest('.size-select-btn');
+    if (sizeBtn) {
+      const selectedSize = sizeBtn.getAttribute('data-size');
+      document.querySelectorAll('.size-select-btn').forEach(b => {
+        b.classList.remove('active');
+        b.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
+      });
+      sizeBtn.classList.add('active');
+      sizeBtn.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
+      
+      const hiddenInput = document.getElementById('selected-size');
+      if (hiddenInput) hiddenInput.value = selectedSize;
+      const label = document.getElementById('selected-size-label');
+      if (label) label.textContent = selectedSize;
+      return;
+    }
+
+    // Quick Add to Cart Button (Card)
     const quickAddBtn = e.target.closest('.btn-quick-add');
     if (quickAddBtn) {
       e.preventDefault();
@@ -356,19 +424,23 @@ function attachEventListeners() {
       return;
     }
 
-    // Detail Add to Cart
+    // Detail Add to Cart Button (With Color & Size)
     if (e.target.closest('#btn-detail-add-cart')) {
       const btn = e.target.closest('#btn-detail-add-cart');
       const pId = btn.getAttribute('data-product-id');
       const qtyInp = document.getElementById('product-qty-input');
       const qty = parseInt(qtyInp ? qtyInp.value : '1', 10);
+      const color = document.getElementById('selected-color')?.value || '';
+      const size = document.getElementById('selected-size')?.value || '';
+
       const res = await apiClient.request("products/details", { id: pId });
       if (res.data) {
-        cartStore.addItem(res.data, qty);
+        cartStore.addItem(res.data, qty, { color, size });
+        const variantDesc = [color ? `কালার: ${color}` : '', size ? `সাইজ: ${size}` : ''].filter(Boolean).join(', ');
         toast.show({
           type: "success",
           title: "কার্টে যুক্ত হয়েছে",
-          message: `${res.data.name} (${qty} টি) কার্টে যোগ করা হয়েছে।`,
+          message: `${res.data.name} (${qty} টি)${variantDesc ? ` [${variantDesc}]` : ''} কার্টে যোগ করা হয়েছে।`,
           duration: 3500
         });
         openCartDrawer();
@@ -376,7 +448,7 @@ function attachEventListeners() {
       return;
     }
 
-    // Order Now Button (Direct checkout)
+    // Order Now Button (Direct checkout with Color & Size)
     const orderNowBtn = e.target.closest('.btn-order-now') || e.target.closest('#btn-detail-order-now');
     if (orderNowBtn) {
       e.preventDefault();
@@ -384,9 +456,12 @@ function attachEventListeners() {
       const pId = orderNowBtn.getAttribute('data-product-id');
       const qtyInp = document.getElementById('product-qty-input');
       const qty = parseInt(qtyInp ? qtyInp.value : '1', 10);
+      const color = document.getElementById('selected-color')?.value || '';
+      const size = document.getElementById('selected-size')?.value || '';
+
       const res = await apiClient.request("products/details", { id: pId });
       if (res.data) {
-        cartStore.addItem(res.data, qty);
+        cartStore.addItem(res.data, qty, { color, size });
         router.navigate('/checkout');
       }
       return;
@@ -398,9 +473,12 @@ function attachEventListeners() {
       e.preventDefault();
       e.stopPropagation();
       const pId = preOrderBtn.getAttribute('data-product-id');
+      const color = document.getElementById('selected-color')?.value || '';
+      const size = document.getElementById('selected-size')?.value || '';
+
       const res = await apiClient.request("products/details", { id: pId });
       if (res.data) {
-        cartStore.addItem(res.data, 1);
+        cartStore.addItem(res.data, 1, { color, size });
         toast.show({
           type: "info",
           title: "প্রি-অর্ডার বুকিং",
@@ -449,72 +527,43 @@ function attachEventListeners() {
       return;
     }
 
-    // Clear Cart Button
+    // Clear entire cart
     if (e.target.closest('#btn-clear-cart')) {
-      if (confirm('আপনি কি সম্পূর্ণ কার্ট খালি করতে চান?')) {
-        cartStore.clear();
-      }
+      cartStore.clear();
+      router.resolve();
       return;
     }
 
-    // Product Card / Image Click -> Navigate to details
-    const cardClick = e.target.closest('.card-img-click');
-    if (cardClick && !e.target.closest('.btn-toggle-favourite') && !e.target.closest('button') && !e.target.closest('a')) {
-      e.preventDefault();
-      const slug = cardClick.getAttribute('data-slug') || cardClick.getAttribute('data-product-id');
-      if (slug) {
-        router.navigate('/product/' + encodeURIComponent(slug));
+    // Delivery Zone Radio change
+    const zoneRadio = e.target.closest('input[name="delivery_zone"]');
+    if (zoneRadio) {
+      cartStore.setDeliveryZone(zoneRadio.value);
+      updateCheckoutSummary();
+    }
+
+    // Payment Method Radio change
+    const paymentRadio = e.target.closest('input[name="payment_method"]');
+    if (paymentRadio) {
+      cartStore.setPaymentMethod(paymentRadio.value);
+      const onlineBox = document.getElementById('online-payment-details');
+      if (onlineBox) {
+        if (cartStore.isOnlinePayment()) onlineBox.classList.remove('hidden');
+        else onlineBox.classList.add('hidden');
       }
-      return;
+      updateCheckoutSummary();
     }
 
   });
 
-  // Handle Delivery Zone & Payment Changes on Checkout
+  // 3. Form Change & Input handlers (Delivery zones on Cart page)
   document.addEventListener('change', (e) => {
-    if (e.target.name === 'delivery_zone') {
-      cartStore.setDeliveryZone(e.target.value);
-      document.querySelectorAll('.delivery-option').forEach(opt => {
-        const rad = opt.querySelector('input[name="delivery_zone"]');
-        if (rad && rad.checked) {
-          opt.classList.add('border-emerald-500', 'bg-emerald-50/50');
-          opt.classList.remove('border-slate-200');
-        } else {
-          opt.classList.remove('border-emerald-500', 'bg-emerald-50/50');
-          opt.classList.add('border-slate-200');
-        }
-      });
-      updateCheckoutSummary();
-    }
-    if (e.target.name === 'payment_method') {
-      cartStore.setPaymentMethod(e.target.value);
-      document.querySelectorAll('.payment-option').forEach(opt => {
-        const rad = opt.querySelector('input[name="payment_method"]');
-        if (rad && rad.checked) {
-          opt.classList.add('border-emerald-500', 'bg-emerald-50/40');
-          opt.classList.remove('border-slate-200');
-        } else {
-          opt.classList.remove('border-emerald-500', 'bg-emerald-50/40');
-          opt.classList.add('border-slate-200');
-        }
-      });
-      const box = document.getElementById('payment-details-box');
-      if (box) {
-        if (cartStore.isOnlinePayment()) {
-          box.classList.remove('hidden');
-        } else {
-          box.classList.add('hidden');
-        }
-      }
-      updateCheckoutSummary();
-    }
     if (e.target.id === 'cart-zone-select') {
       cartStore.setDeliveryZone(e.target.value);
       updateCartPageSummary();
     }
   });
 
-  // Auto Incomplete Order Tracking on typing phone & address
+  // 4. Incomplete Order Real-time Tracker
   let incTimeout = null;
   document.addEventListener('input', (e) => {
     if (e.target.id === 'checkout-phone' || e.target.id === 'checkout-name' || e.target.id === 'checkout-address') {
@@ -529,21 +578,32 @@ function attachEventListeners() {
             customer_name: name,
             address: addr,
             total_amount: cartStore.getGrandTotal(),
-            products: cartStore.items.map(i => `${i.name} (${i.quantity})`).join(", ")
+            products: cartStore.items.map(i => `${i.name} [${i.color || ''} ${i.size || ''}] (${i.quantity})`).join(", ")
           });
         }
       }, 1500);
     }
   });
 
-  // Checkout Form Submission
+  // 5. Global Delegated Form Submissions (Handles Checkout, Auth & Profile Forms)
   document.addEventListener('submit', async (e) => {
+    
+    // Tracking Search Form Submission
+    if (e.target.id === 'tracking-search-form') {
+      e.preventDefault();
+      const val = document.getElementById('track-input')?.value.trim();
+      if (val) router.navigate('/track?orderId=' + encodeURIComponent(val));
+      return;
+    }
+
+    // A. Checkout Form Submission
     if (e.target.id === 'checkout-form') {
       e.preventDefault();
       const name = document.getElementById('checkout-name')?.value.trim();
       const phone = document.getElementById('checkout-phone')?.value.trim();
       const address = document.getElementById('checkout-address')?.value.trim();
       const trxId = document.getElementById('checkout-trxid')?.value.trim() || 'N/A';
+      const note = document.getElementById('checkout-note')?.value.trim() || '';
 
       if (!name || !phone || !address) {
         alert('অনুগ্রহ করে নাম, মোবাইল নম্বর এবং সম্পূর্ণ ঠিকানা সঠিকভাবে লিখুন।');
@@ -559,6 +619,7 @@ function attachEventListeners() {
         customer_name: name,
         phone: phone,
         address: address,
+        customer_note: note,
         account_type: authStore.getAccountType(),
         items: cartStore.items,
         total_amount: cartStore.getGrandTotal(),
@@ -593,40 +654,227 @@ function attachEventListeners() {
           btn.textContent = "অর্ডার নিশ্চিত করুন";
         }
       }
+      return;
     }
 
-    // Landing Page Order Form Submission
+    // B. Customer Login & Registration Form Submission
+    if (e.target.id === 'customer-auth-form') {
+      e.preventDefault();
+      const form = e.target;
+      const isRegister = form.getAttribute('data-auth-mode') === 'register' || !!document.getElementById('auth-name');
+      const phone = document.getElementById('auth-phone')?.value.trim();
+      const pass = document.getElementById('auth-pass')?.value.trim();
+      const name = document.getElementById('auth-name')?.value.trim() || 'সম্মানিত গ্রাহক';
+      const mail = document.getElementById('auth-mail')?.value.trim() || '';
+      const addr = document.getElementById('auth-addr')?.value.trim() || '';
+
+      if (!phone || phone.length < 11) {
+        toast.show({ type: "error", title: "সতর্কতা", message: "সঠিক ১১ ডিজিটের মোবাইল নম্বর প্রদান করুন।" });
+        return;
+      }
+      if (!pass || pass.length < 4) {
+        toast.show({ type: "error", title: "সতর্কতা", message: "পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে।" });
+        return;
+      }
+
+      const submitBtn = form.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = `<span>⏳</span> <span>${isRegister ? 'অ্যাকাউন্ট তৈরি হচ্ছে...' : 'প্রবেশ করা হচ্ছে...'}</span>`;
+      }
+
+      try {
+        const payload = {
+          name: name,
+          mobile: phone,
+          phone: phone,
+          mail: mail,
+          email: mail,
+          address: addr,
+          password: pass,
+          account_type: 'CUSTOMER'
+        };
+
+        await apiClient.request(isRegister ? "customers/register" : "customers/login", payload);
+        authStore.setUser(payload, "TOKEN-CUST-" + Date.now(), "CUSTOMER");
+
+        toast.show({
+          type: "success",
+          title: isRegister ? "নিবন্ধন সম্পন্ন!" : "লগইন সফল!",
+          message: `স্বাগতম, ${name}! আপনার ড্যাশবোর্ডে প্রবেশ করা হয়েছে।`,
+          duration: 4000
+        });
+
+        router.navigate('/customer/dashboard');
+
+      } catch (err) {
+        console.error("Auth error:", err);
+        const fallback = { name, mobile: phone, phone, mail, address: addr, account_type: 'CUSTOMER' };
+        authStore.setUser(fallback, "TOKEN-CUST-OFFLINE", "CUSTOMER");
+        router.navigate('/customer/dashboard');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = isRegister ? 'নিবন্ধন সম্পন্ন করুন →' : 'লগইন করুন →';
+        }
+      }
+      return;
+    }
+
+    // C. Reseller Auth Form Submission
+    if (e.target.id === 'reseller-auth-form') {
+      e.preventDefault();
+      const form = e.target;
+      const isRegister = form.getAttribute('data-auth-mode') === 'register' || !!document.getElementById('r-shop');
+      const phone = document.getElementById('r-phone')?.value.trim();
+      const name = document.getElementById('r-name')?.value.trim() || 'রিসেলার পার্টনার';
+      const shop = document.getElementById('r-shop')?.value.trim() || 'রিসেলার শপ';
+
+      if (!phone) {
+        toast.show({ type: "error", title: "সতর্কতা", message: "মোবাইল নম্বর প্রদান করুন।" });
+        return;
+      }
+
+      const payload = { name, shop_name: shop, mobile: phone, phone, account_type: 'RESELLER' };
+      await apiClient.request(isRegister ? "resellers/register" : "resellers/login", payload);
+      authStore.setUser(payload, 'TOKEN-RES-' + Date.now(), 'RESELLER');
+
+      toast.show({
+        type: "success",
+        title: isRegister ? "রিসেলার নিবন্ধন সফল!" : "রিসেলার পোর্টালে স্বাগতম!",
+        message: `স্বাগতম, ${name}! আপনার রিসেলার রেট এখন কার্যকর।`,
+        duration: 4000
+      });
+
+      router.navigate('/reseller/dashboard');
+      return;
+    }
+
+    // D. Wholesale Auth Form Submission
+    if (e.target.id === 'wholesale-auth-form') {
+      e.preventDefault();
+      const form = e.target;
+      const isRegister = form.getAttribute('data-auth-mode') === 'register' || !!document.getElementById('w-shop');
+      const phone = document.getElementById('w-phone')?.value.trim();
+      const name = document.getElementById('w-name')?.value.trim() || 'পাইকারি ক্রেতা';
+      const shop = document.getElementById('w-shop')?.value.trim() || 'পাইকারি প্রতিষ্ঠান';
+
+      if (!phone) {
+        toast.show({ type: "error", title: "সতর্কতা", message: "মোবাইল নম্বর প্রদান করুন।" });
+        return;
+      }
+
+      const payload = { name, shop_name: shop, mobile: phone, phone, account_type: 'WHOLESALER' };
+      await apiClient.request(isRegister ? "wholesalers/register" : "wholesalers/login", payload);
+      authStore.setUser(payload, 'TOKEN-WHOLE-' + Date.now(), 'WHOLESALER');
+
+      toast.show({
+        type: "success",
+        title: isRegister ? "হোলসেলার নিবন্ধন সফল!" : "হোলসেলার পোর্টালে স্বাগতম!",
+        message: `স্বাগতম, ${name}! পাইকারি রেট সক্রিয় হয়েছে।`,
+        duration: 4000
+      });
+
+      router.navigate('/wholesaler/dashboard');
+      return;
+    }
+
+    // E. Admin / Worker Login Form Submission
+    if (e.target.id === 'admin-login-form' || e.target.id === 'admin-auth-form') {
+      e.preventDefault();
+      const captchaInp = document.getElementById('adm-captcha-input');
+      const captchaExp = document.getElementById('adm-captcha-expected');
+      if (captchaInp && captchaExp) {
+        const inpVal = parseInt(captchaInp.value, 10);
+        const expVal = parseInt(captchaExp.value, 10);
+        if (inpVal !== expVal) {
+          toast.show({ type: "error", title: "ভুল ক্যাপচা উত্তর", message: "ক্যাপচা সমাধান সঠিকভাবে করুন।" });
+          return;
+        }
+      }
+
+      const workerType = document.getElementById('adm-worker-type')?.value || 'Admin';
+      const userName = document.getElementById('adm-username')?.value || 'Administrator';
+
+      const payload = {
+        name: userName,
+        user_name: userName,
+        worker_type: workerType,
+        role: 'Full Access',
+        account_type: 'ADMIN'
+      };
+
+      authStore.setUser(payload, 'TOKEN-ADMIN-MASTER', 'ADMIN');
+      toast.show({
+        type: "success",
+        title: "অ্যাডমিন প্যানেলে স্বাগতম!",
+        message: `${userName} (${workerType}) হিসেবে লগইন হয়েছে।`,
+        duration: 4000
+      });
+
+      router.navigate('/admin/dashboard');
+      return;
+    }
+
+    // F. Customer Profile Edit Form Submission
+    if (e.target.id === 'customer-profile-edit-form') {
+      e.preventDefault();
+      const name = document.getElementById('edit-c-name')?.value.trim();
+      const mail = document.getElementById('edit-c-mail')?.value.trim();
+      const addr = document.getElementById('edit-c-addr')?.value.trim();
+
+      const updated = {
+        ...authStore.user,
+        name: name || authStore.user?.name,
+        mail: mail,
+        email: mail,
+        address: addr
+      };
+
+      authStore.setUser(updated, authStore.token, 'CUSTOMER');
+      const modal = document.getElementById('customer-profile-edit-modal');
+      if (modal) modal.classList.remove('active');
+
+      toast.show({
+        type: 'success',
+        title: 'প্রোফাইল আপডেট হয়েছে!',
+        message: 'আপনার তথ্য সফলভাবে সংরক্ষিত হয়েছে।'
+      });
+
+      router.resolve();
+      return;
+    }
+
+    // G. Landing Page Order Form Submission
     if (e.target.id === 'landing-order-form') {
       e.preventDefault();
-      const prodSelect = document.getElementById('lp-product-select');
-      const selectedOption = prodSelect.options[prodSelect.selectedIndex];
-      const prodName = selectedOption.getAttribute('data-name');
-      const prodPrice = Number(selectedOption.getAttribute('data-price'));
-      const pId = prodSelect.value;
-      const qty = parseInt(document.getElementById('lp-quantity').value, 10);
-      const color = document.getElementById('lp-color')?.value || "";
-      const size = document.getElementById('lp-size')?.value || "";
-      const name = document.getElementById('lp-name').value.trim();
-      const phone = document.getElementById('lp-phone').value.trim();
-      const address = document.getElementById('lp-address').value.trim();
-      const payment = document.querySelector('input[name="lp_payment"]:checked')?.value || "Cash On Delivery (COD)";
+      const name = document.getElementById('landing-name')?.value.trim();
+      const phone = document.getElementById('landing-phone')?.value.trim();
+      const address = document.getElementById('landing-address')?.value.trim();
+      const productSku = document.getElementById('landing-product-sku')?.value;
+      const productName = document.getElementById('landing-product-name')?.value;
+      const price = Number(document.getElementById('landing-price')?.value || 0);
+      const delivery = Number(document.querySelector('input[name="landing_delivery"]:checked')?.value || 70);
+      const payment = document.querySelector('input[name="landing_payment"]:checked')?.value || 'COD';
+
+      if (!name || !phone || !address) {
+        alert('অনুগ্রহ করে নাম, মোবাইল নম্বর ও ঠিকানা পূরণ করুন।');
+        return;
+      }
 
       const orderPayload = {
         customer_name: name,
         phone: phone,
         address: address,
-        account_type: "Customer",
         items: [{
-          product_id: pId,
-          name: prodName,
-          quantity: qty,
-          price: prodPrice,
-          color,
-          size
+          product_id: productSku,
+          sku: productSku,
+          name: productName,
+          price: price,
+          quantity: 1
         }],
-        total_amount: (prodPrice * qty) >= 2000 ? (prodPrice * qty) : ((prodPrice * qty) + 90),
+        total_amount: price + delivery,
         payment_method: payment,
-        transaction_id: "N/A",
         payment_status: payment === 'Cash On Delivery (COD)' ? 'COD' : 'Paid',
         order_status: 'Order Placed'
       };
@@ -642,155 +890,194 @@ function attachEventListeners() {
         });
         router.navigate('/order-success?orderId=' + orderId);
       }
+      return;
     }
+
   });
 }
 
 /**
- * Live predictive search dropdown with preview cards
+ * Enhanced Live Predictive Search Dropdown with Instant Preview Cards & Action Triggers
+ * Uses document-level event delegation so that re-rendering headers NEVER breaks search!
  */
 function attachLiveSearchHandlers() {
-  const attachInput = (inputEl, popupEl) => {
+  let debounceTimer = null;
+
+  const performSearch = (inputEl, popupEl, clearBtn) => {
     if (!inputEl || !popupEl) return;
+    const query = inputEl.value.trim().toLowerCase();
 
-    let debounceTimer = null;
-
-    inputEl.addEventListener('input', (e) => {
-      clearTimeout(debounceTimer);
-      const query = e.target.value.trim().toLowerCase();
-
-      if (!query || query.length < 2) {
-        popupEl.innerHTML = '';
-        popupEl.classList.add('hidden');
-        return;
-      }
-
-      debounceTimer = setTimeout(() => {
-        const matches = apiClient.products.filter(p => 
-          p.name.toLowerCase().includes(query) ||
-          p.sku.toLowerCase().includes(query) ||
-          (p.brand && p.brand.toLowerCase().includes(query)) ||
-          (p.category && p.category.toLowerCase().includes(query))
-        ).slice(0, 5); // top 5 preview cards
-
-        if (matches.length === 0) {
-          popupEl.innerHTML = `
-            <div class="p-4 text-center text-xs text-slate-500">
-              "${query}" এর কোনো পণ্য মেলেনি। <a href="/products" class="text-emerald-600 font-bold hover:underline">সকল পণ্য দেখুন</a>
-            </div>
-          `;
-          popupEl.classList.remove('hidden');
-        } else {
-          popupEl.innerHTML = `
-            <div class="divide-y divide-slate-100 dark:divide-slate-800">
-              <div class="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                পণ্য প্রিভিউ (ক্লিক করে বিস্তারিত দেখুন):
-              </div>
-              ${matches.map(p => `
-                <div class="search-preview-item" onclick="router.navigate('/product/${p.slug}'); document.getElementById('search-preview-popup').classList.add('hidden');">
-                  <img src="${p.thumbnail || (p.images && p.images[0])}" alt="${p.name}" />
-                  <div class="min-w-0 flex-1">
-                    <div class="text-xs font-bold text-slate-900 dark:text-white truncate">${p.name}</div>
-                    <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      <span class="font-mono">${p.sku}</span>
-                      <span>•</span>
-                      <span class="text-emerald-600 font-black">${formatCurrency(p.selling_price)}</span>
-                      <span>•</span>
-                      <span>${p.category}</span>
-                    </div>
-                  </div>
-                </div>
-              `).join("")}
-              <div class="p-2.5 text-center bg-slate-50 dark:bg-slate-800">
-                <a href="/products?search=${encodeURIComponent(query)}" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline">
-                  সকল সার্চ রেজাল্ট দেখুন (${matches.length}) →
-                </a>
-              </div>
-            </div>
-          `;
-          popupEl.classList.remove('hidden');
-        }
-      }, 250);
-    });
-
-    // Close preview when clicked outside
-    document.addEventListener('click', (e) => {
-      if (!inputEl.contains(e.target) && !popupEl.contains(e.target)) {
-        popupEl.classList.add('hidden');
-      }
-    });
-
-    // Enter press -> navigate to products search
-    inputEl.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        const q = inputEl.value.trim();
-        if (q) {
-          popupEl.classList.add('hidden');
-          router.navigate('/products?search=' + encodeURIComponent(q));
-        }
-      }
-    });
-  };
-
-  attachInput(document.getElementById('global-search-input'), document.getElementById('search-preview-popup'));
-  attachInput(document.getElementById('mobile-search-input'), document.getElementById('mobile-search-preview-popup'));
-
-  // Global search button click
-  const btn = document.getElementById('global-search-btn');
-  if (btn) {
-    btn.addEventListener('click', () => {
-      const q = document.getElementById('global-search-input')?.value.trim();
-      if (q) router.navigate('/products?search=' + encodeURIComponent(q));
-    });
-  }
-}
-
-// Live Chat Window message sending utility
-window.sendChatMessage = function(userMsg) {
-  const container = document.getElementById('chat-messages-container');
-  if (!container || !userMsg) return;
-
-  // Append user message
-  const userHtml = `
-    <div class="flex items-start justify-end gap-2.5">
-      <div class="bg-emerald-600 text-white p-3 rounded-2xl rounded-tr-none text-xs leading-relaxed max-w-[85%]">
-        ${userMsg}
-      </div>
-      <div class="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
-        👤
-      </div>
-    </div>
-  `;
-  container.insertAdjacentHTML('beforeend', userHtml);
-  container.scrollTop = container.scrollHeight;
-
-  // Bot auto reply
-  setTimeout(() => {
-    let reply = "ধন্যবাদ আপনার বার্তার জন্য! আমাদের একজন কাস্টমার প্রতিনিধি শীঘ্রই উত্তর দিচ্ছেন। জরুরি অর্ডারে সরাসরি 01581703822 নম্বরে WhatsApp করতে পারেন।";
-    if (userMsg.includes('ডেলিভারি চার্জ')) {
-      reply = "আমাদের ডেলিভারি চার্জ: কুমিল্লা সদর ৳৭০, ঢাকা সিটি ৳৯০, এবং ঢাকার বাইরে সারা দেশে ৳১২০। এছাড়া ৳২,০০০ বা তার বেশি অর্ডারে ডেলিভারি সম্পূর্ণ ফ্রি!";
-    } else if (userMsg.includes('ট্র্যাক')) {
-      reply = "আপনার অর্ডার ট্র্যাক করতে আমাদের ট্র্যাকিং পেজে (/track) যান এবং আপনার ১১ ডিজিট মোবাইল নম্বর বা অর্ডার আইডি দিয়ে সার্চ করুন।";
-    } else if (userMsg.includes('রিসেলার')) {
-      reply = "ড্রিম কার্ট বিডি-তে বিনা পুঁজিতে রিসেলিং ব্যবসা শুরু করতে আমাদের রিসেলার পোর্টালে (/reseller/register) ফ্রি রেজিস্ট্রেশন করুন অথবা 01581703822 নম্বরে যোগাযোগ করুন।";
+    // Toggle clear button
+    if (clearBtn) {
+      if (query.length > 0) clearBtn.classList.remove('hidden');
+      else clearBtn.classList.add('hidden');
     }
 
-    const botHtml = `
-      <div class="flex items-start gap-2.5 max-w-[85%]">
-        <div class="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs flex-shrink-0">
-          🤖
-        </div>
-        <div class="bg-slate-100 dark:bg-slate-800 p-3 rounded-2xl rounded-tl-none text-slate-800 dark:text-slate-200 leading-relaxed">
-          ${reply}
-        </div>
-      </div>
-    `;
-    container.insertAdjacentHTML('beforeend', botHtml);
-    container.scrollTop = container.scrollHeight;
-  }, 600);
-};
+    if (!query || query.length < 1) {
+      popupEl.innerHTML = '';
+      popupEl.classList.add('hidden');
+      return;
+    }
 
-// Bootstrap application on DOM ready
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      const allProds = (apiClient.products && apiClient.products.length > 0) 
+        ? apiClient.products 
+        : (apiClient.sheetProducts || apiClient.loadLocal('dcbd_sheet_products', []) || []);
+      
+      const matches = allProds.filter(p => {
+        const name = (p.name || p.p_name || '').toLowerCase();
+        const sku = (p.sku || p.product_id || '').toLowerCase();
+        const brand = (p.brand || '').toLowerCase();
+        const cat = (p.category || '').toLowerCase();
+        const subCat = (p.sub_category || '').toLowerCase();
+        return name.includes(query) || sku.includes(query) || brand.includes(query) || cat.includes(query) || subCat.includes(query);
+      }).slice(0, 8);
+
+      if (matches.length === 0) {
+        popupEl.innerHTML = `
+          <div class="p-5 text-center text-xs text-slate-500 space-y-2">
+            <div>🔍 "${query}" এর সাথে কোনো পণ্য মেলেনি।</div>
+            <a href="/products" class="btn-primary text-[11px] py-1.5 px-3.5 inline-flex font-bold">সকল পণ্য ব্রাউজ করুন →</a>
+          </div>
+        `;
+        popupEl.classList.remove('hidden');
+      } else {
+        popupEl.innerHTML = `
+          <div class="divide-y divide-slate-100 dark:divide-slate-800">
+            <div class="px-4 py-2 bg-slate-50 dark:bg-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center justify-between">
+              <span>🔍 সম্ভাব্য ফলাফল (${matches.length} টি পণ্য পাওয়া গেছে)</span>
+              <span class="text-[9px] text-emerald-600 font-bold">ক্লিক করে বিস্তারিত দেখুন</span>
+            </div>
+            ${matches.map(p => `
+              <div 
+                class="search-preview-item flex items-center gap-3 p-3 hover:bg-emerald-50/70 dark:hover:bg-slate-800 transition cursor-pointer"
+                data-slug="${p.slug || p.product_id || p.sku}"
+              >
+                <img 
+                  src="${p.thumbnail || (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100'}" 
+                  alt="${p.name}" 
+                  class="w-12 h-12 rounded-xl object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0 bg-white"
+                />
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs font-bold text-slate-900 dark:text-white truncate leading-snug">${p.name}</div>
+                  <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
+                    <span class="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[9px] text-slate-600 dark:text-slate-300">${p.sku}</span>
+                    <span class="text-emerald-600 dark:text-emerald-400 font-black">${formatCurrency(p.selling_price)}</span>
+                    ${p.category ? `<span class="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[9px] font-bold">${p.category}</span>` : ''}
+                  </div>
+                </div>
+                <span class="text-slate-400 text-xs flex-shrink-0 font-bold">→</span>
+              </div>
+            `).join("")}
+            <div class="p-3 text-center bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800">
+              <a href="/products?search=${encodeURIComponent(query)}" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1.5">
+                <span>"${query}" এর সকল সার্চ রেজাল্ট দেখুন →</span>
+              </a>
+            </div>
+          </div>
+        `;
+        popupEl.classList.remove('hidden');
+      }
+    }, 180);
+  };
+
+  // Delegated input listener on document
+  document.addEventListener('input', (e) => {
+    if (e.target.id === 'global-search-input') {
+      performSearch(
+        document.getElementById('global-search-input'),
+        document.getElementById('search-preview-popup'),
+        document.getElementById('global-search-clear-btn')
+      );
+    } else if (e.target.id === 'mobile-search-input') {
+      performSearch(
+        document.getElementById('mobile-search-input'),
+        document.getElementById('mobile-search-preview-popup'),
+        document.getElementById('mobile-search-clear-btn')
+      );
+    }
+  });
+
+  // Delegated keydown listener (Enter key)
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (e.target.id === 'global-search-input' || e.target.id === 'mobile-search-input') {
+        e.preventDefault();
+        const q = e.target.value.trim();
+        const p1 = document.getElementById('search-preview-popup');
+        const p2 = document.getElementById('mobile-search-preview-popup');
+        if (p1) p1.classList.add('hidden');
+        if (p2) p2.classList.add('hidden');
+        if (q) router.navigate('/products?search=' + encodeURIComponent(q));
+        else router.navigate('/products');
+      }
+    }
+  });
+
+  // Delegated click listener for search buttons, clear buttons, and preview cards
+  document.addEventListener('click', (e) => {
+    // 1. Clear buttons
+    if (e.target.closest('#global-search-clear-btn')) {
+      const input = document.getElementById('global-search-input');
+      const popup = document.getElementById('search-preview-popup');
+      const btn = document.getElementById('global-search-clear-btn');
+      if (input) { input.value = ''; input.focus(); }
+      if (popup) { popup.innerHTML = ''; popup.classList.add('hidden'); }
+      if (btn) btn.classList.add('hidden');
+      return;
+    }
+    if (e.target.closest('#mobile-search-clear-btn')) {
+      const input = document.getElementById('mobile-search-input');
+      const popup = document.getElementById('mobile-search-preview-popup');
+      const btn = document.getElementById('mobile-search-clear-btn');
+      if (input) { input.value = ''; input.focus(); }
+      if (popup) { popup.innerHTML = ''; popup.classList.add('hidden'); }
+      if (btn) btn.classList.add('hidden');
+      return;
+    }
+
+    // 2. Search Buttons
+    if (e.target.closest('#global-search-btn')) {
+      const q = document.getElementById('global-search-input')?.value.trim();
+      const popup = document.getElementById('search-preview-popup');
+      if (popup) popup.classList.add('hidden');
+      if (q) router.navigate('/products?search=' + encodeURIComponent(q));
+      else router.navigate('/products');
+      return;
+    }
+    if (e.target.closest('#mobile-search-btn')) {
+      const q = document.getElementById('mobile-search-input')?.value.trim();
+      const popup = document.getElementById('mobile-search-preview-popup');
+      if (popup) popup.classList.add('hidden');
+      if (q) router.navigate('/products?search=' + encodeURIComponent(q));
+      else router.navigate('/products');
+      return;
+    }
+
+    // 3. Search Preview Item Click
+    const previewItem = e.target.closest('.search-preview-item');
+    if (previewItem) {
+      const slug = previewItem.getAttribute('data-slug');
+      const p1 = document.getElementById('search-preview-popup');
+      const p2 = document.getElementById('mobile-search-preview-popup');
+      if (p1) p1.classList.add('hidden');
+      if (p2) p2.classList.add('hidden');
+      if (slug) router.navigate('/product/' + encodeURIComponent(slug));
+      return;
+    }
+
+    // 4. Click outside search containers closes previews
+    if (!e.target.closest('.search-container') && !e.target.closest('#mobile-search-input') && !e.target.closest('#mobile-search-preview-popup')) {
+      const p1 = document.getElementById('search-preview-popup');
+      const p2 = document.getElementById('mobile-search-preview-popup');
+      if (p1) p1.classList.add('hidden');
+      if (p2) p2.classList.add('hidden');
+    }
+  });
+}
+
+// Auto-run initialization when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {

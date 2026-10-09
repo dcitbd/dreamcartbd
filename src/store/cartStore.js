@@ -179,7 +179,7 @@ class CartStore {
   }
 
   getDeliveryCharge() {
-    if (this.isFreeDelivery()) {
+    if (this.items.length === 0 || this.isFreeDelivery()) {
       return 0;
     }
     switch (this.deliveryZone) {
@@ -211,6 +211,7 @@ class CartStore {
   }
 
   getGrandTotal() {
+    if (this.items.length === 0) return 0;
     const subtotal = this.getSubtotal();
     const delivery = this.getDeliveryCharge();
     const couponDiscount = this.getCouponDiscount();

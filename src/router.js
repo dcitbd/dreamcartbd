@@ -41,7 +41,7 @@ export function getAppBase() {
       'products', 'shop', 'product', 'cart', 'favourite', 'wishlist',
       'checkout', 'order-success', 'track', 'contact', 'offers',
       'categories', 'brands', 'others-market', 'chat', 'live-chat',
-      'landing', 'terms', 'privacy', 'customer', 'reseller', 'wholesaler', 'admin'
+      'landing', 'terms', 'privacy', 'login', 'register', 'customer', 'reseller', 'wholesaler', 'admin'
     ];
     if (parts.length > 0 && !knownTopRoutes.includes(parts[0].toLowerCase())) {
       return '/' + parts[0];
@@ -75,6 +75,8 @@ export const router = {
     '/landing': renderLandingPage,
     '/terms': renderTermsPage,
     '/privacy': renderPrivacyPage,
+    '/login': (params) => renderCustomerPortal({ ...params, subview: 'login' }),
+    '/register': (params) => renderCustomerPortal({ ...params, subview: 'register' }),
     
     // Customer Portal
     '/customer': renderCustomerPortal,

@@ -1292,10 +1292,6 @@ header.site-header, header {
 .dark .dark\:bg-emerald-950\/20 { background-color: rgba(2, 44, 34, 0.2) !important; }
 
 
-
-
-
-
 /* ==========================================================================
    ENHANCED SEARCH BAR STYLES
    ========================================================================== */
@@ -1416,4 +1412,69 @@ header.site-header, header {
 
 .floating-btn:active {
   transform: scale(0.95) !important;
+}
+
+/* Specialized vibrant button colors for Floating Dock */
+.floating-btn-cart {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: #ffffff !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45) !important;
+}
+.floating-btn-cart:hover {
+  background: linear-gradient(135deg, #059669, #047857) !important;
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.6) !important;
+}
+
+.floating-btn-wa {
+  background: #25D366 !important;
+  color: #ffffff !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 6px 18px rgba(37, 211, 102, 0.45) !important;
+}
+.floating-btn-wa:hover {
+  background: #20bd5a !important;
+  box-shadow: 0 8px 25px rgba(37, 211, 102, 0.6) !important;
+}
+
+.floating-btn-call {
+  background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+  color: #ffffff !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 6px 18px rgba(2, 132, 199, 0.45) !important;
+}
+.floating-btn-call:hover {
+  background: linear-gradient(135deg, #0369a1, #075985) !important;
+  box-shadow: 0 6px 20px rgba(2, 132, 199, 0.6) !important;
+}
+
+.floating-btn-chat {
+  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
+  color: #ffffff !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.4) !important;
+  box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45) !important;
+}
+.floating-btn-chat:hover {
+  background: linear-gradient(135deg, #4f46e5, #4338ca) !important;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6) !important;
+}
+
+/* Variant Selector Chips */
+.variant-chip {
+  cursor: pointer;
+  border: 1.5px solid #e2e8f0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dark .variant-chip {
+  border-color: #334155;
+}
+.variant-chip.active {
+  border-color: #10b981 !important;
+  background-color: #ecfdf5 !important;
+  color: #065f46 !important;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25) !important;
+}
+.dark .variant-chip.active {
+  background-color: rgba(6, 78, 59, 0.4) !important;
+  color: #6ee7b7 !important;
 }
