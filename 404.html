@@ -14,7 +14,7 @@
       var segments = path.split('/').filter(Boolean);
       var root = '/';
       if (window.location.hostname.includes('github.io') && segments.length > 0) {
-        var known = ['products', 'shop', 'product', 'cart', 'favourite', 'wishlist', 'checkout', 'order', 'order-success', 'track', 'tracking', 'contact', 'offers', 'categories', 'brands', 'others-market', 'chat', 'live-chat', 'landing', 'terms', 'privacy', 'customer', 'reseller', 'wholesaler', 'admin'];
+        var known = ['products', 'shop', 'product', 'cart', 'favourite', 'wishlist', 'checkout', 'order', 'order-success', 'track', 'tracking', 'contact', 'offers', 'categories', 'brands', 'others-market', 'chat', 'live-chat', 'landing', 'terms', 'privacy', 'customer', 'reseller', 'wholesaler', 'admin', 'login', 'register'];
         if (!known.includes(segments[0].toLowerCase())) {
           root = '/' + segments[0] + '/';
         }
