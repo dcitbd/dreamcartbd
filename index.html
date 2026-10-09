@@ -20,7 +20,7 @@
           'products', 'shop', 'product', 'cart', 'favourite', 'wishlist',
           'checkout', 'order', 'order-success', 'track', 'tracking', 'contact', 'offers',
           'categories', 'brands', 'others-market', 'chat', 'live-chat',
-          'landing', 'terms', 'privacy', 'customer', 'reseller', 'wholesaler', 'admin'
+          'landing', 'terms', 'privacy', 'customer', 'reseller', 'wholesaler', 'admin', 'fraud', 'fraud-check'
         ];
         if (segments.length > 0 && !knownRoutes.includes(segments[0].toLowerCase())) {
           var baseTag = document.querySelector('base');
@@ -38,54 +38,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   
-  <!-- Tailwind CSS Engine (Enables all 700+ utility classes & responsive breakpoints) -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#ecfdf5',
-              100: '#d1fae5',
-              200: '#a7f3d0',
-              500: '#10b981',
-              600: '#059669',
-              700: '#047857',
-              900: '#064e3b'
-            },
-            primary: {
-              50: '#f0fdf4',
-              500: '#22c55e',
-              600: '#16a34a',
-              700: '#15803d'
-            },
-            accent: {
-              amber: '#f59e0b',
-              rose: '#f43f5e',
-              indigo: '#6366f1'
-            },
-            dark: {
-              800: '#1e293b',
-              900: '#0f172a',
-              950: '#020617'
-            }
-          },
-          fontFamily: {
-            sans: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif']
-          },
-          boxShadow: {
-            'glow': '0 0 25px -5px rgba(16, 185, 129, 0.3)',
-            'glow-indigo': '0 0 25px -5px rgba(99, 102, 241, 0.3)',
-            'card': '0 10px 30px -10px rgba(0, 0, 0, 0.08)'
-          }
-        }
-      }
-    };
-  </script>
-
-  <!-- Production Custom CSS Suites -->
+  <!-- Standalone High-Performance Production CSS (Zero-CDN, Pure CSS) -->
   <link rel="stylesheet" href="/src/styles/main.css" />
   <link rel="stylesheet" href="/src/styles/admin.css" />
   <link rel="stylesheet" href="/src/styles/responsive.css" />
