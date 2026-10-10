@@ -1,16 +1,9 @@
 /**
  * DREAM CART BD — MAIN NAVIGATION BAR (Header.js)
  * Implements user requirements:
- * - Top Notice / Announcement bar (Offer, Contact, Free shipping notice)
- * - logo + shop name
- * - Enhanced Live predictive search bar with interactive instant preview cards
- * - Products link
- * - Cart button with live count badge
- * - Favourite Icon with live count badge
- * - Customer Login / Profile menu
- * - Darkmode toggle icon with persistence
- * - Mobile Navigation Menu: Shown ONLY when menu icon is clicked as a clean organized list
- * - Fully responsive for mobile, tablet, laptop, desktop, and TV
+ * - On Mobile: Native App-style view. Header displays ONLY Logo, Shop Name, and Search Bar.
+ *   NO menu icon or menu dropdown on top (navigation menu is fully handled by the bottom app bar).
+ * - On Desktop: Full rich navigation (Notice Bar, Desktop Search, Products, Cart, Favourite, Auth Dropdown, Dark Mode).
  */
 
 import { cartStore } from '../store/cartStore.js';
@@ -25,8 +18,8 @@ export function renderHeader() {
   const isDark = document.documentElement.classList.contains('dark');
 
   return `
-    <!-- Top Notice Bar (Offer, Contact, Free Delivery Alert) -->
-    <div class="notice-bar bg-slate-900 dark:bg-slate-950 text-white text-xs py-2 px-3 sm:px-4 border-b border-emerald-800/40 relative z-50">
+    <!-- Top Notice Bar (Desktop & Tablet) -->
+    <div class="notice-bar hidden sm:block bg-slate-900 dark:bg-slate-950 text-white text-xs py-2 px-3 sm:px-4 border-b border-emerald-800/40 relative z-50">
       <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
         <div class="flex items-center gap-2 text-center md:text-left text-[11px] sm:text-xs">
           <span class="bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded text-[10px] tracking-wider uppercase shadow-xs">নোটিশ</span>
@@ -52,11 +45,11 @@ export function renderHeader() {
 
     <!-- Main Navigation Bar -->
     <header class="sticky top-0 z-40 site-header bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors shadow-xs">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3 sm:gap-6">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3 flex items-center justify-between gap-3 sm:gap-6">
         
-        <!-- Logo + Shop Name -->
+        <!-- Logo + Shop Name (Visible on all screens) -->
         <a href="/" class="flex items-center gap-2.5 group flex-shrink-0" title="Dream Cart BD Home">
-          <div class="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-white dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center overflow-hidden">
+          <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center overflow-hidden">
             <img 
               src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10" 
               alt="Dream Cart BD Logo" 
@@ -76,7 +69,7 @@ export function renderHeader() {
           </div>
         </a>
 
-        <!-- Live Predictive Search Bar with Dropdown Preview -->
+        <!-- Live Predictive Search Bar with Dropdown Preview (Desktop) -->
         <div class="hidden md:flex flex-1 max-w-xl mx-2 lg:mx-6 relative search-container">
           <div class="search-bar-wrap w-full flex items-center bg-slate-100 dark:bg-slate-800/90 rounded-full border border-slate-200 dark:border-slate-700 hover:border-emerald-500 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/20 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all duration-200 relative shadow-inner">
             <div class="pl-4 pr-2 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400">
@@ -108,13 +101,11 @@ export function renderHeader() {
           </div>
 
           <!-- Live Search Preview Popup Container -->
-          <div id="search-preview-popup" class="hidden absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto">
-            <!-- Dynamically populated via JavaScript -->
-          </div>
+          <div id="search-preview-popup" class="hidden absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto"></div>
         </div>
 
-        <!-- Navigation Links & Icons -->
-        <div class="flex items-center gap-1.5 sm:gap-2.5">
+        <!-- Navigation Links & Icons (Desktop Only: Cleanly Hidden on Mobile per User Requirement) -->
+        <div class="hidden md:flex items-center gap-1.5 sm:gap-2.5">
           
           <!-- Products Link (Desktop) -->
           <a href="/products" class="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
@@ -144,13 +135,13 @@ export function renderHeader() {
           </a>
 
           <!-- Customer Login / Account Menu (Desktop) -->
-          <div class="relative auth-dropdown-container hidden sm:block">
+          <div class="relative auth-dropdown-container">
             ${isAuthenticated ? `
               <button id="btn-user-menu" class="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-xl text-xs font-bold transition hover:bg-emerald-100 cursor-pointer">
                 <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
                   ${(authStore.getUserDisplayName() || "U").charAt(0).toUpperCase()}
                 </span>
-                <span class="hidden sm:inline max-w-[80px] truncate">${authStore.getUserDisplayName()}</span>
+                <span class="max-w-[80px] truncate">${authStore.getUserDisplayName()}</span>
                 <span class="text-[10px]">▼</span>
               </button>
             ` : `
@@ -195,24 +186,12 @@ export function renderHeader() {
             <span class="dark-inline text-base">☀️</span>
           </button>
 
-          <!-- Mobile Menu Hamburger Icon (Opens navigation menu list) -->
-          <button 
-            id="btn-mobile-menu-toggle" 
-            class="md:hidden p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-            aria-label="মেন্যু আইকন"
-            title="মেন্যু তালিকা খুলুন"
-          >
-            <svg id="hamburger-icon-svg" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"></path>
-            </svg>
-          </button>
-
         </div>
 
       </div>
 
-      <!-- Mobile Search Bar (under header for small mobile screens) -->
-      <div class="md:hidden px-4 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 relative">
+      <!-- Mobile Search Bar (Only Logo, Shop Name & Search bar in mobile header per requirement) -->
+      <div class="md:hidden px-4 pb-2.5 pt-1 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 relative">
         <div class="search-bar-wrap w-full flex items-center bg-slate-100 dark:bg-slate-800/90 rounded-full border border-slate-200 dark:border-slate-700 hover:border-emerald-500 focus-within:border-emerald-500 focus-within:ring-3 focus-within:ring-emerald-500/20 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all duration-200 relative shadow-inner">
           <div class="pl-3.5 pr-1.5 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -224,7 +203,7 @@ export function renderHeader() {
             id="mobile-search-input"
             placeholder="পণ্য বা মডেল সার্চ করুন..." 
             autocomplete="off"
-            class="w-full py-2.5 pr-20 text-xs bg-transparent text-slate-900 dark:text-white placeholder-slate-400 outline-none"
+            class="w-full py-2 pr-20 text-xs bg-transparent text-slate-900 dark:text-white placeholder-slate-400 outline-none"
           />
           <button 
             id="mobile-search-clear-btn" 
@@ -241,88 +220,6 @@ export function renderHeader() {
           </button>
         </div>
         <div id="mobile-search-preview-popup" class="hidden absolute top-full left-4 right-4 mt-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto"></div>
-      </div>
-
-      <!-- Mobile Navigation Menu: Shown ONLY when menu icon is clicked as an organized list -->
-      <div id="mobile-dropdown-menu" class="hidden md:hidden bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 py-3 shadow-2xl z-50 transition-all duration-300">
-        <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-500 dark:text-slate-400">
-          <span>📋 মেন্যু তালিকা (Navigation Menu)</span>
-          <button id="btn-mobile-menu-close" class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer font-bold text-sm">✕</button>
-        </div>
-        <div class="space-y-1 text-xs mobile-menu-list">
-          <a href="/" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition">
-            <span>🏠 হোম (Home)</span>
-            <span class="text-slate-400 text-xs">→</span>
-          </a>
-          <a href="/products" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition">
-            <span>🛍️ সকল পণ্য (All Products)</span>
-            <span class="text-slate-400 text-xs">→</span>
-          </a>
-          <a href="/categories" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition">
-            <span>📂 ক্যাটাগরি সমূহ (Categories)</span>
-            <span class="text-slate-400 text-xs">→</span>
-          </a>
-          <a href="/brands" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition">
-            <span>🏷️ ব্র্যান্ড সমূহ (Brands)</span>
-            <span class="text-slate-400 text-xs">→</span>
-          </a>
-          <a href="/offers" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition">
-            <span>🎁 স্পেশাল অফার (Special Offers)</span>
-            <span class="text-slate-400 text-xs">→</span>
-          </a>
-          <a href="/track" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition">
-            <span>🚚 অর্ডার ট্র্যাকিং (Track Order)</span>
-            <span class="text-slate-400 text-xs">→</span>
-          </a>
-          <a href="/chat" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition">
-            <span>💬 লাইভ সাপোর্ট (Live Support)</span>
-            <span class="text-slate-400 text-xs">→</span>
-          </a>
-          
-          <div class="border-t border-slate-100 dark:border-slate-800 my-2 pt-1"></div>
-          
-          <a href="/cart" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition">
-            <span class="flex items-center gap-2">
-              <span>🛒 আপনার কার্ট</span>
-              <span class="bg-emerald-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">${cartCount}</span>
-            </span>
-            <span class="text-slate-400 text-xs">→</span>
-          </a>
-          <a href="/favourite" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition">
-            <span class="flex items-center gap-2">
-              <span>❤️ পছন্দের তালিকা</span>
-              <span class="bg-rose-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">${favCount}</span>
-            </span>
-            <span class="text-slate-400 text-xs">→</span>
-          </a>
-
-          <div class="border-t border-slate-100 dark:border-slate-800 my-2 pt-1"></div>
-
-          ${isAuthenticated ? `
-            <a href="/customer/dashboard" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-emerald-700 dark:text-emerald-300 font-bold hover:bg-emerald-50 dark:hover:bg-slate-800 transition">
-              <span>👤 আমার অ্যাকাউন্ট (${authStore.getUserDisplayName()})</span>
-              <span class="text-slate-400 text-xs">→</span>
-            </a>
-          ` : `
-            <a href="/customer/login" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition">
-              <span>👤 কাস্টমার লগইন (Customer Login)</span>
-              <span class="text-slate-400 text-xs">→</span>
-            </a>
-            <a href="/customer/register" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-slate-700 dark:text-slate-200 font-bold hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800 transition">
-              <span>📝 নতুন অ্যাকাউন্ট (Register)</span>
-              <span class="text-slate-400 text-xs">→</span>
-            </a>
-          `}
-          
-          <a href="/reseller/login" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-indigo-600 dark:text-indigo-400 font-bold hover:bg-indigo-50 dark:hover:bg-slate-800 transition">
-            <span>💼 রিসেলার হাব (Reseller Portal)</span>
-            <span class="text-slate-400 text-xs">→</span>
-          </a>
-          <a href="/wholesaler/login" class="mobile-menu-link flex items-center justify-between py-2 px-3 rounded-xl text-amber-600 dark:text-amber-400 font-bold hover:bg-amber-50 dark:hover:bg-slate-800 transition">
-            <span>📦 হোলসেল হাব (Wholesale Portal)</span>
-            <span class="text-slate-400 text-xs">→</span>
-          </a>
-        </div>
       </div>
 
     </header>

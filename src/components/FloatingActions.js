@@ -12,7 +12,7 @@ export function renderFloatingActions() {
   const cartCount = cartStore.getCount();
 
   return `
-    <div id="floating-actions-dock" class="fixed right-3.5 bottom-6 z-50 flex flex-col items-center gap-2 transition-all duration-300">
+    <div id="floating-actions-dock" class="fixed right-3.5 bottom-20 sm:bottom-6 z-40 flex flex-col items-center gap-2 transition-all duration-300">
       
       <!-- Collapsible Floating Buttons Group (Hidden by default on mobile, always visible on sm/desktop) -->
       <div id="floating-actions-items" class="floating-dock hidden sm:flex flex-col items-center gap-2.5 p-2 rounded-full shadow-2xl transition-all duration-300">
