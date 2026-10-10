@@ -1,142 +1,19 @@
 /**
  * DREAM CART BD — MODERN CART PAGE (CartPage.js)
  * Implements user requirements:
- * - Interactive Product Size & Color variant selectors right in the cart
- * - Smooth tactile quantity controls (+ / -) & direct quantity input
- * - Strict stock limit enforcement (cannot order more than available stock)
- * - Harmonious high-contrast background and text colors for Light & Dark modes
- * - Responsive layout: Desktop table & Mobile card layout
- * - Delivery area selector with real-time fee calculation
- * - Free shipping progress bar (৳2,000 threshold)
- * - Modern Order Summary with prominent Checkout CTA button
+ * - High-contrast, beautiful e-commerce shopping cart table & card layout
+ * - Zero squished/wrapping text bugs; fully responsive (Desktop, Tablet, Mobile)
+ * - Harmonious background and text colors for both Light & Dark modes
+ * - Prominent product thumbnails, title, variant badges (Color & Size)
+ * - Tactile quantity controller (+ / -) & trash button
+ * - Dynamic delivery zone selector with real-time fee calculation
+ * - Free shipping progress bar (৳2,000 threshold) with high contrast
+ * - Modern Order Summary card with prominent gradient Checkout CTA button
+ * - Trust guarantee badges & empty state
  */
 
 import { cartStore } from '../../store/cartStore.js';
 import { formatCurrency } from '../../utils/format.js';
-
-// Safe toast helper that works in all environments
-function showNotification(opts) {
-  if (typeof window !== 'undefined' && window.toast && window.toast.show) {
-    window.toast.show(opts);
-  } else if (typeof document !== 'undefined') {
-    import('../../components/Toast.js').then(({ toast }) => {
-      if (toast && toast.show) toast.show(opts);
-    }).catch(() => {});
-  }
-}
-
-// Attach global helpers for interactive variant changes & quantity management
-if (typeof window !== 'undefined') {
-  /**
-   * Change quantity with strict stock limit enforcement
-   */
-  window.changeCartQty = function(productId, color, size, delta) {
-    const item = cartStore.items.find(i => 
-      String(i.product_id) === String(productId) && 
-      (i.color || '') === (color || '') && 
-      (i.size || '') === (size || '')
-    );
-    if (!item) return;
-
-    const maxStock = Number(item.stock !== undefined ? item.stock : 25);
-    const currentQty = Number(item.quantity) || 1;
-    const newQty = currentQty + delta;
-
-    if (delta > 0 && currentQty >= maxStock) {
-      showNotification({
-        type: "warning",
-        title: "স্টক সীমাবদ্ধতা",
-        message: `এই পণ্যের সর্বোচ্চ ${maxStock} পিস স্টকে মজুদ রয়েছে। এর বেশি অর্ডার করা সম্ভব নয়।`,
-        duration: 3500
-      });
-      return;
-    }
-
-    if (newQty <= 0) {
-      cartStore.removeItem(productId, { color, size });
-    } else {
-      cartStore.updateQuantity(productId, Math.min(maxStock, newQty), { color, size });
-    }
-
-    if (window.router) window.router.resolve();
-  };
-
-  /**
-   * Set quantity directly via number input
-   */
-  window.setCartQtyDirect = function(productId, color, size, inputEl) {
-    const item = cartStore.items.find(i => 
-      String(i.product_id) === String(productId) && 
-      (i.color || '') === (color || '') && 
-      (i.size || '') === (size || '')
-    );
-    if (!item) return;
-
-    const maxStock = Number(item.stock !== undefined ? item.stock : 25);
-    let val = parseInt(inputEl.value, 10);
-    if (isNaN(val) || val < 1) val = 1;
-
-    if (val > maxStock) {
-      val = maxStock;
-      inputEl.value = maxStock;
-      showNotification({
-        type: "warning",
-        title: "স্টক সীমাবদ্ধতা",
-        message: `স্টকে সর্বোচ্চ ${maxStock} পিস রয়েছে। পরিমাণ সংশোধন করা হয়েছে।`,
-        duration: 3500
-      });
-    }
-
-    cartStore.updateQuantity(productId, val, { color, size });
-    if (window.router) window.router.resolve();
-  };
-
-  /**
-   * Update Product Size or Color variant directly in Cart
-   */
-  window.updateCartItemVariant = function(productId, oldColor, oldSize, newColor, newSize) {
-    const idx = cartStore.items.findIndex(i => 
-      String(i.product_id) === String(productId) && 
-      (i.color || '') === (oldColor || '') && 
-      (i.size || '') === (oldSize || '')
-    );
-    if (idx === -1) return;
-
-    const item = cartStore.items[idx];
-    const finalColor = newColor !== undefined ? newColor : (item.color || '');
-    const finalSize = newSize !== undefined ? newSize : (item.size || '');
-
-    // Check if another cart item already has this exact variant
-    const duplicateIdx = cartStore.items.findIndex((i, iIdx) => 
-      iIdx !== idx && 
-      String(i.product_id) === String(productId) && 
-      (i.color || '') === finalColor && 
-      (i.size || '') === finalSize
-    );
-
-    const maxStock = Number(item.stock !== undefined ? item.stock : 25);
-
-    if (duplicateIdx > -1) {
-      const existing = cartStore.items[duplicateIdx];
-      existing.quantity = Math.min(maxStock, Number(existing.quantity) + Number(item.quantity));
-      cartStore.items.splice(idx, 1);
-    } else {
-      item.color = finalColor;
-      item.size = finalSize;
-    }
-
-    cartStore.saveToStorage();
-
-    showNotification({
-      type: "success",
-      title: "ভেরিয়েন্ট আপডেট",
-      message: "পণ্যের সাইজ/কালার সফলভাবে পরিবর্তন করা হয়েছে।",
-      duration: 2500
-    });
-
-    if (window.router) window.router.resolve();
-  };
-}
 
 export function renderCartPage() {
   const items = cartStore.items;
@@ -149,33 +26,9 @@ export function renderCartPage() {
   const grandTotal = cartStore.getGrandTotal();
   const currentZone = cartStore.deliveryZone;
 
-  // Helper to parse comma/slash separated options
-  const parseOptions = (val, defaults) => {
-    if (!val) return defaults;
-    if (Array.isArray(val)) return val.filter(Boolean);
-    const s = String(val).trim();
-    if (!s) return defaults;
-    const parts = s.split(/[,|\/]+/).map(p => p.trim()).filter(Boolean);
-    return parts.length > 0 ? parts : defaults;
-  };
-
-  // Helper to get cached product data if available
-  const getProductInfo = (productId) => {
-    try {
-      if (typeof window !== 'undefined') {
-        const cached = localStorage.getItem('dcbd_sheet_products');
-        if (cached) {
-          const list = JSON.parse(cached);
-          const found = list.find(p => String(p.product_id || p.sku) === String(productId));
-          if (found) return found;
-        }
-      }
-    } catch (e) {}
-    return null;
-  };
-
   if (items.length === 0) {
     return `
+      <!-- Scoped Styles for Empty Cart Page -->
       <style id="cart-page-empty-styles">
         .cp-empty-wrap {
           padding: 80px 20px;
@@ -320,7 +173,7 @@ export function renderCartPage() {
         border: 1px solid rgba(16, 185, 129, 0.35);
       }
 
-      /* Main Grid Layout */
+      /* Grid Layout */
       .cp-main-grid {
         display: grid;
         grid-template-columns: 1fr 380px;
@@ -353,7 +206,7 @@ export function renderCartPage() {
       /* Table Header (Desktop Only) */
       .cp-table-header {
         display: grid;
-        grid-template-columns: minmax(280px, 1fr) 110px 170px 110px 50px;
+        grid-template-columns: minmax(260px, 1fr) 110px 140px 120px 50px;
         gap: 16px;
         align-items: center;
         padding: 14px 24px;
@@ -368,7 +221,7 @@ export function renderCartPage() {
         border-bottom: 1px solid #334155;
         color: #94a3b8;
       }
-      @media (max-width: 880px) {
+      @media (max-width: 768px) {
         .cp-table-header {
           display: none;
         }
@@ -377,7 +230,7 @@ export function renderCartPage() {
       /* Table Item Row */
       .cp-item-row {
         display: grid;
-        grid-template-columns: minmax(280px, 1fr) 110px 170px 110px 50px;
+        grid-template-columns: minmax(260px, 1fr) 110px 140px 120px 50px;
         gap: 16px;
         align-items: center;
         padding: 20px 24px;
@@ -397,8 +250,8 @@ export function renderCartPage() {
         background: #243248;
       }
 
-      /* Responsive Item Row on Mobile (<880px) */
-      @media (max-width: 880px) {
+      /* Responsive Item Row on Mobile (<768px) */
+      @media (max-width: 768px) {
         .cp-item-row {
           display: flex;
           flex-direction: column;
@@ -411,13 +264,13 @@ export function renderCartPage() {
       /* Product Details Cell */
       .cp-prod-details {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         gap: 16px;
         min-width: 0;
       }
       .cp-prod-thumb {
-        width: 76px;
-        height: 76px;
+        width: 72px;
+        height: 72px;
         border-radius: 16px;
         object-fit: cover;
         border: 1px solid #e2e8f0;
@@ -455,65 +308,49 @@ export function renderCartPage() {
         color: #34d399;
       }
 
-      /* Variant Selectors Row (Interactive Color & Size) */
-      .cp-variants-ctrl-row {
+      /* Variant Badges */
+      .cp-variant-bar {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         flex-wrap: wrap;
-        margin-top: 6px;
       }
-      .cp-variant-group {
+      .cp-variant-chip {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 5px;
         background: #f1f5f9;
+        color: #334155;
         border: 1px solid #cbd5e1;
         border-radius: 8px;
-        padding: 2px 6px;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 600;
       }
-      .dark .cp-variant-group {
+      .dark .cp-variant-chip {
         background: #0f172a;
+        color: #cbd5e1;
         border: 1px solid #475569;
       }
-      .cp-variant-label {
-        font-size: 10px;
-        font-weight: 700;
-        color: #64748b;
-        text-transform: uppercase;
-      }
-      .dark .cp-variant-label {
-        color: #94a3b8;
-      }
-      .cp-variant-select {
-        border: none;
-        background: transparent;
-        color: #0f172a;
-        font-size: 11px;
-        font-weight: 700;
-        cursor: pointer;
-        outline: none;
-        padding: 2px 2px;
-      }
-      .dark .cp-variant-select {
-        color: #f8fafc;
-      }
-      .dark .cp-variant-select option {
-        background: #1e293b;
-        color: #ffffff;
+      .cp-color-preview {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 1px solid rgba(0,0,0,0.15);
       }
 
-      /* Mobile Price Row */
+      /* Mobile Price Info (Hidden on Desktop) */
       .cp-mobile-price-row {
         display: none;
         font-size: 12px;
         color: #64748b;
-        margin-top: 6px;
+        margin-top: 4px;
       }
       .dark .cp-mobile-price-row {
         color: #94a3b8;
       }
-      @media (max-width: 880px) {
+      @media (max-width: 768px) {
         .cp-mobile-price-row {
           display: block;
         }
@@ -529,53 +366,17 @@ export function renderCartPage() {
       .dark .cp-unit-price {
         color: #cbd5e1;
       }
-      @media (max-width: 880px) {
+      @media (max-width: 768px) {
         .cp-unit-price {
           display: none;
         }
       }
 
-      /* Quantity & Stock Column */
-      .cp-qty-col {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-      }
-      .cp-stock-status {
-        font-size: 10.5px;
-        font-weight: 700;
+      /* Quantity Stepper Cell */
+      .cp-stepper-wrap {
         display: flex;
         align-items: center;
-        gap: 4px;
       }
-      .cp-stock-status.normal-stock {
-        color: #059669;
-      }
-      .dark .cp-stock-status.normal-stock {
-        color: #34d399;
-      }
-      .cp-stock-status.low-stock {
-        color: #d97706;
-      }
-      .dark .cp-stock-status.low-stock {
-        color: #fbbf24;
-      }
-      .cp-stock-max-badge {
-        font-size: 9.5px;
-        background: #fee2e2;
-        color: #dc2626;
-        border: 1px solid #fca5a5;
-        padding: 1px 5px;
-        border-radius: 6px;
-        font-weight: 800;
-      }
-      .dark .cp-stock-max-badge {
-        background: rgba(239, 68, 68, 0.2);
-        color: #fca5a5;
-        border-color: rgba(239, 68, 68, 0.4);
-      }
-
       .cp-qty-box {
         display: inline-flex;
         align-items: center;
@@ -599,49 +400,36 @@ export function renderCartPage() {
         border: none;
         background: transparent;
         color: #1e293b;
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 800;
         cursor: pointer;
-        transition: all 0.15s ease;
+        transition: background 0.15s ease;
         user-select: none;
       }
-      .cp-qty-btn:hover:not(:disabled) {
+      .cp-qty-btn:hover {
         background: #e2e8f0;
       }
-      .cp-qty-btn:active:not(:disabled) {
+      .cp-qty-btn:active {
         background: #cbd5e1;
-      }
-      .cp-qty-btn:disabled {
-        opacity: 0.35;
-        cursor: not-allowed !important;
       }
       .dark .cp-qty-btn {
         color: #f8fafc;
       }
-      .dark .cp-qty-btn:hover:not(:disabled) {
+      .dark .cp-qty-btn:hover {
         background: #1e293b;
       }
-      .dark .cp-qty-btn:active:not(:disabled) {
+      .dark .cp-qty-btn:active {
         background: #334155;
       }
-      .cp-qty-input {
-        width: 38px;
-        height: 32px;
+      .cp-qty-val {
+        width: 36px;
         text-align: center;
         font-size: 13px;
         font-weight: 800;
         color: #0f172a;
-        border: none;
-        background: transparent;
-        outline: none;
-        -moz-appearance: textfield;
+        user-select: none;
       }
-      .cp-qty-input::-webkit-outer-spin-button,
-      .cp-qty-input::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
-      }
-      .dark .cp-qty-input {
+      .dark .cp-qty-val {
         color: #ffffff;
       }
 
@@ -690,7 +478,7 @@ export function renderCartPage() {
         transform: scale(1.1);
       }
 
-      /* Mobile Controls Bar (Stepper, Total & Remove grouped) */
+      /* Mobile Controls Bar (Steper, Total & Remove grouped) */
       .cp-mobile-controls-row {
         display: none;
         align-items: center;
@@ -701,7 +489,7 @@ export function renderCartPage() {
       .dark .cp-mobile-controls-row {
         border-top: 1px dashed #334155;
       }
-      @media (max-width: 880px) {
+      @media (max-width: 768px) {
         .cp-mobile-controls-row {
           display: flex;
         }
@@ -1034,194 +822,144 @@ export function renderCartPage() {
             
             <!-- Table Column Headers (Desktop) -->
             <div class="cp-table-header">
-              <div>পণ্য ও ভেরিয়েন্ট বিবরণ</div>
+              <div>পণ্য বিবরণ</div>
               <div>একক মূল্য</div>
-              <div class="text-center">পরিমাণ ও স্টক</div>
+              <div class="text-center">পরিমাণ</div>
               <div class="text-right">মোট মূল্য</div>
               <div class="text-center">মুছুন</div>
             </div>
 
             <!-- Items List -->
             <div>
-              ${items.map(it => {
-                const prod = getProductInfo(it.product_id);
-                const stock = Number(it.stock !== undefined ? it.stock : (prod?.stock !== undefined ? prod.stock : 25));
-                const isMaxReached = Number(it.quantity) >= stock;
-                
-                // Color & Size Options
-                const availableColors = [...new Set(parseOptions(prod?.color || prod?.colors || it.color, it.color ? [it.color, 'Black', 'Silver', 'Navy Blue', 'Gold'] : ['Black', 'Silver', 'Navy Blue', 'Gold']))];
-                const availableSizes = [...new Set(parseOptions(prod?.size || prod?.sizes || it.size, it.size ? [it.size, 'Standard (ফ্রি সাইজ)', 'Medium (M)', 'Large (L)', 'XL'] : ['Standard (ফ্রি সাইজ)', 'Medium (M)', 'Large (L)', 'XL']))];
-
-                return `
-                  <div class="cp-item-row">
-                    
-                    <!-- 1. Product Image, Title & Interactive Variants -->
-                    <div class="cp-prod-details">
-                      <img 
-                        src="${it.thumbnail || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&auto=format&fit=crop&q=80'}" 
-                        alt="${it.name}" 
-                        class="cp-prod-thumb"
-                        loading="lazy"
-                      />
-                      <div class="cp-prod-info">
-                        <h4 class="cp-prod-name" title="${it.name}">
-                          <a href="/product/${it.slug || it.product_id}">
-                            ${it.name}
-                          </a>
-                        </h4>
-                        
-                        <!-- Interactive Variant Selectors (Color & Size) -->
-                        <div class="cp-variants-ctrl-row">
-                          
-                          <!-- Color Selector -->
-                          <div class="cp-variant-group" title="কালার পরিবর্তন করুন">
-                            <span class="cp-variant-label">কালার:</span>
-                            <select 
-                              class="cp-variant-select"
-                              onchange="window.updateCartItemVariant('${it.product_id}', '${it.color || ''}', '${it.size \vert{}\vert{} ''}', this.value, '${it.size || ''}')"
-                            >
-                              ${availableColors.map(c => `
-                                <option value="${c}" ${c === it.color ? 'selected' : ''}>🎨 ${c}</option>
-                              `).join("")}
-                            </select>
-                          </div>
-
-                          <!-- Size Selector -->
-                          <div class="cp-variant-group" title="সাইজ পরিবর্তন করুন">
-                            <span class="cp-variant-label">সাইজ:</span>
-                            <select 
-                              class="cp-variant-select"
-                              onchange="window.updateCartItemVariant('${it.product_id}', '${it.color || ''}', '${it.size \vert{}\vert{} ''}', '${it.color || ''}', this.value)"
-                            >
-                              ${availableSizes.map(s => `
-                                <option value="${s}" ${s === it.size ? 'selected' : ''}>📏 ${s}</option>
-                              `).join("")}
-                            </select>
-                          </div>
-
-                        </div>
-
-                        <!-- Mobile Unit Price Info -->
-                        <div class="cp-mobile-price-row">
-                          একক মূল্য: <strong class="font-bold text-slate-800 dark:text-slate-200">${formatCurrency(it.price)}</strong>
-                        </div>
-                      </div>
-                    </div>
-
-                    <!-- 2. Unit Price (Desktop) -->
-                    <div class="cp-unit-price">
-                      ${formatCurrency(it.price)}
-                    </div>
-
-                    <!-- 3. Quantity Stepper & Stock Limit (Desktop) -->
-                    <div class="cp-qty-col hidden sm:flex">
+              ${items.map(it => `
+                <div class="cp-item-row">
+                  
+                  <!-- 1. Product Image & Title -->
+                  <div class="cp-prod-details">
+                    <img 
+                      src="${it.thumbnail || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&auto=format&fit=crop&q=80'}" 
+                      alt="${it.name}" 
+                      class="cp-prod-thumb"
+                      loading="lazy"
+                    />
+                    <div class="cp-prod-info">
+                      <h4 class="cp-prod-name" title="${it.name}">
+                        <a href="/product/${it.slug || it.product_id}">
+                          ${it.name}
+                        </a>
+                      </h4>
                       
-                      <!-- Stock status badge -->
-                      <div class="cp-stock-status ${stock <= 5 ? 'low-stock' : 'normal-stock'}">
-                        <span>📦 স্টক: ${stock}</span>${isMaxReached ? `<span class="cp-stock-max-badge">সর্বোচ্চ সীমা</span>` : ''}
-                      </div>
+                      <!-- Variant Badges -->
+                      ${(it.color || it.size) ? `
+                        <div class="cp-variant-bar">
+                          ${it.color ? `
+                            <span class="cp-variant-chip">
+                              <span class="cp-color-preview" style="background-color: ${it.color.toLowerCase() === 'white' ? '#e2e8f0' : it.color.toLowerCase()};"></span>
+                              ${it.color}
+                            </span>
+                          ` : ''}
+                          ${it.size ? `
+                            <span class="cp-variant-chip">
+                              <span>📏</span>
+                              ${it.size}
+                            </span>
+                          ` : ''}
+                        </div>
+                      ` : ''}
 
-                      <div class="cp-qty-box">
-                        <button 
-                          type="button"
-                          class="cp-qty-btn"
-                          onclick="window.changeCartQty('${it.product_id}', '${it.color \vert{}\vert{} ''}', '${it.size || ''}', -1)"
-                          title="পরিমাণ কমান"
-                          aria-label="Decrease quantity"
-                        >−</button>
-
-                        <input 
-                          type="number"
-                          class="cp-qty-input"
-                          value="${it.quantity}"
-                          min="1"
-                          max="${stock}"
-                          onchange="window.setCartQtyDirect('${it.product_id}', '${it.color \vert{}\vert{} ''}', '${it.size || ''}', this)"
-                          title="সরাসরি পরিমাণ লিখুন (সর্বোচ্চ ${stock})"
-                        />
-
-                        <button 
-                          type="button"
-                          class="cp-qty-btn ${isMaxReached ? 'disabled' : ''}"
-                          ${isMaxReached ? 'disabled' : ''}
-                          onclick="window.changeCartQty('${it.product_id}', '${it.color \vert{}\vert{} ''}', '${it.size || ''}', 1)"
-                          title="${isMaxReached ? `স্টকে আর বেশি পণ্য নেই (সর্বোচ্চ ${stock} পিস)` : 'পরিমাণ বাড়ান'}"
-                          aria-label="Increase quantity"
-                        >+</button>
+                      <!-- Mobile Unit Price Info -->
+                      <div class="cp-mobile-price-row">
+                        একক মূল্য: <strong class="font-bold text-slate-800 dark:text-slate-200">${formatCurrency(it.price)}</strong>
                       </div>
                     </div>
+                  </div>
 
-                    <!-- 4. Line Total (Desktop) -->
-                    <div class="cp-total-price text-right hidden sm:block">
+                  <!-- 2. Unit Price (Desktop) -->
+                  <div class="cp-unit-price">
+                    ${formatCurrency(it.price)}
+                  </div>
+
+                  <!-- 3. Quantity Stepper (Desktop) -->
+                  <div class="cp-stepper-wrap justify-center hidden sm:flex">
+                    <div class="cp-qty-box">
+                      <button 
+                        class="btn-cart-minus cp-qty-btn"
+                        data-product-id="${it.product_id}"
+                        data-color="${it.color || ''}"
+                        data-size="${it.size || ''}"
+                        title="কমান"
+                        aria-label="Decrease quantity"
+                      >−</button>
+                      <span class="cp-qty-val">
+                        ${it.quantity}
+                      </span>
+                      <button 
+                        class="btn-cart-plus cp-qty-btn"
+                        data-product-id="${it.product_id}"
+                        data-color="${it.color || ''}"
+                        data-size="${it.size || ''}"
+                        title="বাড়ান"
+                        aria-label="Increase quantity"
+                      >+</button>
+                    </div>
+                  </div>
+
+                  <!-- 4. Line Total (Desktop) -->
+                  <div class="cp-total-price text-right hidden sm:block">
+                    ${formatCurrency(Number(it.price) * Number(it.quantity))}
+                  </div>
+
+                  <!-- 5. Remove Button (Desktop) -->
+                  <div class="cp-action-cell hidden sm:flex">
+                    <button 
+                      class="btn-cart-remove cp-remove-btn"
+                      data-product-id="${it.product_id}"
+                      data-color="${it.color || ''}"
+                      data-size="${it.size || ''}"
+                      title="আইটেমটি মুছুন"
+                      aria-label="Remove item"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                  </div>
+
+                  <!-- Mobile Controls Bar (Steper + Total + Remove grouped) -->
+                  <div class="cp-mobile-controls-row">
+                    <div class="cp-qty-box">
+                      <button 
+                        class="btn-cart-minus cp-qty-btn"
+                        data-product-id="${it.product_id}"
+                        data-color="${it.color || ''}"
+                        data-size="${it.size || ''}"
+                        title="কমান"
+                      >−</button>
+                      <span class="cp-qty-val">${it.quantity}</span>
+                      <button 
+                        class="btn-cart-plus cp-qty-btn"
+                        data-product-id="${it.product_id}"
+                        data-color="${it.color || ''}"
+                        data-size="${it.size || ''}"
+                        title="বাড়ান"
+                      >+</button>
+                    </div>
+
+                    <div class="cp-total-price">
                       ${formatCurrency(Number(it.price) * Number(it.quantity))}
                     </div>
 
-                    <!-- 5. Remove Button (Desktop) -->
-                    <div class="cp-action-cell hidden sm:flex">
-                      <button 
-                        type="button"
-                        class="btn-cart-remove cp-remove-btn"
-                        data-product-id="${it.product_id}"
-                        data-color="${it.color || ''}"
-                        data-size="${it.size || ''}"
-                        title="আইটেমটি মুছুন"
-                        aria-label="Remove item"
-                      >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                      </button>
-                    </div>
-
-                    <!-- Mobile Controls Bar (Stepper + Total + Remove grouped) -->
-                    <div class="cp-mobile-controls-row">
-                      
-                      <div class="flex flex-col gap-1">
-                        <div class="cp-stock-status ${stock <= 5 ? 'low-stock' : 'normal-stock'}">
-                          <span>📦 স্টক: ${stock}</span>${isMaxReached ? `<span class="cp-stock-max-badge">সর্বোচ্চ</span>` : ''}
-                        </div>
-                        <div class="cp-qty-box">
-                          <button 
-                            type="button"
-                            class="cp-qty-btn"
-                            onclick="window.changeCartQty('${it.product_id}', '${it.color \vert{}\vert{} ''}', '${it.size || ''}', -1)"
-                            title="পরিমাণ কমান"
-                          >−</button>
-                          <input 
-                            type="number"
-                            class="cp-qty-input"
-                            value="${it.quantity}"
-                            min="1"
-                            max="${stock}"
-                            onchange="window.setCartQtyDirect('${it.product_id}', '${it.color \vert{}\vert{} ''}', '${it.size || ''}', this)"
-                          />
-                          <button 
-                            type="button"
-                            class="cp-qty-btn ${isMaxReached ? 'disabled' : ''}"
-                            ${isMaxReached ? 'disabled' : ''}
-                            onclick="window.changeCartQty('${it.product_id}', '${it.color \vert{}\vert{} ''}', '${it.size || ''}', 1)"
-                            title="${isMaxReached ? `সর্বোচ্চ ${stock} পিস` : 'পরিমাণ বাড়ান'}"
-                          >+</button>
-                        </div>
-                      </div>
-
-                      <div class="cp-total-price">
-                        ${formatCurrency(Number(it.price) * Number(it.quantity))}
-                      </div>
-
-                      <button 
-                        type="button"
-                        class="btn-cart-remove cp-remove-btn"
-                        data-product-id="${it.product_id}"
-                        data-color="${it.color || ''}"
-                        data-size="${it.size || ''}"
-                        title="আইটেমটি মুছুন"
-                      >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                      </button>
-                    </div>
-
+                    <button 
+                      class="btn-cart-remove cp-remove-btn"
+                      data-product-id="${it.product_id}"
+                      data-color="${it.color || ''}"
+                      data-size="${it.size || ''}"
+                      title="আইটেমটি মুছুন"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
                   </div>
-                `;
-              }).join("")}
+
+                </div>
+              `).join("")}
             </div>
 
             <!-- Table Footer Actions -->
