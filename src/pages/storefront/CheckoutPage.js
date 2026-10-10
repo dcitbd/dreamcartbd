@@ -411,7 +411,7 @@ export function renderCheckoutPage() {
                 <div class="p-3 bg-white dark:bg-slate-800 rounded-xl border border-pink-100 dark:border-slate-700 text-center space-y-2.5">
                   <p class="text-xs text-slate-600 dark:text-slate-300">নিচের বাটনে ক্লিক করে সরাসরি বিকাশ অনলাইন গেটওয়েতে কার্ড বা বিকাশ দিয়ে পেমেন্ট করুন:</p>
                   <a 
-                    href="https://shop.bkash.com/dream-cart-bd01818273838/payment/link/default" 
+                    href="https://shop.bkash.com/j-a-sagor-computer01581703822/paymentlink" 
                     target="_blank" 
                     rel="noopener noreferrer" 
                     class="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-black text-xs shadow-md transition active:scale-98"
