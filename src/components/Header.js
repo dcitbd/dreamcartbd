@@ -1,11 +1,11 @@
 /**
- * DREAM CART BD — MAIN NAVIGATION BAR WITH VISUAL IMAGE SEARCH (Header.js)
+ * DREAM CART BD — MAIN NAVIGATION BAR WITH INLINE VISUAL SEARCH (Header.js)
  * High-performance, pixel-perfect header component:
- * - Desktop: Notice bar, compact crisp logo (42px), wide predictive search bar with Visual AI Image Search, nav actions, auth menu, dark mode.
+ * - Desktop: Notice bar, compact crisp logo (42px), wide predictive search bar with inline Visual AI Camera Search, nav actions, auth menu, dark mode.
  * - Mobile: Sleek native app bar with compact logo (36px) & dedicated search bar with Camera Search button.
  * - Ultra-high Stacking Context (z-index: 999999): Never goes under sliders, product cards, or sticky sidebars.
+ * - ZERO Full-Screen Blur: No annoying screen blur overlays! Clean dropdown under the search bar.
  * - Luxury Dark Palette: Absolute zero white/light-grey background washout. High contrast, sharp text, crisp vibrant accents.
- * - Visual AI Camera Search: Upload or capture product photo to match catalog instantly!
  */
 
 import { cartStore } from '../store/cartStore.js';
@@ -15,56 +15,66 @@ import { apiClient } from '../api/client.js';
 import { formatCurrency } from '../utils/format.js';
 
 // Global Visual Search Controller (Module singleton attached to window)
-if (typeof window !== 'undefined' && !window.__dcbdImageSearchInit) {
-  window.__dcbdImageSearchInit = true;
+if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
+  window.__dcbdVisualSearchInit = true;
 
-  window.__dcbdOpenImageSearch = function() {
-    const overlay = document.getElementById('camera-search-overlay');
-    const panel = document.getElementById('camera-search-panel');
-    if (overlay && panel) {
-      overlay.classList.remove('hidden');
-      panel.classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
+  window.__dcbdToggleVisualSearch = function(isMobile = false) {
+    const popupId = isMobile ? 'mobile-visual-search-popup' : 'desktop-visual-search-popup';
+    const textPopupId = isMobile ? 'mobile-search-preview-popup' : 'search-preview-popup';
+    
+    // Hide text popup if open
+    const textPopup = document.getElementById(textPopupId);
+    if (textPopup) textPopup.classList.add('hidden');
 
-      // Reset dropzone view
-      const previewArea = document.getElementById('img-search-preview-area');
-      const dropArea = document.getElementById('img-search-drop-area');
-      const resultsArea = document.getElementById('img-search-results-area');
-      if (previewArea) previewArea.classList.add('hidden');
-      if (resultsArea) resultsArea.classList.add('hidden');
-      if (dropArea) dropArea.classList.remove('hidden');
+    const popup = document.getElementById(popupId);
+    if (popup) {
+      const isClosed = popup.classList.contains('hidden');
+      // Close other popups
+      document.querySelectorAll('.visual-search-popup').forEach(p => p.classList.add('hidden'));
+      if (isClosed) {
+        popup.classList.remove('hidden');
+        window.__dcbdResetVisualSearchUI(isMobile);
+      } else {
+        popup.classList.add('hidden');
+      }
     }
   };
 
-  window.__dcbdCloseImageSearch = function() {
-    const overlay = document.getElementById('camera-search-overlay');
-    const panel = document.getElementById('camera-search-panel');
-    if (overlay) overlay.classList.add('hidden');
-    if (panel) panel.classList.add('hidden');
-    document.body.style.overflow = '';
+  window.__dcbdCloseVisualSearch = function() {
+    document.querySelectorAll('.visual-search-popup').forEach(p => p.classList.add('hidden'));
   };
 
-  window.__dcbdTriggerFilePick = function(type) {
-    if (type === 'camera') {
-      const camInput = document.getElementById('dcbd-image-camera-input');
-      if (camInput) camInput.click();
-    } else {
-      const fileInput = document.getElementById('dcbd-image-file-input');
-      if (fileInput) fileInput.click();
+  window.__dcbdResetVisualSearchUI = function(isMobile = false) {
+    const prefix = isMobile ? 'm-' : 'd-';
+    const dropArea = document.getElementById(`${prefix}img-drop-area`);
+    const previewArea = document.getElementById(`${prefix}img-preview-area`);
+    const resultsArea = document.getElementById(`${prefix}img-results-area`);
+    if (dropArea) dropArea.classList.remove('hidden');
+    if (previewArea) previewArea.classList.add('hidden');
+    if (resultsArea) resultsArea.classList.add('hidden');
+  };
+
+  window.__dcbdTriggerFilePick = function(type, isMobile = false) {
+    const inputId = type === 'camera' ? 'dcbd-image-camera-input' : 'dcbd-image-file-input';
+    const input = document.getElementById(inputId);
+    if (input) {
+      input.setAttribute('data-target-mode', isMobile ? 'mobile' : 'desktop');
+      input.click();
     }
   };
 
-  window.__dcbdHandleImageFile = function(file) {
+  window.__dcbdHandleImageFile = function(file, isMobile = false) {
     if (!file || !file.type.startsWith('image/')) {
       alert('অনুগ্রহ করে একটি সঠিক ছবির ফাইল (JPG, PNG, WebP) নির্বাচন করুন।');
       return;
     }
 
-    const dropArea = document.getElementById('img-search-drop-area');
-    const previewArea = document.getElementById('img-search-preview-area');
-    const resultsArea = document.getElementById('img-search-results-area');
-    const previewImg = document.getElementById('img-search-preview-img');
-    const scanStatus = document.getElementById('img-search-scan-status');
+    const prefix = isMobile ? 'm-' : 'd-';
+    const dropArea = document.getElementById(`${prefix}img-drop-area`);
+    const previewArea = document.getElementById(`${prefix}img-preview-area`);
+    const resultsArea = document.getElementById(`${prefix}img-results-area`);
+    const previewImg = document.getElementById(`${prefix}img-preview-img`);
+    const scanStatus = document.getElementById(`${prefix}img-scan-status`);
 
     if (dropArea) dropArea.classList.add('hidden');
     if (previewArea) previewArea.classList.remove('hidden');
@@ -73,23 +83,23 @@ if (typeof window !== 'undefined' && !window.__dcbdImageSearchInit) {
     const reader = new FileReader();
     reader.onload = function(e) {
       if (previewImg) previewImg.src = e.target.result;
-      if (scanStatus) scanStatus.innerHTML = '<span class="inline-block animate-spin mr-1.5">⚡</span> এআই ইমেজ প্রসেসিং ও ক্যাটালগ ম্যাচিং চলছে...';
+      if (scanStatus) scanStatus.innerHTML = '<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> ছবি বিশ্লেষণ ও ক্যাটালগ সার্চ চলছে...';
 
-      // Simulate visual recognition & match against product inventory
       setTimeout(() => {
-        window.__dcbdProcessVisualMatch(file.name, e.target.result);
-      }, 650);
+        window.__dcbdProcessVisualMatch(file.name, e.target.result, '', isMobile);
+      }, 500);
     };
     reader.readAsDataURL(file);
   };
 
-  window.__dcbdProcessVisualMatch = function(fileName, dataUrl, explicitCategory = '') {
-    const resultsArea = document.getElementById('img-search-results-area');
-    const resultsList = document.getElementById('img-search-results-list');
-    const scanStatus = document.getElementById('img-search-scan-status');
+  window.__dcbdProcessVisualMatch = function(fileName, dataUrl, explicitCategory = '', isMobile = false) {
+    const prefix = isMobile ? 'm-' : 'd-';
+    const resultsArea = document.getElementById(`${prefix}img-results-area`);
+    const resultsList = document.getElementById(`${prefix}img-results-list`);
+    const scanStatus = document.getElementById(`${prefix}img-scan-status`);
 
     if (scanStatus) {
-      scanStatus.innerHTML = '✓ ভিজ্যুয়াল বিশ্লেষণ সম্পন্ন! মিল থাকা পণ্যসমূহ:';
+      scanStatus.innerHTML = '✓ ভিজ্যুয়াল সার্চ সম্পন্ন! সম্ভাব্য পণ্যসমূহ:';
     }
 
     const allProds = (apiClient.products && apiClient.products.length > 0)
@@ -110,7 +120,6 @@ if (typeof window !== 'undefined' && !window.__dcbdImageSearchInit) {
         return pCat.includes(cat) || pSub.includes(cat) || pName.includes(cat);
       });
     } else {
-      // Keyword matching based on file name or generic categories
       const keywords = ['watch', 'smart', 'amoled', 'gps', 'gts', 't500', 'honey', 'organic', 'supplement', 'torch', 'light', 'gas', 'regulator', 'safety'];
       const foundKeyword = keywords.find(k => fName.includes(k));
 
@@ -122,7 +131,7 @@ if (typeof window !== 'undefined' && !window.__dcbdImageSearchInit) {
       }
 
       if (matches.length === 0) {
-        matches = allProds.slice(0, 6);
+        matches = allProds.slice(0, 5);
       }
     }
 
@@ -133,25 +142,24 @@ if (typeof window !== 'undefined' && !window.__dcbdImageSearchInit) {
     if (resultsList) {
       resultsList.innerHTML = matches.map(p => `
         <div 
-          class="flex items-center gap-3 p-3 bg-slate-850 hover:bg-slate-800 border border-slate-700/80 rounded-2xl cursor-pointer transition hover:border-emerald-500 group"
-          onclick="window.__dcbdCloseImageSearch(); if (window.router) window.router.navigate('/product/' + encodeURIComponent('${p.slug || p.product_id || p.sku}'));"
+          class="flex items-center gap-3 p-2.5 bg-slate-800/90 hover:bg-slate-750 border border-slate-700/80 rounded-xl cursor-pointer transition hover:border-emerald-500 group"
+          onclick="window.__dcbdCloseVisualSearch(); if (window.router) window.router.navigate('/product/' + encodeURIComponent('${p.slug || p.product_id || p.sku}'));"
         >
           <img 
             src="${p.thumbnail || (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100'}" 
             alt="${p.name}" 
-            class="w-13 h-13 sm:w-14 sm:h-14 rounded-xl object-cover border border-slate-700 bg-slate-900 flex-shrink-0 group-hover:scale-105 transition"
+            class="w-12 h-12 rounded-lg object-cover border border-slate-700 bg-slate-900 flex-shrink-0 group-hover:scale-105 transition"
           />
           <div class="min-w-0 flex-1">
             <div class="text-xs font-bold text-white truncate leading-snug group-hover:text-emerald-400 transition">${p.name}</div>
-            <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-1 flex-wrap">
+            <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 flex-wrap">
               <span class="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-[9px] text-slate-300">${p.sku}</span>
-              <span class="text-emerald-400 font-black text-xs">${formatCurrency(p.selling_price)}</span>
-              ${p.category ? `<span class="bg-emerald-950/80 text-emerald-300 border border-emerald-800/40 px-1.5 py-0.5 rounded text-[9px] font-bold">${p.category}</span>` : ''}
+              <span class="text-emerald-400 font-extrabold text-xs">${formatCurrency(p.selling_price)}</span>
             </div>
           </div>
-          <button class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[11px] px-3 py-1.5 rounded-xl flex-shrink-0 transition shadow-sm">
+          <span class="bg-emerald-600 group-hover:bg-emerald-500 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg flex-shrink-0 transition">
             দেখুন →
-          </button>
+          </span>
         </div>
       `).join('');
     }
@@ -159,12 +167,13 @@ if (typeof window !== 'undefined' && !window.__dcbdImageSearchInit) {
     if (resultsArea) resultsArea.classList.remove('hidden');
   };
 
-  window.__dcbdSearchVisualTag = function(tag) {
-    const dropArea = document.getElementById('img-search-drop-area');
-    const previewArea = document.getElementById('img-search-preview-area');
-    const resultsArea = document.getElementById('img-search-results-area');
-    const previewImg = document.getElementById('img-search-preview-img');
-    const scanStatus = document.getElementById('img-search-scan-status');
+  window.__dcbdSearchVisualTag = function(tag, isMobile = false) {
+    const prefix = isMobile ? 'm-' : 'd-';
+    const dropArea = document.getElementById(`${prefix}img-drop-area`);
+    const previewArea = document.getElementById(`${prefix}img-preview-area`);
+    const resultsArea = document.getElementById(`${prefix}img-results-area`);
+    const previewImg = document.getElementById(`${prefix}img-preview-img`);
+    const scanStatus = document.getElementById(`${prefix}img-scan-status`);
 
     if (dropArea) dropArea.classList.add('hidden');
     if (previewArea) previewArea.classList.remove('hidden');
@@ -176,35 +185,31 @@ if (typeof window !== 'undefined' && !window.__dcbdImageSearchInit) {
     else if (tag.includes('gas') || tag.includes('kitchen')) presetImg = 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400';
 
     if (previewImg) previewImg.src = presetImg;
-    if (scanStatus) scanStatus.innerHTML = `<span class="inline-block animate-spin mr-1.5">⚡</span> "${tag}" ক্যাটাগরির ভিজ্যুয়াল ম্যাচ খোঁজা হচ্ছে...`;
+    if (scanStatus) scanStatus.innerHTML = `<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> "${tag}" ক্যাটাগরির মিল খোঁজা হচ্ছে...`;
 
     setTimeout(() => {
-      window.__dcbdProcessVisualMatch(tag, presetImg, tag);
-    }, 400);
+      window.__dcbdProcessVisualMatch(tag, presetImg, tag, isMobile);
+    }, 350);
   };
 
   // Global listeners for document
   if (typeof document !== 'undefined' && document.addEventListener) {
+    // Click outside to close visual search dropdowns
     document.addEventListener('click', (e) => {
-      // Open image search
-      if (e.target.closest('#btn-global-image-search') || e.target.closest('#btn-mobile-image-search')) {
-        e.preventDefault();
-        e.stopPropagation();
-        window.__dcbdOpenImageSearch();
-        return;
-      }
-
-      // Close image search
-      if (e.target.closest('#btn-close-image-search') || e.target.id === 'camera-search-overlay') {
-        window.__dcbdCloseImageSearch();
-        return;
+      if (
+        !e.target.closest('.search-container') &&
+        !e.target.closest('.mobile-search-row') &&
+        !e.target.closest('.visual-search-popup') &&
+        !e.target.closest('.header-image-search-btn')
+      ) {
+        window.__dcbdCloseVisualSearch();
       }
     });
 
     // Handle Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        window.__dcbdCloseImageSearch();
+        window.__dcbdCloseVisualSearch();
       }
     });
 
@@ -212,8 +217,9 @@ if (typeof window !== 'undefined' && !window.__dcbdImageSearchInit) {
     document.addEventListener('change', (e) => {
       if (e.target.id === 'dcbd-image-file-input' || e.target.id === 'dcbd-image-camera-input') {
         const file = e.target.files && e.target.files[0];
+        const isMobile = e.target.getAttribute('data-target-mode') === 'mobile';
         if (file) {
-          window.__dcbdHandleImageFile(file);
+          window.__dcbdHandleImageFile(file, isMobile);
         }
         e.target.value = ''; // Reset input
       }
@@ -447,6 +453,19 @@ export function renderHeader() {
         z-index: 1000000 !important;
       }
 
+      /* Inline Visual Search Dropdowns (No Blur, No Fullscreen Dimming!) */
+      .visual-search-popup {
+        position: absolute !important;
+        top: calc(100% + 8px) !important;
+        left: 0 !important;
+        right: 0 !important;
+        z-index: 1000002 !important;
+        background: #0f172a !important;
+        border: 1px solid rgba(51, 65, 85, 0.9) !important;
+        border-radius: 20px !important;
+        box-shadow: 0 20px 50px -5px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(16, 185, 129, 0.25) !important;
+      }
+
       /* Laser Scan Animation for Image Search */
       @keyframes laserScanAnimation {
         0% { top: 0%; opacity: 0.8; }
@@ -462,37 +481,6 @@ export function renderHeader() {
         box-shadow: 0 0 15px #10b981, 0 0 6px #34d399;
         animation: laserScanAnimation 2s linear infinite;
         pointer-events: none;
-      }
-
-      /* Dedicated Camera Search Dropdown Panel (Highest Stacking Order) */
-      #camera-search-overlay {
-        position: fixed !important;
-        inset: 0 !important;
-        background: rgba(2, 6, 23, 0.78) !important;
-        backdrop-filter: blur(6px) !important;
-        z-index: 9999998 !important;
-      }
-
-      #camera-search-panel {
-        position: absolute !important;
-        top: calc(100% + 10px) !important;
-        left: 0 !important;
-        right: 0 !important;
-        z-index: 10000000 !important;
-        box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(16, 185, 129, 0.3) !important;
-      }
-
-      @media (max-width: 768px) {
-        #camera-search-panel {
-          position: fixed !important;
-          top: 50% !important;
-          left: 50% !important;
-          transform: translate(-50%, -50%) !important;
-          width: calc(100% - 24px) !important;
-          max-width: 460px !important;
-          max-height: 88vh !important;
-          margin-top: 0 !important;
-        }
       }
 
       /* Predictive Preview Popups (Top Z-Index) */
@@ -588,12 +576,13 @@ export function renderHeader() {
               title="ক্লিয়ার করুন"
             >✕</button>
 
-            <!-- Visual AI Image Search Button -->
+            <!-- Visual AI Image Search Button (Desktop) -->
             <button 
               id="btn-global-image-search" 
               type="button" 
               class="header-image-search-btn"
-              title="ছবি দিয়ে পণ্য সার্চ করুন (Visual Search)"
+              title="ছবি দিয়ে সার্চ করুন (Visual Search)"
+              onclick="window.__dcbdToggleVisualSearch && window.__dcbdToggleVisualSearch(false)"
               aria-label="Search by image"
             >
               <svg style="width: 15px; height: 15px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -614,140 +603,93 @@ export function renderHeader() {
             </button>
           </div>
 
-          <!-- Predictive Preview Popup -->
+          <!-- Predictive Text Preview Popup -->
           <div id="search-preview-popup" class="hidden absolute top-full left-0 right-0 mt-2 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto"></div>
 
-          <!-- Visual AI Image Search Dropdown Panel (Placed directly under Search Bar) -->
-          <div id="camera-search-panel" class="hidden rounded-3xl bg-slate-900 border border-slate-700/80 shadow-2xl p-5 sm:p-6 text-white overflow-hidden space-y-4 max-h-[85vh] overflow-y-auto">
+          <!-- Desktop Inline Visual Search Dropdown (NO FULLSCREEN BLUR!) -->
+          <div id="desktop-visual-search-popup" class="visual-search-popup hidden p-4 text-white overflow-hidden space-y-3">
             
-            <!-- Panel Header -->
-            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div class="flex items-center gap-2.5">
-                <div class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-400 text-lg">
+            <!-- Popup Top Bar -->
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-400 text-sm">
                   📸
                 </div>
                 <div>
-                  <h3 class="text-sm sm:text-base font-extrabold text-white">ছবি দিয়ে পণ্য খুঁজুন</h3>
-                  <p class="text-[11px] text-slate-400">Visual AI Search — ছবি আপলোড করে ক্যাটালগে মিল খুঁজুন</p>
+                  <h4 class="text-xs font-bold text-white">ছবি দিয়ে পণ্য খুঁজুন (Visual Search)</h4>
                 </div>
               </div>
               <button 
-                id="btn-close-image-search" 
                 type="button"
-                onclick="window.__dcbdCloseImageSearch && window.__dcbdCloseImageSearch()"
-                class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center text-sm font-bold transition cursor-pointer"
+                onclick="window.__dcbdCloseVisualSearch && window.__dcbdCloseVisualSearch()"
+                class="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs font-bold transition cursor-pointer"
                 title="বন্ধ করুন"
               >
                 ✕
               </button>
             </div>
 
-            <!-- 1. Drop & Selection Area (Initial State) -->
-            <div id="img-search-drop-area" class="space-y-4">
-              <div 
-                class="border-2 border-dashed border-emerald-500/40 hover:border-emerald-500 rounded-2xl p-6 text-center bg-slate-955/60 hover:bg-emerald-950/20 transition cursor-pointer group"
-                onclick="window.__dcbdTriggerFilePick('file')"
-              >
-                <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl mx-auto mb-2.5 group-hover:scale-110 transition">
-                  📷
-                </div>
-                <div class="text-xs sm:text-sm font-bold text-white mb-1">এখানে ছবি এনে ছাড়ুন অথবা ক্লিক করুন</div>
-                <p class="text-[11px] text-slate-400">JPG, PNG, WebP ফরম্যাটের যেকোনো পণ্যের ছবি সমর্থিত</p>
-              </div>
-
-              <!-- Action Buttons (Gallery vs Direct Camera) -->
-              <div class="grid grid-cols-2 gap-2.5">
+            <!-- 1. Selection Area -->
+            <div id="d-img-drop-area" class="space-y-3">
+              <div class="grid grid-cols-2 gap-2">
                 <button 
                   type="button"
-                  onclick="window.__dcbdTriggerFilePick('file')"
-                  class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 text-xs font-bold text-slate-200 transition cursor-pointer"
+                  onclick="window.__dcbdTriggerFilePick('file', false)"
+                  class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-emerald-500/50 text-xs font-bold text-slate-200 transition cursor-pointer"
                 >
                   <span>📁</span>
-                  <span>গ্যালারি / ফাইল</span>
+                  <span>ছবি আপলোড</span>
                 </button>
                 <button 
                   type="button"
-                  onclick="window.__dcbdTriggerFilePick('camera')"
-                  class="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-md cursor-pointer"
+                  onclick="window.__dcbdTriggerFilePick('camera', false)"
+                  class="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm cursor-pointer"
                 >
                   <span>📸</span>
-                  <span>ক্যামেরা দিয়ে তুলুন</span>
+                  <span>ক্যামেরা ওপেন</span>
                 </button>
               </div>
 
-              <!-- Quick Preset Categories -->
-              <div class="pt-2 border-t border-slate-800">
-                <div class="text-[11px] font-bold text-slate-400 mb-2">অথবা জনপ্রিয় ক্যাটাগরির ছবি দিয়ে খুঁজুন:</div>
-                <div class="flex flex-wrap gap-1.5">
-                  <button 
-                    type="button" 
-                    onclick="window.__dcbdSearchVisualTag('smartwatches')" 
-                    class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-emerald-950 hover:border-emerald-500/50 border border-slate-700 text-[11px] text-slate-300 hover:text-emerald-300 font-medium transition cursor-pointer"
-                  >
+              <!-- Quick Categories -->
+              <div class="pt-1.5">
+                <div class="text-[10px] font-bold text-slate-400 mb-1.5">অথবা জনপ্রিয় ক্যাটাগরির মিল খুঁজুন:</div>
+                <div class="flex flex-wrap gap-1">
+                  <button type="button" onclick="window.__dcbdSearchVisualTag('smartwatches', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
                     ⌚ স্মার্টওয়াচ
                   </button>
-                  <button 
-                    type="button" 
-                    onclick="window.__dcbdSearchVisualTag('organic-health')" 
-                    class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-emerald-950 hover:border-emerald-500/50 border border-slate-700 text-[11px] text-slate-300 hover:text-emerald-300 font-medium transition cursor-pointer"
-                  >
-                    🍯 অরগানিক ফুড
+                  <button type="button" onclick="window.__dcbdSearchVisualTag('organic-health', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
+                    🍯 অরগানিক
                   </button>
-                  <button 
-                    type="button" 
-                    onclick="window.__dcbdSearchVisualTag('torch')" 
-                    class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-emerald-950 hover:border-emerald-500/50 border border-slate-700 text-[11px] text-slate-300 hover:text-emerald-300 font-medium transition cursor-pointer"
-                  >
-                    🔦 ট্যাকটিক্যাল লাইট
+                  <button type="button" onclick="window.__dcbdSearchVisualTag('torch', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
+                    🔦 লাইট
                   </button>
-                  <button 
-                    type="button" 
-                    onclick="window.__dcbdSearchVisualTag('gas')" 
-                    class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-emerald-950 hover:border-emerald-500/50 border border-slate-700 text-[11px] text-slate-300 hover:text-emerald-300 font-medium transition cursor-pointer"
-                  >
-                    🛡️ কিচেন সেফটি গ্যাস
+                  <button type="button" onclick="window.__dcbdSearchVisualTag('gas', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
+                    🛡️ গ্যাস সেফটি
                   </button>
                 </div>
               </div>
             </div>
 
-            <!-- 2. Image Scanner Preview (Active scanning state) -->
-            <div id="img-search-preview-area" class="hidden space-y-3">
-              <div class="relative w-full h-44 sm:h-52 bg-slate-950 rounded-2xl overflow-hidden border border-emerald-500/40 flex items-center justify-center">
-                <img id="img-search-preview-img" src="" alt="Uploaded item" class="w-full h-full object-contain" />
-                <!-- High-tech Neon Laser Line Animation -->
+            <!-- 2. Scanning Preview -->
+            <div id="d-img-preview-area" class="hidden space-y-2">
+              <div class="relative w-full h-32 bg-slate-950 rounded-xl overflow-hidden border border-emerald-500/40 flex items-center justify-center">
+                <img id="d-img-preview-img" src="" alt="Item" class="w-full h-full object-contain" />
                 <div class="laser-scanner-line"></div>
               </div>
-              <div class="flex items-center justify-between text-xs">
-                <div id="img-search-scan-status" class="text-emerald-400 font-bold flex items-center">
-                  <span class="inline-block animate-spin mr-1.5">⚡</span> ছবি বিশ্লেষণ করা হচ্ছে...
+              <div class="flex items-center justify-between text-[11px]">
+                <div id="d-img-scan-status" class="text-emerald-400 font-bold flex items-center">
+                  <span class="inline-block animate-spin mr-1">⚡</span> স্ক্যান চলছে...
                 </div>
-                <button 
-                  type="button" 
-                  onclick="window.__dcbdTriggerFilePick('file')"
-                  class="text-[11px] text-slate-400 hover:text-white underline cursor-pointer"
-                >
-                  অন্য ছবি বাছুন
+                <button type="button" onclick="window.__dcbdTriggerFilePick('file', false)" class="text-slate-400 hover:text-white underline cursor-pointer">
+                  অন্য ছবি
                 </button>
               </div>
             </div>
 
-            <!-- 3. Matched Products Results Section -->
-            <div id="img-search-results-area" class="hidden space-y-2.5 border-t border-slate-800 pt-3">
-              <div class="flex items-center justify-between text-xs font-bold text-slate-300">
-                <span>✨ ক্যাটালগে মিলে যাওয়া সম্ভাব্য পণ্যসমূহ:</span>
-                <span class="text-[10px] text-emerald-400 font-normal">ক্লিক করে অর্ডার করুন</span>
-              </div>
-              <div id="img-search-results-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"></div>
-              <div class="pt-2 text-center">
-                <a 
-                  href="/products" 
-                  onclick="window.__dcbdCloseImageSearch();" 
-                  class="text-xs font-bold text-emerald-400 hover:underline inline-flex items-center gap-1"
-                >
-                  <span>সকল পণ্য ব্রাউজ করুন →</span>
-                </a>
-              </div>
+            <!-- 3. Matched Results -->
+            <div id="d-img-results-area" class="hidden space-y-2 border-t border-slate-800 pt-2">
+              <div class="text-[11px] font-bold text-slate-300">মিল থাকা পণ্যসমূহ:</div>
+              <div id="d-img-results-list" class="space-y-1.5 max-h-52 overflow-y-auto pr-1"></div>
             </div>
 
           </div>
@@ -867,6 +809,7 @@ export function renderHeader() {
             type="button" 
             class="header-image-search-btn"
             title="ছবি দিয়ে সার্চ করুন"
+            onclick="window.__dcbdToggleVisualSearch && window.__dcbdToggleVisualSearch(true)"
             style="right: 66px; height: 26px; padding: 0 6px;"
           >
             <svg style="width: 15px; height: 15px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -884,13 +827,77 @@ export function renderHeader() {
             <span>সার্চ</span>
           </button>
         </div>
+
         <div id="mobile-search-preview-popup" class="hidden absolute top-full left-4 right-4 mt-1 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto"></div>
+
+        <!-- Mobile Inline Visual Search Dropdown (NO FULLSCREEN BLUR!) -->
+        <div id="mobile-visual-search-popup" class="visual-search-popup hidden p-3.5 text-white overflow-hidden space-y-2.5 mt-1">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm">📸</span>
+              <span class="text-xs font-bold text-white">ছবি দিয়ে পণ্য খুঁজুন</span>
+            </div>
+            <button 
+              type="button"
+              onclick="window.__dcbdCloseVisualSearch && window.__dcbdCloseVisualSearch()"
+              class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs font-bold"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div id="m-img-drop-area" class="space-y-2">
+            <div class="grid grid-cols-2 gap-2">
+              <button 
+                type="button"
+                onclick="window.__dcbdTriggerFilePick('file', true)"
+                class="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200"
+              >
+                <span>📁</span> <span>ছবি আপলোড</span>
+              </button>
+              <button 
+                type="button"
+                onclick="window.__dcbdTriggerFilePick('camera', true)"
+                class="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-sm"
+              >
+                <span>📸</span> <span>ক্যামেরা</span>
+              </button>
+            </div>
+            <div class="flex flex-wrap gap-1 pt-1">
+              <button type="button" onclick="window.__dcbdSearchVisualTag('smartwatches', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300">
+                ⌚ স্মার্টওয়াচ
+              </button>
+              <button type="button" onclick="window.__dcbdSearchVisualTag('organic-health', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300">
+                🍯 অরগানিক
+              </button>
+              <button type="button" onclick="window.__dcbdSearchVisualTag('torch', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300">
+                🔦 লাইট
+              </button>
+              <button type="button" onclick="window.__dcbdSearchVisualTag('gas', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300">
+                🛡️ গ্যাস সেফটি
+              </button>
+            </div>
+          </div>
+
+          <div id="m-img-preview-area" class="hidden space-y-1.5">
+            <div class="relative w-full h-28 bg-slate-950 rounded-xl overflow-hidden border border-emerald-500/40 flex items-center justify-center">
+              <img id="m-img-preview-img" src="" alt="Item" class="w-full h-full object-contain" />
+              <div class="laser-scanner-line"></div>
+            </div>
+            <div id="m-img-scan-status" class="text-emerald-400 font-bold text-[10px] flex items-center">
+              <span class="inline-block animate-spin mr-1">⚡</span> স্ক্যান চলছে...
+            </div>
+          </div>
+
+          <div id="m-img-results-area" class="hidden space-y-1.5 border-t border-slate-800 pt-1.5">
+            <div class="text-[10px] font-bold text-slate-300">মিল থাকা পণ্য:</div>
+            <div id="m-img-results-list" class="space-y-1.5 max-h-44 overflow-y-auto"></div>
+          </div>
+        </div>
+
       </div>
 
     </header>
-
-    <!-- Visual Search Dimming Overlay (Prevents content bleedthrough) -->
-    <div id="camera-search-overlay" class="hidden" onclick="window.__dcbdCloseImageSearch && window.__dcbdCloseImageSearch()"></div>
 
     <!-- Hidden Native File Inputs for Camera & Gallery Uploads -->
     <input type="file" id="dcbd-image-file-input" accept="image/*" class="hidden" />
