@@ -280,7 +280,7 @@ export function renderCheckoutPage() {
           <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 shadow-xs space-y-4">
             <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
               <span class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-xs">১</span>
-              গ্রাহকের তথ্য ও ডেলিভারি ঠিকানা (Customer Info)
+              আপনার তথ্য ও ডেলিভারি ঠিকানা (Customer Info)
             </h3>
 
             <!-- Customer Name -->
