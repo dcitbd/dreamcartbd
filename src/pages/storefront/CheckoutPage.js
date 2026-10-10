@@ -293,7 +293,7 @@ export function renderCheckoutPage() {
                 id="checkout-name" 
                 required 
                 value="${user.name || user.shop_name || ''}"
-                placeholder="যেমন: মোঃ কামরুল ইসলাম" 
+                placeholder="আপনার নাম লিখুন" 
                 class="form-control text-xs sm:text-sm w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 outline-none"
               />
             </div>
@@ -309,7 +309,7 @@ export function renderCheckoutPage() {
                 required 
                 pattern="[0-9]{11}" 
                 value="${user.mobile || user.phone || ''}"
-                placeholder="যেমন: 01700000000" 
+                placeholder="আপনার ১১ ডিজিটের ফোন নাম্বার দিন!" 
                 class="form-control text-xs sm:text-sm w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 font-mono outline-none"
               />
               <p class="text-[10px] text-slate-400 mt-1">অর্ডার স্ট্যাটাস ও কুরিয়ার ট্র্যাকিং এসএমএস এই নম্বরে পাঠানো হবে।</p>
@@ -349,9 +349,9 @@ export function renderCheckoutPage() {
             <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-xs">২</span>
-                ডেলিভারি এরিয়া ও চার্জ (Delivery Area)
+                ডেলিভারি এরিয়া (Delivery Area)
               </h3>
-              <span class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full">
+              <span class="text-[11px] font-bold text-white bg-black px-2.5 py-0.5 rounded-full">
                 ${isFreeDelivery ? 'ফ্রি শিপিং প্রযোজ্য' : 'দ্রুত ডেলিভারি'}
               </span>
             </div>
@@ -395,7 +395,7 @@ export function renderCheckoutPage() {
                 <span class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-xs">৩</span>
                 পেমেন্ট পদ্ধতি নির্বাচন করুন (Payment Method)
               </h3>
-              <span class="text-[11px] font-bold text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-950/60 px-2.5 py-0.5 rounded-full">
+              <span class="text-[11px] font-bold text-white bg-black px-2.5 py-0.5 rounded-full">
                 অনলাইন পেমেন্টে ৫% ছাড়
               </span>
             </div>
@@ -462,7 +462,7 @@ export function renderCheckoutPage() {
                     <span>🌸</span>
                     <span>বিকাশ পার্সোনাল নম্বর (Send Money)</span>
                   </div>
-                  <span class="text-[10px] font-bold bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 px-2 py-0.5 rounded-md">৫% ছাড় প্রযোজ্য</span>
+                  <span class="text-[10px] font-bold bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 px-2 py-0.5 rounded-md">৫% ছাড়</span>
                 </div>
 
                 <div class="space-y-2">
@@ -498,13 +498,12 @@ export function renderCheckoutPage() {
                 <div class="flex items-center justify-between pb-1.5 flex-wrap gap-1.5">
                   <div class="flex items-center gap-2 font-bold text-pink-600 dark:text-pink-400 text-sm">
                     <span>💳</span>
-                    <span>বিকাশ অনলাইন পেমেন্ট লিংক (Gateway)</span>
+                    <span>অনলাইন পেমেন্ট (Gateway)</span>
                   </div>
-                  <span class="text-[10px] font-bold bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 px-2 py-0.5 rounded-md">৫% ছাড় প্রযোজ্য</span>
+                  <span class="text-[10px] font-bold bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 px-2 py-0.5 rounded-md">৫% ছাড়</span>
                 </div>
 
                 <div class="space-y-2 text-center">
-                  <p class="text-xs text-slate-600 dark:text-slate-300">নিচের বাটনে ক্লিক করে সরাসরি বিকাশ অনলাইন গেটওয়েতে পেমেন্ট করুন:</p>
                   <a 
                     href="https://shop.bkash.com/j-a-sagor-computer01581703822/paymentlink" 
                     target="_blank" 
@@ -528,7 +527,7 @@ export function renderCheckoutPage() {
                     <span>🔥</span>
                     <span>নগদ পার্সোনাল নম্বর (Send Money)</span>
                   </div>
-                  <span class="text-[10px] font-bold bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded-md">৫% ছাড় প্রযোজ্য</span>
+                  <span class="text-[10px] font-bold bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded-md">৫% ছাড়</span>
                 </div>
 
                 <div class="space-y-2">
@@ -566,7 +565,7 @@ export function renderCheckoutPage() {
                     <span>🚀</span>
                     <span>রকেট পার্সোনাল নম্বর (Send Money)</span>
                   </div>
-                  <span class="text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md">৫% ছাড় প্রযোজ্য</span>
+                  <span class="text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md">৫% ছাড়</span>
                 </div>
 
                 <div class="pm-num-chip">
@@ -591,7 +590,7 @@ export function renderCheckoutPage() {
                     <span>🏦</span>
                     <span>ইসলামী ব্যাংক বাংলাদেশ পিএলসি (IBBL) একাউন্ট বিবরণী</span>
                   </div>
-                  <span class="text-[10px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md">৫% ছাড় প্রযোজ্য</span>
+                  <span class="text-[10px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md">৫% ছাড়</span>
                 </div>
 
                 <!-- High-Contrast Bank Details Box -->
