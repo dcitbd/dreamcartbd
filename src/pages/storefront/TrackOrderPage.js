@@ -425,7 +425,7 @@ export async function renderTrackOrderPage(orderIdOrPhone = "") {
             </p>
           </div>
 
-          <span class="inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider self-start sm:self-center ${status === 'Delivered' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800' : 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800'}">
+          <span class="inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider self-start sm:self-center bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
             ${status}
           </span>
         </div>
