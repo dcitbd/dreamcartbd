@@ -138,7 +138,7 @@ main#app-content {
 
 @media (max-width: 768px) {
   body {
-    padding-bottom: var(--mobile-nav-height);
+    padding-bottom: 0 !important;
   }
   
   .desktop-only {

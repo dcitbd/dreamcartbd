@@ -269,10 +269,48 @@ function attachEventListeners() {
       return;
     }
 
-    // Mobile Hamburger Menu Toggle
+    // Mobile Hamburger Menu Toggle (Shows clean list on click)
     if (e.target.closest('#btn-mobile-menu-toggle')) {
       const menu = document.getElementById('mobile-dropdown-menu');
       if (menu) menu.classList.toggle('hidden');
+      return;
+    }
+
+    // Mobile Menu Close Button
+    if (e.target.closest('#btn-mobile-menu-close')) {
+      const menu = document.getElementById('mobile-dropdown-menu');
+      if (menu) menu.classList.add('hidden');
+      return;
+    }
+
+    // Close mobile menu list on link click
+    if (e.target.closest('.mobile-menu-link')) {
+      const menu = document.getElementById('mobile-dropdown-menu');
+      if (menu) menu.classList.add('hidden');
+    }
+
+    // Close mobile menu when clicked outside
+    if (!e.target.closest('#mobile-dropdown-menu') && !e.target.closest('#btn-mobile-menu-toggle')) {
+      const menu = document.getElementById('mobile-dropdown-menu');
+      if (menu) menu.classList.add('hidden');
+    }
+
+    // Mobile Floating Launcher Toggle Button (Hides/Shows fixed buttons on mobile)
+    if (e.target.closest('#btn-floating-launcher')) {
+      const items = document.getElementById('floating-actions-items');
+      const icon = document.getElementById('floating-launcher-icon');
+      if (items) {
+        const isOpen = items.classList.contains('active');
+        if (isOpen) {
+          items.classList.remove('active');
+          items.classList.add('hidden');
+          if (icon) icon.textContent = '💬';
+        } else {
+          items.classList.add('active');
+          items.classList.remove('hidden');
+          if (icon) icon.textContent = '✕';
+        }
+      }
       return;
     }
 
@@ -315,12 +353,21 @@ function attachEventListeners() {
       return;
     }
 
-    // Close floating submenus & auth dropdown when clicked outside
+    // Close floating submenus & auth dropdown & mobile launcher when clicked outside
     if (!e.target.closest('#call-menu-group') && !e.target.closest('#wa-menu-group')) {
       const callMenu = document.getElementById('call-sub-menu');
       const waMenu = document.getElementById('wa-sub-menu');
       if (callMenu) callMenu.classList.add('hidden');
       if (waMenu) waMenu.classList.add('hidden');
+    }
+    if (!e.target.closest('#floating-actions-dock')) {
+      const items = document.getElementById('floating-actions-items');
+      const icon = document.getElementById('floating-launcher-icon');
+      if (items && window.innerWidth < 640) {
+        items.classList.remove('active');
+        items.classList.add('hidden');
+        if (icon) icon.textContent = '💬';
+      }
     }
     if (!e.target.closest('.auth-dropdown-container')) {
       const authPanel = document.getElementById('auth-dropdown-panel');

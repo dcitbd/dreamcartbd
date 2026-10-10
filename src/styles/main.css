@@ -561,20 +561,9 @@ img { max-width: 100%; display: block; }
 }
 .drawer-panel.active { transform: translateX(0); }
 
-/* MOBILE BOTTOM NAV */
+/* MOBILE BOTTOM NAV (Hidden as requested: menubar only accessible via menu icon list) */
 .mobile-nav-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 64px;
-  background: #ffffff;
-  border-top: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  z-index: 8000;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+  display: none !important;
 }
 
 @media (min-width: 768px) {
@@ -1477,4 +1466,67 @@ header.site-header, header {
 .dark .variant-chip.active {
   background-color: rgba(6, 78, 59, 0.4) !important;
   color: #6ee7b7 !important;
+}
+
+
+/* ==========================================================================
+   MOBILE NAVIGATION & FLOATING ACTIONS COLLAPSIBLE CONTROLS
+   ========================================================================== */
+#mobile-dropdown-menu.hidden {
+  display: none !important;
+}
+#mobile-dropdown-menu:not(.hidden) {
+  display: block !important;
+  animation: slideDownMenu 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideDownMenu {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 639px) {
+  #floating-actions-dock {
+    bottom: 1.25rem !important;
+    right: 1.25rem !important;
+  }
+  #floating-actions-items.hidden,
+  #floating-actions-items:not(.active) {
+    display: none !important;
+  }
+  #floating-actions-items.active {
+    display: flex !important;
+    flex-direction: column !important;
+    margin-bottom: 0.5rem !important;
+    animation: floatingSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  #btn-floating-launcher {
+    display: flex !important;
+  }
+}
+
+@media (min-width: 640px) {
+  #floating-actions-items {
+    display: flex !important;
+  }
+  #btn-floating-launcher {
+    display: none !important;
+  }
+}
+
+@keyframes floatingSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
