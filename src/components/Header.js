@@ -3,6 +3,7 @@
  * High-performance, pixel-perfect header component:
  * - Desktop: Notice bar, compact crisp logo (42px), wide predictive search bar, nav actions, auth menu, dark mode.
  * - Mobile: Sleek native app bar with compact logo (36px) & dedicated search bar. Zero menu clutter on top.
+ * - Luxury Dark Theme: No white/light-grey background. High contrast, sharp text, crisp vibrant accents.
  */
 
 import { cartStore } from '../store/cartStore.js';
@@ -16,8 +17,144 @@ export function renderHeader() {
   const isDark = document.documentElement.classList.contains('dark');
 
   return `
+    <!-- Scoped Navigation Bar Styles (Prevents white/light-grey washout, guarantees high-contrast legibility) -->
+    <style id="dcbd-header-custom-styles">
+      .site-header {
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 50 !important;
+        background: linear-gradient(180deg, #090e1a 0%, #0f172a 100%) !important;
+        border-bottom: 1px solid rgba(30, 41, 59, 0.8) !important;
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45) !important;
+      }
+      .notice-bar {
+        background: #020617 !important;
+        border-bottom: 1px solid rgba(16, 185, 129, 0.25) !important;
+        color: #f1f5f9 !important;
+      }
+      .header-brand-title {
+        color: #ffffff !important;
+        font-weight: 900 !important;
+      }
+      .header-brand-title .accent {
+        color: #10b981 !important;
+      }
+      .header-brand-sub {
+        color: #94a3b8 !important;
+      }
+
+      /* Desktop & Mobile Search Bar (Dark, Crisp & High-Contrast) */
+      .header-search-bar {
+        background-color: #1e293b !important;
+        border: 1.5px solid rgba(51, 65, 85, 0.9) !important;
+        border-radius: 9999px !important;
+        transition: all 0.2s ease !important;
+      }
+      .header-search-bar:focus-within {
+        background-color: #0b1120 !important;
+        border-color: #10b981 !important;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
+      }
+      .header-search-icon {
+        color: #10b981 !important;
+      }
+      .header-search-input {
+        color: #f8fafc !important;
+        background: transparent !important;
+      }
+      .header-search-input::placeholder {
+        color: #94a3b8 !important;
+      }
+      .header-search-submit {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: #ffffff !important;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3) !important;
+      }
+      .header-search-submit:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+      }
+
+      /* Nav Action Buttons */
+      .nav-action-btn {
+        background: rgba(30, 41, 59, 0.65) !important;
+        border: 1px solid rgba(51, 65, 85, 0.7) !important;
+        color: #f1f5f9 !important;
+        padding: 0.45rem 0.85rem !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 0.4rem !important;
+        font-size: 0.75rem !important;
+        text-decoration: none !important;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      }
+      .nav-action-btn:hover {
+        background: rgba(16, 185, 129, 0.2) !important;
+        border-color: #10b981 !important;
+        color: #34d399 !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25) !important;
+      }
+
+      /* Prominent High-Contrast Login Button */
+      .nav-login-btn {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: #ffffff !important;
+        border: 1px solid rgba(52, 211, 153, 0.5) !important;
+        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35) !important;
+      }
+      .nav-login-btn:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+        color: #ffffff !important;
+        border-color: #34d399 !important;
+        box-shadow: 0 6px 18px rgba(5, 150, 105, 0.45) !important;
+        transform: translateY(-1px) !important;
+      }
+      .nav-login-btn svg {
+        color: #ffffff !important;
+      }
+
+      /* Authenticated User Button */
+      .nav-user-btn {
+        background: rgba(16, 185, 129, 0.16) !important;
+        border: 1px solid rgba(16, 185, 129, 0.4) !important;
+        color: #34d399 !important;
+      }
+      .nav-user-btn:hover {
+        background: rgba(16, 185, 129, 0.26) !important;
+        border-color: #10b981 !important;
+        color: #6ee7b7 !important;
+      }
+
+      /* Mobile Search Row */
+      .mobile-search-row {
+        background-color: #0f172a !important;
+        border-top: 1px solid rgba(30, 41, 59, 0.8) !important;
+      }
+
+      /* Dropdown Panels (Dark, Rich & Legible) */
+      #auth-dropdown-panel {
+        background: #0f172a !important;
+        border: 1px solid #1e293b !important;
+        color: #f8fafc !important;
+      }
+      #auth-dropdown-panel a {
+        color: #cbd5e1 !important;
+      }
+      #auth-dropdown-panel a:hover {
+        background: #1e293b !important;
+        color: #34d399 !important;
+      }
+      #search-preview-popup {
+        background: #0f172a !important;
+        border: 1px solid #1e293b !important;
+        color: #f8fafc !important;
+      }
+    </style>
+
     <!-- Top Notice Bar (Desktop only) -->
-    <div class="notice-bar hidden sm:block bg-slate-900 dark:bg-slate-950 text-white text-xs py-2 px-4 border-b border-emerald-800/40 relative z-50">
+    <div class="notice-bar hidden sm:block text-white text-xs py-2 px-4 relative z-50">
       <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
         <div class="flex items-center gap-2 text-center md:text-left text-[11px] sm:text-xs">
           <span class="bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded text-[10px] tracking-wider uppercase shadow-xs">নোটিশ</span>
@@ -95,7 +232,7 @@ export function renderHeader() {
           </div>
 
           <!-- Predictive Preview Popup -->
-          <div id="search-preview-popup" class="hidden absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto"></div>
+          <div id="search-preview-popup" class="hidden absolute top-full left-0 right-0 mt-2 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto"></div>
         </div>
 
         <!-- Desktop Navigation Controls (Hidden on Mobile) -->
@@ -103,12 +240,12 @@ export function renderHeader() {
           
           <!-- Products Link -->
           <a href="/products" class="nav-action-btn">
-            <span>🛍️</span> Products
+            <span>🛍️</span> <span>Products</span>
           </a>
 
           <!-- Cart Button -->
           <button id="btn-open-cart" class="nav-action-btn" title="কার্ট দেখুন">
-            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
             </svg>
             <span>Cart</span>
@@ -119,7 +256,7 @@ export function renderHeader() {
 
           <!-- Favourite (Wishlist) Icon -->
           <a href="/favourite" class="nav-action-btn" title="পছন্দের তালিকা">
-            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg style="width: 18px; height: 18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
             </svg>
             <span>Favourite</span>
@@ -131,40 +268,40 @@ export function renderHeader() {
           <!-- User Login / Account Dropdown -->
           <div class="relative auth-dropdown-container">
             ${isAuthenticated ? `
-              <button id="btn-user-menu" class="nav-action-btn" style="background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3);">
-                <span style="width: 22px; height: 22px; border-radius: 9999px; background: #059669; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
+              <button id="btn-user-menu" class="nav-action-btn nav-user-btn">
+                <span style="width: 22px; height: 22px; border-radius: 9999px; background: #059669; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800;">
                   ${(authStore.getUserDisplayName() || "U").charAt(0).toUpperCase()}
                 </span>
-                <span style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authStore.getUserDisplayName()}</span>
+                <span style="max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authStore.getUserDisplayName()}</span>
                 <span style="font-size: 10px;">▼</span>
               </button>
             ` : `
-              <a href="/customer/login" class="nav-action-btn" style="background: #f1f5f9; border: 1px solid #e2e8f0;">
-                <svg style="width: 16px; height: 16px; color: #059669;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+              <a href="/customer/login" class="nav-action-btn nav-login-btn">
+                <svg style="width: 16px; height: 16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                 <span>লগইন</span>
               </a>
             `}
 
             <!-- Dropdown Menu -->
-            <div id="auth-dropdown-panel" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl py-2 z-50 text-xs">
+            <div id="auth-dropdown-panel" class="hidden absolute right-0 mt-2 w-48 rounded-2xl border shadow-xl py-2 z-50 text-xs">
               ${isAuthenticated ? `
-                <div class="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
-                  <div class="font-bold text-slate-900 dark:text-white truncate">${authStore.getUserDisplayName()}</div>
+                <div class="px-4 py-2 border-b border-slate-800">
+                  <div class="font-bold text-white truncate">${authStore.getUserDisplayName()}</div>
                   <div class="text-[10px] text-slate-400 capitalize">${authStore.getAccountType()}</div>
                 </div>
-                ${authStore.isAdmin() ? `<a href="/admin/dashboard" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-emerald-600">Admin Dashboard</a>` : ""}
-                ${authStore.isReseller() ? `<a href="/reseller/dashboard" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-indigo-600">Reseller Portal</a>` : ""}
-                ${authStore.isWholesaler() ? `<a href="/wholesaler/dashboard" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold text-amber-600">Wholesale Portal</a>` : ""}
-                <a href="/customer/dashboard" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">My Orders & Profile</a>
-                <a href="/customer/settings" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300">Settings</a>
-                <button id="btn-logout" class="w-full text-left px-4 py-2 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-600 font-bold border-t border-slate-100 dark:border-slate-800 cursor-pointer">লগআউট</button>
+                ${authStore.isAdmin() ? `<a href="/admin/dashboard" class="block px-4 py-2 font-bold text-emerald-400 hover:bg-slate-800">Admin Dashboard</a>` : ""}
+                ${authStore.isReseller() ? `<a href="/reseller/dashboard" class="block px-4 py-2 font-bold text-indigo-400 hover:bg-slate-800">Reseller Portal</a>` : ""}
+                ${authStore.isWholesaler() ? `<a href="/wholesaler/dashboard" class="block px-4 py-2 font-bold text-amber-400 hover:bg-slate-800">Wholesale Portal</a>` : ""}
+                <a href="/customer/dashboard" class="block px-4 py-2 text-slate-300 hover:bg-slate-800">My Orders & Profile</a>
+                <a href="/customer/settings" class="block px-4 py-2 text-slate-300 hover:bg-slate-800">Settings</a>
+                <button id="btn-logout" class="w-full text-left px-4 py-2 hover:bg-rose-950/40 text-rose-400 font-bold border-t border-slate-800 cursor-pointer">লগআউট</button>
               ` : `
-                <a href="/customer/login" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Customer Login</a>
-                <a href="/customer/register" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Customer Register</a>
-                <a href="/reseller/login" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Reseller Hub</a>
-                <a href="/wholesaler/login" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold">Wholesale Portal</a>
-                <div class="border-t border-slate-100 dark:border-slate-800 my-1"></div>
-                <a href="/admin/login" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 font-semibold">Admin / Worker Login</a>
+                <a href="/customer/login" class="block px-4 py-2 text-slate-300 hover:bg-slate-800 font-semibold">Customer Login</a>
+                <a href="/customer/register" class="block px-4 py-2 text-slate-300 hover:bg-slate-800 font-semibold">Customer Register</a>
+                <a href="/reseller/login" class="block px-4 py-2 text-slate-300 hover:bg-slate-800 font-semibold">Reseller Hub</a>
+                <a href="/wholesaler/login" class="block px-4 py-2 text-slate-300 hover:bg-slate-800 font-semibold">Wholesale Portal</a>
+                <div class="border-t border-slate-800 my-1"></div>
+                <a href="/admin/login" class="block px-4 py-2 text-slate-400 hover:bg-slate-800 font-semibold">Admin / Worker Login</a>
               `}
             </div>
           </div>
@@ -214,7 +351,7 @@ export function renderHeader() {
             <span>সার্চ</span>
           </button>
         </div>
-        <div id="mobile-search-preview-popup" class="hidden absolute top-full left-4 right-4 mt-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto"></div>
+        <div id="mobile-search-preview-popup" class="hidden absolute top-full left-4 right-4 mt-1 rounded-2xl border border-slate-800 shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto"></div>
       </div>
 
     </header>
