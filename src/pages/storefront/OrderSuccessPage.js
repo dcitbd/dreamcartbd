@@ -316,7 +316,7 @@ export async function renderOrderSuccessPage(orderId = "ORD-2609-8472") {
         </div>
 
         <div class="space-y-1">
-          <span class="inline-block bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-xs font-black px-3.5 py-1 rounded-full uppercase tracking-wider mb-1 border border-emerald-200 dark:border-emerald-800">
+          <span class="inline-block bg-black text-white dark:bg-black dark:text-white text-xs font-black px-[10px] py-[10px] rounded-full uppercase tracking-wider mb-1 border border-emerald-200 dark:border-emerald-800">
             অর্ডার সফলভাবে সম্পন্ন হয়েছে
           </span>
           <h1 class="text-xl sm:text-3xl font-black text-slate-900 dark:text-white">
