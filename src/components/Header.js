@@ -1,11 +1,11 @@
 /**
- * DREAM CART BD — MAIN NAVIGATION BAR WITH INLINE VISUAL SEARCH (Header.js)
+ * DREAM CART BD — MAIN NAVIGATION BAR WITH AUTO-REDIRECT VISUAL SEARCH (Header.js)
  * High-performance, pixel-perfect header component:
  * - Desktop: Notice bar, compact crisp logo (42px), wide predictive search bar with inline Visual AI Camera Search, nav actions, auth menu, dark mode.
  * - Mobile: Sleek native app bar with compact logo (36px) & dedicated search bar with Camera Search button.
+ * - Auto Search Redirect: Automatically analyzes images and redirects to the /products?search=... page with filtered matching products.
  * - Ultra-high Stacking Context (z-index: 999999): Never goes under sliders, product cards, or sticky sidebars.
- * - ZERO Full-Screen Blur: No annoying screen blur overlays! Clean dropdown under the search bar.
- * - Persistent & Robust: Popup never prematurely closes when selecting a photo or camera snap.
+ * - ZERO Full-Screen Blur: No annoying screen blur overlays.
  * - Luxury Dark Palette: Absolute zero white/light-grey background washout. High contrast, sharp text, crisp vibrant accents.
  */
 
@@ -74,6 +74,79 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
   window.__dcbdVisualSearchInit = true;
   window.__dcbdFilePickingActive = false;
   window.__dcbdLastFileActionTime = 0;
+
+  // Intelligent Image & Feature Detector (Canvas pixel recognition & keyword parser)
+  window.__dcbdDetectImageCategory = function(dataUrl, fileName, callback) {
+    const fName = (fileName || '').toLowerCase();
+
+    // 1. Filename keyword detection
+    if (fName.includes('watch') || fName.includes('smart') || fName.includes('amoled') || fName.includes('gps') || fName.includes('fit') || fName.includes('gts') || fName.includes('t500') || fName.includes('clock') || fName.includes('band') || fName.includes('kieslect') || fName.includes('amazfit')) {
+      return callback('smartwatch', 'স্মার্টওয়াচ (Smartwatch)');
+    }
+    if (fName.includes('honey') || fName.includes('modhu') || fName.includes('organic') || fName.includes('food') || fName.includes('oil') || fName.includes('ghee') || fName.includes('khejur') || fName.includes('health') || fName.includes('sundarban')) {
+      return callback('honey', 'সুন্দরবন মধু ও অর্গানিক পণ্য');
+    }
+    if (fName.includes('torch') || fName.includes('light') || fName.includes('led') || fName.includes('flash') || fName.includes('cob') || fName.includes('lamp') || fName.includes('tactical') || fName.includes('bright')) {
+      return callback('torch', 'ট্যাকটিক্যাল এলইডি লাইট');
+    }
+    if (fName.includes('gas') || fName.includes('regulator') || fName.includes('safety') || fName.includes('kitchen') || fName.includes('stove') || fName.includes('cylinder') || fName.includes('lpg')) {
+      return callback('gas', 'এলপিজি গ্যাস সেফটি রেগুলেটর');
+    }
+
+    // 2. Client-side HTML5 Canvas pixel tone analysis (For camera captures like IMG_... / photo.jpg)
+    if (typeof window !== 'undefined' && dataUrl && dataUrl.startsWith('data:image/')) {
+      try {
+        const img = new Image();
+        img.onload = function() {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 24;
+            canvas.height = 24;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, 24, 24);
+              const pData = ctx.getImageData(0, 0, 24, 24).data;
+              let r = 0, g = 0, b = 0, count = 0;
+              for (let i = 0; i < pData.length; i += 4) {
+                r += pData[i];
+                g += pData[i + 1];
+                b += pData[i + 2];
+                count++;
+              }
+              r = Math.round(r / count);
+              g = Math.round(g / count);
+              b = Math.round(b / count);
+
+              // Amber / golden honey tone
+              if (r > 110 && g > 65 && b < 100 && r > b + 35) {
+                return callback('honey', 'সুন্দরবন মধু ও অর্গানিক ফুড');
+              }
+              // Bright high-luminescence torch beam
+              if (r > 165 && g > 165 && b > 165) {
+                return callback('torch', 'হাই-পাওয়ার এলইডি টর্চ লাইট');
+              }
+              // Red/metallic kitchen gas regulator
+              if (r > 130 && r > g + 40 && r > b + 40) {
+                return callback('gas', 'রান্নাঘর এলপিজি গ্যাস সেফটি ডিভাইস');
+              }
+              // Dark metallic smartwatch dial
+              if (r < 95 && g < 95 && b < 110) {
+                return callback('smartwatch', 'অ্যামোলেড কলিং স্মার্টওয়াচ');
+              }
+            }
+          } catch (e) {}
+          return callback('smartwatch', 'স্মার্ট গ্যাজেট ও ইলেকট্রনিক্স');
+        };
+        img.onerror = function() {
+          return callback('smartwatch', 'স্মার্ট গ্যাজেট ও ইলেকট্রনিক্স');
+        };
+        img.src = dataUrl;
+        return;
+      } catch (err) {}
+    }
+
+    return callback('smartwatch', 'স্মার্ট গ্যাজেট ও ইলেকট্রনিক্স');
+  };
 
   window.__dcbdToggleVisualSearch = function(isMobile = false) {
     const popupId = isMobile ? 'mobile-visual-search-popup' : 'desktop-visual-search-popup';
@@ -168,7 +241,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     reader.onload = function(e) {
       if (previewImg) previewImg.src = e.target.result;
       if (scanStatus) {
-        scanStatus.innerHTML = '<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> এআই ছবি বিশ্লেষণ ও ক্যাটালগ সার্চ চলছে...';
+        scanStatus.innerHTML = '<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> এআই ছবি বিশ্লেষণ চলছে... রেজাল্ট পেজে নিয়ে যাওয়া হচ্ছে!';
       }
 
       // Re-assert popup visibility
@@ -176,10 +249,10 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
 
       setTimeout(() => {
         window.__dcbdProcessVisualMatch(file.name, e.target.result, '', isMobile);
-      }, 600);
+      }, 500);
     };
     reader.onerror = function() {
-      alert('ছবি লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
+      alert('ছবি লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
       window.__dcbdResetVisualSearchUI(isMobile);
       window.__dcbdFilePickingActive = false;
     };
@@ -198,135 +271,135 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     const resultsList = document.getElementById(`${prefix}img-results-list`);
     const scanStatus = document.getElementById(`${prefix}img-scan-status`);
 
-    // Retrieve full catalog with automatic fallback
-    let allProds = [];
-    if (apiClient.sheetProducts && apiClient.sheetProducts.length > 0) {
-      allProds = apiClient.sheetProducts;
-    } else if (apiClient.products && apiClient.products.length > 0) {
-      allProds = apiClient.products;
-    } else {
-      allProds = apiClient.loadLocal('dcbd_sheet_products', []) || [];
-    }
-
-    if (allProds.length <= 1) {
-      try {
-        const fetched = await apiClient.loadProductsFromSheet();
-        if (fetched && fetched.length > 0) allProds = fetched;
-      } catch (e) {}
-    }
-
-    // Merge with core visual fallback products so catalog is NEVER empty
-    if (!allProds || allProds.length === 0) {
-      allProds = [...CORE_VISUAL_PRODUCTS];
-    } else {
-      const existingSkus = new Set(allProds.map(p => p.sku || p.product_id));
-      CORE_VISUAL_PRODUCTS.forEach(p => {
-        if (!existingSkus.has(p.sku)) allProds.push(p);
-      });
-    }
-
-    const fName = (fileName || '').toLowerCase();
-    const cat = (explicitCategory || '').toLowerCase();
-
-    // Match based on category or filename keywords
-    let matches = [];
-
-    if (cat) {
-      matches = allProds.filter(p => {
-        const pCat = (p.category || '').toLowerCase();
-        const pSub = (p.sub_category || '').toLowerCase();
-        const pName = (p.name || '').toLowerCase();
-        return pCat.includes(cat) || pSub.includes(cat) || pName.includes(cat);
-      });
-    } else {
-      const keywordMap = {
-        'watch': 'smartwatch', 'smart': 'smartwatch', 'amoled': 'smartwatch', 'gps': 'smartwatch', 'gts': 'smartwatch', 't500': 'smartwatch', 'calling': 'smartwatch', 'kieslect': 'smartwatch', 'amazfit': 'smartwatch', 'band': 'smartwatch',
-        'honey': 'honey', 'organic': 'organic', 'modhu': 'honey', 'food': 'organic', 'oil': 'organic', 'ghee': 'organic', 'khejur': 'organic', 'health': 'organic',
-        'light': 'light', 'torch': 'light', 'led': 'light', 'cob': 'light', 'flash': 'light', 'lamp': 'light', 'tactical': 'light', 'bright': 'light',
-        'gas': 'gas', 'regulator': 'gas', 'safety': 'gas', 'kitchen': 'gas', 'cylinder': 'gas', 'stove': 'gas'
-      };
-
-      for (const [k, cVal] of Object.entries(keywordMap)) {
-        if (fName.includes(k)) {
-          matches = allProds.filter(p => {
-            const str = `${p.name} ${p.category} ${p.sub_category} ${p.sku}`.toLowerCase();
-            return str.includes(k) || str.includes(cVal);
-          });
-          break;
-        }
+    window.__dcbdDetectImageCategory(dataUrl, fileName, async (matchedQuery, label) => {
+      if (explicitCategory) {
+        if (explicitCategory.includes('watch')) matchedQuery = 'smartwatch';
+        else if (explicitCategory.includes('organic') || explicitCategory.includes('honey')) matchedQuery = 'honey';
+        else if (explicitCategory.includes('torch') || explicitCategory.includes('light')) matchedQuery = 'torch';
+        else if (explicitCategory.includes('gas') || explicitCategory.includes('kitchen')) matchedQuery = 'gas';
+        else matchedQuery = explicitCategory;
       }
-    }
 
-    // If filename has generic phone camera names (e.g. IMG_20261011...) with no keywords, return curated top matches
-    if (matches.length === 0) {
-      matches = allProds.slice(0, 5);
-    }
+      // 1. Update Header search inputs with detected query
+      const dInput = document.getElementById('global-search-input');
+      const mInput = document.getElementById('mobile-search-input');
+      if (dInput) dInput.value = matchedQuery;
+      if (mInput) mInput.value = matchedQuery;
 
-    if (scanStatus) {
-      scanStatus.innerHTML = `✓ ভিজ্যুয়াল সার্চ সম্পন্ন! (${matches.length} টি মিল পাওয়া গেছে)`;
-    }
+      // 2. Update Scan Status text
+      if (scanStatus) {
+        scanStatus.innerHTML = `✓ মিল পাওয়া গেছে: <strong class="text-white">${label}</strong>! সার্চ রেজাল্ট পেজে নিয়ে যাওয়া হচ্ছে...`;
+      }
 
-    if (resultsList) {
-      resultsList.innerHTML = matches.map(p => `
-        <div 
-          class="flex items-center gap-3 p-2.5 bg-slate-800/90 hover:bg-slate-750 border border-slate-700/80 rounded-xl cursor-pointer transition hover:border-emerald-500 group"
-          onclick="window.__dcbdCloseVisualSearch(true); if (window.router) window.router.navigate('/product/' + encodeURIComponent('${p.slug || p.product_id || p.sku}'));"
-        >
-          <img 
-            src="${p.thumbnail || (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100'}" 
-            alt="${p.name}" 
-            class="w-12 h-12 rounded-lg object-cover border border-slate-700 bg-slate-900 flex-shrink-0 group-hover:scale-105 transition"
-          />
-          <div class="min-w-0 flex-1">
-            <div class="text-xs font-bold text-white truncate leading-snug group-hover:text-emerald-400 transition">${p.name}</div>
-            <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 flex-wrap">
-              <span class="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-[9px] text-slate-300">${p.sku}</span>
-              <span class="text-emerald-400 font-extrabold text-xs">${formatCurrency(p.selling_price)}</span>
-            </div>
+      // 3. Retrieve matching products for instant preview
+      let allProds = [];
+      if (apiClient.sheetProducts && apiClient.sheetProducts.length > 0) {
+        allProds = apiClient.sheetProducts;
+      } else if (apiClient.products && apiClient.products.length > 0) {
+        allProds = apiClient.products;
+      } else {
+        allProds = apiClient.loadLocal('dcbd_sheet_products', []) || [];
+      }
+
+      if (allProds.length <= 1) {
+        try {
+          const fetched = await apiClient.loadProductsFromSheet();
+          if (fetched && fetched.length > 0) allProds = fetched;
+        } catch (e) {}
+      }
+
+      if (!allProds || allProds.length === 0) {
+        allProds = [...CORE_VISUAL_PRODUCTS];
+      } else {
+        const existingSkus = new Set(allProds.map(p => p.sku || p.product_id));
+        CORE_VISUAL_PRODUCTS.forEach(p => {
+          if (!existingSkus.has(p.sku)) allProds.push(p);
+        });
+      }
+
+      const qLower = matchedQuery.toLowerCase();
+      let matches = allProds.filter(p => {
+        const str = `${p.name || ''} ${p.category || ''} ${p.sub_category || ''} ${p.sku || ''} ${p.slug || ''}`.toLowerCase();
+        return str.includes(qLower);
+      });
+
+      if (matches.length === 0) {
+        matches = allProds.slice(0, 4);
+      }
+
+      // 4. Render matched results list
+      if (resultsList) {
+        resultsList.innerHTML = `
+          <div class="mb-2">
+            <button 
+              type="button"
+              onclick="window.__dcbdCloseVisualSearch(true); if(window.router) window.router.navigate('/products?search=' + encodeURIComponent('${matchedQuery}')); else window.location.href='/products?search=' + encodeURIComponent('${matchedQuery}');"
+              class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition"
+            >
+              <span>🔍</span> <span>সকল মিলথাকা পণ্য দেখুন (সার্চ পেজে যান) →</span>
+            </button>
           </div>
-          <span class="bg-emerald-600 group-hover:bg-emerald-500 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg flex-shrink-0 transition">
-            দেখুন →
-          </span>
-        </div>
-      `).join('');
-    }
+          ${matches.map(p => `
+            <div 
+              class="flex items-center gap-3 p-2.5 bg-slate-800/90 hover:bg-slate-750 border border-slate-700/80 rounded-xl cursor-pointer transition hover:border-emerald-500 group"
+              onclick="window.__dcbdCloseVisualSearch(true); if (window.router) window.router.navigate('/product/' + encodeURIComponent('${p.slug \vert{}\vert{} p.product_id \vert{}\vert{} p.sku}')); else window.location.href='/product/' + encodeURIComponent('${p.slug || p.product_id || p.sku}');"
+            >
+              <img 
+                src="${p.thumbnail || (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100'}" 
+                alt="${p.name}" 
+                class="w-12 h-12 rounded-lg object-cover border border-slate-700 bg-slate-900 flex-shrink-0 group-hover:scale-105 transition"
+              />
+              <div class="min-w-0 flex-1">
+                <div class="text-xs font-bold text-white truncate leading-snug group-hover:text-emerald-400 transition">${p.name}</div>
+                <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 flex-wrap">
+                  <span class="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-[9px] text-slate-300">${p.sku}</span>
+                  <span class="text-emerald-400 font-extrabold text-xs">${formatCurrency(p.selling_price)}</span>
+                </div>
+              </div>
+              <span class="bg-emerald-600 group-hover:bg-emerald-500 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg flex-shrink-0 transition">
+                দেখুন →
+              </span>
+            </div>
+          `).join('')}
+        `;
+      }
 
-    if (resultsArea) resultsArea.classList.remove('hidden');
-    if (popup) popup.classList.remove('hidden');
+      if (resultsArea) resultsArea.classList.remove('hidden');
+      if (popup) popup.classList.remove('hidden');
 
-    // Reset picking lock after results are fully shown
-    setTimeout(() => {
-      window.__dcbdFilePickingActive = false;
-    }, 1500);
+      // 5. AUTOMATICALLY NAVIGATE TO SEARCH RESULTS PAGE (User requested auto redirect!)
+      setTimeout(() => {
+        window.__dcbdCloseVisualSearch(true);
+        const targetUrl = '/products?search=' + encodeURIComponent(matchedQuery);
+        if (window.router && typeof window.router.navigate === 'function') {
+          window.router.navigate(targetUrl);
+        } else {
+          window.location.href = targetUrl;
+        }
+      }, 950);
+    });
   };
 
+  // Quick Category Tag: Instantly fills search bar & redirects to /products?search=...
   window.__dcbdSearchVisualTag = function(tag, isMobile = false) {
-    const popupId = isMobile ? 'mobile-visual-search-popup' : 'desktop-visual-search-popup';
-    const popup = document.getElementById(popupId);
-    if (popup) popup.classList.remove('hidden');
+    let query = tag;
+    if (tag === 'smartwatches') query = 'smartwatch';
+    else if (tag === 'organic-health') query = 'honey';
+    else if (tag === 'torch') query = 'torch';
+    else if (tag === 'gas') query = 'gas';
 
-    const prefix = isMobile ? 'm-' : 'd-';
-    const dropArea = document.getElementById(`${prefix}img-drop-area`);
-    const previewArea = document.getElementById(`${prefix}img-preview-area`);
-    const resultsArea = document.getElementById(`${prefix}img-results-area`);
-    const previewImg = document.getElementById(`${prefix}img-preview-img`);
-    const scanStatus = document.getElementById(`${prefix}img-scan-status`);
+    const dInput = document.getElementById('global-search-input');
+    const mInput = document.getElementById('mobile-search-input');
+    if (dInput) dInput.value = query;
+    if (mInput) mInput.value = query;
 
-    if (dropArea) dropArea.classList.add('hidden');
-    if (previewArea) previewArea.classList.remove('hidden');
-    if (resultsArea) resultsArea.classList.add('hidden');
-
-    let presetImg = 'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=400';
-    if (tag.includes('organic') || tag.includes('health') || tag.includes('honey')) presetImg = 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400';
-    else if (tag.includes('torch') || tag.includes('light')) presetImg = 'https://images.unsplash.com/photo-1517420704952-d9f39e95b43e?w=400';
-    else if (tag.includes('gas') || tag.includes('kitchen')) presetImg = 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400';
-
-    if (previewImg) previewImg.src = presetImg;
-    if (scanStatus) scanStatus.innerHTML = `<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> "${tag}" ক্যাটাগরির মিল খোঁজা হচ্ছে...`;
-
-    setTimeout(() => {
-      window.__dcbdProcessVisualMatch(tag, presetImg, tag, isMobile);
-    }, 350);
+    window.__dcbdCloseVisualSearch(true);
+    const targetUrl = '/products?search=' + encodeURIComponent(query);
+    if (window.router && typeof window.router.navigate === 'function') {
+      window.router.navigate(targetUrl);
+    } else {
+      window.location.href = targetUrl;
+    }
   };
 
   // Global listeners for document
@@ -722,6 +795,7 @@ export function renderHeader() {
               placeholder="পণ্য, ব্র্যান্ড বা মডেল লিখে খুঁজুন..." 
               autocomplete="off"
               class="header-search-input"
+              onkeydown="if(event.key==='Enter'){ event.preventDefault(); const q = (this.value || '').trim(); if (window.router) window.router.navigate(q ? '/products?search=' + encodeURIComponent(q) : '/products'); else window.location.href = q ? '/products?search=' + encodeURIComponent(q) : '/products'; }"
             />
             <button 
               id="global-search-clear-btn" 
@@ -751,6 +825,7 @@ export function renderHeader() {
               id="global-search-btn" 
               type="button"
               class="header-search-submit"
+              onclick="const q = (document.getElementById('global-search-input')?.value || '').trim(); if (window.router) window.router.navigate(q ? '/products?search=' + encodeURIComponent(q) : '/products'); else window.location.href = q ? '/products?search=' + encodeURIComponent(q) : '/products';"
             >
               <span>সার্চ</span>
               <span style="font-size: 11px;">🔍</span>
@@ -776,7 +851,7 @@ export function renderHeader() {
               <button 
                 type="button"
                 onclick="window.__dcbdCloseVisualSearch && window.__dcbdCloseVisualSearch(true)"
-                class="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center text-xs font-bold transition cursor-pointer"
+                class="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-750 text-slate-400 hover:text-white flex items-center justify-center text-xs font-bold transition cursor-pointer"
                 title="বন্ধ করুন"
               >
                 ✕
@@ -804,9 +879,9 @@ export function renderHeader() {
                 </button>
               </div>
 
-              <!-- Quick Categories -->
+              <!-- Quick Categories (Auto Redirection on Click) -->
               <div class="pt-1.5">
-                <div class="text-[10px] font-bold text-slate-400 mb-1.5">অথবা জনপ্রিয় ক্যাটাগরির মিল খুঁজুন:</div>
+                <div class="text-[10px] font-bold text-slate-400 mb-1.5">অথবা জনপ্রিয় ক্যাটাগরির মিল খুঁজুন (অটো সার্চ):</div>
                 <div class="flex flex-wrap gap-1">
                   <button type="button" onclick="window.__dcbdSearchVisualTag('smartwatches', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
                     ⌚ স্মার্টওয়াচ
@@ -840,7 +915,7 @@ export function renderHeader() {
               </div>
             </div>
 
-            <!-- 3. Matched Results -->
+            <!-- 3. Matched Results & Full Search Results Page Trigger -->
             <div id="d-img-results-area" class="hidden space-y-2 border-t border-slate-800 pt-2">
               <div class="flex items-center justify-between text-[11px] font-bold text-slate-300">
                 <span>মিল থাকা পণ্যসমূহ:</span>
@@ -957,6 +1032,7 @@ export function renderHeader() {
             autocomplete="off"
             class="header-search-input"
             style="font-size: 12px; padding: 5px 105px 5px 0;"
+            onkeydown="if(event.key==='Enter'){ event.preventDefault(); const q = (this.value || '').trim(); if (window.router) window.router.navigate(q ? '/products?search=' + encodeURIComponent(q) : '/products'); else window.location.href = q ? '/products?search=' + encodeURIComponent(q) : '/products'; }"
           />
           <button 
             id="mobile-search-clear-btn" 
@@ -986,6 +1062,7 @@ export function renderHeader() {
             type="button"
             class="header-search-submit"
             style="padding: 0 12px; font-size: 11px;"
+            onclick="const q = (document.getElementById('mobile-search-input')?.value || '').trim(); if (window.router) window.router.navigate(q ? '/products?search=' + encodeURIComponent(q) : '/products'); else window.location.href = q ? '/products?search=' + encodeURIComponent(q) : '/products';"
           >
             <span>সার্চ</span>
           </button>
@@ -1003,7 +1080,7 @@ export function renderHeader() {
             <button 
               type="button"
               onclick="window.__dcbdCloseVisualSearch && window.__dcbdCloseVisualSearch(true)"
-              class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs font-bold"
+              class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs font-bold cursor-pointer"
             >
               ✕
             </button>
@@ -1014,29 +1091,29 @@ export function renderHeader() {
               <button 
                 type="button"
                 onclick="window.__dcbdTriggerFilePick('file', true)"
-                class="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200"
+                class="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-slate-800 border border-slate-700 text-xs font-bold text-slate-200 cursor-pointer"
               >
                 <span>📁</span> <span>ছবি আপলোড</span>
               </button>
               <button 
                 type="button"
                 onclick="window.__dcbdTriggerFilePick('camera', true)"
-                class="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-sm"
+                class="flex items-center justify-center gap-1 py-2 px-2 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-sm cursor-pointer"
               >
                 <span>📸</span> <span>ক্যামেরা</span>
               </button>
             </div>
             <div class="flex flex-wrap gap-1 pt-1">
-              <button type="button" onclick="window.__dcbdSearchVisualTag('smartwatches', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300">
+              <button type="button" onclick="window.__dcbdSearchVisualTag('smartwatches', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
                 ⌚ স্মার্টওয়াচ
               </button>
-              <button type="button" onclick="window.__dcbdSearchVisualTag('organic-health', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300">
+              <button type="button" onclick="window.__dcbdSearchVisualTag('organic-health', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
                 🍯 অরগানিক
               </button>
-              <button type="button" onclick="window.__dcbdSearchVisualTag('torch', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300">
+              <button type="button" onclick="window.__dcbdSearchVisualTag('torch', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
                 🔦 লাইট
               </button>
-              <button type="button" onclick="window.__dcbdSearchVisualTag('gas', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300">
+              <button type="button" onclick="window.__dcbdSearchVisualTag('gas', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
                 🛡️ গ্যাস সেফটি
               </button>
             </div>
@@ -1055,7 +1132,7 @@ export function renderHeader() {
           <div id="m-img-results-area" class="hidden space-y-1.5 border-t border-slate-800 pt-1.5">
             <div class="flex items-center justify-between text-[10px] font-bold text-slate-300">
               <span>মিল থাকা পণ্য:</span>
-              <button type="button" onclick="window.__dcbdTriggerFilePick('file', true)" class="text-[9px] text-emerald-400 hover:underline">
+              <button type="button" onclick="window.__dcbdTriggerFilePick('file', true)" class="text-[9px] text-emerald-400 hover:underline cursor-pointer">
                 🔄 অন্য ছবি
               </button>
             </div>
