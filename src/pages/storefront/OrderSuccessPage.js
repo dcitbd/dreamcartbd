@@ -1,11 +1,11 @@
 /**
  * DREAM CART BD — ORDER SUCCESS PAGE (OrderSuccessPage.js)
- * Implements:
- * - Instant Loading (checks local/memory storage first with 1.2s timeout fallback so page never freezes)
- * - Harmonious high-contrast color scheme for both Light and Dark mode
- * - Fixed WhatsApp button styling (zero unreadable text in dark mode)
- * - Isolated Voucher-Only Printing (only the official invoice prints, no website header/footer/cards)
- * - Clean barcode and watermark rendering in all themes
+ * Implements user requirements:
+ * - Instant Loading: synchronous local storage check with fast 1.2s timeout fallback so page never hangs
+ * - Harmonious high-contrast theme styling for both Light and Dark modes (zero unreadable buttons)
+ * - White authentic receipt voucher with visible watermark logo (no dark background swallowing the watermark)
+ * - Isolated, perfectly formatted voucher printing (table-based layout that never collapses into a single column)
+ * - Barcode tracker clearly rendered in high contrast
  */
 
 import { apiClient } from '../../api/client.js';
@@ -19,6 +19,11 @@ if (typeof window !== 'undefined') {
       window.print();
       return;
     }
+
+    // Clone the voucher element
+    const clone = voucherEl.cloneNode(true);
+    // Remove screen-only elements from the clone
+    clone.querySelectorAll('.print-hide, .btn-print, button').forEach(el => el.remove());
 
     // Create an isolated hidden iframe for printing ONLY the voucher
     let printFrame = document.getElementById('voucher-print-iframe');
@@ -47,7 +52,7 @@ if (typeof window !== 'undefined') {
         <style>
           @page {
             size: A4 portrait;
-            margin: 12mm 15mm;
+            margin: 10mm 15mm;
           }
           * {
             box-sizing: border-box;
@@ -58,11 +63,12 @@ if (typeof window !== 'undefined') {
           body {
             background: #ffffff !important;
             color: #0f172a !important;
-            padding: 10px;
+            padding: 0;
+            margin: 0;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
           }
-          .voucher-box {
+          .voucher-paper {
             width: 100% !important;
             max-width: 100% !important;
             margin: 0 auto !important;
@@ -70,82 +76,34 @@ if (typeof window !== 'undefined') {
             background: #ffffff !important;
             color: #0f172a !important;
             border: 1px solid #cbd5e1 !important;
-            border-radius: 16px !important;
-            box-shadow: none !important;
+            border-radius: 14px !important;
             position: relative;
-          }
-          .voucher-watermark {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: none;
-            z-index: 0;
-          }
-          .voucher-watermark-img {
-            width: 220px;
-            opacity: 0.05 !important;
-            filter: grayscale(100%);
-          }
-          .print-hide, .btn-print, button {
-            display: none !important;
+            box-shadow: none !important;
           }
           table {
             width: 100%;
             border-collapse: collapse;
           }
-          table th, table td {
-            padding: 8px 6px;
-          }
-          table thead tr {
-            border-bottom: 2px solid #e2e8f0;
-          }
-          table tbody tr {
-            border-bottom: 1px solid #f1f5f9;
-          }
-          .barcode-container {
-            background: #ffffff !important;
-            border: 1px solid #cbd5e1 !important;
-            padding: 4px 8px;
-            display: inline-flex;
-            gap: 2px;
-          }
-          .barcode-bar {
-            background-color: #0f172a !important;
-            display: inline-block;
-            height: 28px;
-          }
-          .badge-pill {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 9999px;
-            font-size: 11px;
-            font-weight: 700;
-          }
-          .badge-emerald {
-            background: #d1fae5 !important;
-            color: #065f46 !important;
-          }
-          .badge-amber {
-            background: #fef3c7 !important;
-            color: #92400e !important;
+          .print-hide {
+            display: none !important;
           }
         </style>
       </head>
       <body>
-        ${voucherEl.outerHTML}
+        <div class="voucher-paper">
+          ${clone.innerHTML}
+        </div>
       </body>
       </html>
     `);
     doc.close();
 
-    // Trigger printing once iframe is parsed
+    // Trigger printing once iframe document is parsed
     setTimeout(() => {
       printFrame.contentWindow.focus();
       printFrame.contentWindow.print();
       setTimeout(() => printFrame.remove(), 2500);
-    }, 250);
+    }, 300);
   };
 }
 
@@ -223,11 +181,11 @@ export async function renderOrderSuccessPage(orderId = "ORD-2609-8472") {
 
   return `
     <style>
-      /* High-contrast Theme & Isolated Print Styles for Order Success Page */
+      /* Order Success Page Theme & Print Optimization */
       .success-card {
         background-color: #ffffff;
         color: #0f172a;
-        border: 1px solid #10b981;
+        border: 1.5px solid #10b981;
       }
       .dark .success-card {
         background-color: #1e293b !important;
@@ -246,12 +204,13 @@ export async function renderOrderSuccessPage(orderId = "ORD-2609-8472") {
         color: #f8fafc !important;
       }
 
+      /* WhatsApp buttons with clear, high-contrast text in both themes */
       .btn-whatsapp-1 {
         background-color: #25D366;
         color: #ffffff !important;
         border: none;
         font-weight: 700;
-        box-shadow: 0 2px 4px rgba(37, 211, 102, 0.25);
+        box-shadow: 0 2px 5px rgba(37, 211, 102, 0.3);
         transition: all 0.15s ease;
       }
       .btn-whatsapp-1:hover {
@@ -262,7 +221,7 @@ export async function renderOrderSuccessPage(orderId = "ORD-2609-8472") {
       .btn-whatsapp-2 {
         background-color: #ffffff;
         color: #0f172a !important;
-        border: 1px solid #cbd5e1;
+        border: 1.5px solid #cbd5e1;
         font-weight: 700;
         transition: all 0.15s ease;
       }
@@ -271,14 +230,15 @@ export async function renderOrderSuccessPage(orderId = "ORD-2609-8472") {
         border-color: #94a3b8;
       }
       .dark .btn-whatsapp-2 {
-        background-color: #1e293b !important;
-        color: #f8fafc !important;
-        border-color: #475569 !important;
+        background-color: #064e3b !important;
+        color: #a7f3d0 !important;
+        border-color: #047857 !important;
       }
       .dark .btn-whatsapp-2:hover {
-        background-color: #334155 !important;
+        background-color: #065f46 !important;
       }
 
+      /* Navigation secondary action buttons */
       .btn-nav-outline {
         background-color: #ffffff;
         color: #0f172a !important;
@@ -299,47 +259,23 @@ export async function renderOrderSuccessPage(orderId = "ORD-2609-8472") {
         background-color: #334155 !important;
       }
 
-      /* Voucher Card Styles */
-      .voucher-box {
-        background-color: #ffffff;
-        color: #0f172a;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-      }
-      .dark .voucher-box {
-        background-color: #1e293b !important;
-        color: #f8fafc !important;
-        border-color: #334155 !important;
-      }
-
-      .voucher-surface {
-        background-color: #f8fafc;
-        border: 1px solid #e2e8f0;
-      }
-      .dark .voucher-surface {
-        background-color: #0f172a !important;
-        border-color: #334155 !important;
-      }
-
-      /* Barcode: Always white card with black bars so it never renders invisible */
-      .voucher-barcode-wrapper {
+      /* VOUCHER CARD STYLING: Authentic White Paper Invoice across both themes */
+      .voucher-paper-container {
         background-color: #ffffff !important;
+        color: #0f172a !important;
         border: 1px solid #cbd5e1 !important;
-        padding: 4px 8px;
-        display: inline-flex;
-        align-items: center;
-        gap: 2px;
-        border-radius: 6px;
+        border-radius: 18px !important;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08) !important;
+        position: relative !important;
+        overflow: hidden !important;
       }
-      .voucher-barcode-bar {
-        background-color: #0f172a !important;
-        display: inline-block;
-        height: 24px;
+      .voucher-paper-container * {
+        color: inherit;
       }
 
       /* Print isolation via @media print */
       @media print {
-        header, footer, nav, #header-mount, #footer-mount, #mobilenav-mount, #floatingactions-mount, #cartdrawer-mount, #fraudmodal-mount, .no-print, .print-hide {
+        header, footer, nav, #header-mount, #footer-mount, #mobilenav-mount, #floatingactions-mount, #cartdrawer-mount, #fraudmodal-mount, .print-hide {
           display: none !important;
         }
         body, #app-content {
@@ -361,21 +297,11 @@ export async function renderOrderSuccessPage(orderId = "ORD-2609-8472") {
           width: 100% !important;
           max-width: 100% !important;
           margin: 0 !important;
-          padding: 16px !important;
+          padding: 20px !important;
           background: #ffffff !important;
           color: #000000 !important;
-          border: 1px solid #e2e8f0 !important;
+          border: 1px solid #cbd5e1 !important;
           box-shadow: none !important;
-        }
-        #official-invoice-voucher * {
-          color: #000000 !important;
-        }
-        .voucher-barcode-wrapper {
-          background-color: #ffffff !important;
-          border: 1px solid #94a3b8 !important;
-        }
-        .voucher-barcode-bar {
-          background-color: #000000 !important;
         }
       }
     </style>
@@ -456,144 +382,176 @@ export async function renderOrderSuccessPage(orderId = "ORD-2609-8472") {
           </span>
         </div>
 
-        <!-- VOUCHER BOX -->
-        <div id="official-invoice-voucher" class="voucher-box rounded-3xl p-6 sm:p-10 max-w-2xl mx-auto relative overflow-hidden font-sans">
+        <!-- VOUCHER DOCUMENT (White Paper Receipt with Fully Arranged Layout) -->
+        <div id="official-invoice-voucher" data-order-id="${displayOrderId}" class="voucher-paper-container max-w-2xl mx-auto p-6 sm:p-8 relative">
           
-          <!-- Watermark Logo -->
-          <div class="voucher-watermark pointer-events-none select-none z-0 absolute inset-0 flex items-center justify-center">
+          <!-- Watermark Logo (Centered Faint Logo on White Background) -->
+          <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 1;">
             <img 
               src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" 
               alt="Watermark" 
-              class="voucher-watermark-img w-48 opacity-[0.05] filter grayscale"
+              style="width: 250px; opacity: 0.08; filter: none; object-fit: contain;"
             />
           </div>
 
-          <div class="relative z-10 space-y-5">
+          <!-- Document Contents (Table-structured for 100% resilient layout in print and screen) -->
+          <div style="position: relative; z-index: 2;">
             
-            <!-- Voucher Header -->
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-5 border-b-2 border-emerald-600 gap-4">
-              <div class="flex items-center gap-3">
-                <div class="w-14 h-14 rounded-2xl bg-white border border-slate-200 p-1.5 shadow-xs flex items-center justify-center overflow-hidden flex-shrink-0">
-                  <img 
-                    src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" 
-                    alt="Dream Cart BD Logo" 
-                    class="w-full h-full object-contain"
-                  />
-                </div>
-                <div>
-                  <h2 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
-                    Dream Cart <span class="text-emerald-600">BD</span>
-                  </h2>
-                  <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Smart Digital Commerce Platform</p>
-                  <p class="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">চৌধুরী প্লাজা, পদুয়ার বাজার বিশ্বরোড, সদর দক্ষিণ, কুমিল্লা।</p>
-                  <p class="text-[11px] text-slate-600 dark:text-slate-300">হটলাইন: 01581703822, 01818273838</p>
-                </div>
-              </div>
+            <!-- 1. Header Table -->
+            <table style="width: 100%; border-collapse: collapse; border-bottom: 2px solid #059669; padding-bottom: 14px; margin-bottom: 16px;">
+              <tr>
+                <td style="vertical-align: top; width: 62%;">
+                  <table style="border-collapse: collapse;">
+                    <tr>
+                      <td style="vertical-align: top; padding-right: 12px; width: 56px;">
+                        <img 
+                          src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" 
+                          alt="Logo" 
+                          style="width: 52px; height: 52px; object-fit: contain; border-radius: 12px; border: 1px solid #e2e8f0; padding: 2px; background: #ffffff;"
+                        />
+                      </td>
+                      <td style="vertical-align: top;">
+                        <div style="font-size: 20px; font-weight: 900; color: #0f172a; line-height: 1.2;">
+                          Dream Cart <span style="color: #059669;">BD</span>
+                        </div>
+                        <div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px;">
+                          Smart Digital Commerce Platform
+                        </div>
+                        <div style="font-size: 11px; color: #475569; margin-top: 3px; line-height: 1.4;">
+                          চৌধুরী প্লাজা, পদুয়ার বাজার বিশ্বরোড, সদর দক্ষিণ, কুমিল্লা।<br/>
+                          হটলাইন: <strong style="color: #0f172a;">01581703822</strong>, <strong style="color: #0f172a;">01818273838</strong>
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+                <td style="vertical-align: top; text-align: right; width: 38%;">
+                  <div style="display: inline-block; background-color: #059669; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+                    Official Invoice
+                  </div>
+                  <div style="font-size: 12px; font-weight: 700; color: #334155;">
+                    Order ID: <span style="font-family: monospace; font-size: 14px; font-weight: 900; color: #059669;">${displayOrderId}</span>
+                  </div>
+                  <div style="font-size: 11px; color: #64748b; margin-top: 2px;">
+                    তারিখ: <span style="color: #334155; font-weight: 600;">${dateStr}</span>
+                  </div>
+                </td>
+              </tr>
+            </table>
 
-              <div class="sm:text-right space-y-0.5">
-                <div class="inline-block bg-emerald-600 text-white font-black text-xs px-3 py-1 rounded-full uppercase tracking-wider mb-1 shadow-xs">
-                  Official Invoice
-                </div>
-                <div class="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Order ID: <span class="font-mono text-emerald-600 dark:text-emerald-400 text-sm font-black">${displayOrderId}</span>
-                </div>
-                <div class="text-[11px] text-slate-500 dark:text-slate-400">তারিখ: ${dateStr}</div>
-              </div>
-            </div>
+            <!-- 2. Customer & Payment Info Boxes (Side-by-side) -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">
+              <tr>
+                <td style="width: 50%; vertical-align: top; padding-right: 8px;">
+                  <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; height: 100%;">
+                    <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #059669; letter-spacing: 0.5px; margin-bottom: 4px;">
+                      গ্রাহকের বিবরণ:
+                    </div>
+                    <div style="font-size: 13px; font-weight: 800; color: #0f172a; margin-bottom: 2px;">
+                      ${order.customer_name || "সম্মানিত গ্রাহক"}
+                    </div>
+                    <div style="font-size: 11px; color: #475569; margin-bottom: 2px;">
+                      📞 মোবাইল: <strong style="color: #0f172a; font-family: monospace;">${order.phone || "01700000000"}</strong>
+                    </div>
+                    <div style="font-size: 11px; color: #475569; line-height: 1.4;">
+                      📍 ঠিকানা: <span style="color: #1e293b;">${order.address || "বাংলাদেশ"}</span>
+                    </div>
+                  </div>
+                </td>
+                <td style="width: 50%; vertical-align: top; padding-left: 8px;">
+                  <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; height: 100%;">
+                    <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #059669; letter-spacing: 0.5px; margin-bottom: 4px;">
+                      পেমেন্ট বিবরণ:
+                    </div>
+                    <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
+                      মেথড: <strong style="color: #0f172a;">${order.payment_method || "Cash On Delivery (COD)"}</strong>
+                    </div>
+                    <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
+                      পেমেন্ট স্ট্যাটাস: <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; ${order.payment_status === 'Paid' ? 'background-color: #d1fae5; color: #065f46;' : 'background-color: #fef3c7; color: #92400e;'}">${order.payment_status || "COD"}</span>
+                    </div>
+                    <div style="font-size: 11px; color: #475569;">
+                      অর্ডার স্ট্যাটাস: <strong style="color: #059669;">${order.order_status || "Order Placed"}</strong>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </table>
 
-            <!-- Customer & Payment Info Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 py-1 text-xs">
-              <div class="voucher-surface p-3.5 rounded-xl space-y-1">
-                <h4 class="font-bold uppercase text-[10px] tracking-wider text-emerald-700 dark:text-emerald-400">গ্রাহকের বিবরণ:</h4>
-                <div class="font-bold text-slate-900 dark:text-white text-sm">${order.customer_name || "সম্মানিত গ্রাহক"}</div>
-                <div class="text-slate-600 dark:text-slate-300">📞 মোবাইল: <strong>${order.phone || "01700000000"}</strong></div>
-                <div class="text-slate-600 dark:text-slate-300">📍 ঠিকানা: ${order.address || "বাংলাদেশ"}</div>
-              </div>
-
-              <div class="voucher-surface p-3.5 rounded-xl sm:text-right space-y-1">
-                <h4 class="font-bold uppercase text-[10px] tracking-wider text-emerald-700 dark:text-emerald-400">পেমেন্ট বিবরণ:</h4>
-                <div class="text-slate-700 dark:text-slate-300">মেথড: <strong class="text-slate-900 dark:text-white">${order.payment_method || "Cash On Delivery (COD)"}</strong></div>
-                <div class="text-slate-700 dark:text-slate-300">
-                  স্ট্যাটাস: <span class="font-bold px-2 py-0.5 rounded text-[10px] ${order.payment_status === 'Paid' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'}">${order.payment_status || "COD"}</span>
-                </div>
-                <div class="text-slate-700 dark:text-slate-300">অর্ডার স্ট্যাটাস: <strong class="text-emerald-600 dark:text-emerald-400">${order.order_status || "Order Placed"}</strong></div>
-              </div>
-            </div>
-
-            <!-- Itemized Table -->
-            <div class="py-2 border-b border-slate-200 dark:border-slate-700 overflow-x-auto">
-              <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr class="border-b border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">
-                    <th class="py-2">নং</th>
-                    <th class="py-2">পণ্য</th>
-                    <th class="py-2 text-center">পরিমাণ</th>
-                    <th class="py-2 text-right">দর</th>
-                    <th class="py-2 text-right">মোট</th>
+            <!-- 3. Itemized Products Table -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px;">
+              <thead>
+                <tr style="background-color: #f1f5f9; border-top: 1px solid #e2e8f0; border-bottom: 2px solid #cbd5e1; color: #475569; font-size: 11px; text-transform: uppercase;">
+                  <th style="padding: 8px 10px; text-align: left; width: 6%;">নং</th>
+                  <th style="padding: 8px 10px; text-align: left; width: 54%;">পণ্য বিবরণ</th>
+                  <th style="padding: 8px 10px; text-align: center; width: 12%;">পরিমাণ</th>
+                  <th style="padding: 8px 10px; text-align: right; width: 14%;">দর</th>
+                  <th style="padding: 8px 10px; text-align: right; width: 14%;">মোট</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.length > 0 ? items.map((it, idx) => `
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td style="padding: 8px 10px; color: #64748b;">${idx + 1}</td>
+                    <td style="padding: 8px 10px; color: #0f172a; font-weight: 600;">
+                      ${it.name || "পণ্য"}
+                      ${(it.color || it.size) ? `<span style="font-size: 10px; color: #059669; font-weight: normal; margin-left: 4px;">(${[it.color, it.size].filter(Boolean).join(', ')})</span>` : ''}
+                    </td>
+                    <td style="padding: 8px 10px; text-align: center; color: #0f172a; font-weight: 700;">${it.quantity || 1}</td>
+                    <td style="padding: 8px 10px; text-align: right; color: #334155; font-family: monospace;">${formatCurrency(it.price)}</td>
+                    <td style="padding: 8px 10px; text-align: right; color: #0f172a; font-weight: 800; font-family: monospace;">${formatCurrency(Number(it.price) * Number(it.quantity || 1))}</td>
                   </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                  ${items.length > 0 ? items.map((it, idx) => `
+                `).join("") : `
+                  <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <td colspan="5" style="padding: 10px; text-align: center; color: #64748b;">অর্ডার বিবরণী তালিকাভুক্ত রয়েছে</td>
+                  </tr>
+                `}
+              </tbody>
+            </table>
+
+            <!-- 4. Barcode & Totals Table -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 14px;">
+              <tr>
+                <td style="width: 50%; vertical-align: top;">
+                  <div style="font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">
+                    BARCODE TRACKER
+                  </div>
+                  <div style="display: inline-flex; align-items: center; gap: 2px; padding: 4px 8px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    ${Array.from({ length: 28 }).map((_, i) => `
+                      <span style="display:inline-block; height:24px; width:${(i % 3 === 0) ? '3px' : '1.5px'}; background-color: #0f172a;"></span>
+                    `).join("")}
+                  </div>
+                  <div style="font-family: monospace; font-size: 10px; font-weight: 800; color: #334155; margin-top: 3px;">
+                    ${displayOrderId}
+                  </div>
+                </td>
+                <td style="width: 50%; vertical-align: top;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
                     <tr>
-                      <td class="py-2.5 text-slate-400">${idx + 1}</td>
-                      <td class="py-2.5 font-medium text-slate-800 dark:text-slate-200">${it.name || "পণ্য"}</td>
-                      <td class="py-2.5 text-center font-bold text-slate-900 dark:text-white">${it.quantity || 1}</td>
-                      <td class="py-2.5 text-right font-mono text-slate-700 dark:text-slate-300">${formatCurrency(it.price)}</td>
-                      <td class="py-2.5 text-right font-bold font-mono text-slate-900 dark:text-white">${formatCurrency(Number(it.price) * Number(it.quantity || 1))}</td>
+                      <td style="padding: 4px 0; color: #475569;">সাবটোটাল:</td>
+                      <td style="padding: 4px 0; text-align: right; font-weight: 700; color: #0f172a; font-family: monospace;">${formatCurrency(subtotal)}</td>
                     </tr>
-                  `).join("") : `
                     <tr>
-                      <td colspan="5" class="py-3 text-center text-slate-500">অর্ডার বিবরণী তালিকাভুক্ত রয়েছে</td>
+                      <td style="padding: 4px 0; color: #475569;">ডেলিভারি চার্জ:</td>
+                      <td style="padding: 4px 0; text-align: right; font-weight: 700; color: #059669; font-family: monospace;">${deliveryFee === 0 ? 'ফ্রি (৳০)' : formatCurrency(deliveryFee)}</td>
                     </tr>
-                  `}
-                </tbody>
-              </table>
-            </div>
+                    <tr style="border-top: 2px solid #cbd5e1;">
+                      <td style="padding: 6px 0; font-size: 13px; font-weight: 900; color: #0f172a;">সর্বমোট:</td>
+                      <td style="padding: 6px 0; text-align: right; font-size: 16px; font-weight: 900; color: #059669; font-family: monospace;">${formatCurrency(totalAmount)}</td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
 
-            <!-- Total Calculation & Barcode -->
-            <div class="py-3 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs">
-              
-              <!-- Barcode Box (Always High-Contrast Black on White) -->
-              <div class="flex flex-col items-start gap-1">
-                <div class="font-mono text-[9px] tracking-widest text-slate-400 dark:text-slate-500 uppercase">BARCODE TRACKER</div>
-                <div class="voucher-barcode-wrapper">
-                  ${Array.from({ length: 28 }).map((_, i) => `
-                    <span class="voucher-barcode-bar" style="width:${(i % 3 === 0) ? '3px' : '1.5px'};"></span>
-                  `).join("")}
-                </div>
-                <div class="font-mono text-[10px] text-slate-600 dark:text-slate-400 font-bold">${displayOrderId}</div>
-              </div>
-
-              <!-- Total Summary -->
-              <div class="w-full sm:w-64 space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
-                <div class="flex justify-between">
-                  <span>সাবটোটাল:</span>
-                  <span class="font-bold text-slate-900 dark:text-white font-mono">${formatCurrency(subtotal)}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span>ডেলিভারি চার্জ:</span>
-                  <span class="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                    ${deliveryFee === 0 ? 'ফ্রি (৳০)' : formatCurrency(deliveryFee)}
-                  </span>
-                </div>
-                <div class="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-1.5 text-sm font-black text-slate-900 dark:text-white">
-                  <span>সর্বমোট:</span>
-                  <span class="text-emerald-600 dark:text-emerald-400 font-mono text-base font-black">${formatCurrency(totalAmount)}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="pt-2 text-center space-y-1">
-              <p class="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                ✨ ড্রিম কার্ট বিডি-র সাথে কেনাকাটা করার জন্য ধন্যবাদ!
-              </p>
+            <!-- 5. Footer Note -->
+            <div style="text-align: center; border-top: 1px dashed #e2e8f0; padding-top: 10px; font-size: 11px; font-weight: 600; color: #059669;">
+              ✨ ড্রিম কার্ট বিডি-র সাথে কেনাকাটা করার জন্য ধন্যবাদ!
             </div>
 
           </div>
 
-          <!-- Print button inside voucher footer (screen only) -->
-          <div class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center print-hide">
+          <!-- Print button inside voucher (hidden during actual print) -->
+          <div class="print-hide mt-5 pt-4 border-t border-slate-100 text-center">
             <button 
               type="button"
               class="btn-primary py-2 px-5 text-xs font-bold cursor-pointer"
