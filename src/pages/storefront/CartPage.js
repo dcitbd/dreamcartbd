@@ -1,12 +1,11 @@
 /**
  * DREAM CART BD — MODERN CART PAGE (CartPage.js)
  * Implements user requirements:
- * - Interactive Product Size & Color variant selectors right in the cart
- * - Smooth tactile quantity controls (+ / -) & stock limit enforcement
- * - Users cannot order more than available stock (disabled + button when max stock reached)
+ * - Shows ONLY the authentic Size and Color variants present in the Google Sheet / Product Details (no invented/hardcoded defaults)
+ * - Full quantity increment/decrement controls visible and operational on BOTH Computer/Desktop and Mobile
+ * - Strict stock limit enforcement: Users cannot order more than available stock (plus button disabled at max stock)
  * - Harmonious high-contrast background and text colors for Light & Dark modes
- * - Responsive layout: Desktop table & Mobile card layout (zero squished text)
- * - Seamless integration with main.js event listeners (no code conflicts or divides)
+ * - Seamless integration with main.js event listeners without code divides or errors
  * - Dynamic delivery zone selector with real-time fee calculation
  * - Free shipping progress bar (৳2,000 threshold)
  * - Modern Order Summary with prominent Checkout CTA button
@@ -73,24 +72,31 @@ export function renderCartPage() {
   const grandTotal = cartStore.getGrandTotal();
   const currentZone = cartStore.deliveryZone;
 
-  // Helper to parse comma/slash separated options safely
-  const parseOptions = (val, defaults) => {
-    if (!val) return defaults;
-    if (Array.isArray(val)) return val.filter(Boolean);
+  // Helper to parse comma/slash separated options ONLY from sheet/product details
+  const parseOptionsFromSheet = (val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.map(s => String(s).trim()).filter(Boolean);
     const s = String(val).trim();
-    if (!s) return defaults;
-    const parts = s.split(/[,|\/]+/).map(p => p.trim()).filter(Boolean);
-    return parts.length > 0 ? parts : defaults;
+    if (!s) return [];
+    return s.split(/[,|\/]+/).map(p => p.trim()).filter(Boolean);
   };
 
-  // Helper to look up cached product for options
+  // Helper to look up product data from memory or localStorage
   const getProductInfo = (productId) => {
     try {
       if (typeof window !== 'undefined') {
+        if (window.apiClient && window.apiClient.sheetProducts) {
+          const found = window.apiClient.sheetProducts.find(p => 
+            String(p.product_id || p.sku || '').toLowerCase() === String(productId).toLowerCase()
+          );
+          if (found) return found;
+        }
         const cached = localStorage.getItem('dcbd_sheet_products');
         if (cached) {
           const list = JSON.parse(cached);
-          const found = list.find(p => String(p.product_id || p.sku) === String(productId));
+          const found = list.find(p => 
+            String(p.product_id || p.sku || '').toLowerCase() === String(productId).toLowerCase()
+          );
           if (found) return found;
         }
       }
@@ -277,7 +283,7 @@ export function renderCartPage() {
       /* Table Header (Desktop Only) */
       .cp-table-header {
         display: grid;
-        grid-template-columns: minmax(280px, 1fr) 110px 170px 110px 50px;
+        grid-template-columns: minmax(260px, 1fr) 110px 160px 120px 50px;
         gap: 16px;
         align-items: center;
         padding: 14px 24px;
@@ -292,16 +298,11 @@ export function renderCartPage() {
         border-bottom: 1px solid #334155;
         color: #94a3b8;
       }
-      @media (max-width: 880px) {
-        .cp-table-header {
-          display: none;
-        }
-      }
 
-      /* Table Item Row */
+      /* Table Item Row (Desktop Grid by Default) */
       .cp-item-row {
         display: grid;
-        grid-template-columns: minmax(280px, 1fr) 110px 170px 110px 50px;
+        grid-template-columns: minmax(260px, 1fr) 110px 160px 120px 50px;
         gap: 16px;
         align-items: center;
         padding: 20px 24px;
@@ -321,14 +322,79 @@ export function renderCartPage() {
         background: #243248;
       }
 
-      /* Responsive Item Row on Mobile (<880px) */
-      @media (max-width: 880px) {
+      /* Desktop Columns (Visible on Computer/Desktop) */
+      .cp-col-price,
+      .cp-col-qty,
+      .cp-col-total,
+      .cp-col-action {
+        display: flex !important;
+        align-items: center !important;
+      }
+
+      .cp-col-price {
+        font-size: 13.5px !important;
+        font-weight: 700 !important;
+        color: #334155 !important;
+        font-family: monospace, system-ui !important;
+      }
+      .dark .cp-col-price {
+        color: #cbd5e1 !important;
+      }
+
+      .cp-col-qty {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 6px !important;
+      }
+
+      .cp-col-total {
+        font-size: 15px !important;
+        font-weight: 900 !important;
+        color: #059669 !important;
+        font-family: monospace, system-ui !important;
+        justify-content: flex-end !important;
+      }
+      .dark .cp-col-total {
+        color: #34d399 !important;
+      }
+
+      .cp-col-action {
+        justify-content: center !important;
+      }
+
+      /* Mobile Controls Row (Hidden on Desktop) */
+      .cp-mobile-controls-row {
+        display: none !important;
+      }
+
+      /* Responsive Switch on Mobile Screens (<= 820px) */
+      @media (max-width: 820px) {
+        .cp-table-header {
+          display: none !important;
+        }
         .cp-item-row {
-          display: flex;
-          flex-direction: column;
-          align-items: stretch;
-          gap: 14px;
-          padding: 16px;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 14px !important;
+          padding: 16px !important;
+        }
+        .cp-col-price,
+        .cp-col-qty,
+        .cp-col-total,
+        .cp-col-action {
+          display: none !important;
+        }
+        .cp-mobile-controls-row {
+          display: flex !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          padding-top: 12px !important;
+          margin-top: 10px !important;
+          border-top: 1px dashed #e2e8f0 !important;
+        }
+        .dark .cp-mobile-controls-row {
+          border-top: 1px dashed #334155 !important;
         }
       }
 
@@ -379,7 +445,7 @@ export function renderCartPage() {
         color: #34d399;
       }
 
-      /* Variant Selectors Row (Interactive Color & Size) */
+      /* Variant Selectors Row (Interactive Color & Size from Sheet Only) */
       .cp-variants-ctrl-row {
         display: flex;
         align-items: center;
@@ -427,6 +493,24 @@ export function renderCartPage() {
         color: #ffffff;
       }
 
+      .cp-variant-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 2px 8px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #334155;
+      }
+      .dark .cp-variant-badge {
+        background: #0f172a;
+        border: 1px solid #475569;
+        color: #cbd5e1;
+      }
+
       /* Mobile Price Row */
       .cp-mobile-price-row {
         display: none;
@@ -437,41 +521,19 @@ export function renderCartPage() {
       .dark .cp-mobile-price-row {
         color: #94a3b8;
       }
-      @media (max-width: 880px) {
+      @media (max-width: 820px) {
         .cp-mobile-price-row {
           display: block;
         }
       }
 
-      /* Unit Price Cell (Desktop) */
-      .cp-unit-price {
-        font-size: 13.5px;
-        font-weight: 700;
-        color: #334155;
-        font-family: monospace, system-ui;
-      }
-      .dark .cp-unit-price {
-        color: #cbd5e1;
-      }
-      @media (max-width: 880px) {
-        .cp-unit-price {
-          display: none;
-        }
-      }
-
-      /* Quantity & Stock Column */
-      .cp-qty-col {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-      }
+      /* Stock Status Badge */
       .cp-stock-status {
-        font-size: 10.5px;
+        font-size: 11px;
         font-weight: 700;
         display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 5px;
       }
       .cp-stock-status.normal-stock {
         color: #059669;
@@ -500,6 +562,7 @@ export function renderCartPage() {
         border-color: rgba(239, 68, 68, 0.4);
       }
 
+      /* Quantity Stepper Pill */
       .cp-qty-box {
         display: inline-flex;
         align-items: center;
@@ -537,7 +600,7 @@ export function renderCartPage() {
       }
       .cp-qty-btn:disabled,
       .cp-qty-btn.disabled {
-        opacity: 0.35 !important;
+        opacity: 0.3 !important;
         cursor: not-allowed !important;
         background: transparent !important;
       }
@@ -562,23 +625,7 @@ export function renderCartPage() {
         color: #ffffff;
       }
 
-      /* Total Price Cell */
-      .cp-total-price {
-        font-size: 15px;
-        font-weight: 900;
-        color: #059669;
-        font-family: monospace, system-ui;
-      }
-      .dark .cp-total-price {
-        color: #34d399;
-      }
-
-      /* Action / Remove Cell */
-      .cp-action-cell {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
+      /* Action / Remove Button */
       .cp-remove-btn {
         width: 32px;
         height: 32px;
@@ -605,23 +652,6 @@ export function renderCartPage() {
         color: #f87171;
         background: rgba(239, 68, 68, 0.2);
         transform: scale(1.1);
-      }
-
-      /* Mobile Controls Bar (Stepper, Total & Remove grouped) */
-      .cp-mobile-controls-row {
-        display: none;
-        align-items: center;
-        justify-content: space-between;
-        padding-top: 10px;
-        border-top: 1px dashed #e2e8f0;
-      }
-      .dark .cp-mobile-controls-row {
-        border-top: 1px dashed #334155;
-      }
-      @media (max-width: 880px) {
-        .cp-mobile-controls-row {
-          display: flex;
-        }
       }
 
       /* Table Bottom Navigation */
@@ -949,7 +979,7 @@ export function renderCartPage() {
         <div>
           <div class="cp-card-box">
             
-            <!-- Table Column Headers (Desktop) -->
+            <!-- Table Column Headers (Desktop/Computer View) -->
             <div class="cp-table-header">
               <div>পণ্য ও ভেরিয়েন্ট বিবরণ</div>
               <div>একক মূল্য</div>
@@ -962,20 +992,29 @@ export function renderCartPage() {
             <div>
               ${items.map(it => {
                 const prod = getProductInfo(it.product_id);
-                const stock = Number(it.stock !== undefined ? it.stock : (prod && prod.stock !== undefined ? prod.stock : 25));
+                const stock = Number(
+                  (prod && prod.stock !== undefined && prod.stock !== null && prod.stock !== '') 
+                    ? prod.stock 
+                    : (it.stock !== undefined && it.stock !== null && it.stock !== '' ? it.stock : 25)
+                );
                 const itemQty = Number(it.quantity) || 1;
                 const isMaxReached = itemQty >= stock;
-                const itemColor = it.color ? it.color : '';
-                const itemSize = it.size ? it.size : '';
+                const itemColor = it.color ? String(it.color).trim() : '';
+                const itemSize = it.size ? String(it.size).trim() : '';
                 
-                // Color & Size Options
-                const defaultColors = itemColor ? [itemColor, 'Black', 'Silver', 'Navy Blue', 'Gold'] : ['Black', 'Silver', 'Navy Blue', 'Gold'];
-                const prodColors = (prod && (prod.color || prod.colors)) ? (prod.color || prod.colors) : itemColor;
-                const availableColors = [...new Set(parseOptions(prodColors, defaultColors))];
+                // Color & Size Options derived ONLY from Sheet / Product Details
+                const rawSheetColors = (prod && (prod.color || prod.colors)) ? (prod.color || prod.colors) : '';
+                const rawSheetSizes = (prod && (prod.size || prod.sizes)) ? (prod.size || prod.sizes) : '';
 
-                const defaultSizes = itemSize ? [itemSize, 'Standard (ফ্রি সাইজ)', 'Medium (M)', 'Large (L)', 'XL'] : ['Standard (ফ্রি সাইজ)', 'Medium (M)', 'Large (L)', 'XL'];
-                const prodSizes = (prod && (prod.size || prod.sizes)) ? (prod.size || prod.sizes) : itemSize;
-                const availableSizes = [...new Set(parseOptions(prodSizes, defaultSizes))];
+                let availableColors = parseOptionsFromSheet(rawSheetColors);
+                if (itemColor && !availableColors.includes(itemColor)) {
+                  availableColors.unshift(itemColor);
+                }
+
+                let availableSizes = parseOptionsFromSheet(rawSheetSizes);
+                if (itemSize && !availableSizes.includes(itemSize)) {
+                  availableSizes.unshift(itemSize);
+                }
 
                 const thumbUrl = it.thumbnail ? it.thumbnail : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200&auto=format&fit=crop&q=80';
                 const productSlug = it.slug ? it.slug : it.product_id;
@@ -984,7 +1023,7 @@ export function renderCartPage() {
                 return `
                   <div class="cp-item-row">
                     
-                    <!-- 1. Product Image, Title & Interactive Variants -->
+                    <!-- 1. Product Image, Title & Variants -->
                     <div class="cp-prod-details">
                       <img 
                         src="${thumbUrl}" 
@@ -999,42 +1038,56 @@ export function renderCartPage() {
                           </a>
                         </h4>
                         
-                        <!-- Interactive Variant Selectors (Color & Size) -->
-                        <div class="cp-variants-ctrl-row">
-                          
-                          <!-- Color Selector -->
-                          <div class="cp-variant-group" title="কালার পরিবর্তন করুন">
-                            <span class="cp-variant-label">কালার:</span>
-                            <select 
-                              class="cp-variant-select"
-                              data-product-id="${it.product_id}"
-                              data-color="${itemColor}"
-                              data-size="${itemSize}"
-                              data-type="color"
-                            >
-                              ${availableColors.map(c => `
-                                <option value="${c}" ${c === itemColor ? 'selected' : ''}>🎨 ${c}</option>
-                              `).join("")}
-                            </select>
-                          </div>
+                        <!-- Variant Selectors or Badges (ONLY from Sheet) -->
+                        ${(availableColors.length > 0 || availableSizes.length > 0) ? `
+                          <div class="cp-variants-ctrl-row">
+                            
+                            <!-- Color (Show dropdown if multiple, badge if single) -->
+                            ${availableColors.length > 1 ? `
+                              <div class="cp-variant-group" title="কালার নির্বাচন করুন">
+                                <span class="cp-variant-label">কালার:</span>
+                                <select 
+                                  class="cp-variant-select"
+                                  data-product-id="${it.product_id}"
+                                  data-color="${itemColor}"
+                                  data-size="${itemSize}"
+                                  data-type="color"
+                                >
+                                  ${availableColors.map(c => `
+                                    <option value="${c}" ${c === itemColor ? 'selected' : ''}>🎨 ${c}</option>
+                                  `).join("")}
+                                </select>
+                              </div>
+                            ` : (availableColors.length === 1 ? `
+                              <span class="cp-variant-badge">
+                                <span>🎨</span> ${availableColors[0]}
+                              </span>
+                            ` : '')}
 
-                          <!-- Size Selector -->
-                          <div class="cp-variant-group" title="সাইজ পরিবর্তন করুন">
-                            <span class="cp-variant-label">সাইজ:</span>
-                            <select 
-                              class="cp-variant-select"
-                              data-product-id="${it.product_id}"
-                              data-color="${itemColor}"
-                              data-size="${itemSize}"
-                              data-type="size"
-                            >
-                              ${availableSizes.map(s => `
-                                <option value="${s}" ${s === itemSize ? 'selected' : ''}>📏 ${s}</option>
-                              `).join("")}
-                            </select>
-                          </div>
+                            <!-- Size (Show dropdown if multiple, badge if single) -->
+                            ${availableSizes.length > 1 ? `
+                              <div class="cp-variant-group" title="সাইজ নির্বাচন করুন">
+                                <span class="cp-variant-label">সাইজ:</span>
+                                <select 
+                                  class="cp-variant-select"
+                                  data-product-id="${it.product_id}"
+                                  data-color="${itemColor}"
+                                  data-size="${itemSize}"
+                                  data-type="size"
+                                >
+                                  ${availableSizes.map(s => `
+                                    <option value="${s}" ${s === itemSize ? 'selected' : ''}>📏 ${s}</option>
+                                  `).join("")}
+                                </select>
+                              </div>
+                            ` : (availableSizes.length === 1 ? `
+                              <span class="cp-variant-badge">
+                                <span>📏</span> ${availableSizes[0]}
+                              </span>
+                            ` : '')}
 
-                        </div>
+                          </div>
+                        ` : ''}
 
                         <!-- Mobile Unit Price Info -->
                         <div class="cp-mobile-price-row">
@@ -1043,13 +1096,13 @@ export function renderCartPage() {
                       </div>
                     </div>
 
-                    <!-- 2. Unit Price (Desktop) -->
-                    <div class="cp-unit-price">
+                    <!-- 2. Unit Price (Desktop Column) -->
+                    <div class="cp-col-price">
                       ${formatCurrency(it.price)}
                     </div>
 
-                    <!-- 3. Quantity Stepper & Stock Limit (Desktop) -->
-                    <div class="cp-qty-col hidden sm:flex">
+                    <!-- 3. Quantity Stepper & Stock Limit (Desktop Column) -->
+                    <div class="cp-col-qty">
                       
                       <!-- Stock status badge -->
                       <div class="cp-stock-status ${stock <= 5 ? 'low-stock' : 'normal-stock'}">
@@ -1060,6 +1113,7 @@ export function renderCartPage() {
                         <button 
                           type="button"
                           class="btn-cart-minus cp-qty-btn"
+                          ${itemQty <= 1 ? 'disabled' : ''}
                           data-product-id="${it.product_id}"
                           data-color="${itemColor}"
                           data-size="${itemSize}"
@@ -1082,13 +1136,13 @@ export function renderCartPage() {
                       </div>
                     </div>
 
-                    <!-- 4. Line Total (Desktop) -->
-                    <div class="cp-total-price text-right hidden sm:block">
+                    <!-- 4. Line Total (Desktop Column) -->
+                    <div class="cp-col-total">
                       ${formatCurrency(lineTotal)}
                     </div>
 
-                    <!-- 5. Remove Button (Desktop) -->
-                    <div class="cp-action-cell hidden sm:flex">
+                    <!-- 5. Remove Button (Desktop Column) -->
+                    <div class="cp-col-action">
                       <button 
                         type="button"
                         class="btn-cart-remove cp-remove-btn"
@@ -1102,7 +1156,7 @@ export function renderCartPage() {
                       </button>
                     </div>
 
-                    <!-- Mobile Controls Bar (Stepper + Total + Remove grouped) -->
+                    <!-- Mobile Controls Bar (Visible on Mobile <= 820px) -->
                     <div class="cp-mobile-controls-row">
                       
                       <div class="flex flex-col gap-1">
@@ -1113,6 +1167,7 @@ export function renderCartPage() {
                           <button 
                             type="button"
                             class="btn-cart-minus cp-qty-btn"
+                            ${itemQty <= 1 ? 'disabled' : ''}
                             data-product-id="${it.product_id}"
                             data-color="${itemColor}"
                             data-size="${itemSize}"
@@ -1131,7 +1186,7 @@ export function renderCartPage() {
                         </div>
                       </div>
 
-                      <div class="cp-total-price">
+                      <div class="cp-col-total" style="display: flex !important;">
                         ${formatCurrency(lineTotal)}
                       </div>
 
