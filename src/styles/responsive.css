@@ -138,7 +138,7 @@ main#app-content {
 
 @media (max-width: 768px) {
   body {
-    padding-bottom: 0 !important;
+    padding-bottom: 74px !important;
   }
   
   .desktop-only {

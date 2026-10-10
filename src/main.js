@@ -269,30 +269,40 @@ function attachEventListeners() {
       return;
     }
 
-    // Mobile Hamburger Menu Toggle (Shows clean list on click)
-    if (e.target.closest('#btn-mobile-menu-toggle')) {
-      const menu = document.getElementById('mobile-dropdown-menu');
-      if (menu) menu.classList.toggle('hidden');
+    // Bottom App Navigation Menu Toggle (Opens App Menu Drawer on Mobile)
+    if (e.target.closest('#btn-bottom-menu-toggle') || e.target.closest('#btn-mobile-menu-toggle')) {
+      const overlay = document.getElementById('bottom-menu-overlay');
+      const panel = document.getElementById('bottom-menu-panel');
+      if (overlay && panel) {
+        overlay.classList.toggle('hidden');
+        panel.classList.toggle('hidden');
+      }
       return;
     }
 
-    // Mobile Menu Close Button
-    if (e.target.closest('#btn-mobile-menu-close')) {
-      const menu = document.getElementById('mobile-dropdown-menu');
-      if (menu) menu.classList.add('hidden');
+    // Bottom App Navigation Menu Close
+    if (e.target.closest('#btn-bottom-menu-close') || e.target.id === 'bottom-menu-overlay') {
+      const overlay = document.getElementById('bottom-menu-overlay');
+      const panel = document.getElementById('bottom-menu-panel');
+      if (overlay) overlay.classList.add('hidden');
+      if (panel) panel.classList.add('hidden');
       return;
     }
 
-    // Close mobile menu list on link click
-    if (e.target.closest('.mobile-menu-link')) {
-      const menu = document.getElementById('mobile-dropdown-menu');
-      if (menu) menu.classList.add('hidden');
+    // Close bottom app menu on link click
+    if (e.target.closest('.bottom-menu-link') || e.target.closest('.mobile-menu-link')) {
+      const overlay = document.getElementById('bottom-menu-overlay');
+      const panel = document.getElementById('bottom-menu-panel');
+      if (overlay) overlay.classList.add('hidden');
+      if (panel) panel.classList.add('hidden');
     }
 
-    // Close mobile menu when clicked outside
-    if (!e.target.closest('#mobile-dropdown-menu') && !e.target.closest('#btn-mobile-menu-toggle')) {
-      const menu = document.getElementById('mobile-dropdown-menu');
-      if (menu) menu.classList.add('hidden');
+    // Close bottom menu when clicked outside
+    if (!e.target.closest('#bottom-menu-panel') && !e.target.closest('#btn-bottom-menu-toggle') && !e.target.closest('#btn-mobile-menu-toggle')) {
+      const overlay = document.getElementById('bottom-menu-overlay');
+      const panel = document.getElementById('bottom-menu-panel');
+      if (overlay) overlay.classList.add('hidden');
+      if (panel) panel.classList.add('hidden');
     }
 
     // Mobile Floating Launcher Toggle Button (Hides/Shows fixed buttons on mobile)

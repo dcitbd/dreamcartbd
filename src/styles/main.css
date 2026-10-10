@@ -561,13 +561,13 @@ img { max-width: 100%; display: block; }
 }
 .drawer-panel.active { transform: translateX(0); }
 
-/* MOBILE BOTTOM NAV (Hidden as requested: menubar only accessible via menu icon list) */
+/* MOBILE BOTTOM NAV (App-style bottom navigation bar) */
 .mobile-nav-bar {
-  display: none !important;
+  display: flex !important;
 }
 
 @media (min-width: 768px) {
-  .mobile-nav-bar { display: none; }
+  .mobile-nav-bar { display: none !important; }
   .md\:flex { display: flex; }
   .md\:grid { display: grid; }
   .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1493,8 +1493,8 @@ header.site-header, header {
 
 @media (max-width: 639px) {
   #floating-actions-dock {
-    bottom: 1.25rem !important;
-    right: 1.25rem !important;
+    bottom: 5.25rem !important; /* Positioned right above the 64px bottom nav bar */
+    right: 1rem !important;
   }
   #floating-actions-items.hidden,
   #floating-actions-items:not(.active) {
@@ -1528,5 +1528,31 @@ header.site-header, header {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+/* App-Style Bottom Navigation Drawer / Sheet */
+#bottom-menu-overlay.hidden {
+  display: none !important;
+}
+#bottom-menu-overlay:not(.hidden) {
+  display: block !important;
+}
+#bottom-menu-panel.hidden {
+  display: none !important;
+}
+#bottom-menu-panel:not(.hidden) {
+  display: flex !important;
+  animation: slideUpSheet 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideUpSheet {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
