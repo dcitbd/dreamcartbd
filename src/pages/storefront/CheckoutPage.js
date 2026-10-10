@@ -373,9 +373,9 @@ export function renderCheckoutPage() {
                   <div class="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-pink-100 dark:border-slate-700 shadow-xs">
                     <div class="flex flex-col">
                       <span class="text-[11px] text-slate-500 dark:text-slate-400">বিকাশ পার্সোনাল নম্বর ১ (মাস্টার):</span>
-                      <span class="text-sm font-black font-mono text-pink-600 dark:text-pink-400">01581703822</span>
+                      <span class="text-sm font-black font-mono text-pink-600 dark:text-pink-400">01879653143</span>
                     </div>
-                    <button type="button" onclick="window.copyCheckoutText('01581703822', this)" class="px-3 py-1.5 rounded-lg bg-pink-100 hover:bg-pink-200 dark:bg-pink-950 dark:hover:bg-pink-900 text-pink-700 dark:text-pink-300 font-bold text-xs border border-pink-200 dark:border-pink-800 transition active:scale-95 cursor-pointer">
+                    <button type="button" onclick="window.copyCheckoutText('01879653143', this)" class="px-3 py-1.5 rounded-lg bg-pink-100 hover:bg-pink-200 dark:bg-pink-950 dark:hover:bg-pink-900 text-pink-700 dark:text-pink-300 font-bold text-xs border border-pink-200 dark:border-pink-800 transition active:scale-95 cursor-pointer">
                       📋 কপি করুন
                     </button>
                   </div>
@@ -409,7 +409,7 @@ export function renderCheckoutPage() {
                 </div>
 
                 <div class="p-3 bg-white dark:bg-slate-800 rounded-xl border border-pink-100 dark:border-slate-700 text-center space-y-2.5">
-                  <p class="text-xs text-slate-600 dark:text-slate-300">নিচের বাটনে ক্লিক করে সরাসরি বিকাশ অনলাইন গেটওয়েতে কার্ড বা বিকাশ দিয়ে পেমেন্ট করুন:</p>
+                  <p class="text-xs text-slate-600 dark:text-slate-300">নিচের বাটনে ক্লিক করে সরাসরি বিকাশ অনলাইন গেটওয়েতে বিকাশ দিয়ে পেমেন্ট করুন (টাকার পরিমাণ দিন > ​Payment Reference (আপনার নাম দিন)):</p>
                   <a 
                     href="https://shop.bkash.com/j-a-sagor-computer01581703822/paymentlink" 
                     target="_blank" 
@@ -440,9 +440,9 @@ export function renderCheckoutPage() {
                   <div class="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-orange-100 dark:border-slate-700 shadow-xs">
                     <div class="flex flex-col">
                       <span class="text-[11px] text-slate-500 dark:text-slate-400">নগদ পার্সোনাল নম্বর ১ (মাস্টার):</span>
-                      <span class="text-sm font-black font-mono text-orange-600 dark:text-orange-400">01581703822</span>
+                      <span class="text-sm font-black font-mono text-orange-600 dark:text-orange-400">01879653143</span>
                     </div>
-                    <button type="button" onclick="window.copyCheckoutText('01581703822', this)" class="px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 dark:bg-orange-950 dark:hover:bg-orange-900 text-orange-700 dark:text-orange-300 font-bold text-xs border border-orange-200 dark:border-orange-800 transition active:scale-95 cursor-pointer">
+                    <button type="button" onclick="window.copyCheckoutText('01879653143', this)" class="px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 dark:bg-orange-950 dark:hover:bg-orange-900 text-orange-700 dark:text-orange-300 font-bold text-xs border border-orange-200 dark:border-orange-800 transition active:scale-95 cursor-pointer">
                       📋 কপি করুন
                     </button>
                   </div>
