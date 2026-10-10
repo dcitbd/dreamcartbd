@@ -1,9 +1,8 @@
 /**
  * DREAM CART BD — MAIN NAVIGATION BAR (Header.js)
- * Implements user requirements:
- * - On Mobile: Native App-style view. Header displays ONLY Logo, Shop Name, and Search Bar.
- *   NO menu icon or menu dropdown on top (navigation menu is fully handled by the bottom app bar).
- * - On Desktop: Full rich navigation (Notice Bar, Desktop Search, Products, Cart, Favourite, Auth Dropdown, Dark Mode).
+ * High-performance, pixel-perfect header component:
+ * - Desktop: Notice bar, compact crisp logo (42px), wide predictive search bar, nav actions, auth menu, dark mode.
+ * - Mobile: Sleek native app bar with compact logo (36px) & dedicated search bar. Zero menu clutter on top.
  */
 
 import { cartStore } from '../store/cartStore.js';
@@ -14,12 +13,11 @@ export function renderHeader() {
   const cartCount = cartStore.getCount();
   const favCount = favouriteStore.getCount();
   const isAuthenticated = authStore.isAuthenticated();
-  const user = authStore.user;
   const isDark = document.documentElement.classList.contains('dark');
 
   return `
-    <!-- Top Notice Bar (Desktop & Tablet) -->
-    <div class="notice-bar hidden sm:block bg-slate-900 dark:bg-slate-950 text-white text-xs py-2 px-3 sm:px-4 border-b border-emerald-800/40 relative z-50">
+    <!-- Top Notice Bar (Desktop only) -->
+    <div class="notice-bar hidden sm:block bg-slate-900 dark:bg-slate-950 text-white text-xs py-2 px-4 border-b border-emerald-800/40 relative z-50">
       <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
         <div class="flex items-center gap-2 text-center md:text-left text-[11px] sm:text-xs">
           <span class="bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded text-[10px] tracking-wider uppercase shadow-xs">নোটিশ</span>
@@ -43,110 +41,106 @@ export function renderHeader() {
       </div>
     </div>
 
-    <!-- Main Navigation Bar -->
-    <header class="sticky top-0 z-40 site-header bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 transition-colors shadow-xs">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-3 flex items-center justify-between gap-3 sm:gap-6">
+    <!-- Main Header -->
+    <header class="site-header">
+      <div class="header-inner">
         
-        <!-- Logo + Shop Name (Visible on all screens) -->
-        <a href="/" class="flex items-center gap-2.5 group flex-shrink-0" title="Dream Cart BD Home">
-          <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-white dark:bg-slate-800 p-1 border border-slate-200 dark:border-slate-700 shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center overflow-hidden">
+        <!-- Brand Logo & Shop Name -->
+        <a href="/" class="header-brand" title="Dream Cart BD Home">
+          <div class="header-logo-box">
             <img 
               src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10" 
               alt="Dream Cart BD Logo" 
-              class="w-full h-full object-contain rounded-lg"
+              class="header-logo-img"
               onerror="this.onerror=null; this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';"
             />
           </div>
-          <div class="flex flex-col">
-            <div class="flex items-center gap-1">
-              <span class="text-lg sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white group-hover:text-emerald-600 transition">
-                Dream Cart <span class="text-emerald-600">BD</span>
-              </span>
-            </div>
-            <span class="text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-slate-400 dark:text-slate-400 -mt-1">
+          <div class="header-brand-text">
+            <span class="header-brand-title">
+              Dream Cart <span class="accent">BD</span>
+            </span>
+            <span class="header-brand-sub">
               Smart Digital Commerce
             </span>
           </div>
         </a>
 
-        <!-- Live Predictive Search Bar with Dropdown Preview (Desktop) -->
-        <div class="hidden md:flex flex-1 max-w-xl mx-2 lg:mx-6 relative search-container">
-          <div class="search-bar-wrap w-full flex items-center bg-slate-100 dark:bg-slate-800/90 rounded-full border border-slate-200 dark:border-slate-700 hover:border-emerald-500 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-500/20 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all duration-200 relative shadow-inner">
-            <div class="pl-4 pr-2 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-            </div>
+        <!-- Desktop Predictive Search Bar -->
+        <div class="desktop-search-container search-container">
+          <div class="header-search-bar">
+            <svg class="header-search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
             <input 
               type="text" 
               id="global-search-input"
               placeholder="পণ্য, ব্র্যান্ড বা মডেল লিখে খুঁজুন..." 
               autocomplete="off"
-              class="w-full py-2.5 pr-28 text-xs sm:text-sm bg-transparent text-slate-900 dark:text-white placeholder-slate-400 outline-none"
+              class="header-search-input"
             />
             <button 
               id="global-search-clear-btn" 
-              class="hidden absolute right-24 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold transition rounded-full hover:bg-slate-200 dark:hover:bg-slate-700" 
+              class="header-search-clear hidden" 
               type="button" 
               title="ক্লিয়ার করুন"
             >✕</button>
             <button 
               id="global-search-btn" 
               type="button"
-              class="absolute right-1.5 top-1.5 bottom-1.5 bg-gradient-to-r from-emerald-600 via-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs px-4 rounded-full transition-all duration-200 shadow-sm flex items-center gap-1.5 active:scale-95 cursor-pointer"
+              class="header-search-submit"
             >
               <span>সার্চ</span>
-              <span class="text-[11px] opacity-90">🔍</span>
+              <span style="font-size: 11px;">🔍</span>
             </button>
           </div>
 
-          <!-- Live Search Preview Popup Container -->
+          <!-- Predictive Preview Popup -->
           <div id="search-preview-popup" class="hidden absolute top-full left-0 right-0 mt-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto"></div>
         </div>
 
-        <!-- Navigation Links & Icons (Desktop Only: Cleanly Hidden on Mobile per User Requirement) -->
-        <div class="hidden md:flex items-center gap-1.5 sm:gap-2.5">
+        <!-- Desktop Navigation Controls (Hidden on Mobile) -->
+        <div class="desktop-nav-controls">
           
-          <!-- Products Link (Desktop) -->
-          <a href="/products" class="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <!-- Products Link -->
+          <a href="/products" class="nav-action-btn">
             <span>🛍️</span> Products
           </a>
 
           <!-- Cart Button -->
-          <button id="btn-open-cart" class="relative p-2 sm:px-3 sm:py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:text-emerald-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5 cursor-pointer" title="কার্ট দেখুন">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <button id="btn-open-cart" class="nav-action-btn" title="কার্ট দেখুন">
+            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path>
             </svg>
-            <span class="hidden sm:inline text-xs font-bold">Cart</span>
-            <span id="nav-cart-badge" class="min-w-[18px] h-[18px] rounded-full bg-emerald-600 text-white font-extrabold text-[10px] flex items-center justify-center px-1 shadow-xs">
+            <span>Cart</span>
+            <span id="nav-cart-badge" class="nav-badge-count">
               ${cartCount}
             </span>
           </button>
 
           <!-- Favourite (Wishlist) Icon -->
-          <a href="/favourite" class="relative p-2 sm:px-3 sm:py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center gap-1.5" title="পছন্দের তালিকা">
-            <svg class="w-5 h-5 fill-none stroke-current" viewBox="0 0 24 24" stroke-width="2">
+          <a href="/favourite" class="nav-action-btn" title="পছন্দের তালিকা">
+            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
             </svg>
-            <span class="hidden sm:inline text-xs font-bold">Favourite</span>
-            <span id="nav-fav-badge" class="min-w-[18px] h-[18px] rounded-full bg-rose-500 text-white font-extrabold text-[10px] flex items-center justify-center px-1 shadow-xs">
+            <span>Favourite</span>
+            <span id="nav-fav-badge" class="nav-badge-count nav-badge-rose">
               ${favCount}
             </span>
           </a>
 
-          <!-- Customer Login / Account Menu (Desktop) -->
+          <!-- User Login / Account Dropdown -->
           <div class="relative auth-dropdown-container">
             ${isAuthenticated ? `
-              <button id="btn-user-menu" class="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-xl text-xs font-bold transition hover:bg-emerald-100 cursor-pointer">
-                <span class="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">
+              <button id="btn-user-menu" class="nav-action-btn" style="background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3);">
+                <span style="width: 22px; height: 22px; border-radius: 9999px; background: #059669; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11px;">
                   ${(authStore.getUserDisplayName() || "U").charAt(0).toUpperCase()}
                 </span>
-                <span class="max-w-[80px] truncate">${authStore.getUserDisplayName()}</span>
-                <span class="text-[10px]">▼</span>
+                <span style="max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${authStore.getUserDisplayName()}</span>
+                <span style="font-size: 10px;">▼</span>
               </button>
             ` : `
-              <a href="/customer/login" class="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition">
-                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+              <a href="/customer/login" class="nav-action-btn" style="background: #f1f5f9; border: 1px solid #e2e8f0;">
+                <svg style="width: 16px; height: 16px; color: #059669;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                 <span>লগইন</span>
               </a>
             `}
@@ -178,7 +172,7 @@ export function renderHeader() {
           <!-- Darkmode Toggle Icon -->
           <button 
             id="btn-toggle-darkmode" 
-            class="p-2 sm:p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition flex items-center justify-center cursor-pointer"
+            class="nav-action-btn"
             title="${isDark ? 'লাইট মোড চালু করুন' : 'ডার্ক মোড চালু করুন'}"
             aria-label="Toggle Dark Mode"
           >
@@ -190,31 +184,32 @@ export function renderHeader() {
 
       </div>
 
-      <!-- Mobile Search Bar (Only Logo, Shop Name & Search bar in mobile header per requirement) -->
-      <div class="md:hidden px-4 pb-2.5 pt-1 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 relative">
-        <div class="search-bar-wrap w-full flex items-center bg-slate-100 dark:bg-slate-800/90 rounded-full border border-slate-200 dark:border-slate-700 hover:border-emerald-500 focus-within:border-emerald-500 focus-within:ring-3 focus-within:ring-emerald-500/20 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all duration-200 relative shadow-inner">
-          <div class="pl-3.5 pr-1.5 flex items-center pointer-events-none text-emerald-600 dark:text-emerald-400">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-          </div>
+      <!-- Mobile Search Row (Only on mobile screens, directly under Logo) -->
+      <div class="mobile-search-row relative">
+        <div class="header-search-bar" style="border-radius: 9999px; padding: 2px 4px 2px 12px;">
+          <svg class="header-search-icon" style="width: 16px; height: 16px; margin-right: 6px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
           <input 
             type="text" 
             id="mobile-search-input"
             placeholder="পণ্য বা মডেল সার্চ করুন..." 
             autocomplete="off"
-            class="w-full py-2 pr-20 text-xs bg-transparent text-slate-900 dark:text-white placeholder-slate-400 outline-none"
+            class="header-search-input"
+            style="font-size: 12px; padding: 5px 65px 5px 0;"
           />
           <button 
             id="mobile-search-clear-btn" 
-            class="hidden absolute right-16 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs font-bold transition rounded-full hover:bg-slate-200 dark:hover:bg-slate-700" 
+            class="header-search-clear hidden" 
             type="button" 
             title="ক্লিয়ার করুন"
+            style="right: 68px;"
           >✕</button>
           <button 
             id="mobile-search-btn" 
             type="button"
-            class="absolute right-1 top-1 bottom-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[11px] font-bold px-3.5 rounded-full shadow-xs active:scale-95 transition-transform flex items-center gap-1 cursor-pointer"
+            class="header-search-submit"
+            style="padding: 0 12px; font-size: 11px;"
           >
             <span>সার্চ</span>
           </button>
