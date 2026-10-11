@@ -10,15 +10,15 @@
 
 import { apiClient, INITIAL_CATEGORIES } from '../../api/client.js';
 
-// Safe HTML escaper (prevents XSS & syntax breaks)
+// Safe HTML escaper
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 // Default enriched hierarchies to guarantee rich sub/child trees even before sheet syncs
@@ -91,10 +91,10 @@ if (typeof window !== 'undefined') {
 
   // Expand all sub-category trees for active category
   window.expandAllCategoryTrees = function() {
-    document.querySelectorAll('.subcat-tree-branch').forEach(b => {
+    document.querySelectorAll('.subcat-tree-branch').forEach(function(b) {
       b.classList.remove('hidden');
     });
-    document.querySelectorAll('.subcat-tree-chevron').forEach(c => {
+    document.querySelectorAll('.subcat-tree-chevron').forEach(function(c) {
       c.style.transform = 'rotate(90deg)';
       c.classList.add('text-emerald-600');
     });
@@ -102,10 +102,10 @@ if (typeof window !== 'undefined') {
 
   // Collapse all sub-category trees for active category
   window.collapseAllCategoryTrees = function() {
-    document.querySelectorAll('.subcat-tree-branch').forEach(b => {
+    document.querySelectorAll('.subcat-tree-branch').forEach(function(b) {
       b.classList.add('hidden');
     });
-    document.querySelectorAll('.subcat-tree-chevron').forEach(c => {
+    document.querySelectorAll('.subcat-tree-chevron').forEach(function(c) {
       c.style.transform = 'rotate(0deg)';
       c.classList.remove('text-emerald-600');
     });
@@ -113,29 +113,23 @@ if (typeof window !== 'undefined') {
 
   // Switch selected category in the main view
   window.selectCategoryTab = function(safeKey) {
-    // Hide all category panes
-    document.querySelectorAll('.category-detail-pane').forEach(p => {
+    document.querySelectorAll('.category-detail-pane').forEach(function(p) {
       p.classList.add('hidden');
     });
-
-    // Unhighlight all sidebar items
-    document.querySelectorAll('.cat-sidebar-card').forEach(s => {
+    document.querySelectorAll('.cat-sidebar-card').forEach(function(s) {
       s.classList.remove('active-cat');
     });
 
-    // Show target pane
     const targetPane = document.getElementById('pane-' + safeKey);
     if (targetPane) {
       targetPane.classList.remove('hidden');
     }
 
-    // Highlight target sidebar card
     const targetCard = document.getElementById('side-card-' + safeKey);
     if (targetCard) {
       targetCard.classList.add('active-cat');
     }
 
-    // On mobile, scroll smoothly to the main pane
     if (window.innerWidth < 1024 && targetPane) {
       targetPane.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -144,7 +138,7 @@ if (typeof window !== 'undefined') {
   // Live search filter in category sidebar
   window.filterSidebarCategories = function(query) {
     const q = (query || '').toLowerCase().trim();
-    document.querySelectorAll('.cat-sidebar-card').forEach(card => {
+    document.querySelectorAll('.cat-sidebar-card').forEach(function(card) {
       const name = (card.getAttribute('data-cat-name') || '').toLowerCase();
       const id = (card.getAttribute('data-cat-id') || '').toLowerCase();
       const slug = (card.getAttribute('data-cat-slug') || '').toLowerCase();
@@ -158,10 +152,115 @@ if (typeof window !== 'undefined') {
   };
 }
 
+// Helper to render child tree nodes (avoiding nested backticks)
+function renderChildNodes(children, catName, subName) {
+  if (!children || children.length === 0) {
+    return '<div class="text-xs text-slate-400 py-2 pl-4 italic">এই সাব-ক্যাটাগরির সকল পণ্য সরাসরি অন্তর্ভুক্ত।</div>';
+  }
+
+  const itemsHtml = children.map(function(ch) {
+    const countText = ch.count > 0 ? ' (' + ch.count + ' টি পণ্য)' : '';
+    const linkUrl = '/products?cat=' + encodeURIComponent(catName) + '&sub=' + encodeURIComponent(subName) + '&child=' + encodeURIComponent(ch.name);
+
+    return `
+      <div class="tree-branch-node">
+        <div class="tree-leaf-card bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-700/80 p-3 flex items-center justify-between gap-3 shadow-2xs">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="text-emerald-500 text-sm flex-shrink-0">🌿</span>
+            <div class="min-w-0">
+              <div class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                ${escapeHtml(ch.name)}
+              </div>
+              <div class="text-[10px] text-slate-400">
+                চাইল্ড ক্যাটাগরি${countText}
+              </div>
+            </div>
+          </div>
+          <a href="${linkUrl}" class="btn-primary text-[10px] font-bold py-1 px-2.5 rounded-lg shadow-2xs whitespace-nowrap">
+            পণ্য দেখুন →
+          </a>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  return '<div class="tree-stem-container space-y-2.5">' + itemsHtml + '</div>';
+}
+
+// Helper to render subcategories list
+function renderSubCategories(subCategories, catName, catIdx) {
+  if (!subCategories || subCategories.length === 0) {
+    return `
+      <div class="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs text-slate-500">
+        এই ক্যাটাগরিতে সরাসরি পণ্যসমূহ সাজানো রয়েছে।
+        <div class="mt-3">
+          <a href="/products?cat=${encodeURIComponent(catName)}" class="btn-primary py-2 px-5 text-xs font-bold inline-flex">
+            পণ্যগুলো ব্রাউজ করুন →
+          </a>
+        </div>
+      </div>
+    `;
+  }
+
+  return subCategories.map(function(sub, sIdx) {
+    const treeId = 'tree-item-' + catIdx + '-' + sIdx;
+    const isDefaultOpen = (sIdx === 0);
+    const chevRotation = isDefaultOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+    const branchClass = isDefaultOpen ? '' : 'hidden';
+    const subShopUrl = '/products?cat=' + encodeURIComponent(catName) + '&sub=' + encodeURIComponent(sub.name);
+    const childHtml = renderChildNodes(sub.children, catName, sub.name);
+
+    return `
+      <div class="card-animated rounded-2xl border border-slate-200/80 dark:border-slate-700/80 overflow-hidden bg-slate-50/50 dark:bg-slate-800/30">
+        <div 
+          class="tree-subcat-header p-4 bg-white dark:bg-slate-900 flex items-center justify-between gap-3 border-b border-transparent"
+          onclick="window.toggleSubCategoryTree('${treeId}')"
+        >
+          <div class="flex items-center gap-3 min-w-0">
+            <span 
+              id="chev-${treeId}" 
+              class="subcat-tree-chevron text-slate-400 text-xs transition-transform duration-200 font-bold flex-shrink-0"
+              style="transform: ${chevRotation};"
+            >
+              ▶
+            </span>
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-xs flex-shrink-0">
+              📁
+            </div>
+            <div class="min-w-0">
+              <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                ${escapeHtml(sub.name)}
+              </h4>
+              <div class="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                <span>${sub.count} টি পণ্য</span>
+                <span>•</span>
+                <span class="text-emerald-600 font-bold">${sub.children.length} টি চাইল্ড শাখা</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0" onclick="event.stopPropagation();">
+            <a 
+              href="${subShopUrl}" 
+              class="btn-secondary text-[10px] font-bold py-1.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600"
+            >
+              সাব-ক্যাটাগরিতে শপ →
+            </a>
+          </div>
+        </div>
+        <div 
+          id="${treeId}" 
+          class="subcat-tree-branch ${branchClass} p-4 sm:p-5 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800/80"
+        >
+          ${childHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 export async function renderCategoryPage(params = {}) {
   const safeParams = params || {};
 
-  // Fetch fresh categories and products in parallel
   let rawCategories = [];
   let products = [];
 
@@ -177,14 +276,14 @@ export async function renderCategoryPage(params = {}) {
     products = apiClient.products || [];
   }
 
-  // Map for strict deduplication: Key = normalized category name (lower-cased)
+  // Strict deduplication Map
   const catMap = new Map();
 
   // 1. Seed base default hierarchies
-  Object.values(DEFAULT_CAT_HIERARCHIES).forEach(dh => {
+  Object.values(DEFAULT_CAT_HIERARCHIES).forEach(function(dh) {
     const key = dh.name.toLowerCase().trim();
     const subMap = new Map();
-    Object.entries(dh.subCats).forEach(([sName, childList]) => {
+    Object.entries(dh.subCats).forEach(function([sName, childList]) {
       subMap.set(sName.toLowerCase().trim(), {
         name: sName,
         childCats: new Set(childList)
@@ -201,7 +300,7 @@ export async function renderCategoryPage(params = {}) {
   });
 
   // 2. Ingest API Categories (Merge & deduplicate strictly by name)
-  rawCategories.forEach((c) => {
+  rawCategories.forEach(function(c) {
     if (!c) return;
     const rawName = String(c.category || '').trim();
     if (!rawName || rawName.toLowerCase() === 'test id' || rawName.toLowerCase() === 'category') return;
@@ -210,7 +309,7 @@ export async function renderCategoryPage(params = {}) {
     if (!catMap.has(key)) {
       catMap.set(key, {
         category: rawName,
-        catagory_id: c.catagory_id || `CAT-00${catMap.size + 1}`,
+        catagory_id: c.catagory_id || ('CAT-00' + (catMap.size + 1)),
         catagory_slug: c.catagory_slug || rawName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
         category_image: c.category_image,
         subCatsMap: new Map()
@@ -222,15 +321,14 @@ export async function renderCategoryPage(params = {}) {
       catObj.category_image = c.category_image;
     }
 
-    // Safely parse subcategories and child categories (protect against non-string values)
     const rawSub = c.sub_category != null ? String(c.sub_category) : '';
     const rawChild = (c.chail_category || c.child_category) != null ? String(c.chail_category || c.child_category) : '';
 
     if (rawSub) {
-      const subList = rawSub.split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
-      const childList = rawChild.split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
+      const subList = rawSub.replace(/\r/g, '').split(/[\n,]/).map(function(s) { return s.trim(); }).filter(Boolean);
+      const childList = rawChild.replace(/\r/g, '').split(/[\n,]/).map(function(s) { return s.trim(); }).filter(Boolean);
 
-      subList.forEach(sName => {
+      subList.forEach(function(sName) {
         const sKey = sName.toLowerCase();
         if (!catObj.subCatsMap.has(sKey)) {
           catObj.subCatsMap.set(sKey, {
@@ -239,13 +337,13 @@ export async function renderCategoryPage(params = {}) {
           });
         }
         const subObj = catObj.subCatsMap.get(sKey);
-        childList.forEach(ch => subObj.childCats.add(ch));
+        childList.forEach(function(ch) { subObj.childCats.add(ch); });
       });
     }
   });
 
   // 3. Ingest Products data for exact matching sub and child associations
-  products.forEach(p => {
+  products.forEach(function(p) {
     if (!p) return;
     const pCat = String(p.category || '').trim();
     if (!pCat || pCat.toLowerCase() === 'test id') return;
@@ -254,7 +352,7 @@ export async function renderCategoryPage(params = {}) {
     if (!catMap.has(key)) {
       catMap.set(key, {
         category: pCat,
-        catagory_id: `CAT-00${catMap.size + 1}`,
+        catagory_id: ('CAT-00' + (catMap.size + 1)),
         catagory_slug: pCat.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
         category_image: p.thumbnail,
         subCatsMap: new Map()
@@ -280,59 +378,204 @@ export async function renderCategoryPage(params = {}) {
   });
 
   // 4. Calculate counts and build final structure
-  const categories = Array.from(catMap.values()).map((catObj, catIdx) => {
-    const matchingProds = products.filter(p => 
-      p && p.category && String(p.category).trim().toLowerCase() === catObj.category.toLowerCase()
-    );
+  const categories = Array.from(catMap.values()).map(function(catObj, catIdx) {
+    const matchingProds = products.filter(function(p) {
+      return p && p.category && String(p.category).trim().toLowerCase() === catObj.category.toLowerCase();
+    });
 
-    // Prefer product image if category image missing
     let img = catObj.category_image;
     if ((!img || img.includes('photo-1579586337278-3befd40fd17a') || img.includes('jijistatic')) && matchingProds.length > 0 && matchingProds[0].thumbnail) {
       img = matchingProds[0].thumbnail;
     }
 
-    // Build structured subcategories list
-    const subCategoriesList = Array.from(catObj.subCatsMap.values()).map(subObj => {
-      const subProds = matchingProds.filter(p => 
-        p && p.sub_category && String(p.sub_category).trim().toLowerCase() === subObj.name.toLowerCase()
-      );
+    const subCategoriesList = Array.from(catObj.subCatsMap.values()).map(function(subObj) {
+      const subProds = matchingProds.filter(function(p) {
+        return p && p.sub_category && String(p.sub_category).trim().toLowerCase() === subObj.name.toLowerCase();
+      });
 
-      const children = Array.from(subObj.childCats).map(chName => {
-        const childProds = subProds.filter(p => 
-          p && p.child_category && String(p.child_category).trim().toLowerCase() === chName.toLowerCase()
-        );
+      const children = Array.from(subObj.childCats).map(function(chName) {
+        const childProds = subProds.filter(function(p) {
+          return p && p.child_category && String(p.child_category).trim().toLowerCase() === chName.toLowerCase();
+        });
         return {
           name: chName,
           count: childProds.length
         };
-      }).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+      }).sort(function(a, b) { return b.count - a.count || a.name.localeCompare(b.name); });
 
       return {
         name: subObj.name,
         count: subProds.length,
         children: children
       };
-    }).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    }).sort(function(a, b) { return b.count - a.count || a.name.localeCompare(b.name); });
 
     return {
       category: catObj.category,
-      catagory_id: catObj.catagory_id || `CAT-00${catIdx + 1}`,
+      catagory_id: catObj.catagory_id || ('CAT-00' + (catIdx + 1)),
       catagory_slug: catObj.catagory_slug || catObj.category.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
       category_image: img || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600',
       matchingCount: matchingProds.length,
       subCategories: subCategoriesList
     };
-  }).sort((a, b) => b.matchingCount - a.matchingCount || a.category.localeCompare(b.category));
+  }).sort(function(a, b) { return b.matchingCount - a.matchingCount || a.category.localeCompare(b.category); });
 
-  // Determine which category is active by default
+  // Determine active category index safely
   const queryCat = String(safeParams.cat || safeParams.category || '').toLowerCase().trim();
   let activeIndex = 0;
   if (queryCat) {
-    const foundIdx = categories.findIndex(c => 
-      c.category.toLowerCase() === queryCat || c.catagory_slug.toLowerCase() === queryCat
-    );
+    const foundIdx = categories.findIndex(function(c) {
+      return c.category.toLowerCase() === queryCat || c.catagory_slug.toLowerCase() === queryCat;
+    });
     if (foundIdx !== -1) activeIndex = foundIdx;
   }
+
+  // Pre-generate sidebar items HTML without % operator in templates
+  const sidebarItemsHtml = categories.map(function(c, idx) {
+    const safeKey = 'cat-node-' + idx;
+    const isActive = (idx === activeIndex);
+    const staggerNum = (idx % 6) + 1;
+    const staggerClass = 'card-stagger-' + staggerNum;
+    const activeClass = isActive ? ' active-cat' : '';
+    const shopUrl = '/products?cat=' + encodeURIComponent(c.category);
+
+    return `
+      <div 
+        id="side-card-${safeKey}"
+        class="cat-sidebar-card ${staggerClass}${activeClass} bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 p-3.5 flex flex-col justify-between space-y-3 select-none"
+        data-cat-name="${escapeHtml(c.category)}"
+        data-cat-id="${c.catagory_id}"
+        data-cat-slug="${c.catagory_slug}"
+        onclick="window.selectCategoryTab('${safeKey}')"
+      >
+        <div class="flex items-center gap-3">
+          <div class="w-14 h-14 rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex-shrink-0 relative shadow-2xs">
+            <img 
+              src="${c.category_image}" 
+              alt="${escapeHtml(c.category)}" 
+              class="w-full h-full object-cover"
+              onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200';"
+            />
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap mb-0.5">
+              <span class="text-[9px] font-mono font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.2 rounded">
+                ${c.catagory_id}
+              </span>
+              <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
+                ${c.matchingCount} টি পণ্য
+              </span>
+            </div>
+            <h3 class="text-xs font-black text-slate-900 dark:text-white truncate">
+              ${escapeHtml(c.category)}
+            </h3>
+            <div class="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate">
+              /${c.catagory_slug}
+            </div>
+          </div>
+        </div>
+        <div class="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
+          <span class="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+            সাব-ক্যাটাগরি: <strong>${c.subCategories.length}</strong>
+          </span>
+          <a 
+            href="${shopUrl}" 
+            class="btn-primary py-1 px-3 text-[10px] font-bold rounded-lg shadow-xs inline-flex items-center gap-1"
+            onclick="event.stopPropagation();"
+          >
+            <span>সকল পণ্য দেখুন</span> →
+          </a>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Pre-generate main content panes HTML
+  const mainPanesHtml = categories.map(function(c, idx) {
+    const safeKey = 'cat-node-' + idx;
+    const isHidden = (idx !== activeIndex);
+    const hiddenClass = isHidden ? 'hidden' : '';
+    const shopUrl = '/products?cat=' + encodeURIComponent(c.category);
+    const subCatsContent = renderSubCategories(c.subCategories, c.category, idx);
+
+    return `
+      <div 
+        id="pane-${safeKey}" 
+        class="category-detail-pane ${hiddenClass} space-y-6 animate-fadeIn"
+      >
+        <!-- Main Category Display Card -->
+        <div class="card-animated bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 shadow-xs space-y-5">
+          <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+            <div class="w-32 h-32 sm:w-36 sm:h-36 rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-800 border-2 border-emerald-500/20 shadow-sm flex-shrink-0">
+              <img 
+                src="${c.category_image}" 
+                alt="${escapeHtml(c.category)}" 
+                class="w-full h-full object-cover"
+                onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';"
+              />
+            </div>
+            <div class="flex-1 min-w-0 text-center sm:text-left space-y-2">
+              <div class="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                <span class="text-xs font-mono font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2.5 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                  আইডি: ${c.catagory_id}
+                </span>
+                <span class="text-xs font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-md">
+                  স্লাগ: /${c.catagory_slug}
+                </span>
+              </div>
+              <h2 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+                ${escapeHtml(c.category)}
+              </h2>
+              <p class="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-center sm:justify-start gap-1.5">
+                <span>📦</span> উক্ত ক্যাটাগরিতে মোট <strong>${c.matchingCount} টি পণ্য</strong> তালিকাভুক্ত আছে
+              </p>
+              <div class="pt-2">
+                <a 
+                  href="${shopUrl}" 
+                  class="btn-primary py-2.5 px-6 text-xs sm:text-sm font-bold inline-flex items-center gap-2 shadow-md rounded-xl"
+                >
+                  <span>🛍️</span> ${escapeHtml(c.category)} ক্যাটাগরিতে শপ করুন →
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub-category & Child-category Interactive Tree Section -->
+        <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 shadow-xs space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-3">
+            <div>
+              <h3 class="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <span>🌳</span> সাব-ক্যাটাগরি ও চাইল্ড ক্যাটাগরি ট্রি ভিউ
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                যেকোনো সাব-ক্যাটাগরির নামের উপর ক্লিক করুন — অসাধারণ ট্রি শাখায় চাইল্ড ক্যাটাগরিগুলো বিস্তার লাভ করবে
+              </p>
+            </div>
+            <div class="flex items-center gap-2 self-start sm:self-center">
+              <button 
+                type="button" 
+                class="btn-secondary text-[11px] py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 font-bold hover:text-emerald-600 cursor-pointer"
+                onclick="window.expandAllCategoryTrees()"
+              >
+                সবগুলো খুলুন ➕
+              </button>
+              <button 
+                type="button" 
+                class="btn-secondary text-[11px] py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 font-bold hover:text-rose-600 cursor-pointer"
+                onclick="window.collapseAllCategoryTrees()"
+              >
+                বন্ধ করুন ➖
+              </button>
+            </div>
+          </div>
+          <div class="space-y-4">
+            ${subCatsContent}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 
   return `
     <div class="space-y-8 pb-24 max-w-7xl mx-auto">
@@ -354,7 +597,6 @@ export async function renderCategoryPage(params = {}) {
             </p>
           </div>
 
-          <!-- Total Categories Badge -->
           <div class="inline-flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-3.5 py-2 shadow-xs self-start sm:self-center">
             <span class="text-base">🏷️</span>
             <div class="text-xs font-bold text-emerald-800 dark:text-emerald-300">
@@ -367,11 +609,8 @@ export async function renderCategoryPage(params = {}) {
       <!-- Main Layout: Left Sidebar + Right Content Pane -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        <!-- ========================================================================= -->
-        <!-- LEFT SIDEBAR: All Categories Listed Vertically (একটার নিচে একটা)         -->
-        <!-- ========================================================================= -->
+        <!-- LEFT SIDEBAR -->
         <aside class="lg:col-span-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs space-y-4 lg:sticky lg:top-6">
-          
           <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
             <h2 class="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
               <span>📁</span> ক্যাটাগরি সাইডবার
@@ -381,7 +620,6 @@ export async function renderCategoryPage(params = {}) {
             </span>
           </div>
 
-          <!-- Quick Live Filter in Sidebar -->
           <div class="relative">
             <input 
               type="text" 
@@ -392,275 +630,14 @@ export async function renderCategoryPage(params = {}) {
             <span class="absolute left-2.5 top-2.5 text-xs text-slate-400">🔍</span>
           </div>
 
-          <!-- Vertical Stack of Category Cards (একটার নিচে একটা) -->
           <div id="sidebar-categories-list" class="space-y-3 max-h-[640px] overflow-y-auto pr-1 no-scrollbar">
-            ${categories.map((c, idx) => {
-              const safeKey = 'cat-node-' + idx;
-              const isActive = (idx === activeIndex);
-
-              return `
-                <div 
-                  id="side-card-${safeKey}"
-                  class="cat-sidebar-card card-stagger-${(idx \% 6) + 1}${isActive ? 'active-cat' : ''} bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 p-3.5 flex flex-col justify-between space-y-3 select-none"
-                  data-cat-name="${escapeHtml(c.category)}"
-                  data-cat-id="${c.catagory_id}"
-                  data-cat-slug="${c.catagory_slug}"
-                  onclick="window.selectCategoryTab('${safeKey}')"
-                >
-                  <div class="flex items-center gap-3">
-                    <!-- Category Image -->
-                    <div class="w-14 h-14 rounded-xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex-shrink-0 relative shadow-2xs">
-                      <img 
-                        src="${c.category_image}" 
-                        alt="${escapeHtml(c.category)}" 
-                        class="w-full h-full object-cover"
-                        onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200';"
-                      />
-                    </div>
-
-                    <!-- Category Details -->
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-2 flex-wrap mb-0.5">
-                        <span class="text-[9px] font-mono font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-1.5 py-0.2 rounded">
-                          ${c.catagory_id}
-                        </span>
-                        <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                          ${c.matchingCount} টি পণ্য
-                        </span>
-                      </div>
-                      <h3 class="text-xs font-black text-slate-900 dark:text-white truncate">
-                        ${escapeHtml(c.category)}
-                      </h3>
-                      <div class="text-[10px] text-slate-400 dark:text-slate-500 font-mono truncate">
-                        /${c.catagory_slug}
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Direct Shopping / View All Products Button -->
-                  <div class="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
-                    <span class="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                      সাব-ক্যাটাগরি: <strong>${c.subCategories.length}</strong>
-                    </span>
-                    <a 
-                      href="/products?cat=${encodeURIComponent(c.category)}"
-                      class="btn-primary py-1 px-3 text-[10px] font-bold rounded-lg shadow-xs inline-flex items-center gap-1"
-                      onclick="event.stopPropagation();"
-                    >
-                      <span>সকল পণ্য দেখুন</span> →
-                    </a>
-                  </div>
-                </div>
-              `;
-            }).join("")}
+            ${sidebarItemsHtml}
           </div>
-
         </aside>
 
-        <!-- ========================================================================= -->
-        <!-- RIGHT CONTENT PANE: Main Category Info + Tree View                        -->
-        <!-- ========================================================================= -->
+        <!-- RIGHT CONTENT PANE -->
         <main class="lg:col-span-8 space-y-6">
-          
-          ${categories.map((c, idx) => {
-            const safeKey = 'cat-node-' + idx;
-            const isHidden = (idx !== activeIndex);
-
-            return `
-              <div 
-                id="pane-${safeKey}" 
-                class="category-detail-pane ${isHidden ? 'hidden' : ''} space-y-6 animate-fadeIn"
-              >
-                
-                <!-- 1. Main Category Display Card (নাম, ছবি, স্লাগ, আইডি, পণ্যসংখ্যা, শপিং বাটন) -->
-                <div class="card-animated bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 shadow-xs space-y-5">
-                  <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-                    
-                    <!-- Main Category Image -->
-                    <div class="w-32 h-32 sm:w-36 sm:h-36 rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-800 border-2 border-emerald-500/20 shadow-sm flex-shrink-0">
-                      <img 
-                        src="${c.category_image}" 
-                        alt="${escapeHtml(c.category)}" 
-                        class="w-full h-full object-cover"
-                        onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500';"
-                      />
-                    </div>
-
-                    <!-- Details: Name, Slug, ID, Product Count -->
-                    <div class="flex-1 min-w-0 text-center sm:text-left space-y-2">
-                      <div class="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                        <span class="text-xs font-mono font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 px-2.5 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
-                          আইডি: ${c.catagory_id}
-                        </span>
-                        <span class="text-xs font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-md">
-                          স্লাগ: /${c.catagory_slug}
-                        </span>
-                      </div>
-
-                      <h2 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-                        ${escapeHtml(c.category)}
-                      </h2>
-
-                      <p class="text-xs sm:text-sm font-semibold text-emerald-600 dark:text-emerald-400 flex items-center justify-center sm:justify-start gap-1.5">
-                        <span>📦</span> উক্ত ক্যাটাগরিতে মোট <strong>${c.matchingCount} টি পণ্য</strong> তালিকাভুক্ত আছে
-                      </p>
-
-                      <!-- Shopping Button (উক্ত ক্যাটাগরিতে শপিং করার জন্য বাটন) -->
-                      <div class="pt-2">
-                        <a 
-                          href="/products?cat=${encodeURIComponent(c.category)}" 
-                          class="btn-primary py-2.5 px-6 text-xs sm:text-sm font-bold inline-flex items-center gap-2 shadow-md rounded-xl"
-                        >
-                          <span>🛍️</span> ${escapeHtml(c.category)} ক্যাটাগরিতে শপ করুন →
-                        </a>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
-
-                <!-- 2. Sub-category & Child-category Interactive Tree Section -->
-                <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 shadow-xs space-y-5">
-                  
-                  <!-- Tree Header Toolbar -->
-                  <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-3">
-                    <div>
-                      <h3 class="text-base sm:text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                        <span>🌳</span> সাব-ক্যাটাগরি ও চাইল্ড ক্যাটাগরি ট্রি ভিউ
-                      </h3>
-                      <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        যেকোনো সাব-ক্যাটাগরির নামের উপর ক্লিক করুন — অসাধারণ ট্রি শাখায় চাইল্ড ক্যাটাগরিগুলো বিস্তার লাভ করবে
-                      </p>
-                    </div>
-
-                    <!-- Expand / Collapse All Buttons -->
-                    <div class="flex items-center gap-2 self-start sm:self-center">
-                      <button 
-                        type="button" 
-                        class="btn-secondary text-[11px] py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 font-bold hover:text-emerald-600 cursor-pointer"
-                        onclick="window.expandAllCategoryTrees()"
-                      >
-                        সবগুলো খুলুন ➕
-                      </button>
-                      <button 
-                        type="button" 
-                        class="btn-secondary text-[11px] py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 font-bold hover:text-rose-600 cursor-pointer"
-                        onclick="window.collapseAllCategoryTrees()"
-                      >
-                        বন্ধ করুন ➖
-                      </button>
-                    </div>
-                  </div>
-
-                  <!-- Subcategory List (Stacked Vertically একটার নিচে একটা করে) -->
-                  <div class="space-y-4">
-                    ${c.subCategories.length > 0 ? c.subCategories.map((sub, sIdx) => {
-                      const treeId = `tree-item-${idx}-${sIdx}`;
-                      const hasChildren = sub.children && sub.children.length > 0;
-                      const isDefaultOpen = (sIdx === 0);
-
-                      return `
-                        <div class="card-animated rounded-2xl border border-slate-200/80 dark:border-slate-700/80 overflow-hidden bg-slate-50/50 dark:bg-slate-800/30">
-                          
-                          <!-- Sub-category Header Bar (Clickable to toggle tree) -->
-                          <div 
-                            class="tree-subcat-header p-4 bg-white dark:bg-slate-900 flex items-center justify-between gap-3 border-b border-transparent"
-                            onclick="window.toggleSubCategoryTree('${treeId}')"
-                          >
-                            <div class="flex items-center gap-3 min-w-0">
-                              <span 
-                                id="chev-${treeId}" 
-                                class="subcat-tree-chevron text-slate-400 text-xs transition-transform duration-200 font-bold flex-shrink-0"
-                                style="transform: ${isDefaultOpen ? 'rotate(90deg)' : 'rotate(0deg)'};"
-                              >
-                                ▶
-                              </span>
-                              <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-xs flex-shrink-0">
-                                📁
-                              </div>
-                              <div class="min-w-0">
-                                <h4 class="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
-                                  ${escapeHtml(sub.name)}
-                                </h4>
-                                <div class="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
-                                  <span>${sub.count} টি পণ্য</span>
-                                  <span>•</span>
-                                  <span class="text-emerald-600 font-bold">${sub.children.length} টি চাইল্ড শাখা</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <!-- Action button: Shop this subcategory directly -->
-                            <div class="flex items-center gap-2 flex-shrink-0" onclick="event.stopPropagation();">
-                              <a 
-                                href="/products?cat=${encodeURIComponent(c.category)}&sub=${encodeURIComponent(sub.name)}" 
-                                class="btn-secondary text-[10px] font-bold py-1.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-500 hover:text-emerald-600"
-                              >
-                                সাব-ক্যাটাগরিতে শপ →
-                              </a>
-                            </div>
-                          </div>
-
-                          <!-- Tree Branch: Expandable Child Categories Tree (ট্রি ভিউ) -->
-                          <div 
-                            id="${treeId}" 
-                            class="subcat-tree-branch ${isDefaultOpen ? '' : 'hidden'} p-4 sm:p-5 bg-slate-50/70 dark:bg-slate-800/40 border-t border-slate-100 dark:border-slate-800/80"
-                          >
-                            ${hasChildren ? `
-                              <div class="tree-stem-container space-y-2.5">
-                                ${sub.children.map((ch) => `
-                                  <div class="tree-branch-node">
-                                    <div class="tree-leaf-card bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-700/80 p-3 flex items-center justify-between gap-3 shadow-2xs">
-                                      <div class="flex items-center gap-2.5 min-w-0">
-                                        <span class="text-emerald-500 text-sm flex-shrink-0">🌿</span>
-                                        <div class="min-w-0">
-                                          <div class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
-                                            ${escapeHtml(ch.name)}
-                                          </div>
-                                          <div class="text-[10px] text-slate-400">
-                                            চাইল্ড ক্যাটাগরি ${ch.count > 0 ? `(${ch.count} টি পণ্য)` : ''}
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      <!-- Direct Shop link for child category -->
-                                      <a 
-                                        href="/products?cat=${encodeURIComponent(c.category)}&sub=${encodeURIComponent(sub.name)}" 
-                                        class="btn-primary text-[10px] font-bold py-1 px-2.5 rounded-lg shadow-2xs whitespace-nowrap"
-                                      >
-                                        পণ্য দেখুন →
-                                      </a>
-                                    </div>
-                                  </div>
-                                `).join("")}
-                              </div>
-                            ` : `
-                              <div class="text-xs text-slate-400 py-2 pl-4 italic">
-                                এই সাব-ক্যাটাগরির সকল পণ্য সরাসরি অন্তর্ভুক্ত।
-                              </div>
-                            `}
-                          </div>
-
-                        </div>
-                      `;
-                    }).join("") : `
-                      <div class="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs text-slate-500">
-                        এই ক্যাটাগরিতে সরাসরি পণ্যসমূহ সাজানো রয়েছে।
-                        <div class="mt-3">
-                          <a href="/products?cat=${encodeURIComponent(c.category)}" class="btn-primary py-2 px-5 text-xs font-bold inline-flex">
-                            পণ্যগুলো ব্রাউজ করুন →
-                          </a>
-                        </div>
-                      </div>
-                    `}
-                  </div>
-
-                </div>
-
-              </div>
-            `;
-          }).join("")}
-
+          ${mainPanesHtml}
         </main>
 
       </div>
