@@ -7,7 +7,7 @@
  * - Prominent "🛍️ শপ ভিজিট করুন" (Visit Shop) button in header & sidebar
  * - Full-detail Order History with live search & multi-status filtering
  * - Interactive Order Tracking system with step-by-step progress
- * - Dynamic Profile Edit modal & Auth modal (100% compatible with main.js event listeners)
+ * - Dynamic Profile Edit modal & Auth views (100% compatible with main.js event listeners)
  * - Zero divide/conflict with existing stores and routing
  */
 
@@ -21,7 +21,14 @@ import { renderProductCard } from '../../components/ProductCard.js';
 export async function renderCustomerPortal(params = {}) {
   const isAuth = authStore.isAuthenticated();
   const user = authStore.user || {};
-  const currentView = params.subview || (window.location.pathname.includes('/register') ? 'register' : (window.location.pathname.includes('/login') ? 'login' : 'dashboard'));
+  
+  const pathname = (typeof window !== 'undefined' && window.location) ? window.location.pathname : '';
+  const currentView = params.subview || (pathname.includes('/register') ? 'register' : (pathname.includes('/login') ? 'login' : 'dashboard'));
+
+  // If user explicitly navigated to /customer/login or /customer/register and is not logged in:
+  if (!isAuth && (currentView === 'login' || currentView === 'register')) {
+    return renderAuthView(currentView);
+  }
 
   // Fetch orders from Sheets / local client
   let allOrders = [];
@@ -407,12 +414,13 @@ export async function renderCustomerPortal(params = {}) {
               লগআউট ✕
             </button>
           ` : `
-            <button 
-              class="btn-secondary py-2.5 px-4 text-xs font-bold rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 transition"
-              onclick="document.getElementById('customer-auth-modal').classList.add('active');"
+            <a 
+              href="/customer/login"
+              class="btn-secondary py-2.5 px-4 text-xs font-bold rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 transition inline-flex items-center gap-1.5"
             >
-              লগইন / সাইন-আপ 🔐
-            </button>
+              <span>🔐</span>
+              <span>লগইন / সাইন-আপ</span>
+            </a>
           `}
 
         </div>
@@ -434,12 +442,12 @@ export async function renderCustomerPortal(params = {}) {
             </div>
           </div>
           <div class="flex items-center gap-2 flex-shrink-0">
-            <button 
-              class="btn-primary py-1.5 px-3.5 text-xs font-bold rounded-lg shadow-xs"
-              onclick="document.getElementById('customer-auth-modal').classList.add('active');"
+            <a 
+              href="/customer/login"
+              class="btn-primary py-1.5 px-3.5 text-xs font-bold rounded-lg shadow-xs inline-flex items-center gap-1"
             >
               লগইন করুন →
-            </button>
+            </a>
           </div>
         </div>
       ` : ''}
@@ -628,7 +636,7 @@ export async function renderCustomerPortal(params = {}) {
                           ${o.products || 'পণ্যসমূহ'}
                         </div>
                         <div class="font-bold text-slate-900 dark:text-white mt-0.5">
-                          মোট: ${formatCurrency(o.total_amount)}
+                          মোট: ${formatCurrency(o.total_amount || 0)}
                         </div>
                       </div>
 
@@ -706,7 +714,7 @@ export async function renderCustomerPortal(params = {}) {
                   <div class="text-4xl">📦</div>
                   <div class="text-sm font-bold text-slate-700 dark:text-slate-300">কোনো অর্ডার রেকর্ড পাওয়া যায়নি</div>
                   <p class="text-xs text-slate-400 max-w-sm mx-auto">
-                    গেস্ট হিসেবে অর্ডার করে থাকলে আপনার ফোন নম্বর দিয়ে নিচে দ্রুত খুঁজুন অথবা নতুন অর্ডার করুন।
+                    গেস্ট হিসেবে অর্ডার করে থাকলে আপনার ফোন নম্বর দিয়ে ট্র্যাকিং ট্যাবে গিয়ে দ্রুত চেক করুন অথবা নতুন অর্ডার করুন।
                   </p>
                   
                   <div class="pt-2 flex flex-wrap items-center justify-center gap-3">
@@ -753,7 +761,7 @@ export async function renderCustomerPortal(params = {}) {
 
                           <div class="sm:col-span-3">
                             <div class="text-[11px] text-slate-400 font-bold uppercase">মোট প্রদেয়</div>
-                            <div class="text-base font-black text-slate-900 dark:text-white mt-0.5">${formatCurrency(o.total_amount)}</div>
+                            <div class="text-base font-black text-slate-900 dark:text-white mt-0.5">${formatCurrency(o.total_amount || 0)}</div>
                             <div class="text-[10px] text-slate-400">${o.delivery_fee ? `ডেলিভারি ফি: ${formatCurrency(o.delivery_fee)}` : 'ডেলিভারি অন্তর্ভুক্ত'}</div>
                           </div>
 
@@ -876,28 +884,31 @@ export async function renderCustomerPortal(params = {}) {
                 </div>
               ` : `
                 <div class="space-y-3">
-                  ${cartItems.map(it => `
+                  ${cartItems.map(it => {
+                    const variantText = (it.color || it.size) ? (String(it.color || '') + ' ' + String(it.size || '')).trim() : '';
+                    return `
                     <div class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 text-xs gap-3">
                       <div class="flex items-center gap-3 min-w-0">
                         <img src="${it.thumbnail || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'}" class="w-14 h-14 rounded-xl object-cover border border-slate-200 flex-shrink-0" />
                         <div class="min-w-0">
                           <h4 class="font-bold text-slate-900 dark:text-white truncate">${it.name}</h4>
                           <div class="text-[11px] text-slate-500 mt-0.5">
-                            মূল্য: ${formatCurrency(it.price)} | পরিমাণ: ${it.quantity} টি
+                            মূল্য: ${formatCurrency(it.price || 0)} | পরিমাণ: ${it.quantity} টি
                           </div>
-                          ${it.color || it.size ? `<span class="badge badge-info text-[9px] mt-1">${it.color \vert{}\vert{} ''}${it.size || ''}</span>` : ''}
+                          ${variantText ? `<span class="badge badge-info text-[9px] mt-1">${variantText}</span>` : ''}
                         </div>
                       </div>
                       <div class="text-right flex-shrink-0">
                         <div class="font-black text-slate-900 dark:text-white text-sm">
-                          ${formatCurrency(Number(it.price) * Number(it.quantity))}
+                          ${formatCurrency(Number(it.price || 0) * Number(it.quantity || 1))}
                         </div>
                         <a href="/checkout" class="btn-primary text-xs py-1.5 px-3 rounded-lg inline-block mt-1 font-bold">
                           অর্ডার করুন →
                         </a>
                       </div>
                     </div>
-                  `).join("")}
+                  `;
+                  }).join("")}
 
                   <div class="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
                     <div>
@@ -1015,65 +1026,6 @@ export async function renderCustomerPortal(params = {}) {
       </div>
     </div>
 
-    <!-- ==========================================================================
-         CUSTOMER AUTH MODAL (Login & Registration for Guest Mode Users)
-         Wired 100% to main.js: id="customer-auth-form", auth-phone, auth-pass, etc.
-         ========================================================================== -->
-    <div id="customer-auth-modal" class="modal-backdrop ${(!isAuth && (currentView === 'login' || currentView === 'register')) ? 'active' : ''}">
-      <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl space-y-4 text-xs">
-        
-        <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div class="flex items-center gap-2">
-            <span class="text-xl">🔐</span>
-            <h3 class="text-base font-bold text-slate-900 dark:text-white" id="auth-modal-title">
-              ${currentView === 'register' ? 'নতুন অ্যাকাউন্ট নিবন্ধন' : 'কাস্টমার লগইন'}
-            </h3>
-          </div>
-          <button type="button" class="text-slate-400 hover:text-slate-600 font-bold" onclick="document.getElementById('customer-auth-modal').classList.remove('active');">✕</button>
-        </div>
-
-        <form id="customer-auth-form" class="space-y-3.5" data-auth-mode="${currentView === 'register' ? 'register' : 'login'}">
-          
-          <div id="auth-name-group" class="${currentView === 'register' ? '' : 'hidden'}">
-            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পূর্ণ নাম *</label>
-            <input type="text" id="auth-name" placeholder="যেমন: তানভীর হাসান" class="form-control text-xs w-full py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800" />
-          </div>
-
-          <div id="auth-mail-group" class="${currentView === 'register' ? '' : 'hidden'}">
-            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">ইমেইল ঠিকানা</label>
-            <input type="email" id="auth-mail" placeholder="user@gmail.com" class="form-control text-xs w-full py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800" />
-          </div>
-
-          <div id="auth-addr-group" class="${currentView === 'register' ? '' : 'hidden'}">
-            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">ডেলিভারি ঠিকানা</label>
-            <textarea id="auth-addr" rows="2" placeholder="বাসা নং, রোড, জেলা..." class="form-control text-xs w-full p-2 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800"></textarea>
-          </div>
-
-          <div>
-            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">মোবাইল নম্বর *</label>
-            <input type="tel" id="auth-phone" required pattern="[0-9]{11}" placeholder="017XXXXXXXX" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 font-mono" />
-          </div>
-
-          <div>
-            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পাসওয়ার্ড *</label>
-            <input type="password" id="auth-pass" required placeholder="••••••••" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800" />
-          </div>
-
-          <button type="submit" class="btn-primary w-full py-3 text-xs font-bold rounded-xl shadow-md mt-2">
-            ${currentView === 'register' ? 'নিবন্ধন সম্পন্ন করুন →' : 'লগইন করুন →'}
-          </button>
-        </form>
-
-        <div class="pt-2 text-center text-xs text-slate-500">
-          <span id="auth-switch-text">অ্যাকাউন্ট নেই?</span>
-          <button type="button" class="text-emerald-600 font-bold hover:underline ml-1" onclick="window.toggleAuthModalMode()">
-            ${currentView === 'register' ? 'লগইন করুন' : 'নতুন একাউন্ট খুলুন'}
-          </button>
-        </div>
-
-      </div>
-    </div>
-
     <!-- SCRIPT LOGIC FOR DASHBOARD TABS, FILTERS & TRACKING -->
     <script>
       window.switchCustomerTab = function(tabId, btn) {
@@ -1121,29 +1073,83 @@ export async function renderCustomerPortal(params = {}) {
         document.getElementById('track-disp-id').textContent = q.toUpperCase();
         document.getElementById('dashboard-track-result').scrollIntoView({ behavior: 'smooth' });
       };
-
-      window.toggleAuthModalMode = function() {
-        const form = document.getElementById('customer-auth-form');
-        const title = document.getElementById('auth-modal-title');
-        const isReg = form.getAttribute('data-auth-mode') === 'register';
-
-        if (isReg) {
-          form.setAttribute('data-auth-mode', 'login');
-          title.textContent = 'কাস্টমার লগইন';
-          document.getElementById('auth-name-group').classList.add('hidden');
-          document.getElementById('auth-mail-group').classList.add('hidden');
-          document.getElementById('auth-addr-group').classList.add('hidden');
-          form.querySelector('button[type="submit"]').textContent = 'লগইন করুন →';
-        } else {
-          form.setAttribute('data-auth-mode', 'register');
-          title.textContent = 'নতুন অ্যাকাউন্ট নিবন্ধন';
-          document.getElementById('auth-name-group').classList.remove('hidden');
-          document.getElementById('auth-mail-group').classList.remove('hidden');
-          document.getElementById('auth-addr-group').classList.remove('hidden');
-          form.querySelector('button[type="submit"]').textContent = 'নিবন্ধন সম্পন্ন করুন →';
-        }
-      };
     </script>
+  `;
+}
+
+function renderAuthView(view = 'login') {
+  const isRegister = view === 'register';
+
+  return `
+    <div class="max-w-md mx-auto py-12 px-4 space-y-6">
+      
+      <div class="text-center space-y-2">
+        <div class="w-14 h-14 rounded-2xl bg-white border border-slate-200 p-1.5 shadow-sm mx-auto flex items-center justify-center overflow-hidden">
+          <img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-full h-full object-contain" onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" />
+        </div>
+        <h2 class="text-2xl font-black text-slate-900 dark:text-white">
+          ${isRegister ? 'কাস্টমার নতুন অ্যাকাউন্ট তৈরি' : 'কাস্টমার লগইন'}
+        </h2>
+        <p class="text-xs text-slate-500">
+          ${isRegister ? 'অর্ডার ট্র্যাক ও দ্রুত শপিং করতে নিবন্ধন করুন' : 'আপনার মোবাইল নম্বর ও পাসওয়ার্ড দিয়ে প্রবেশ করুন'}
+        </p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-4 text-xs">
+        
+        <form id="customer-auth-form" class="space-y-3.5" data-auth-mode="${isRegister ? 'register' : 'login'}">
+          ${isRegister ? `
+            <div>
+              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পূর্ণ নাম *</label>
+              <input type="text" id="auth-name" required placeholder="মোঃ তানভীর হাসান" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" />
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">ইমেইল ঠিকানা</label>
+              <input type="email" id="auth-mail" placeholder="user@gmail.com" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" />
+            </div>
+
+            <div>
+              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">ডেলিভারি ঠিকানা *</label>
+              <textarea id="auth-addr" required rows="2" placeholder="বাসা নং, রোড, থানা, জেলা..." class="form-control text-xs w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800"></textarea>
+            </div>
+          ` : ""}
+
+          <div>
+            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">মোবাইল নম্বর *</label>
+            <input type="tel" id="auth-phone" required pattern="[0-9]{11}" placeholder="01700000000" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 font-mono" />
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পাসওয়ার্ড *</label>
+            <input type="password" id="auth-pass" required placeholder="••••••••" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" />
+          </div>
+
+          <button type="submit" class="btn-primary w-full py-3 text-xs font-bold shadow-md rounded-xl">
+            ${isRegister ? 'নিবন্ধন সম্পন্ন করুন →' : 'লগইন করুন →'}
+          </button>
+        </form>
+
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800 text-center space-y-2">
+          ${isRegister ? `
+            <p class="text-slate-500">ইতিমধ্যে অ্যাকাউন্ট আছে? <a href="/customer/login" class="text-emerald-600 font-bold hover:underline">এখানে লগইন করুন</a></p>
+          ` : `
+            <p class="text-slate-500">অ্যাকাউন্ট নেই? <a href="/customer/register" class="text-emerald-600 font-bold hover:underline">নতুন অ্যাকাউন্ট খুলুন</a></p>
+          `}
+          
+          <div class="pt-2 flex items-center justify-center gap-2">
+            <a href="/customer/dashboard" class="btn-secondary py-1.5 px-3.5 text-xs font-bold rounded-lg">
+              গেস্ট ড্যাশবোর্ড দেখুন →
+            </a>
+            <a href="/products" class="btn-primary py-1.5 px-3.5 text-xs font-bold rounded-lg">
+              🛍️ শপ ভিজিট করুন
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
   `;
 }
 
