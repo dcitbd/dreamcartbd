@@ -18,7 +18,7 @@
 - **হটলাইন ২ (Call):** `01818273838` (tel:01818273838)
 - **অফিসিয়াল ইমেইল:** `jainal.dcitbd@gmail.com`
 - **অফিস সময়:** প্রতিদিন সকাল ৮:০০ টা থেকে রাত ১০:০০ টা
-- **ডেভেলপার:** **জৈনাল আবেদীন (Jainal Abedin)**  
+- **ডেভেলপার:** **জয়নাল আবেদীন (Jainal Abedin)**  
   - CEO, **Dream Career IT BD**  
   - পোর্টফোলিও: [https://dcitbd.github.io/Jainal-Abedin/](https://dcitbd.github.io/Jainal-Abedin/)  
   - কোম্পানি ওয়েবসাইট: [https://dcitbd.github.io/dcitbd/](https://dcitbd.github.io/dcitbd/)
