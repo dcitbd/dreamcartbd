@@ -68,784 +68,351 @@ export function measureWebsiteSpeed() {
 if (typeof window !== 'undefined') {
   window.copyToClipboard = function(text, label) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => {
-        toast.show({
-          type: "success",
-          title: "কপি সম্পন্ন!",
-          message: `${label || text} সফলভাবে ক্লিপবোর্ডে কপি করা হয়েছে।`,
-          duration: 3000
-        });
-      }).catch(() => fallbackCopy(text, label));
-    } else {
-      fallbackCopy(text, label);
-    }
-  };
-
-  function fallbackCopy(text, label) {
-    const input = document.createElement('input');
-    input.value = text;
-    document.body.appendChild(input);
-    input.select();
-    try {
-      document.execCommand('copy');
-      toast.show({
-        type: "success",
-        title: "কপি সম্পন্ন!",
-        message: `${label || text} কপি করা হয়েছে।`,
-        duration: 3000
+      navigator.clipboard.writeText(text).then(function() {
+        if (typeof toast !== 'undefined' && toast.success) {
+          toast.success(`${label} কপি করা হয়েছে!`);
+        } else {
+          alert(`${label} কপি করা হয়েছে: ${text}`);
+        }
+      }).catch(function() {
+        alert(`${label}: ${text}`);
       });
-    } catch (e) {
-      prompt("কপি করতে টেক্সট সিলেক্ট করুন:", text);
-    }
-    document.body.removeChild(input);
-  }
-
-  // Quick add-to-cart from chat product card
-  window.quickAddToCartFromChat = async function(productId) {
-    try {
-      const allProds = (apiClient.products && apiClient.products.length > 0)
-        ? apiClient.products
-        : (apiClient.sheetProducts || INITIAL_PRODUCTS || []);
-
-      let prod = allProds.find(p => p && (p.product_id === productId || p.sku === productId || p.slug === productId));
-      if (!prod) {
-        const res = await apiClient.request("products/details", { id: productId });
-        if (res && res.data) prod = res.data;
-      }
-
-      if (prod) {
-        if (!prod.product_id) prod.product_id = prod.sku || productId;
-        cartStore.addItem(prod, 1);
-        toast.show({
-          type: "success",
-          title: "কার্টে যোগ হয়েছে!",
-          message: `${prod.name} কার্টে যুক্ত করা হয়েছে।`,
-          duration: 3500
-        });
-      } else {
-        toast.show({
-          type: "error",
-          title: "পণ্য পাওয়া যায়নি",
-          message: "পণ্যটি কার্টে যোগ করা সম্ভব হয়নি।",
-          duration: 3000
-        });
-      }
-    } catch (err) {
-      console.error(err);
+    } else {
+      alert(`${label}: ${text}`);
     }
   };
 
-  // Chat message sending and AI evaluation
-  window.sendChatMessage = async function(text) {
-    const input = document.getElementById('chat-input');
-    const msg = (text || (input ? input.value : '')).trim();
-    if (!msg) return;
-
-    if (input) input.value = '';
-
-    const container = document.getElementById('chat-messages-container');
-    if (!container) return;
-
-    // Append user message
-    const userTime = new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
-    const userMsgHtml = `
-      <div class="flex justify-end items-end gap-2 max-w-[85%] ml-auto animate-fadeIn">
-        <div class="space-y-1 text-right">
-          <div class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-3.5 rounded-2xl rounded-tr-none shadow-sm text-xs leading-relaxed font-medium">
-            ${escapeHtml(msg)}
-          </div>
-          <span class="text-[10px] text-slate-400 block">${userTime}</span>
-        </div>
-        <div class="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center flex-shrink-0">
-          👤
-        </div>
-      </div>
-    `;
-    container.insertAdjacentHTML('beforeend', userMsgHtml);
-    container.scrollTop = container.scrollHeight;
-
-    // Show AI Typing Indicator
-    const typingId = 'chat-typing-' + Date.now();
-    const typingHtml = `
-      <div id="${typingId}" class="flex items-start gap-2.5 max-w-[85%] animate-fadeIn">
-        <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-bold text-sm shadow-xs flex-shrink-0">
-          🤖
-        </div>
-        <div class="bg-slate-100 dark:bg-slate-800 p-3.5 rounded-2xl rounded-tl-none border border-slate-200/60 dark:border-slate-700/60 text-slate-800 dark:text-slate-200 text-xs flex items-center gap-1.5">
-          <span class="chat-typing-dot"></span>
-          <span class="chat-typing-dot"></span>
-          <span class="chat-typing-dot"></span>
-          <span class="text-[11px] text-slate-400 ml-1.5 font-medium">এআই উত্তর লিখছে...</span>
-        </div>
-      </div>
-    `;
-    container.insertAdjacentHTML('beforeend', typingHtml);
-    container.scrollTop = container.scrollHeight;
-
-    // Simulate realistic processing time
-    setTimeout(async () => {
-      const typingEl = document.getElementById(typingId);
-      if (typingEl) typingEl.remove();
-
-      const allProds = (apiClient.products && apiClient.products.length > 0)
-        ? apiClient.products
-        : (apiClient.sheetProducts || INITIAL_PRODUCTS || []);
-
-      const categories = apiClient.sheetCategories || [];
-      const brands = apiClient.sheetBrands || [];
-
-      const aiResponse = generateAiResponse(msg, allProds, categories, brands, cachedLatency);
-
-      const aiTime = new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
-      const aiMsgHtml = `
-        <div class="flex items-start gap-2.5 max-w-[92%] sm:max-w-[85%] animate-fadeIn">
-          <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-bold text-sm shadow-xs flex-shrink-0 mt-0.5">
-            🤖
-          </div>
-          <div class="space-y-2 flex-1 min-w-0">
-            <div class="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none border border-slate-200/80 dark:border-slate-700/80 text-slate-800 dark:text-slate-200 text-xs leading-relaxed space-y-2.5 shadow-xs">
-              <div class="leading-relaxed font-normal">${aiResponse.text}</div>
-              ${aiResponse.productCardsHtml || ''}
-            </div>
-            <span class="text-[10px] text-slate-400 block">${aiTime} • Dream Cart AI</span>
-          </div>
-        </div>
-      `;
-      container.insertAdjacentHTML('beforeend', aiMsgHtml);
-      container.scrollTop = container.scrollHeight;
-
-      try {
-        sessionStorage.setItem('dcbd_chat_html', container.innerHTML);
-      } catch (e) {}
-
-    }, 450);
-  };
-
-  window.setChatPrompt = function(promptText) {
-    const input = document.getElementById('chat-input');
+  // Quick prompt handler for the AI Chatbot
+  window.triggerChatbotPrompt = function(promptText) {
+    const input = document.getElementById('ai-chat-input');
     if (input) {
       input.value = promptText;
-      window.sendChatMessage(promptText);
+      const sendBtn = document.getElementById('ai-chat-send-btn');
+      if (sendBtn) sendBtn.click();
     }
   };
 
-  window.clearChatHistory = function() {
-    const container = document.getElementById('chat-messages-container');
-    if (container) {
-      sessionStorage.removeItem('dcbd_chat_html');
-      container.innerHTML = `
-        <div class="flex items-start gap-2.5 max-w-[85%] animate-fadeIn">
-          <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-bold text-sm shadow-xs flex-shrink-0">
-            🤖
-          </div>
-          <div class="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none border border-slate-200/70 dark:border-slate-700/70 text-slate-800 dark:text-slate-200 text-xs leading-relaxed space-y-2">
-            <p class="font-bold text-emerald-700 dark:text-emerald-400">
-              আসসালামু আলাইকুম! ড্রিম কার্ট বিডি-র ইন্টেলিজেন্ট এআই সাপোর্ট হাবে স্বাগতম। ✨
-            </p>
-            <p>
-              আমি সম্পূর্ণ ওয়েবসাইটের লাইভ ক্যাটালগ পড়তে পারি। আমাদের যেকোনো পণ্য, দাম, অফার, ডেলিভারি চার্জ, শোরুমের ঠিকানা অথবা ওয়েবসাইটের রিয়েল-টাইম স্পিড সম্পর্কে প্রশ্ন করতে পারেন!
-            </p>
-          </div>
-        </div>
-      `;
-      toast.show({
-        type: "info",
-        title: "চ্যাট হিস্ট্রি রিসেট",
-        message: "নতুন চ্যাট শুরু করা হয়েছে।",
-        duration: 2500
-      });
+  // Add-to-cart helper from chat recommendation cards
+  window.addChatProductToCart = function(productId) {
+    const prods = window.__dreamCartProducts || INITIAL_PRODUCTS || [];
+    const item = prods.find(function(p) { return String(p.id) === String(productId); });
+    if (item && typeof cartStore !== 'undefined' && cartStore.addItem) {
+      cartStore.addItem(item, 1);
+      if (typeof toast !== 'undefined' && toast.success) {
+        toast.success(`"${item.name}" কার্টে যোগ করা হয়েছে!`);
+      }
     }
   };
 }
 
-/**
- * Intelligent AI Answer Generator
- */
-function generateAiResponse(query, products, categories, brands, latency) {
-  const q = String(query || '').toLowerCase().trim();
-
-  // 1. Website Speed / Performance inquiries ("ওয়েবসাইটের গতি বুঝতে পারবে")
-  if (
-    q.includes('গতি') || q.includes('স্পিড') || q.includes('speed') || 
-    q.includes('fast') || q.includes('slow') || q.includes('স্লো') || 
-    q.includes('ফাস্ট') || q.includes('লেটেন্সি') || q.includes('latency') ||
-    q.includes('ping') || q.includes('পিং') || q.includes('পারফরম্যান্স') || q.includes('performance')
-  ) {
-    const currentSpeed = latency || 28;
-    const rating = currentSpeed < 45 ? '⚡ আল্ট্রা-ফাস্ট (Ultra Fast)' : (currentSpeed < 100 ? '🚀 অত্যন্ত দ্রুত (Excellent)' : '🟢 স্বাভাবিক (Good)');
-    return {
-      text: `
-        <strong>📊 ড্রিম কার্ট বিডি লাইভ পারফরম্যান্স ও স্পিড রিপোর্ট:</strong><br/>
-        • <strong>বর্তমান রেসপন্স টাইম:</strong> <span class="font-mono text-emerald-600 dark:text-emerald-400 font-black text-sm">${currentSpeed}ms</span> (${rating})<br/>
-        • <strong>গুগল শিট গেটওয়ে সিঙ্ক:</strong> সক্রিয় ও লাইভ কানেক্টেড<br/>
-        • <strong>সিডিএন ও ক্যাশিং:</strong> ক্লাউড অপ্টিমাইজড ও জিরো হ্যাশ (#) ক্লিন পাথ আর্কিটেকচার<br/>
-        • <strong>লোডিং স্পিড:</strong> গড় পেজ লোডিং টাইম ০.৩ সেকেন্ডের নিচে!<br/><br/>
-        আমাদের ওয়েবসাইটটি অত্যন্ত হালকা এবং দ্রুতগতির, তাই আপনি যেকোনো ইন্টারনেট সংযোগে অনায়াসে ব্রাউজ এবং অর্ডার করতে পারেন।
-      `
-    };
-  }
-
-  // 2. Greetings and Small Talk
-  if (
-    q === 'হাই' || q === 'হ্যালো' || q === 'hello' || q === 'hi' || 
-    q.includes('আসসালামু') || q.includes('salam') || q.includes('সালাম') || 
-    q.includes('কেমন আছেন') || q.includes('kemon achen')
-  ) {
-    return {
-      text: `
-        ওয়ালাইকুম আসসালাম! ড্রিম কার্ট বিডি-তে আপনাকে স্বাগতম। 😊<br/>
-        আমি আপনার কেনাকাটা সহজ করতে সাহায্য করছি। আপনি কী ধরনের পণ্য খুঁজছেন? যেমন:<br/>
-        • <strong>স্মার্টওয়াচ</strong> (Amazfit, Kieslect ইত্যাদি)<br/>
-        • <strong>অর্গানিক সুন্দরবন মধু ও ফুড সাপ্লিমেন্ট</strong><br/>
-        • <strong>ট্যাকটিক্যাল রিচার্জেবল টর্চ লাইট</strong><br/>
-        • <strong>কিচেন সেফটি গ্যাস রেগুলেটর</strong><br/><br/>
-        পণ্য দেখতে বা দাম জানতে সরাসরি নিচে লিখতে পারেন।
-      `
-    };
-  }
-
-  // 3. Location, Showroom, Office, Outlet address
-  if (
-    q.includes('শোরুম') || q.includes('ঠিকানা') || q.includes('অফিস') || 
-    q.includes('address') || q.includes('location') || q.includes('লোকেশন') || 
-    q.includes('দোকান') || q.includes('কুমিল্লা') || q.includes('কোথায়')
-  ) {
-    return {
-      text: `
-        <strong>🏢 ড্রিম কার্ট বিডি হেড অফিস ও আউটলেট:</strong><br/>
-        📍 <strong>ঠিকানা:</strong> চৌধুরী প্লাজা, নিচতলা, রুম #০৩, পদুয়ার বাজার বিশ্বরোড, সদর দক্ষিণ, কুমিল্লা-৩৫০০।<br/>
-        ⏰ <strong>খোলা থাকার সময়সূচি:</strong> প্রতিদিন সকাল ৮:০০ টা থেকে রাত ১০:০০ টা পর্যন্ত।<br/>
-        🗺️ পাশের ম্যাপে সরাসরি লোকেশন দেখে নিতে পারেন অথবা <a href="https://maps.google.com/?q=Chowdhury+Plaza,+Paduar+Bazar+Bishwa+Road,+Cumilla" target="_blank" class="text-emerald-600 dark:text-emerald-400 font-bold underline">গুগল ম্যাপে ডিরেকশন দেখুন →</a>
-      `
-    };
-  }
-
-  // 4. Contact numbers, Phone, Hotline
-  if (
-    q.includes('নাম্বার') || q.includes('ফোন') || q.includes('হটলাইন') || 
-    q.includes('phone') || q.includes('mobile') || q.includes('call') || q.includes('মোবাইল')
-  ) {
-    return {
-      text: `
-        <strong>📞 আমাদের অফিশিয়াল হটলাইন নম্বরসমূহ:</strong><br/>
-        • <strong>হটলাইন ১:</strong> <a href="tel:01581703822" class="font-mono font-bold text-emerald-600 hover:underline">01581703822</a> (কল ও WhatsApp)<br/>
-        • <strong>হটলাইন ২:</strong> <a href="tel:01818273838" class="font-mono font-bold text-emerald-600 hover:underline">01818273838</a> (অর্ডার ও কাস্টমার কেয়ার)<br/>
-        • <strong>ইমেইল:</strong> <a href="mailto:jainal.dcitbd@gmail.com" class="text-emerald-600 hover:underline">jainal.dcitbd@gmail.com</a><br/><br/>
-        সরাসরি কথা বলতে নম্বরে ট্যাপ করুন অথবা হোয়াটসঅ্যাপে নক দিন!
-      `
-    };
-  }
-
-  // 5. WhatsApp
-  if (q.includes('whatsapp') || q.includes('হোয়াটসঅ্যাপ') || q.includes('হোয়াটসএফ') || q.includes('হোয়াটস')) {
-    return {
-      text: `
-        <strong>💬 সরাসরি WhatsApp সাপোর্ট:</strong><br/>
-        আমাদের সাথে তাৎক্ষণিক চ্যাট করতে নিচের লিংকে ক্লিক করুন:<br/>
-        • <a href="https://wa.me/8801581703822" target="_blank" class="text-emerald-600 font-bold hover:underline">👉 01581703822 এ হোয়াটসঅ্যাপ চ্যাট শুরু করুন</a><br/>
-        • <a href="https://wa.me/8801818273838" target="_blank" class="text-emerald-600 font-bold hover:underline">👉 01818273838 এ হোয়াটসঅ্যাপ চ্যাট শুরু করুন</a>
-      `
-    };
-  }
-
-  // 6. Delivery Charges & Shipping Policy
-  if (
-    q.includes('ডেলিভারি') || q.includes('delivery') || q.includes('শিপিং') || 
-    q.includes('চার্জ') || q.includes('কত টাকা খরচ') || q.includes('ফ্রি ডেলিভারি')
-  ) {
-    return {
-      text: `
-        <strong>🚚 ড্রিম কার্ট বিডি ডেলিভারি চার্জ ও নিয়ম:</strong><br/>
-        • <strong>ঢাকা সিটির ভেতরে:</strong> মাত্র ৭০ টাকা (২৪-৪৮ ঘণ্টার মধ্যে হোম ডেলিভারি)<br/>
-        • <strong>ঢাকা সিটির বাইরে (সারা বাংলাদেশ):</strong> ১৩০ টাকা (৪৮-৭২ ঘণ্টার মধ্যে)<br/>
-        • <strong>🎉 বিশেষ অফার:</strong> মোট অর্ডার মূল্য <strong>৳২,০০০</strong> বা তার বেশি হলে সারা দেশে ডেলিভারি চার্জ <strong>সম্পূর্ণ ফ্রি!</strong><br/>
-        • <strong>কুরিয়ার পার্টনার:</strong> Steadfast / Pathao Express এর মাধ্যমে দ্রুততম সময়ে পার্সেল পৌঁছে দেওয়া হয়।
-      `
-    };
-  }
-
-  // 7. Payment methods, bKash, COD
-  if (
-    q.includes('পেমেন্ট') || q.includes('বিকাশ') || q.includes('payment') || 
-    q.includes('bkash') || q.includes('ক্যাশ অন') || q.includes('cod') || q.includes('টাকা')
-  ) {
-    return {
-      text: `
-        <strong>💳 পেমেন্ট পদ্ধতি ও বিশেষ ছাড়:</strong><br/>
-        • <strong>ক্যাশ অন ডেলিভারি (COD):</strong> পণ্য হাতে পেয়ে চেক করে সম্পূর্ণ মূল্য পরিশোধের সুবিধা।<br/>
-        • <strong>অনলাইন পেমেন্ট ডিসকাউন্ট:</strong> বিকাশ/নগদে অগ্রিম পেমেন্টে অতিরিক্ত <strong>৫% ক্যাশব্যাক/ডিসকাউন্ট</strong>!<br/>
-        • <strong>বিকাশ মার্চেন্ট:</strong> <span class="font-mono font-bold text-emerald-600">01581703822</span> (পেমেন্ট গেটওয়ে)<br/>
-        • <strong>বিকাশ পার্সোনাল:</strong> <span class="font-mono font-bold text-emerald-600">01879653143</span> (সেন্ড মানি)
-      `
-    };
-  }
-
-  // 8. Order Tracking
-  if (
-    q.includes('ট্র্যাক') || q.includes('track') || q.includes('পার্সেল') || 
-    q.includes('কোথায় আছে') || q.includes('status') || q.includes('স্ট্যাটাস')
-  ) {
-    return {
-      text: `
-        <strong>📦 অর্ডার ট্র্যাকিং সেবা:</strong><br/>
-        আপনার অর্ডারকৃত পার্সেলের লাইভ লোকেশন জানতে আমাদের ট্র্যাকিং পেজে যান:<br/>
-        👉 <a href="/track" class="btn-primary inline-flex text-xs py-1.5 px-3.5 mt-1.5 font-bold shadow-xs">অর্ডার ট্র্যাকিং পেজে যান →</a><br/><br/>
-        সেখানে আপনার <strong>অর্ডার আইডি (যেমন: ORD-XXXXXX)</strong> অথবা <strong>মোবাইল নম্বর</strong> লিখলেই রিয়েল-টাইম কুরিয়ার স্ট্যাটাস দেখতে পাবেন!
-      `
-    };
-  }
-
-  // 9. Reseller & Wholesale Program
-  if (
-    q.includes('রিসেলার') || q.includes('reseller') || q.includes('পাইকারি') || 
-    q.includes('wholesale') || q.includes('ব্যবসা') || q.includes('ডিলার')
-  ) {
-    return {
-      text: `
-        <strong>💼 ড্রিম কার্ট বিডি পার্টনার ও পাইকারি প্রোগ্রাম:</strong><br/>
-        • <strong>রিসেলার প্রোগ্রাম:</strong> বিনা পুঁজিতে ঘরে বসে রিসেলিং করে প্রতিটি অর্ডারে ১০% পর্যন্ত নিশ্চিত কমিশন উপভোগ করুন! <a href="/reseller" class="text-emerald-600 font-bold hover:underline">রিসেলার পোর্টাল →</a><br/>
-        • <strong>হোলসেলার / পাইকারি:</strong> আকর্ষণীয় পাইকারি রেটে বেশি পরিমাণে পণ্য কিনতে যুক্ত হন: <a href="/wholesaler" class="text-emerald-600 font-bold hover:underline">হোলসেলার পোর্টাল →</a>
-      `
-    };
-  }
-
-  // 10. Warranty & Replacement Policy
-  if (
-    q.includes('ওয়ারেন্টি') || q.includes('warranty') || q.includes('রিটার্ন') || 
-    q.includes('গারান্টি') || q.includes('নষ্ট') || q.includes('সমস্যা')
-  ) {
-    return {
-      text: `
-        <strong>🛡️ ১০০% জেনুইন পণ্য ও ওয়ারেন্টি পলিসি:</strong><br/>
-        • <strong>অফিসিয়াল ওয়ারেন্টি:</strong> আমাদের ব্র্যান্ডেড স্মার্টওয়াচে রয়েছে <strong>১ বছরের অফিসিয়াল ব্র্যান্ড ওয়ারেন্টি</strong>।<br/>
-        • <strong>রিপ্লেসমেন্ট গ্যারান্টি:</strong> ডেলিভারির সময় কোনো ম্যানুফ্যাকচারিং ত্রুটি বা সমস্যা পেলে <strong>৭ দিনের মধ্যে সহজ ফ্রি রিপ্লেসমেন্ট</strong> সুবিধা।<br/>
-        • <strong>চেক করে নেওয়ার সুযোগ:</strong> ডেলিভারিম্যানের সামনে পার্সেল খুলে সঠিক পণ্য যাচাই করতে পারবেন।
-      `
-    };
-  }
-
-  // 11. Product Specific Search or Catalog Inquiries
-  let matchedProds = [];
-
-  matchedProds = (products || []).filter(p => {
-    if (!p) return false;
-    const name = String(p.name || p.p_name || '').toLowerCase();
-    const cat = String(p.category || '').toLowerCase();
-    const subCat = String(p.sub_category || '').toLowerCase();
-    const brand = String(p.brand || '').toLowerCase();
-    const desc = String(p.description || '').toLowerCase();
-    const sku = String(p.sku || p.product_id || '').toLowerCase();
-
-    if (q.includes('স্মার্টওয়াচ') || q.includes('ঘড়ি') || q.includes('watch')) {
-      return cat.includes('watch') || name.includes('watch') || name.includes('স্মার্ট');
-    }
-    if (q.includes('মধু') || q.includes('honey') || q.includes('অর্গানিক') || q.includes('organic')) {
-      return cat.includes('organic') || name.includes('honey') || name.includes('মধু');
-    }
-    if (q.includes('টর্চ') || q.includes('লাইট') || q.includes('torch') || q.includes('light')) {
-      return cat.includes('light') || name.includes('torch') || name.includes('light');
-    }
-    if (q.includes('গ্যাস') || q.includes('রেগুলেটর') || q.includes('gas') || q.includes('kitchen')) {
-      return cat.includes('gas') || cat.includes('kitchen') || name.includes('gas') || name.includes('regulator');
-    }
-    if (q.includes('amazfit') || q.includes('অ্যামাজফিট')) {
-      return brand.includes('amazfit') || name.includes('amazfit');
-    }
-    if (q.includes('kieslect') || q.includes('কিসলেক্ট')) {
-      return brand.includes('kieslect') || name.includes('kieslect');
-    }
-
-    const words = q.split(/\s+/).filter(w => w.length > 2);
-    if (words.length > 0) {
-      return words.some(w => name.includes(w) || cat.includes(w) || brand.includes(w) || sku.includes(w) || desc.includes(w));
-    }
-
-    return false;
-  });
-
-  if (matchedProds.length === 0 && (q.includes('পণ্য') || q.includes('দাম') || q.includes('অফার') || q.includes('সব') || q.includes('list') || q.includes('product') || q.includes('সেরা'))) {
-    matchedProds = (products || []).slice(0, 4);
-  }
-
-  if (matchedProds.length > 0) {
-    const displayList = matchedProds.slice(0, 3);
-    const cardsHtml = `
-      <div class="mt-2.5 space-y-2">
-        <div class="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-          🔍 সম্পর্কিত পণ্যসমূহ (${displayList.length} টি পাওয়া গেছে):
-        </div>
-        <div class="grid grid-cols-1 gap-2">
-          ${displayList.map(p => {
-            const img = p.thumbnail || (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200';
-            const price = Number(p.selling_price) || 0;
-            const orig = Number(p.original_price) || (price * 1.15);
-            const inStock = (p.stock === undefined || Number(p.stock) > 0);
-            const slug = p.slug || p.sku || p.product_id;
-
-            return `
-              <div class="chat-product-card bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-2.5 flex items-center gap-3 shadow-xs">
-                <img src="${img}" alt="${escapeHtml(p.name)}" class="w-14 h-14 rounded-xl object-cover border border-slate-100 dark:border-slate-800 flex-shrink-0 bg-slate-50" />
-                <div class="flex-1 min-w-0">
-                  <div class="text-[11px] font-bold text-slate-900 dark:text-white truncate" title="${escapeHtml(p.name)}">
-                    ${escapeHtml(p.name)}
-                  </div>
-                  <div class="flex items-center gap-2 mt-0.5">
-                    <span class="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono">${formatCurrency(price)}</span>${orig > price ? `<span class="text-[10px] text-slate-400 line-through font-mono">${formatCurrency(orig)}</span>` : ''}
-                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold ${inStock ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-50 text-rose-700'}">
-                      ${inStock ? 'ইন স্টক' : 'স্টক শেষ'}
-                    </span>
-                  </div>
-                  <div class="flex items-center gap-2 mt-2">
-                    <a href="/product/${encodeURIComponent(slug)}" class="text-[10px] font-bold text-slate-700 dark:text-slate-300 hover:text-emerald-600 underline flex items-center gap-0.5">
-                      বিস্তারিত দেখুন →
-                    </a>
-                    <button 
-                      type="button" 
-                      class="btn-primary text-[10px] py-1 px-2.5 rounded-lg font-bold shadow-xs cursor-pointer ml-auto"
-                      onclick="window.quickAddToCartFromChat('${p.product_id || p.sku}')"
-                    >
-                      🛒 কার্টে যোগ করুন
-                    </button>
-                  </div>
-                </div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-        <div class="pt-1 text-center">
-          <a href="/products" class="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold hover:underline inline-flex items-center gap-1">
-            <span>সকল পণ্য ব্রাউজ করুন</span> →
-          </a>
-        </div>
-      </div>
-    `;
-
-    return {
-      text: `আপনার খোঁজের সাথে মানানসই পণ্যের তথ্য নিচে দেওয়া হলো। সরাসরি দাম, স্টক এবং লিংকে ক্লিক করে অর্ডার করতে পারেন:`,
-      productCardsHtml: cardsHtml
-    };
-  }
-
-  // 12. Intelligent Fallback
-  return {
-    text: `
-      ধন্যবাদ আপনার বার্তার জন্য! 😊<br/>
-      আপনি যে তথ্যটি খুঁজছেন, তা বিস্তারিতভাবে জানতে বা সরাসরি কথা বলতে পারেন আমাদের হটলাইনে:<br/>
-      • 📞 কল করুন: <a href="tel:01581703822" class="font-bold text-emerald-600">01581703822</a> অথবা <a href="tel:01818273838" class="font-bold text-emerald-600">01818273838</a><br/>
-      • 💬 WhatsApp এ মেসেজ দিতে: <a href="https://wa.me/8801581703822" target="_blank" class="font-bold text-emerald-600 underline">এখানে ক্লিক করুন</a><br/>
-      • 🛍️ আমাদের সকল পণ্যের তালিকা দেখতে: <a href="/products" class="font-bold text-emerald-600 underline">শপ পেজ দেখুন →</a><br/><br/>
-      অথবা নিচের যেকোনো একটি সাজেস্টেড প্রশ্নে ক্লিক করতে পারেন!
-    `
-  };
-}
-
-/**
- * Main Render Function for /chat & /contact Page
- */
 export async function renderLiveChatPage() {
-  measureWebsiteSpeed();
-  apiClient.loadProductsFromSheet().catch(() => {});
+  // Fetch real-time products list to equip the AI chatbot with 100% full site knowledge
+  let products = [];
+  try {
+    const prodRes = await apiClient.request("products/list");
+    products = (prodRes && prodRes.data && prodRes.data.items) || [];
+  } catch (err) {
+    products = INITIAL_PRODUCTS || [];
+  }
 
-  const currentLatency = cachedLatency;
+  if (typeof window !== 'undefined') {
+    window.__dreamCartProducts = products;
+  }
+
+  // Pre-calculate real-time latency ping
+  const liveSpeed = measureWebsiteSpeed();
+
+  // Setup DOM listener after DOM insertion
+  setTimeout(function() {
+    setupAiChatEngine(products);
+  }, 100);
 
   return `
-    <div class="space-y-8 pb-20 max-w-7xl mx-auto">
+    <div class="space-y-8 pb-24 max-w-6xl mx-auto">
       
-      <!-- Top Hero Header with Breadcrumbs & Real-time Live Speed Badge -->
-      <div class="border-b border-slate-200/80 dark:border-slate-800 pb-5">
+      <!-- Top Page Header -->
+      <div class="border-b border-slate-200/80 dark:border-slate-800 pb-4 text-center sm:text-left">
+        <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-1 justify-center sm:justify-start">
+          <a href="/" class="hover:text-emerald-600 transition">হোম</a>
+          <span>/</span>
+          <span class="text-slate-700 dark:text-slate-300 font-bold">যোগাযোগ ও লাইভ চ্যাট</span>
+        </div>
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
-              <a href="/" class="hover:text-emerald-600 transition">হোম</a>
-              <span>/</span>
-              <span class="text-slate-700 dark:text-slate-300 font-bold">কন্টাক্ট ও এআই সাপোর্ট</span>
-            </div>
-            <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <span>📍</span> কন্টাক্ট ও ইন্টেলিজেন্ট এআই সাপোর্ট হাব
+            <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center justify-center sm:justify-start gap-2">
+              <span>💬</span> যোগাযোগ ও AI কাস্টমার অ্যাসিস্ট্যান্ট
             </h1>
             <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-              শোরুম ম্যাপ, অফিশিয়াল হটলাইন, হোয়াটসঅ্যাপ চ্যানেল ও সার্বক্ষণিক ইন্টেলিজেন্ট এআই চ্যাটবোর্ড
+              আমাদের অফিসিয়াল শোরুম ম্যাপ, যোগাযোগের নম্বর, হোয়াটসঅ্যাপ এবং স্বয়ংক্রিয় এআই সাপোর্ট
             </p>
           </div>
 
-          <!-- Live Website Performance Monitor Badge -->
-          <div class="inline-flex items-center gap-2.5 bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/60 rounded-2xl px-3.5 py-2 shadow-xs self-start sm:self-center">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 speed-dot-pulse"></span>
-            <div class="text-left text-[11px] leading-tight">
-              <div class="text-slate-400 dark:text-slate-400 font-medium">ওয়েবসাইট গতি ও লেটেন্সি:</div>
-              <div class="font-bold text-slate-900 dark:text-white">
-                <span id="live-speed-stat" class="font-mono text-emerald-600 dark:text-emerald-400 font-black">${currentLatency}ms</span>
-                <span class="text-[10px] text-emerald-600 font-medium ml-1">● সুপার ফাস্ট</span>
+          <!-- Real-Time Website Speed Badge -->
+          <div class="inline-flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-3.5 py-2 shadow-xs self-center sm:self-auto">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            </span>
+            <div class="text-left">
+              <div class="text-[9px] text-slate-400 font-medium">ওয়েবসাইট স্পিড (সার্ভার ল্যাটেন্সি)</div>
+              <div class="text-xs font-mono font-black text-emerald-600 dark:text-emerald-400" id="live-speed-stat">
+                ${liveSpeed}ms (সুপার ফাস্ট)
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Section 1: Animated 6-Card Interactive Channels Grid (কার্ড এনিমেশন) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5">
-        
-        <!-- Card 1: Showroom & Office -->
-        <div class="card-animated card-stagger-1 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between">
-          <div class="space-y-3">
-            <div class="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-lg flex-shrink-0">
-              🏢
-            </div>
-            <div>
-              <h3 class="text-sm font-bold text-slate-900 dark:text-white">শোরুম ও প্রধান কার্যালয়</h3>
-              <p class="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
-                চৌধুরী প্লাজা, নিচতলা, রুম #০৩, পদুয়ার বাজার বিশ্বরোড, সদর দক্ষিণ, কুমিল্লা-৩৫০০।
-              </p>
-              <div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1.5 flex items-center gap-1">
-                <span>⏰</span> প্রতিদিন সকাল ৮:০০ - রাত ১০:০০
-              </div>
-            </div>
-          </div>
-          <div class="pt-4 mt-3 border-t border-slate-100 dark:border-slate-800">
-            <a 
-              href="https://maps.google.com/?q=Chowdhury+Plaza,+Paduar+Bazar+Bishwa+Road,+Cumilla" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              class="btn-secondary w-full py-2 px-3 text-xs font-bold text-center flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:text-emerald-600"
-            >
-              <span>🗺️</span> গুগল ম্যাপে ডিরেকশন দেখুন
-            </a>
-          </div>
-        </div>
-
-        <!-- Card 2: Hotlines & Call Support -->
-        <div class="card-animated card-stagger-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between">
-          <div class="space-y-3">
-            <div class="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-lg flex-shrink-0">
-              📞
-            </div>
-            <div>
-              <h3 class="text-sm font-bold text-slate-900 dark:text-white">অফিশিয়াল হটলাইন নম্বর</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">সরাসরি কল করতে বা কপি করতে ট্যাপ করুন</p>
-              <div class="mt-2.5 space-y-1.5 text-xs">
-                <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/50">
-                  <a href="tel:01581703822" class="font-mono font-black text-emerald-600 dark:text-emerald-400 hover:underline">01581703822</a>
-                  <button type="button" class="text-[10px] text-slate-500 hover:text-emerald-600 font-bold cursor-pointer" onclick="window.copyToClipboard('01581703822', 'হটলাইন ১')">📋 কপি</button>
-                </div>
-                <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/50">
-                  <a href="tel:01818273838" class="font-mono font-black text-emerald-600 dark:text-emerald-400 hover:underline">01818273838</a>
-                  <button type="button" class="text-[10px] text-slate-500 hover:text-emerald-600 font-bold cursor-pointer" onclick="window.copyToClipboard('01818273838', 'হটলাইন ২')">📋 কপি</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="pt-4 mt-3 border-t border-slate-100 dark:border-slate-800">
-            <a href="tel:01581703822" class="btn-primary w-full py-2 px-3 text-xs font-bold text-center flex items-center justify-center gap-1.5 rounded-xl shadow-xs">
-              <span>📞</span> সরাসরি কল করুন (Call Now)
-            </a>
-          </div>
-        </div>
-
-        <!-- Card 3: WhatsApp Support -->
-        <div class="card-animated card-stagger-3 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between">
-          <div class="space-y-3">
-            <div class="w-10 h-10 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-lg flex-shrink-0">
-              💬
-            </div>
-            <div>
-              <h3 class="text-sm font-bold text-slate-900 dark:text-white">তাত্ক্ষণিক WhatsApp সাপোর্ট</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">১ ক্লিকে সরাসরি হোয়াটসঅ্যাপে চ্যাট শুরু করুন</p>
-              <div class="mt-2.5 space-y-2">
-                <a 
-                  href="https://wa.me/8801581703822?text=Hello%20Dream%20Cart%20BD,%20I%20have%20an%20inquiry." 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  class="btn-primary w-full py-2 px-3 text-xs font-bold text-center flex items-center justify-center gap-1.5 rounded-xl shadow-xs"
-                >
-                  <span>💬</span> WhatsApp 1 (01581703822)
-                </a>
-                <a 
-                  href="https://wa.me/8801818273838?text=Hello%20Dream%20Cart%20BD,%20I%20have%20an%20inquiry." 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  class="btn-secondary w-full py-2 px-3 text-xs font-bold text-center flex items-center justify-center gap-1.5 rounded-xl bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-slate-800 dark:text-emerald-300 dark:border-emerald-900"
-                >
-                  <span>💬</span> WhatsApp 2 (01818273838)
-                </a>
-              </div>
-            </div>
-          </div>
-          <div class="pt-2 text-center text-[10px] text-slate-400">
-            গড় রেসপন্স টাইম: ৩ মিনিটের নিচে
-          </div>
-        </div>
-
-        <!-- Card 4: Official Email -->
-        <div class="card-animated card-stagger-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between">
-          <div class="space-y-3">
-            <div class="w-10 h-10 rounded-2xl bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 flex items-center justify-center text-lg flex-shrink-0">
-              ✉️
-            </div>
-            <div>
-              <h3 class="text-sm font-bold text-slate-900 dark:text-white">অফিশিয়াল ইমেইল সাপোর্ট</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">অর্ডার ইনভয়েস ও ব্যবসায়িক অনুসন্ধানের জন্য</p>
-              <div class="mt-2.5 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-xs">
-                <a href="mailto:jainal.dcitbd@gmail.com" class="text-emerald-600 dark:text-emerald-400 font-semibold truncate hover:underline">
-                  jainal.dcitbd@gmail.com
-                </a>
-                <button type="button" class="text-[10px] text-slate-500 hover:text-emerald-600 font-bold flex-shrink-0 cursor-pointer" onclick="window.copyToClipboard('jainal.dcitbd@gmail.com', 'ইমেইল')">📋 কপি</button>
-              </div>
-            </div>
-          </div>
-          <div class="pt-4 mt-3 border-t border-slate-100 dark:border-slate-800">
-            <a href="mailto:jainal.dcitbd@gmail.com" class="btn-secondary w-full py-2 px-3 text-xs font-bold text-center flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:text-emerald-600">
-              <span>✉️</span> মেইল পাঠান (Send Mail)
-            </a>
-          </div>
-        </div>
-
-        <!-- Card 5: Payment & bKash Information -->
-        <div class="card-animated card-stagger-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between">
-          <div class="space-y-3">
-            <div class="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 flex items-center justify-center text-lg flex-shrink-0">
-              💳
-            </div>
-            <div>
-              <h3 class="text-sm font-bold text-slate-900 dark:text-white">পেমেন্ট ও বিকাশ সুবিধা</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">ক্যাশ অন ডেলিভারি ও অনলাইন পেমেন্টে ৫% ছাড়</p>
-              <div class="mt-2 space-y-1.5 text-xs">
-                <div class="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                  <span class="text-slate-500 text-[11px]">বিকাশ মার্চেন্ট:</span>
-                  <span class="font-mono font-bold text-emerald-600">01581703822</span>
-                </div>
-                <div class="flex items-center justify-between py-1 border-b border-slate-100 dark:border-slate-800">
-                  <span class="text-slate-500 text-[11px]">বিকাশ পার্সোনাল:</span>
-                  <span class="font-mono font-bold text-emerald-600">01879653143</span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="pt-4 mt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-bold text-emerald-600 text-center">
-            ✓ ক্যাশ অন ডেলিভারি (COD) সারা বাংলাদেশে প্রযোজ্য
-          </div>
-        </div>
-
-        <!-- Card 6: Delivery & Guarantee -->
-        <div class="card-animated card-stagger-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs flex flex-col justify-between">
-          <div class="space-y-3">
-            <div class="w-10 h-10 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-lg flex-shrink-0">
-              🚚
-            </div>
-            <div>
-              <h3 class="text-sm font-bold text-slate-900 dark:text-white">ডেলিভারি ও গ্যারান্টি</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">দ্রুততম হোম ডেলিভারি ও জেনুইন কোয়ালিটি</p>
-              <div class="mt-2 space-y-1 text-xs text-slate-600 dark:text-slate-400">
-                <div>• ঢাকা সিটিতে ৳৭০, ঢাকার বাইরে ৳১৩০</div>
-                <div class="font-bold text-emerald-600 dark:text-emerald-400">• ৳২,০০০+ অর্ডারে সম্পূর্ণ ফ্রি ডেলিভারি!</div>
-                <div>• ১ বছর অফিসিয়াল ব্র্যান্ড ওয়ারেন্টি</div>
-                <div>• ৭ দিনের সহজ রিপ্লেসমেন্ট গ্যারান্টি</div>
-              </div>
-            </div>
-          </div>
-          <div class="pt-4 mt-3 border-t border-slate-100 dark:border-slate-800">
-            <a href="/track" class="btn-secondary w-full py-2 px-3 text-xs font-bold text-center flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:text-emerald-600">
-              <span>📦</span> লাইভ অর্ডার ট্র্যাক করুন
-            </a>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Section 2: AI Chatbot (Left) + Interactive Map & Form (Right) -->
+      <!-- Main Layout: AI Chatboard (Left) + Contact Details & Map (Right) -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         
-        <!-- LEFT: Intelligent AI Chatbot Window (7 Columns) -->
-        <div class="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-md flex flex-col h-[640px] overflow-hidden">
+        <!-- ============================================== -->
+        <!-- LEFT: INTELLIGENT AI CHAT BOARD (lg:col-span-7) -->
+        <!-- ============================================== -->
+        <div class="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col h-[740px] overflow-hidden card-animated">
           
-          <!-- AI Chat Header -->
-          <div class="p-4 sm:p-4.5 bg-gradient-to-r from-slate-50 to-emerald-50/50 dark:from-slate-800 dark:to-slate-800/80 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="relative">
-                <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white font-black flex items-center justify-center text-lg shadow-sm">
-                  🤖
-                </div>
-                <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900 rounded-full speed-dot-pulse"></span>
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <h4 class="text-xs sm:text-sm font-black text-slate-900 dark:text-white">
-                    Dream Cart AI ডিজিটাল শপ অ্যাসিস্ট্যান্ট
-                  </h4>
-                  <span class="bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    Live
-                  </span>
-                </div>
-                <div class="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
-                  <span>সাইট ক্যাটালগ সিঙ্কড</span>
-                  <span>•</span>
-                  <span>গতি: <strong id="chat-speed-indicator" class="font-mono text-emerald-600 font-bold">${currentLatency}ms</strong></span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Action: Reset Chat -->
-            <button 
-              type="button" 
-              class="text-xs text-slate-400 hover:text-rose-600 transition p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer" 
-              title="চ্যাট হিস্ট্রি রিসেট করুন"
-              onclick="window.clearChatHistory()"
-            >
-              🗑️
-            </button>
-          </div>
-
-          <!-- Suggested Quick Topics Carousel (কুইক চ্যাট সাজেশন) -->
-          <div class="px-3.5 py-2.5 bg-slate-50/70 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex items-center gap-1.5 overflow-x-auto no-scrollbar text-[11px]">
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex-shrink-0">অনুসন্ধান:</span>
-            <button type="button" class="chat-chip bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 font-medium cursor-pointer" onclick="window.setChatPrompt('সেরা স্মার্টওয়াচগুলো দেখান')">🔥 সেরা স্মার্টওয়াচ</button>
-            <button type="button" class="chat-chip bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 font-medium cursor-pointer" onclick="window.setChatPrompt('ডেলিভারি চার্জ ও নিয়ম কি?')">🚚 ডেলিভারি চার্জ</button>
-            <button type="button" class="chat-chip bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 font-medium cursor-pointer" onclick="window.setChatPrompt('ওয়েবসাইটের বর্তমান গতি কত?')">⚡ সাইট স্পিড টেস্ট</button>
-            <button type="button" class="chat-chip bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 font-medium cursor-pointer" onclick="window.setChatPrompt('শোরুম ও আউটলেট কোথায়?')">📍 শোরুম ঠিকানা</button>
-            <button type="button" class="chat-chip bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 font-medium cursor-pointer" onclick="window.setChatPrompt('অর্ডার ট্র্যাক করব কিভাবে?')">📦 ট্র্যাকিং লিংক</button>
-            <button type="button" class="chat-chip bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700 font-medium cursor-pointer" onclick="window.setChatPrompt('ক্যাশ অন ডেলিভারি ও বিকাশ নম্বর কি?')">💳 পেমেন্ট তথ্য</button>
-          </div>
-
-          <!-- Chat Messages Body -->
-          <div id="chat-messages-container" class="flex-1 p-4 sm:p-5 overflow-y-auto space-y-4 text-xs">
-            <div class="flex items-start gap-2.5 max-w-[85%] animate-fadeIn">
-              <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-700 text-white flex items-center justify-center font-bold text-sm shadow-xs flex-shrink-0">
+          <!-- Chat Header -->
+          <div class="p-4 sm:p-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex items-center justify-between flex-shrink-0">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md text-white font-black flex items-center justify-center text-lg flex-shrink-0 border border-white/30 shadow-xs">
                 🤖
               </div>
-              <div class="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none border border-slate-200/70 dark:border-slate-700/70 text-slate-800 dark:text-slate-200 text-xs leading-relaxed space-y-2">
-                <p class="font-bold text-emerald-700 dark:text-emerald-400">
-                  আসসালামু আলাইকুম! ড্রিম কার্ট বিডি-র ইন্টেলিজেন্ট এআই সাপোর্ট হাবে স্বাগতম। ✨
-                </p>
-                <p>
-                  আমি সম্পূর্ণ ওয়েবসাইটের লাইভ ক্যাটালগ পড়তে পারি। আমাদের যেকোনো পণ্য, দাম, অফার, ডেলিভারি চার্জ, শোরুমের ঠিকানা অথবা ওয়েবসাইটের রিয়েল-টাইম স্পিড সম্পর্কে প্রশ্ন করতে পারেন!
-                </p>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <h3 class="text-sm sm:text-base font-black truncate">Dream Cart AI অ্যাসিস্ট্যান্ট</h3>
+                  <span class="bg-emerald-400/30 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider border border-white/20">
+                    Live V2.5
+                  </span>
+                </div>
+                <div class="text-[11px] text-emerald-100 flex items-center gap-2">
+                  <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
+                  <span>সকল পণ্য, মূল্য ও স্টক সম্পর্কে তথ্য জানে</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Ping status indicator inside chat -->
+            <div class="text-right flex-shrink-0">
+              <div class="text-[10px] text-emerald-200">ওয়েব গতি</div>
+              <div class="text-xs font-mono font-bold text-white bg-black/20 px-2 py-0.5 rounded-lg" id="chat-speed-indicator">
+                ${liveSpeed}ms
               </div>
             </div>
           </div>
 
-          <!-- Chat Input Form -->
-          <div class="p-3 sm:p-3.5 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2">
-            <input 
-              type="text" 
-              id="chat-input"
-              placeholder="যেকোনো প্রশ্ন লিখুন (যেমন: ঘড়ি দেখান, দাম কত, গতি কেমন?)..." 
-              class="form-control text-xs flex-1 py-2.5 px-4 rounded-2xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 outline-none text-slate-900 dark:text-white"
-              onkeypress="if(event.key === 'Enter') { window.sendChatMessage(this.value); }"
-            />
+          <!-- Quick Action Buttons -->
+          <div class="p-2.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-700/60 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1 flex-shrink-0">প্রশ্ন করুন:</span>
             <button 
               type="button" 
-              class="btn-primary p-2.5 w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md cursor-pointer"
-              onclick="const el = document.getElementById('chat-input'); if(el) window.sendChatMessage(el.value);"
-              title="মেসেজ পাঠান"
+              class="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:border-emerald-500 hover:text-emerald-600 transition whitespace-nowrap text-[11px]"
+              onclick="window.triggerChatbotPrompt('স্মার্টওয়াচ কি কি আছে এবং দাম কত?')"
             >
-              ➤
+              ⌚ স্মার্টওয়াচ কালেকশন
+            </button>
+            <button 
+              type="button" 
+              class="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:border-emerald-500 hover:text-emerald-600 transition whitespace-nowrap text-[11px]"
+              onclick="window.triggerChatbotPrompt('ডেলিভারি চার্জ কত এবং কতদিনে পাই?')"
+            >
+              🚚 ডেলিভারি চার্জ ও সময়
+            </button>
+            <button 
+              type="button" 
+              class="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:border-emerald-500 hover:text-emerald-600 transition whitespace-nowrap text-[11px]"
+              onclick="window.triggerChatbotPrompt('ওয়েবসাইটের গতি কেমন?')"
+            >
+              ⚡ ওয়েবসাইট স্পিড
+            </button>
+            <button 
+              type="button" 
+              class="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:border-emerald-500 hover:text-emerald-600 transition whitespace-nowrap text-[11px]"
+              onclick="window.triggerChatbotPrompt('শোরুমের ঠিকানা কোথায়?')"
+            >
+              📍 শোরুম ঠিকানা
             </button>
           </div>
+
+          <!-- Chat Conversation Log Window -->
+          <div id="ai-chat-messages" class="flex-1 p-4 sm:p-5 overflow-y-auto space-y-4 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-950/40">
+            
+            <!-- Default Welcome Bot Message -->
+            <div class="flex items-start gap-2.5 max-w-[92%] sm:max-w-[85%] animate-fadeIn">
+              <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-2xs">
+                AI
+              </div>
+              <div class="bg-white dark:bg-slate-800 rounded-2xl rounded-tl-xs p-3.5 border border-slate-200/90 dark:border-slate-700/80 shadow-2xs space-y-2 text-slate-800 dark:text-slate-200">
+                <p class="font-bold text-emerald-600 dark:text-emerald-400">
+                  আসসালামু আলাইকুম! ড্রিম কার্ট বিডি-তে আপনাকে স্বাগতম।
+                </p>
+                <p class="text-xs leading-relaxed">
+                  আমি ড্রিম কার্ট বিডি-র ভার্চুয়াল AI অ্যাসিস্ট্যান্ট। আমি আমাদের সম্পূর্ণ ওয়েবসাইট এবং স্টক স্ক্যান করতে সক্ষম। আপনি যেকোনো পণ্যের দাম, স্পেসিফিকেশন, স্টক তথ্য, ওয়ারেন্টি, কিংবা সাইটের পারফরম্যান্স সম্পর্কে জিজ্ঞেস করতে পারেন!
+                </p>
+                <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700">
+                  ইনস্ট্যান্ট অটোমেটেড রিপ্লাই • লাইভ ক্যাটালগ সিঙ্কড
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Chat Input Area -->
+          <form id="ai-chat-form" class="p-3.5 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 flex items-center gap-2 flex-shrink-0">
+            <input 
+              type="text" 
+              id="ai-chat-input" 
+              placeholder="পণ্য, মূল্য বা তথ্য সম্পর্কে বাংলায় লিখুন..." 
+              autocomplete="off"
+              class="form-control text-xs sm:text-sm flex-1 py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:border-emerald-500 outline-none text-slate-900 dark:text-white"
+            />
+            <button 
+              type="submit" 
+              id="ai-chat-send-btn"
+              class="btn-primary py-2.5 px-4 sm:px-5 text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm rounded-xl cursor-pointer"
+            >
+              <span>পাঠান</span>
+              <span>➤</span>
+            </button>
+          </form>
 
         </div>
 
-        <!-- RIGHT: Google Maps Embed & Contact Form (5 Columns) -->
+        <!-- ============================================== -->
+        <!-- RIGHT: CONTACT INFO, WHATSAPP & MAP (lg:col-span-5) -->
+        <!-- ============================================== -->
         <div class="lg:col-span-5 space-y-6">
           
+          <!-- Contact Numbers & Channels Card -->
+          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-xs space-y-5 card-animated">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 class="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <span>📞</span> সরাসরি যোগাযোগ করুন
+              </h3>
+              <span class="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full">
+                সকাল ৮টা - রাত ১০টা
+              </span>
+            </div>
+
+            <div class="space-y-3.5">
+              
+              <!-- Phone 1 -->
+              <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 flex items-center justify-center text-base flex-shrink-0">
+                    📱
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-[10px] text-slate-400 font-medium">অফিশিয়াল হটলাইন ১</div>
+                    <a href="tel:01581703822" class="text-sm font-black font-mono text-slate-900 dark:text-white hover:text-emerald-600 transition">
+                      01581703822
+                    </a>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <button 
+                    type="button" 
+                    class="p-2 text-xs bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-emerald-600 cursor-pointer"
+                    title="নম্বর কপি করুন"
+                    onclick="window.copyToClipboard('01581703822', 'হটলাইন ১')"
+                  >
+                    📋
+                  </button>
+                  <a 
+                    href="tel:01581703822" 
+                    class="btn-primary text-xs py-1.5 px-3 rounded-lg font-bold flex items-center gap-1"
+                  >
+                    কল করুন
+                  </a>
+                </div>
+              </div>
+
+              <!-- Phone 2 -->
+              <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 flex items-center justify-center text-base flex-shrink-0">
+                    📞
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-[10px] text-slate-400 font-medium">কাস্টমার সাপোর্ট ২</div>
+                    <a href="tel:01818273838" class="text-sm font-black font-mono text-slate-900 dark:text-white hover:text-emerald-600 transition">
+                      01818273838
+                    </a>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5 flex-shrink-0">
+                  <button 
+                    type="button" 
+                    class="p-2 text-xs bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-emerald-600 cursor-pointer"
+                    title="নম্বর কপি করুন"
+                    onclick="window.copyToClipboard('01818273838', 'সাপোর্ট ২')"
+                  >
+                    📋
+                  </button>
+                  <a 
+                    href="tel:01818273838" 
+                    class="btn-secondary text-xs py-1.5 px-3 rounded-lg font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1 hover:text-emerald-600"
+                  >
+                    কল করুন
+                  </a>
+                </div>
+              </div>
+
+              <!-- WhatsApp Direct Buttons -->
+              <div class="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">💬</span>
+                  <div class="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                    হোয়াটসঅ্যাপে সরাসরি চ্যাট করুন
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                  <a 
+                    href="https://wa.me/8801581703822?text=Hello%20Dream%20Cart%20BD" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl text-center shadow-xs transition flex items-center justify-center gap-1.5"
+                  >
+                    <span>হোয়াটসঅ্যাপ ১</span>
+                    <span>↗</span>
+                  </a>
+                  <a 
+                    href="https://wa.me/8801818273838?text=Hello%20Dream%20Cart%20BD" 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-3 rounded-xl text-center shadow-xs transition flex items-center justify-center gap-1.5"
+                  >
+                    <span>হোয়াটসঅ্যাপ ২</span>
+                    <span>↗</span>
+                  </a>
+                </div>
+              </div>
+
+              <!-- Email Address -->
+              <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 flex items-center justify-center text-base flex-shrink-0">
+                    ✉️
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-[10px] text-slate-400 font-medium">অফিশিয়াল ইমেইল</div>
+                    <a href="mailto:jainal.dcitbd@gmail.com" class="text-xs font-bold text-slate-900 dark:text-white truncate block hover:text-emerald-600">
+                      jainal.dcitbd@gmail.com
+                    </a>
+                  </div>
+                </div>
+                <button 
+                  type="button" 
+                  class="p-2 text-xs bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-emerald-600 cursor-pointer flex-shrink-0"
+                  title="ইমেইল কপি করুন"
+                  onclick="window.copyToClipboard('jainal.dcitbd@gmail.com', 'ইমেইল')"
+                >
+                  📋
+                </button>
+              </div>
+
+            </div>
+          </div>
+
           <!-- Showroom Google Maps Card -->
           <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs space-y-3.5 card-animated">
             <div class="flex items-center justify-between">
@@ -927,4 +494,284 @@ export async function renderLiveChatPage() {
 
     </div>
   `;
+}
+
+// Setup full intelligent AI Chat Engine
+function setupAiChatEngine(products) {
+  const form = document.getElementById('ai-chat-form');
+  const input = document.getElementById('ai-chat-input');
+  const msgContainer = document.getElementById('ai-chat-messages');
+
+  if (!form || !input || !msgContainer) return;
+
+  form.onsubmit = function(e) {
+    e.preventDefault();
+    const query = input.value.trim();
+    if (!query) return;
+
+    // 1. Append User Message
+    appendUserMessage(msgContainer, query);
+    input.value = '';
+
+    // Scroll to bottom
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    // Show AI typing indicator
+    const typingId = 'typing-' + Date.now();
+    appendTypingIndicator(msgContainer, typingId);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+
+    // 2. Process query with full website knowledge base
+    setTimeout(function() {
+      removeTypingIndicator(typingId);
+      const answer = generateAiBotResponse(query, products);
+      appendBotMessage(msgContainer, answer);
+      msgContainer.scrollTop = msgContainer.scrollHeight;
+    }, 450);
+  };
+}
+
+function appendUserMessage(container, text) {
+  const el = document.createElement('div');
+  el.className = 'flex justify-end items-end gap-2 max-w-[85%] ml-auto animate-fadeIn';
+  el.innerHTML = `
+    <div class="bg-emerald-600 text-white rounded-2xl rounded-tr-xs p-3.5 shadow-2xs space-y-1">
+      <p class="leading-relaxed">${escapeHtml(text)}</p>
+      <div class="text-[9px] text-emerald-200 text-right">আপনি</div>
+    </div>
+  `;
+  container.appendChild(el);
+}
+
+function appendTypingIndicator(container, id) {
+  const el = document.createElement('div');
+  el.id = id;
+  el.className = 'flex items-start gap-2.5 max-w-[85%] animate-fadeIn';
+  el.innerHTML = `
+    <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-2xs">
+      AI
+    </div>
+    <div class="bg-white dark:bg-slate-800 rounded-2xl rounded-tl-xs p-3.5 border border-slate-200/90 dark:border-slate-700/80 shadow-2xs flex items-center gap-1.5">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-bounce"></span>
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.2s]"></span>
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.4s]"></span>
+      <span class="text-xs text-slate-400 pl-1">সাইট ডাটা বিশ্লেষণ করা হচ্ছে...</span>
+    </div>
+  `;
+  container.appendChild(el);
+}
+
+function removeTypingIndicator(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+function appendBotMessage(container, answerObj) {
+  const el = document.createElement('div');
+  el.className = 'flex items-start gap-2.5 max-w-[92%] sm:max-w-[85%] animate-fadeIn';
+  
+  let cardsHtml = '';
+  if (answerObj.recommendedProducts && answerObj.recommendedProducts.length > 0) {
+    cardsHtml = `
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+        ${answerObj.recommendedProducts.map(function(p) {
+          const prodUrl = `/product/${p.slug || p.id}`;
+          const formattedPrice = typeof formatCurrency === 'function' ? formatCurrency(p.price || 0) : `৳${p.price || 0}`;
+          return `
+            <div class="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 flex items-center gap-2.5 shadow-2xs">
+              <img 
+                src="${p.thumbnail || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120'}" 
+                alt="${escapeHtml(p.name)}" 
+                class="w-12 h-12 rounded-lg object-cover bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-shrink-0"
+              />
+              <div class="min-w-0 flex-1">
+                <a href="${prodUrl}" class="text-xs font-bold text-slate-900 dark:text-white truncate block hover:text-emerald-600">
+                  ${escapeHtml(p.name)}
+                </a>
+                <div class="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                  ${formattedPrice}
+                </div>
+                <div class="flex items-center gap-1.5 mt-1">
+                  <a href="${prodUrl}" class="text-[10px] font-bold text-emerald-600 hover:underline">
+                    বিস্তারিত →
+                  </a>
+                  <span>•</span>
+                  <button 
+                    type="button" 
+                    class="text-[10px] text-slate-500 hover:text-emerald-600 font-bold"
+                    onclick="window.addChatProductToCart('${p.id}')"
+                  >
+                    + কার্ট
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  el.innerHTML = `
+    <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-2xs">
+      AI
+    </div>
+    <div class="bg-white dark:bg-slate-800 rounded-2xl rounded-tl-xs p-3.5 border border-slate-200/90 dark:border-slate-700/80 shadow-2xs space-y-2 text-slate-800 dark:text-slate-200">
+      <div class="text-xs sm:text-sm leading-relaxed">${answerObj.text}</div>
+      ${cardsHtml}
+      <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+        <span>ড্রিম কার্ট লাইভ বট</span>
+        <span>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      </div>
+    </div>
+  `;
+  container.appendChild(el);
+}
+
+// AI Knowledge synthesis engine
+function generateAiBotResponse(query, products) {
+  const q = query.toLowerCase().trim();
+  const latency = measureWebsiteSpeed();
+
+  // Speed / Website performance query
+  if (q.includes('গতি') || q.includes('স্পিড') || q.includes('speed') || q.includes('fast') || q.includes('ping') || q.includes('latency')) {
+    return {
+      text: `⚡ <strong>ওয়েবসাইট পারফরম্যান্স রিপোর্ট:</strong><br>
+        আমাদের সার্ভার ও ওয়েবসাইট রিয়েল-টাইম ল্যাটেন্সি হচ্ছে <strong>${latency}ms</strong>। সম্পূর্ণ ক্যাশিং ও অপ্টিমাইজড CDN আর্কিটেকচারের কারণে সাইটটি অত্যন্ত দ্রুতগতির এবং স্মুথলি লোড হচ্ছে। আপনার শপিং অভিজ্ঞতা হবে একদম নিরবচ্ছিন্ন!`
+    };
+  }
+
+  // Delivery & shipping query
+  if (q.includes('ডেলিভারি') || q.includes('কুরিয়ার') || q.includes('চার্জ') || q.includes('shipping') || q.includes('delivery')) {
+    return {
+      text: `🚚 <strong>ডেলিভারি চার্জ ও পলিসি:</strong><br>
+        • <strong>৳২,০০০ বা তার বেশি অর্ডারে সারা বাংলাদেশে ডেলিভারি সম্পূর্ণ ফ্রি!</strong><br>
+        • ঢাকার ভেতর রেগুলার চার্জ: ৭০ টাকা (২৪-৪৮ ঘণ্টার মধ্যে হোম ডেলিভারি)।<br>
+        • ঢাকার বাইরে চার্জ: ১৩০ টাকা (২-৩ কার্যদিবসে ক্যাশ অন ডেলিভারি)।<br>
+        • আমাদের নিজস্ব কুমিল্লা হাব (পদুয়ার বাজার) থেকে পার্সেল দ্রুততম সময়ে ডিসপ্যাচ করা হয়।`
+    };
+  }
+
+  // Payment methods query
+  if (q.includes('পেমেন্ট') || q.includes('payment') || q.includes('বিকাশ') || q.includes('নগদ') || q.includes('bkash')) {
+    return {
+      text: `💳 <strong>পেমেন্ট সংক্রান্ত তথ্য:</strong><br>
+        • <strong>ক্যাশ অন ডেলিভারি (COD):</strong> পণ্য হাতে পেয়ে চেক করে সম্পূর্ণ মূল্য পরিশোধ করুন।<br>
+        • <strong>অনলাইন অগ্রিম পেমেন্ট:</strong> বিকাশ মার্চেন্ট (<code class="font-mono text-emerald-600 font-bold">01581703822</code>) অথবা বিকাশ পার্সোনাল (<code class="font-mono font-bold">01879653143</code>)।<br>
+        • <strong>বিশেষ সুবিধা:</strong> অনলাইনে সম্পূর্ণ মূল্য পরিশোধ করলে তাৎক্ষণিক <strong>৫% সরাসরি ছাড়</strong> পাওয়া যায়!`
+    };
+  }
+
+  // Address & showroom query
+  if (q.includes('শোরুম') || q.includes('ঠিকানা') || q.includes('কোথায়') || q.includes('লোকেশন') || q.includes('address') || q.includes('outlet')) {
+    return {
+      text: `📍 <strong>আমাদের শোরুমের ঠিকানা:</strong><br>
+        <strong>ড্রিম কার্ট বিডি আউটলেট</strong><br>
+        চৌধুরী প্লাজা, পদুয়ার বাজার বিশ্বরোড (সদর দক্ষিণ), কুমিল্লা।<br>
+        হটলাইন: <strong class="font-mono">01581703822</strong>, <strong class="font-mono">01818273838</strong><br>
+        ইমেইল: <code class="font-mono">jainal.dcitbd@gmail.com</code><br>
+        ডানপাশের ইন্টারেক্টিভ ম্যাপে গুগল লোকেশন সরাসরি দেখে নিতে পারেন।`
+    };
+  }
+
+  // Warranty & Replacement query
+  if (q.includes('ওয়ারেন্টি') || q.includes('গ্যারান্টি') || q.includes('রিপ্লেসমেন্ট') || q.includes('warranty') || q.includes('return')) {
+    return {
+      text: `🛡️ <strong>ওয়ারেন্টি ও রিটার্ন নিশ্চয়তা:</strong><br>
+        • আমাদের প্রতিটি গ্যাজেটে রয়েছে <strong>১ বছরের অফিশিয়াল ব্র্যান্ড ওয়ারেন্টি</strong>।<br>
+        • পণ্য প্রাপ্তির পর কোনো টেকনিক্যাল সমস্যা থাকলে <strong>৭ দিনের ইনস্ট্যান্ট রিপ্লেসমেন্ট গ্যারান্টি</strong> দেওয়া হয়।<br>
+        • ১০০% আসল ও ইনট্যাক্ট বক্স পণ্য গ্রাহকের কাছে হস্তান্তর করা হয়।`
+    };
+  }
+
+  // Reseller / Wholesaler query
+  if (q.includes('রিসেলার') || q.includes('পাইকারি') || q.includes('হোলসেল') || q.includes('reseller') || q.includes('wholesale')) {
+    return {
+      text: `💼 <strong>রিসেলার ও পাইকারি বিজনেস সুবিধা:</strong><br>
+        • <strong>রিসেলার:</strong> কোনো ইনভেস্টমেন্ট ছাড়া ড্রপশিপিং করে প্রতি অর্ডারে ১০% পর্যন্ত নিশ্চিত কমিশন আয় করুন।<br>
+        • <strong>হোলসেলার:</strong> সরাসরি ইমপোর্টার রেটে সর্বনিম্ন পাইকারি মূল্যে বাল্ক অর্ডার করার সুবিধা।<br>
+        বিস্তারিত দেখতে আমাদের <a href="/offers" class="text-emerald-600 font-bold underline">অফার ও পার্টনার পেজে</a> ভিজিট করুন।`
+    };
+  }
+
+  // Smartwatch search
+  if (q.includes('স্মার্টওয়াচ') || q.includes('ওয়াচ') || q.includes('watch') || q.includes('ঘড়ি')) {
+    const watchList = products.filter(function(p) {
+      const n = (p.name || '').toLowerCase();
+      const c = (p.category || '').toLowerCase();
+      return n.includes('watch') || n.includes('ultra') || n.includes('hk') || c.includes('smartwatch');
+    }).slice(0, 4);
+
+    return {
+      text: `⌚ <strong>স্মার্টওয়াচ কালেকশন:</strong><br>
+        আমাদের স্টকে বর্তমানে আকর্ষণীয় ডিসকাউন্টে প্রিমিয়াম AMOLED ও ব্লুটুথ কলিং স্মার্টওয়াচ রয়েছে। নিচের কার্ড থেকে পছন্দের ঘড়িটির বিস্তারিত দেখে সরাসরি কার্টে যোগ করতে পারেন:`,
+      recommendedProducts: watchList
+    };
+  }
+
+  // Honey / Organic search
+  if (q.includes('মধু') || q.includes('অর্গানিক') || q.includes('honey') || q.includes('organic')) {
+    const honeyList = products.filter(function(p) {
+      const n = (p.name || '').toLowerCase();
+      const c = (p.category || '').toLowerCase();
+      return n.includes('honey') || n.includes('মধু') || c.includes('organic');
+    }).slice(0, 4);
+
+    return {
+      text: `🍯 <strong>১০০% খাঁটি মধু ও অর্গানিক হেলথ ফুড:</strong><br>
+        আমাদের কাছে প্রাকৃতিক সুন্দরবনের খাঁটি মধু ও পুষ্টিকর খাদ্য উপাদান রয়েছে। কোনো প্রিজারভেটিভ বা ভেজাল নেই:`,
+      recommendedProducts: honeyList
+    };
+  }
+
+  // Flashlight / Light search
+  if (q.includes('লাইট') || q.includes('টর্চ') || q.includes('light') || q.includes('torch')) {
+    const lightList = products.filter(function(p) {
+      const n = (p.name || '').toLowerCase();
+      const c = (p.category || '').toLowerCase();
+      return n.includes('light') || n.includes('flashlight') || n.includes('লাইট') || c.includes('tactical');
+    }).slice(0, 4);
+
+    return {
+      text: `🔦 <strong>ট্যাকটিক্যাল লাইটিং কালেকশন:</strong><br>
+        হাই-পাওয়ার রিচার্জেবল মিলিটারি গ্রেড টর্চলাইট ও ইমার্জেন্সি লাইট স্টকে অ্যাভেইলেবল রয়েছে:`,
+      recommendedProducts: lightList
+    };
+  }
+
+  // Kitchen / Gas safety search
+  if (q.includes('গ্যাস') || q.includes('রেগুলেটর') || q.includes('কিচেন') || q.includes('gas') || q.includes('safety')) {
+    const gasList = products.filter(function(p) {
+      const n = (p.name || '').toLowerCase();
+      const c = (p.category || '').toLowerCase();
+      return n.includes('gas') || n.includes('regulator') || n.includes('গ্যাস') || c.includes('kitchen');
+    }).slice(0, 4);
+
+    return {
+      text: `🛡️ <strong>কিচেন ও গ্যাস সেফটি এক্সেসরিজ:</strong><br>
+        অটোমেটিক গ্যাস দুর্ঘটনা প্রতিরোধক অটো-কাট রেগুলেটর ও প্রিমিয়াম সেফটি পাইপ রয়েছে:`,
+      recommendedProducts: gasList
+    };
+  }
+
+  // General search across products
+  const matchingProds = products.filter(function(p) {
+    const text = `${p.name || ''} ${p.category || ''} ${p.sub_category || ''} ${p.description || ''}`.toLowerCase();
+    const words = q.split(' ').filter(function(w) { return w.length > 2; });
+    return words.some(function(w) { return text.includes(w); });
+  }).slice(0, 4);
+
+  if (matchingProds.length > 0) {
+    return {
+      text: `🔍 আপনার অনুসন্ধান <strong>"${escapeHtml(query)}"</strong> অনুযায়ী আমাদের স্টকে থাকা সেরা পণ্যসমূহ নিচে দেওয়া হলো:`,
+      recommendedProducts: matchingProds
+    };
+  }
+
+  // Default fallback answer
+  const featured = products.slice(0, 3);
+  return {
+    text: `ধন্যবাদ আপনার বার্তার জন্য! আপনার অনুসন্ধান সম্পর্কিত সুনির্দিষ্ট তথ্য পেতে আমাদের কাস্টমার হটলাইনে কল করতে পারেন (<strong class="font-mono">01581703822</strong>) অথবা আমাদের হোয়াটসঅ্যাপে নক দিন।<br><br>বর্তমানে আমাদের সেরা বিক্রিত কিছু পণ্য নিচে দেখে নিতে পারেন:`,
+    recommendedProducts: featured
+  };
 }
