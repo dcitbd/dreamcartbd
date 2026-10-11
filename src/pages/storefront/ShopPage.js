@@ -15,6 +15,7 @@
 
 import { apiClient } from '../../api/client.js';
 import { renderProductCard } from '../../components/ProductCard.js';
+import { SearchService } from '../../services/SearchService.js';
 
 export async function renderShopPage(params = {}) {
   const cat = (params.cat || "").trim();
@@ -85,57 +86,95 @@ export async function renderShopPage(params = {}) {
     allProducts.map(p => (p.brand || '').trim()).filter(Boolean)
   )).sort((a, b) => a.localeCompare(b));
 
-  // 3. Filter Products
+  // 3. Filter Products & Intelligent Search Ranking
   let filteredProducts = [...allProducts];
+  let directMatches = [];
+  let relatedProducts = [];
 
-  // Search filter
   if (search) {
-    const q = search.toLowerCase();
-    filteredProducts = filteredProducts.filter(p => 
-      (p.name && p.name.toLowerCase().includes(q)) ||
-      (p.sku && p.sku.toLowerCase().includes(q)) ||
-      (p.brand && p.brand.toLowerCase().includes(q)) ||
-      (p.category && p.category.toLowerCase().includes(q)) ||
-      (p.sub_category && p.sub_category.toLowerCase().includes(q)) ||
-      (p.child_category && p.child_category.toLowerCase().includes(q)) ||
-      (p.description && p.description.toLowerCase().includes(q))
-    );
-  }
+    // Intelligent Search: Exact & most matching products first, related products right after
+    const searchRes = SearchService.search(allProducts, search);
+    directMatches = [...searchRes.directMatches];
+    relatedProducts = [...searchRes.relatedProducts];
 
-  // Category hierarchy filter
-  if (cat) {
-    const cLower = cat.toLowerCase();
-    filteredProducts = filteredProducts.filter(p => p.category && p.category.trim().toLowerCase() === cLower);
-  }
-  if (subCat) {
-    const subLower = subCat.toLowerCase();
-    filteredProducts = filteredProducts.filter(p => p.sub_category && p.sub_category.trim().toLowerCase() === subLower);
-  }
-  if (childCat) {
-    const childLower = childCat.toLowerCase();
-    filteredProducts = filteredProducts.filter(p => p.child_category && p.child_category.trim().toLowerCase() === childLower);
-  }
+    // Category hierarchy filter (if selected in sidebar)
+    if (cat) {
+      const cLower = cat.toLowerCase();
+      directMatches = directMatches.filter(p => p.category && p.category.trim().toLowerCase() === cLower);
+      relatedProducts = relatedProducts.filter(p => p.category && p.category.trim().toLowerCase() === cLower);
+    }
+    if (subCat) {
+      const subLower = subCat.toLowerCase();
+      directMatches = directMatches.filter(p => p.sub_category && p.sub_category.trim().toLowerCase() === subLower);
+      relatedProducts = relatedProducts.filter(p => p.sub_category && p.sub_category.trim().toLowerCase() === subLower);
+    }
+    if (childCat) {
+      const childLower = childCat.toLowerCase();
+      directMatches = directMatches.filter(p => p.child_category && p.child_category.trim().toLowerCase() === childLower);
+      relatedProducts = relatedProducts.filter(p => p.child_category && p.child_category.trim().toLowerCase() === childLower);
+    }
 
-  // Brand dropdown filter
-  if (brand) {
-    const bLower = brand.toLowerCase();
-    filteredProducts = filteredProducts.filter(p => p.brand && p.brand.trim().toLowerCase() === bLower);
-  }
+    // Brand dropdown filter (if selected in sidebar)
+    if (brand) {
+      const bLower = brand.toLowerCase();
+      directMatches = directMatches.filter(p => p.brand && p.brand.trim().toLowerCase() === bLower);
+      relatedProducts = relatedProducts.filter(p => p.brand && p.brand.trim().toLowerCase() === bLower);
+    }
 
-  // Stock status filter: (In-Stock (selected), Out of Stock, All)
-  if (stockFilter === 'in_stock') {
-    filteredProducts = filteredProducts.filter(p => Number(p.stock !== undefined ? p.stock : 25) > 0);
-  } else if (stockFilter === 'out_of_stock') {
-    filteredProducts = filteredProducts.filter(p => Number(p.stock !== undefined ? p.stock : 25) <= 0);
-  }
+    // Stock status filter: (In-Stock (selected by default), Out of Stock, All)
+    if (stockFilter === 'in_stock') {
+      directMatches = directMatches.filter(p => Number(p.stock !== undefined ? p.stock : 25) > 0);
+      relatedProducts = relatedProducts.filter(p => Number(p.stock !== undefined ? p.stock : 25) > 0);
+    } else if (stockFilter === 'out_of_stock') {
+      directMatches = directMatches.filter(p => Number(p.stock !== undefined ? p.stock : 25) <= 0);
+      relatedProducts = relatedProducts.filter(p => Number(p.stock !== undefined ? p.stock : 25) <= 0);
+    }
 
-  // Sorting
-  if (sort === "low_high") {
-    filteredProducts.sort((a, b) => Number(a.selling_price) - Number(b.selling_price));
-  } else if (sort === "high_low") {
-    filteredProducts.sort((a, b) => Number(b.selling_price) - Number(a.selling_price));
-  } else if (sort === "name_asc") {
-    filteredProducts.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    // Sorting:
+    // When sort === "featured" (default): strictly preserve relevance ranking!
+    // Direct matches are ranked by match score descending, followed by related products by relatedness score.
+    if (sort === "low_high") {
+      directMatches.sort((a, b) => Number(a.selling_price) - Number(b.selling_price));
+      relatedProducts.sort((a, b) => Number(a.selling_price) - Number(b.selling_price));
+    } else if (sort === "high_low") {
+      directMatches.sort((a, b) => Number(b.selling_price) - Number(a.selling_price));
+      relatedProducts.sort((a, b) => Number(b.selling_price) - Number(a.selling_price));
+    } else if (sort === "name_asc") {
+      directMatches.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      relatedProducts.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    }
+
+    filteredProducts = [...directMatches, ...relatedProducts];
+  } else {
+    // Normal catalog browsing (no search query)
+    if (cat) {
+      const cLower = cat.toLowerCase();
+      filteredProducts = filteredProducts.filter(p => p.category && p.category.trim().toLowerCase() === cLower);
+    }
+    if (subCat) {
+      const subLower = subCat.toLowerCase();
+      filteredProducts = filteredProducts.filter(p => p.sub_category && p.sub_category.trim().toLowerCase() === subLower);
+    }
+    if (childCat) {
+      const childLower = childCat.toLowerCase();
+      filteredProducts = filteredProducts.filter(p => p.child_category && p.child_category.trim().toLowerCase() === childLower);
+    }
+    if (brand) {
+      const bLower = brand.toLowerCase();
+      filteredProducts = filteredProducts.filter(p => p.brand && p.brand.trim().toLowerCase() === bLower);
+    }
+    if (stockFilter === 'in_stock') {
+      filteredProducts = filteredProducts.filter(p => Number(p.stock !== undefined ? p.stock : 25) > 0);
+    } else if (stockFilter === 'out_of_stock') {
+      filteredProducts = filteredProducts.filter(p => Number(p.stock !== undefined ? p.stock : 25) <= 0);
+    }
+    if (sort === "low_high") {
+      filteredProducts.sort((a, b) => Number(a.selling_price) - Number(b.selling_price));
+    } else if (sort === "high_low") {
+      filteredProducts.sort((a, b) => Number(b.selling_price) - Number(a.selling_price));
+    } else if (sort === "name_asc") {
+      filteredProducts.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    }
   }
 
   // Pagination (60 pcs per page)
@@ -143,6 +182,23 @@ export async function renderShopPage(params = {}) {
   const totalPages = Math.ceil(totalProducts / pageSize) || 1;
   const startIndex = (page - 1) * pageSize;
   const paginatedProducts = filteredProducts.slice(startIndex, startIndex + pageSize);
+
+  const pageDirectMatches = paginatedProducts.filter(p => p._isDirectMatch !== false);
+  const pageRelatedProducts = paginatedProducts.filter(p => p._isDirectMatch === false);
+
+  // Sync header search bar with active search query
+  if (typeof document !== 'undefined' && search) {
+    setTimeout(() => {
+      const dInp = document.getElementById('global-search-input');
+      const mInp = document.getElementById('mobile-search-input');
+      const dClear = document.getElementById('global-search-clear-btn');
+      const mClear = document.getElementById('mobile-search-clear-btn');
+      if (dInp && dInp.value !== search) dInp.value = search;
+      if (mInp && mInp.value !== search) mInp.value = search;
+      if (dClear) dClear.classList.remove('hidden');
+      if (mClear) mClear.classList.remove('hidden');
+    }, 10);
+  }
 
   const hasActiveFilters = Boolean(cat || subCat || childCat || brand || stockFilter !== 'in_stock' || search);
 
@@ -252,7 +308,9 @@ export async function renderShopPage(params = {}) {
               ${search ? `সার্চ রেজাল্ট: "${search}"` : (cat ? `${cat}` : "আমাদের সকল পণ্যসমূহ")}
             </h1>
             <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              মোট ${totalProducts} টি পণ্য পাওয়া গেছে • পেজ প্রতি ৬০ টি পণ্য প্রদর্শন
+              ${search 
+                ? `মোট ${totalProducts} টি পণ্য পাওয়া গেছে (${directMatches.length} টি সরাসরি ম্যাচ${relatedProducts.length > 0 ? `, ${relatedProducts.length} টি সম্পর্কিত পণ্য` : ''})` 
+                : `মোট ${totalProducts} টি পণ্য পাওয়া গেছে • পেজ প্রতি ৬০ টি পণ্য প্রদর্শন`}
             </p>
           </div>
 
@@ -440,19 +498,64 @@ export async function renderShopPage(params = {}) {
           ${paginatedProducts.length === 0 ? `
             <div class="bg-white dark:bg-slate-900 rounded-3xl p-16 text-center border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
               <div class="text-5xl">🔍</div>
-              <h3 class="text-base font-bold text-slate-800 dark:text-white">কোনো পণ্য পাওয়া যায়নি</h3>
+              <h3 class="text-base font-bold text-slate-800 dark:text-white">${search ? `"${search}" এর সাথে কোনো পণ্য মেলেনি` : 'কোনো পণ্য পাওয়া যায়নি'}</h3>
               <p class="text-xs text-slate-500 max-w-sm mx-auto">
-                আপনার দেওয়া ফিল্টারের সাথে মিলে এমন কোনো পণ্য মেলেনি। অনুগ্রহ করে ফিল্টার পরিবর্তন করুন।
+                ${search ? 'অন্য কোনো কি-ওয়ার্ড দিয়ে সার্চ করুন অথবা আমাদের সকল পণ্য ব্রাউজ করুন।' : 'আপনার দেওয়া ফিল্টারের সাথে মিলে এমন কোনো পণ্য মেলেনি। অনুগ্রহ করে ফিল্টার পরিবর্তন করুন।'}
               </p>
               <a href="/products" class="btn-primary mt-2 text-xs py-2 px-5 inline-flex">
                 সকল পণ্য দেখুন
               </a>
             </div>
+          ` : (search ? `
+            <div class="space-y-8">
+              ${pageDirectMatches.length > 0 ? `
+                <!-- Direct Matches Section (Highest Relevance First) -->
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 text-xs font-bold shadow-xs">🎯</span>
+                      <h2 class="text-sm font-black text-slate-900 dark:text-white tracking-wide">
+                        সরাসরি মিলে যাওয়া পণ্য (${directMatches.length} টি)
+                      </h2>
+                    </div>
+                    <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">সেরা ফলাফল</span>
+                  </div>
+                  <div class="product-grid">
+                    ${pageDirectMatches.map(p => renderProductCard(p)).join("")}
+                  </div>
+                </div>
+              ` : `
+                <div class="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2.5">
+                  <span class="text-lg flex-shrink-0">💡</span>
+                  <div>
+                    <strong>"${search}"</strong> এর সাথে সরাসরি কোনো পণ্য মেলেনি। তবে সম্পর্কিত এই পণ্যগুলো দেখতে পারেন:
+                  </div>
+                </div>
+              `}
+
+              ${pageRelatedProducts.length > 0 ? `
+                <!-- Related Products Section (Category / Brand Match) -->
+                <div class="space-y-3 pt-2">
+                  <div class="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 text-xs font-bold shadow-xs">✨</span>
+                      <h2 class="text-sm font-black text-slate-900 dark:text-white tracking-wide">
+                        সম্পর্কিত অন্যান্য পণ্যসমূহ (${relatedProducts.length} টি)
+                      </h2>
+                    </div>
+                    <span class="text-[11px] text-slate-500 dark:text-slate-400">একই ক্যাটাগরি ও ব্র্যান্ডের অন্যান্য পছন্দ</span>
+                  </div>
+                  <div class="product-grid">
+                    ${pageRelatedProducts.map(p => renderProductCard(p)).join("")}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
           ` : `
             <div class="product-grid">
               ${paginatedProducts.map(p => renderProductCard(p)).join("")}
             </div>
-          `}
+          `)}
 
           <!-- Pagination Controls (60 pcs per page) -->
           ${totalPages > 1 ? `
