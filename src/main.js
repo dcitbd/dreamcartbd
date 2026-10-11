@@ -1142,31 +1142,3 @@ if (document.readyState === 'loading') {
 }
 
 
-
-
-
-
-
-
-
-
-#wa-sub-menu, #call-sub-menu {
-  left: calc(100% + 12px) !important;
-  right: auto !important;
-}
-
-@media (min-width: 640px) {
-  #floating-actions-dock {
-    left: 1.25rem !important;
-    right: auto !important;
-    bottom: 1.5rem !important;
-  }
-}
-
-@media (max-width: 639px) {
-  #floating-actions-dock {
-    left: 1rem !important;
-    right: auto !important;
-    bottom: 4.75rem !important;
-  }
-}
