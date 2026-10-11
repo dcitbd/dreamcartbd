@@ -2,10 +2,12 @@
  * DREAM CART BD — PRODUCT CARD COMPONENT (ProductCard.js)
  * Implements user requirements:
  * - High-end modern responsive design with 2-grid mobile optimization
+ * - All required elements: Image, Product Name, Original Price (Crossed), Selling Price,
+ *   Stock, Discount Percentage, Order Now, Cart, Favourite, WhatsApp 1, WhatsApp 2, Reviews
  * - Perfectly sized Cart, Wishlist, and WhatsApp icons (strictly controlled dimensions, zero overflow)
  * - Uniform 2-line title clamping and 40-character safe truncation to prevent uneven cards
  * - Dual WhatsApp hotline direct chat links (01581703822 & 01818273838) with WhatsApp branding
- * - Fully functional Wishlist/Favourite toggle synced between image and toolbar
+ * - Fully functional Wishlist/Favourite toggle synced between image and store
  * - High-contrast styling for both Light & Dark modes
  * - 100% backward/forward compatible with main.js event listeners and store state
  */
@@ -142,6 +144,10 @@ export function renderProductCard(product) {
   const brandName = product.brand || "Dream Cart BD";
   const sku = product.sku || productId;
 
+  // Reviews & Rating
+  const rating = Number(product.rating || 4.9).toFixed(1);
+  const reviewCount = Number(product.reviews_count || product.review_count || product.reviews || 24);
+
   // Title character formatting & safe truncation (40 chars) so cards never break across grid rows
   const rawTitle = (product.name || product.p_name || "পণ্য").trim();
   const maxTitleChars = 40;
@@ -176,10 +182,10 @@ export function renderProductCard(product) {
   const wa2Url = `https://wa.me/8801818273838?text=${waText}`;
 
   return `
-    <div class="product-card group relative bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-card-hover transition-all duration-200 flex flex-col overflow-hidden" data-product-id="${productId}">
+    <div class="product-card dc-product-card group relative bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-card-hover transition-all duration-200 flex flex-col overflow-hidden" data-product-id="${productId}">
       
       <!-- Product Image Container -->
-      <div class="card-img-wrap relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+      <div class="dc-card-img-wrap relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
         
         <!-- Clickable Image Link to Product Details -->
         <a href="/product/${slug}" class="block w-full h-full cursor-pointer card-img-click" data-slug="${slug}" data-product-id="${productId}">
@@ -192,10 +198,17 @@ export function renderProductCard(product) {
           />
         </a>
 
-        <!-- Love / Favourite Icon (Front top-left overlay) -->
+        <!-- Discount Percentage Badge (Top-Left) -->
+        ${discountPercent > 0 ? `
+          <div class="dc-discount-pill">
+            -${discountPercent}% ছাড়
+          </div>
+        ` : ""}
+
+        <!-- Love / Favourite Icon (Top-Right Floating Circle) -->
         <button 
           type="button"
-          class="btn-toggle-favourite card-fav-floating ${isFavourite ? 'is-favourite' : ''}"
+          class="btn-toggle-favourite dc-fav-btn ${isFavourite ? 'is-favourite' : ''}"
           data-product-id="${productId}"
           data-product-name="${escapeHtml(rawTitle)}"
           data-product-price="${displayedPrice}"
@@ -205,38 +218,39 @@ export function renderProductCard(product) {
           aria-label="Wishlist"
           onclick="window.toggleProductCardFavourite(event, this);"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="pointer-events-none" style="width: 14px; height: 14px; max-width: 14px; max-height: 14px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" class="pointer-events-none" style="width: 15px; height: 15px; max-width: 15px; max-height: 15px;">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
           </svg>
         </button>
 
-        <!-- Discount Percentage Badge (Front top-right) -->
-        ${discountPercent > 0 ? `
-          <div class="card-discount-pill">
-            -${discountPercent}%
-          </div>
-        ` : ""}
-
-        <!-- Stock Status Pill (Bottom Left overlay) -->
-        <div class="card-stock-pill ${isOutOfStock ? 'card-stock-out' : 'card-stock-in'}">
-          ${isOutOfStock ? 'স্টক শেষ' : `মজুদ: ${stock}`}
+        <!-- Stock Status Pill (Bottom-Left on image) -->
+        <div class="dc-stock-pill ${isOutOfStock ? 'dc-stock-out' : 'dc-stock-in'}">
+          ${isOutOfStock ? `
+            <span>● স্টক শেষ</span>
+          ` : `
+            <span class="dc-pulse-dot"></span>
+            <span>স্টক: ${stock}</span>
+          `}
         </div>
 
       </div>
 
       <!-- Card Body Content -->
-      <div class="card-content flex-1 flex flex-col justify-between">
+      <div class="dc-card-body flex-1 flex flex-col justify-between">
         
-        <!-- Brand Name + SKU -->
         <div>
-          <div class="card-meta-row">
-            <span class="truncate hover:text-emerald-600 transition">${escapeHtml(brandName)}</span>
-            <span class="card-meta-sku font-mono">${escapeHtml(sku)}</span>
+          <!-- Brand & Customer Reviews Row -->
+          <div class="dc-meta-row">
+            <span class="dc-brand-text truncate">${escapeHtml(brandName)}</span>
+            <div class="dc-reviews-badge">
+              <span class="dc-reviews-star">★</span>
+              <span>${rating} (${reviewCount})</span>
+            </div>
           </div>
 
-          <!-- Product Name (Strict 2-line clamp with uniform height to prevent card breakage) -->
+          <!-- Product Name (Strict 2-line clamp with uniform height) -->
           <h3 
-            class="card-title product-card-title" 
+            class="dc-card-title product-card-title" 
             title="${escapeHtml(rawTitle)}"
           >
             <a href="/product/${slug}" class="hover:text-emerald-600 transition card-img-click" data-slug="${slug}" data-product-id="${productId}">
@@ -246,123 +260,102 @@ export function renderProductCard(product) {
         </div>
 
         <!-- Price Section based on account type -->
-        <div style="margin-top: 2px;">
+        <div class="dc-price-box">
           ${roleLabel ? `
-            <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; color: #059669; margin-bottom: 2px;">
+            <div class="dc-role-badge">
               ${roleLabel}
             </div>
           ` : ""}
 
-          <div class="card-price-row">
-            <span class="card-price-current">
+          <div class="dc-price-row">
+            <span class="dc-price-current">
               ${formatCurrency(displayedPrice)}
             </span>
             ${isDiscounted ? `
-              <span class="card-price-regular">
+              <span class="dc-price-regular">
                 ${formatCurrency(originalPrice)}
               </span>
             ` : ""}
-            <span class="card-price-stock">
-              (${stock} মজুদ)
-            </span>
           </div>
 
           <!-- Wholesaler Minimum Order Quantity Warning -->
           ${isWholesale ? `
-            <div class="card-moq-badge" style="margin-top: 3px;">
+            <div class="dc-moq-alert">
               <span>⚠️</span> সর্বনিম্ন: ${minOrderQty} পিস
             </div>
           ` : ""}
         </div>
 
-        <!-- Actions Section (Order CTA + Compact Toolbar) -->
-        <div style="margin-top: 4px; display: flex; flex-direction: column; gap: 4px;">
+        <!-- Actions Section (Order CTA + Cart + Dual WhatsApp) -->
+        <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 4px;">
           
-          <!-- Primary CTA Button -->
-          ${isOutOfStock ? `
-            <button 
-              type="button"
-              class="btn-pre-order card-btn-action card-btn-preorder"
-              data-product-id="${productId}"
-            >
-              <span>⏳</span> প্রি-অর্ডার
-            </button>
-          ` : `
-            <button 
-              type="button"
-              class="btn-order-now card-btn-action card-btn-order"
-              data-product-id="${productId}"
-            >
-              <span>⚡</span> অর্ডার করুন
-            </button>
-          `}
+          <!-- Primary CTA Row: Order Now (flex-1) + Quick Add to Cart -->
+          <div class="dc-cta-row">
+            ${isOutOfStock ? `
+              <button 
+                type="button"
+                class="btn-pre-order dc-btn-order dc-btn-preorder"
+                data-product-id="${productId}"
+              >
+                <span>⏳</span>
+                <span>প্রি-অর্ডার</span>
+              </button>
+            ` : `
+              <button 
+                type="button"
+                class="btn-order-now dc-btn-order"
+                data-product-id="${productId}"
+              >
+                <span>⚡</span>
+                <span>অর্ডার করুন</span>
+              </button>
+            `}
 
-          <!-- Quick Action Icon Toolbar: Cart Icon + Favourite Icon + WhatsApp 1 + WhatsApp 2 -->
-          <div class="card-toolbar">
-            
-            <!-- Cart Icon -->
+            <!-- Cart Icon Button -->
             <button 
               type="button"
-              class="btn-quick-add card-tool-btn card-tool-cart"
+              class="btn-quick-add dc-btn-cart"
               data-product-id="${productId}"
               title="কার্টে যোগ করুন"
               aria-label="Add to Cart"
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none" style="width: 13px; height: 13px; max-width: 13px; max-height: 13px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none" style="width: 16px; height: 16px; max-width: 16px; max-height: 16px;">
                 <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <path d="M16 10a4 4 0 0 1-8 0"></path>
               </svg>
             </button>
+          </div>
 
-            <!-- Favourite Icon (Bottom toolbar) -->
-            <button 
-              type="button"
-              class="btn-toggle-favourite card-tool-btn card-tool-fav ${isFavourite ? 'is-favourite' : ''}"
-              data-product-id="${productId}"
-              data-product-name="${escapeHtml(rawTitle)}"
-              data-product-price="${displayedPrice}"
-              data-product-thumb="${thumbnail}"
-              data-product-json="${encodedJson}"
-              title="${isFavourite ? 'ফেভারিট থেকে সরান' : 'পছন্দের তালিকায় রাখুন'}"
-              aria-label="Wishlist"
-              onclick="window.toggleProductCardFavourite(event, this);"
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" class="pointer-events-none" style="width: 13px; height: 13px; max-width: 13px; max-height: 13px;">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
-            </button>
-
-            <!-- WhatsApp 1 -->
+          <!-- Secondary Action Row: Dual WhatsApp Hotlines (50% / 50% split) -->
+          <div class="dc-wa-row">
             <a 
               href="${wa1Url}" 
               target="_blank" 
               rel="noopener noreferrer"
-              class="card-tool-btn card-tool-wa1"
+              class="dc-wa-btn dc-wa-btn-1"
               title="WhatsApp: 01581703822"
               aria-label="WhatsApp 1"
             >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" class="pointer-events-none" style="width: 10.5px; height: 10.5px; max-width: 10.5px; max-height: 10.5px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="pointer-events-none" style="width: 12px; height: 12px; max-width: 12px; max-height: 12px;">
                 <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.24 8.24-1.44 0-2.85-.38-4.08-1.1l-.29-.17-3.12.82.83-3.04-.19-.3A8.13 8.13 0 0 1 3.8 11.91c0-4.54 3.69-8.24 8.24-8.24zm4.52 11.64c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.25-1.5-1.4-1.75-.14-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43l-.47-.01c-.17 0-.44.06-.67.31-.23.25-.87.85-.87 2.08s.89 2.42 1.01 2.59c.13.17 1.75 2.67 4.24 3.75.59.26 1.05.41 1.41.53.6.19 1.14.16 1.57.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.12-.22-.19-.47-.32z"/>
               </svg>
-              <span>WA 1</span>
+              <span>WA ১</span>
             </a>
 
-            <!-- WhatsApp 2 -->
             <a 
               href="${wa2Url}" 
               target="_blank" 
               rel="noopener noreferrer"
-              class="card-tool-btn card-tool-wa2"
+              class="dc-wa-btn dc-wa-btn-2"
               title="WhatsApp: 01818273838"
               aria-label="WhatsApp 2"
             >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" class="pointer-events-none" style="width: 10.5px; height: 10.5px; max-width: 10.5px; max-height: 10.5px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" class="pointer-events-none" style="width: 12px; height: 12px; max-width: 12px; max-height: 12px;">
                 <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.24 8.24-1.44 0-2.85-.38-4.08-1.1l-.29-.17-3.12.82.83-3.04-.19-.3A8.13 8.13 0 0 1 3.8 11.91c0-4.54 3.69-8.24 8.24-8.24zm4.52 11.64c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.25-1.5-1.4-1.75-.14-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43l-.47-.01c-.17 0-.44.06-.67.31-.23.25-.87.85-.87 2.08s.89 2.42 1.01 2.59c.13.17 1.75 2.67 4.24 3.75.59.26 1.05.41 1.41.53.6.19 1.14.16 1.57.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.12-.22-.19-.47-.32z"/>
               </svg>
-              <span>WA 2</span>
+              <span>WA ২</span>
             </a>
-
           </div>
 
         </div>
