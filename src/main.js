@@ -1,3 +1,4 @@
+import { SearchService } from './services/SearchService.js';
 /**
  * DREAM CART BD — MASTER FRONTEND BOOTSTRAPPER (main.js)
  * Implements:
@@ -25,7 +26,40 @@ import { router } from './router.js';
 import { apiClient } from './api/client.js';
 import { formatCurrency } from './utils/format.js';
 
+// Auto-inject CSS for Left-side Floating Dock & Right-side Contact Sub-menus
+function injectFloatingActionStyles() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById('dcbd-floating-custom-styles')) return;
+
+  const style = document.createElement('style');
+  style.id = 'dcbd-floating-custom-styles';
+  style.textContent = `
+    #wa-sub-menu, #call-sub-menu {
+      left: calc(100% + 12px) !important;
+      right: auto !important;
+    }
+
+    @media (min-width: 640px) {
+      #floating-actions-dock {
+        left: 1.25rem !important;
+        right: auto !important;
+        bottom: 1.5rem !important;
+      }
+    }
+
+    @media (max-width: 639px) {
+      #floating-actions-dock {
+        left: 1rem !important;
+        right: auto !important;
+        bottom: 4.75rem !important;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function initApp() {
+  injectFloatingActionStyles();
   try {
     const root = document.getElementById('app-root');
     if (!root) {
@@ -334,7 +368,7 @@ function attachEventListeners() {
     // Global Logout handlers
     if (e.target.closest('#btn-logout') || e.target.closest('.btn-logout') || e.target.closest('#btn-customer-logout')) {
       authStore.logout();
-      toast.show({ type: "info", title: "লগআউট সম্পন্ন", message: "আপনি আপনার অ্যাকাউন্ট থেকে সফলভাবে লগআউট হয়েছেন।" });
+      toast.show({ type: "info", title: "লগআউট সম্পন্ন", message: "আপনি আপনার অ্যাকাউন্ট থেকে সফলভাবে লগআউট হয়েছেন।" });
       router.navigate('/');
       return;
     }
@@ -349,21 +383,25 @@ function attachEventListeners() {
       return;
     }
 
-    // Floating Call Sub-menu Toggle
+    // Floating Call Sub-menu Toggle (Closes WhatsApp menu if open)
     if (e.target.closest('#btn-floating-call')) {
       const menu = document.getElementById('call-sub-menu');
+      const waMenu = document.getElementById('wa-sub-menu');
+      if (waMenu) waMenu.classList.add('hidden');
       if (menu) menu.classList.toggle('hidden');
       return;
     }
 
-    // Floating WhatsApp Sub-menu Toggle
+    // Floating WhatsApp Sub-menu Toggle (Closes Call menu if open)
     if (e.target.closest('#btn-floating-wa')) {
       const menu = document.getElementById('wa-sub-menu');
+      const callMenu = document.getElementById('call-sub-menu');
+      if (callMenu) callMenu.classList.add('hidden');
       if (menu) menu.classList.toggle('hidden');
       return;
     }
 
-    // Close floating submenus & auth dropdown & mobile launcher when clicked outside
+    // Close floating submenus when clicked outside
     if (!e.target.closest('#call-menu-group') && !e.target.closest('#wa-menu-group')) {
       const callMenu = document.getElementById('call-sub-menu');
       const waMenu = document.getElementById('wa-sub-menu');
@@ -405,7 +443,7 @@ function attachEventListeners() {
         const added = favouriteStore.toggle(res.data);
         toast.show({
           type: added ? "success" : "info",
-          title: added ? "পছন্দের তালিকায় যুক্ত হয়েছে" : "পছন্দের তালিকা থেকে সরানো হয়েছে",
+          title: added ? "পছন্দের তালিকায় যুক্ত হয়েছে" : "পছন্দের তালিকা থেকে সরানো হয়েছে",
           message: res.data.name,
           duration: 3000
         });
@@ -418,8 +456,8 @@ function attachEventListeners() {
       favouriteStore.clear();
       toast.show({
         type: 'info',
-        title: 'পছন্দের তালিকা খালি করা হয়েছে',
-        message: 'সব পণ্য তালিকা থেকে মুছে ফেলা হয়েছে।'
+        title: 'পছন্দের তালিকা খালি করা হয়েছে',
+        message: 'সব পণ্য তালিকা থেকে মুছে ফেলা হয়েছে।'
       });
       router.resolve();
       return;
@@ -472,8 +510,8 @@ function attachEventListeners() {
         cartStore.addItem(res.data, 1);
         toast.show({
           type: "success",
-          title: "কার্টে যুক্ত হয়েছে",
-          message: `${res.data.name} কার্টে যোগ করা হয়েছে।`,
+          title: "কার্টে যুক্ত হয়েছে",
+          message: `${res.data.name} কার্টে যোগ করা হয়েছে।`,
           duration: 3500
         });
         openCartDrawer();
@@ -496,8 +534,8 @@ function attachEventListeners() {
         const variantDesc = [color ? `কালার: ${color}` : '', size ? `সাইজ: ${size}` : ''].filter(Boolean).join(', ');
         toast.show({
           type: "success",
-          title: "কার্টে যুক্ত হয়েছে",
-          message: `${res.data.name} (${qty} টি)${variantDesc ? ` [${variantDesc}]` : ''} কার্টে যোগ করা হয়েছে।`,
+          title: "কার্টে যুক্ত হয়েছে",
+          message: `${res.data.name} (${qty} টি)${variantDesc ? ` [${variantDesc}]` : ''} কার্টে যোগ করা হয়েছে।`,
           duration: 3500
         });
         openCartDrawer();
@@ -539,7 +577,7 @@ function attachEventListeners() {
         toast.show({
           type: "info",
           title: "প্রি-অর্ডার বুকিং",
-          message: `${res.data.name} প্রি-অর্ডার কার্টে যুক্ত হয়েছে। চেকআউটে কনফার্ম করুন।`,
+          message: `${res.data.name} প্রি-অর্ডার কার্টে যুক্ত হয়েছে। চেকআউটে কনফার্ম করুন।`,
           duration: 4000
         });
         router.navigate('/checkout');
@@ -668,7 +706,7 @@ function attachEventListeners() {
       }
 
       if (cartStore.isOnlinePayment() && trxId === 'N/A') {
-        alert('অনলাইন পেমেন্ট নির্বাচিত হয়েছে। অনুগ্রহ করে পেমেন্ট ট্রানজেকশন আইডি (TrxID) প্রদান করুন।');
+        alert('অনলাইন পেমেন্ট নির্বাচিত হয়েছে। অনুগ্রহ করে পেমেন্ট ট্রানজেকশন আইডি (TrxID) প্রদান করুন।');
         return;
       }
 
@@ -700,12 +738,12 @@ function attachEventListeners() {
         toast.show({
           type: "success",
           title: "অর্ডার কনফার্মড!",
-          message: `আপনার অর্ডার #${orderId} সফলভাবে গৃহীত হয়েছে।`,
+          message: `আপনার অর্ডার #${orderId} সফলভাবে গৃহীত হয়েছে।`,
           duration: 5000
         });
         router.navigate('/order-success?orderId=' + orderId);
       } else {
-        alert('অর্ডার সম্পন্ন করা যায়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।');
+        alert('অর্ডার সম্পন্ন করা যায়নি। অনুগ্রহ করে পুনরায় চেষ্টা করুন।');
         if (btn) {
           btn.disabled = false;
           btn.textContent = "অর্ডার নিশ্চিত করুন";
@@ -730,7 +768,7 @@ function attachEventListeners() {
         return;
       }
       if (!pass || pass.length < 4) {
-        toast.show({ type: "error", title: "সতর্কতা", message: "পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে।" });
+        toast.show({ type: "error", title: "সতর্কতা", message: "পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে।" });
         return;
       }
 
@@ -758,7 +796,7 @@ function attachEventListeners() {
         toast.show({
           type: "success",
           title: isRegister ? "নিবন্ধন সম্পন্ন!" : "লগইন সফল!",
-          message: `স্বাগতম, ${name}! আপনার ড্যাশবোর্ডে প্রবেশ করা হয়েছে।`,
+          message: `স্বাগতম, ${name}! আপনার ড্যাশবোর্ডে প্রবেশ করা হয়েছে।`,
           duration: 4000
         });
 
@@ -828,7 +866,7 @@ function attachEventListeners() {
       toast.show({
         type: "success",
         title: isRegister ? "হোলসেলার নিবন্ধন সফল!" : "হোলসেলার পোর্টালে স্বাগতম!",
-        message: `স্বাগতম, ${name}! পাইকারি রেট সক্রিয় হয়েছে।`,
+        message: `স্বাগতম, ${name}! পাইকারি রেট সক্রিয় হয়েছে।`,
         duration: 4000
       });
 
@@ -865,7 +903,7 @@ function attachEventListeners() {
       toast.show({
         type: "success",
         title: "অ্যাডমিন প্যানেলে স্বাগতম!",
-        message: `${userName} (${workerType}) হিসেবে লগইন হয়েছে।`,
+        message: `${userName} (${workerType}) হিসেবে লগইন হয়েছে।`,
         duration: 4000
       });
 
@@ -894,8 +932,8 @@ function attachEventListeners() {
 
       toast.show({
         type: 'success',
-        title: 'প্রোফাইল আপডেট হয়েছে!',
-        message: 'আপনার তথ্য সফলভাবে সংরক্ষিত হয়েছে।'
+        title: 'প্রোফাইল আপডেট হয়েছে!',
+        message: 'আপনার তথ্য সফলভাবে সংরক্ষিত হয়েছে।'
       });
 
       router.resolve();
@@ -942,7 +980,7 @@ function attachEventListeners() {
         toast.show({
           type: "success",
           title: "ক্যাম্পেইন অর্ডার সফল!",
-          message: `আপনার অর্ডার #${orderId} কনফার্ম করা হয়েছে।`,
+          message: `আপনার অর্ডার #${orderId} কনফার্ম করা হয়েছে।`,
           duration: 5000
         });
         router.navigate('/order-success?orderId=' + orderId);
@@ -982,14 +1020,10 @@ function attachLiveSearchHandlers() {
         ? apiClient.products 
         : (apiClient.sheetProducts || apiClient.loadLocal('dcbd_sheet_products', []) || []);
       
-      const matches = allProds.filter(p => {
-        const name = (p.name || p.p_name || '').toLowerCase();
-        const sku = (p.sku || p.product_id || '').toLowerCase();
-        const brand = (p.brand || '').toLowerCase();
-        const cat = (p.category || '').toLowerCase();
-        const subCat = (p.sub_category || '').toLowerCase();
-        return name.includes(query) || sku.includes(query) || brand.includes(query) || cat.includes(query) || subCat.includes(query);
-      }).slice(0, 8);
+      const searchRes = SearchService.search(allProds, query);
+      const directMatches = searchRes.directMatches;
+      const relatedProducts = searchRes.relatedProducts;
+      const matches = [...directMatches, ...relatedProducts].slice(0, 8);
 
       if (matches.length === 0) {
         popupEl.innerHTML = `
@@ -1003,7 +1037,7 @@ function attachLiveSearchHandlers() {
         popupEl.innerHTML = `
           <div class="divide-y divide-slate-100 dark:divide-slate-800">
             <div class="px-4 py-2 bg-slate-50 dark:bg-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center justify-between">
-              <span>🔍 সম্ভাব্য ফলাফল (${matches.length} টি পণ্য পাওয়া গেছে)</span>
+              <span>🔍 ${directMatches.length > 0 ? `সেরা ফলাফল (${directMatches.length} টি সরাসরি ম্যাচ)` : `সম্ভাব্য ফলাফল (${matches.length} টি)`}</span>
               <span class="text-[9px] text-emerald-600 font-bold">ক্লিক করে বিস্তারিত দেখুন</span>
             </div>
             ${matches.map(p => `
@@ -1017,11 +1051,12 @@ function attachLiveSearchHandlers() {
                   class="w-12 h-12 rounded-xl object-cover border border-slate-200 dark:border-slate-700 flex-shrink-0 bg-white"
                 />
                 <div class="min-w-0 flex-1">
-                  <div class="text-xs font-bold text-slate-900 dark:text-white truncate leading-snug">${p.name}</div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-bold text-slate-900 dark:text-white truncate leading-snug">${p.name}</span>${p._isDirectMatch === false ? `<span class="bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 px-1 py-0.2 rounded text-[8px] font-bold flex-shrink-0">সম্পর্কিত</span>` : ''}
+                  </div>
                   <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
                     <span class="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[9px] text-slate-600 dark:text-slate-300">${p.sku}</span>
-                    <span class="text-emerald-600 dark:text-emerald-400 font-black">${formatCurrency(p.selling_price)}</span>
-                    ${p.category ? `<span class="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[9px] font-bold">${p.category}</span>` : ''}
+                    <span class="text-emerald-600 dark:text-emerald-400 font-black">${formatCurrency(p.selling_price)}</span>${p.category ? `<span class="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[9px] font-bold">${p.category}</span>` : ''}
                   </div>
                 </div>
                 <span class="text-slate-400 text-xs flex-shrink-0 font-bold">→</span>
@@ -1029,7 +1064,7 @@ function attachLiveSearchHandlers() {
             `).join("")}
             <div class="p-3 text-center bg-slate-50 dark:bg-slate-800/80 border-t border-slate-100 dark:border-slate-800">
               <a href="/products?search=${encodeURIComponent(query)}" class="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline inline-flex items-center gap-1.5">
-                <span>"${query}" এর সকল সার্চ রেজাল্ট দেখুন →</span>
+                <span>"${query}" এর সকল সার্চ রেজাল্ট দেখুন (${searchRes.totalCount} টি) →</span>
               </a>
             </div>
           </div>
@@ -1140,5 +1175,3 @@ if (document.readyState === 'loading') {
 } else {
   initApp();
 }
-
-
