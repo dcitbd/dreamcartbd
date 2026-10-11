@@ -25,6 +25,13 @@ export async function renderCustomerPortal(params = {}) {
   const pathname = (typeof window !== 'undefined' && window.location) ? window.location.pathname : '';
   const currentView = params.subview || (pathname.includes('/register') ? 'register' : (pathname.includes('/login') ? 'login' : 'dashboard'));
 
+  // If user is already authenticated and visits login/register, redirect immediately to dashboard
+  if (isAuth && (currentView === 'login' || currentView === 'register')) {
+    if (typeof window !== 'undefined' && window.router) {
+      setTimeout(() => window.router.navigate('/customer/dashboard'), 50);
+    }
+  }
+
   // If user explicitly navigated to /customer/login or /customer/register and is not logged in:
   if (!isAuth && (currentView === 'login' || currentView === 'register')) {
     return renderAuthView(currentView);
@@ -1081,70 +1088,805 @@ function renderAuthView(view = 'login') {
   const isRegister = view === 'register';
 
   return `
-    <div class="max-w-md mx-auto py-12 px-4 space-y-6">
+    <style id="dc-customer-auth-styles">
+      /* ==========================================================================
+         DREAM CART BD — LUXURY CUSTOMER AUTHENTICATION SUITE
+         Extensive custom CSS for high-converting, modern, responsive authentication.
+         ========================================================================== */
+      .dc-auth-wrapper {
+        min-height: calc(100vh - 180px);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Ambient Radial Glow Meshes */
+      .dc-auth-glow-1 {
+        position: absolute;
+        top: -80px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 600px;
+        height: 380px;
+        background: radial-gradient(circle, rgba(16, 185, 129, 0.16) 0%, rgba(5, 150, 105, 0.05) 50%, transparent 70%);
+        filter: blur(60px);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .dc-auth-glow-2 {
+        position: absolute;
+        bottom: -60px;
+        right: 15%;
+        width: 480px;
+        height: 320px;
+        background: radial-gradient(circle, rgba(13, 148, 136, 0.14) 0%, rgba(14, 165, 233, 0.04) 50%, transparent 70%);
+        filter: blur(50px);
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* Main Auth Card */
+      .dc-auth-card {
+        position: relative;
+        z-index: 10;
+        width: 100%;
+        max-width: 530px;
+        background: #ffffff;
+        border: 1px solid rgba(226, 232, 240, 0.95);
+        border-radius: 28px;
+        padding: 2.25rem 2rem;
+        box-shadow: 0 20px 45px -10px rgba(5, 150, 105, 0.1), 0 10px 25px -5px rgba(0, 0, 0, 0.03);
+        box-sizing: border-box;
+        transition: all 0.3s ease;
+      }
+
+      .dark .dc-auth-card {
+        background: #0f172a;
+        border-color: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.55);
+      }
+
+      @media (max-width: 640px) {
+        .dc-auth-card {
+          padding: 1.5rem 1.25rem;
+          border-radius: 22px;
+        }
+      }
+
+      /* Brand Avatar & Ring */
+      .dc-brand-ring {
+        width: 64px;
+        height: 64px;
+        border-radius: 20px;
+        background: #ffffff;
+        border: 2px solid #10b981;
+        padding: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.22);
+        margin: 0 auto;
+        position: relative;
+      }
+
+      .dark .dc-brand-ring {
+        background: #1e293b;
+        border-color: #10b981;
+      }
+
+      .dc-pulse-dot {
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        width: 12px;
+        height: 12px;
+        border-radius: 9999px;
+        background: #10b981;
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 10px #10b981;
+        animation: pulse 2s infinite;
+      }
+
+      /* Segmented Nav Pill Tabs */
+      .dc-auth-tabs {
+        display: flex;
+        background: #f1f5f9;
+        padding: 5px;
+        border-radius: 18px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 1.75rem;
+        gap: 4px;
+      }
+
+      .dark .dc-auth-tabs {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+
+      .dc-auth-tab-btn {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.6875rem 1rem;
+        font-size: 0.8125rem;
+        font-weight: 700;
+        border-radius: 14px;
+        color: #64748b;
+        text-decoration: none;
+        transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        border: none;
+        background: transparent;
+      }
+
+      .dark .dc-auth-tab-btn {
+        color: #94a3b8;
+      }
+
+      .dc-auth-tab-btn.active {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        color: #ffffff !important;
+        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.32);
+        font-weight: 800;
+      }
+
+      .dc-auth-tab-btn:not(.active):hover {
+        color: #059669;
+        background: rgba(255, 255, 255, 0.8);
+      }
+
+      .dark .dc-auth-tab-btn:not(.active):hover {
+        color: #34d399;
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      /* Form Field Groups */
+      .dc-field-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.375rem;
+        margin-bottom: 1.125rem;
+        text-align: left;
+      }
+
+      .dc-field-label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #334155;
+        letter-spacing: 0.02em;
+      }
+
+      .dark .dc-field-label {
+        color: #cbd5e1;
+      }
+
+      .dc-input-container {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+
+      .dc-input-icon {
+        position: absolute;
+        left: 0.875rem;
+        font-size: 1.05rem;
+        color: #94a3b8;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .dc-input-field {
+        width: 100%;
+        padding: 0.75rem 2.5rem 0.75rem 2.65rem;
+        font-size: 0.875rem;
+        font-family: inherit;
+        color: #0f172a;
+        background: #ffffff;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 14px;
+        outline: none;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-sizing: border-box;
+      }
+
+      .dark .dc-input-field {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #f8fafc;
+      }
+
+      .dc-input-field:focus {
+        border-color: #10b981;
+        background: #ffffff;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16);
+      }
+
+      .dark .dc-input-field:focus {
+        background: #0f172a;
+        border-color: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
+      }
+
+      .dc-textarea-field {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 2.65rem;
+        font-size: 0.875rem;
+        font-family: inherit;
+        color: #0f172a;
+        background: #ffffff;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 14px;
+        outline: none;
+        resize: vertical;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-sizing: border-box;
+      }
+
+      .dark .dc-textarea-field {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #f8fafc;
+      }
+
+      .dc-textarea-field:focus {
+        border-color: #10b981;
+        background: #ffffff;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16);
+      }
+
+      .dark .dc-textarea-field:focus {
+        background: #0f172a;
+        border-color: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
+      }
+
+      /* Password Eye Toggle */
+      .dc-pass-toggle {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #64748b;
+        font-size: 1.15rem;
+        padding: 0.25rem 0.375rem;
+        cursor: pointer;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+      }
+
+      .dc-pass-toggle:hover {
+        color: #059669;
+        background: #f1f5f9;
+      }
+
+      .dark .dc-pass-toggle:hover {
+        color: #34d399;
+        background: #334155;
+      }
+
+      /* Submit Button */
+      .dc-auth-submit-btn {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.625rem;
+        padding: 0.875rem 1.5rem;
+        font-size: 0.9375rem;
+        font-weight: 800;
+        color: #ffffff;
+        background: linear-gradient(135deg, #059669 0%, #10b981 50%, #047857 100%);
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 8px 24px rgba(5, 150, 105, 0.35);
+        cursor: pointer;
+        transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-top: 0.5rem;
+      }
+
+      .dc-auth-submit-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 30px rgba(5, 150, 105, 0.45);
+        filter: brightness(1.04);
+      }
+
+      .dc-auth-submit-btn:active {
+        transform: translateY(0);
+        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
+      }
+
+      .dc-auth-submit-btn:disabled {
+        opacity: 0.75;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      /* Avatar Selector Chips */
+      .dc-avatar-chip {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        background: #f8fafc;
+        border: 2px solid #e2e8f0;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .dark .dc-avatar-chip {
+        background: #1e293b;
+        border-color: #334155;
+      }
+
+      .dc-avatar-chip.active, .dc-avatar-chip:hover {
+        border-color: #10b981;
+        background: #ecfdf5;
+        transform: scale(1.08);
+      }
+
+      .dark .dc-avatar-chip.active, .dark .dc-avatar-chip:hover {
+        background: rgba(16, 185, 129, 0.15);
+        border-color: #10b981;
+      }
+
+      /* Perks Grid */
+      .dc-perks-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+      }
+
+      @media (max-width: 480px) {
+        .dc-perks-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .dc-perk-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.625rem;
+        padding: 0.75rem;
+        background: #f8fafc;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        border-radius: 14px;
+        font-size: 0.75rem;
+      }
+
+      .dark .dc-perk-item {
+        background: rgba(30, 41, 59, 0.5);
+        border-color: rgba(255, 255, 255, 0.06);
+      }
+
+      .dc-perk-icon {
+        font-size: 1.15rem;
+        flex-shrink: 0;
+      }
+
+      /* Status Banner */
+      .dc-sheet-status-box {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        padding: 0.75rem 1rem;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(13, 148, 136, 0.04) 100%);
+        border: 1px solid rgba(16, 185, 129, 0.25);
+        border-radius: 16px;
+        font-size: 0.75rem;
+        color: #065f46;
+        margin-top: 1.25rem;
+      }
+
+      .dark .dc-sheet-status-box {
+        background: rgba(16, 185, 129, 0.1);
+        border-color: rgba(16, 185, 129, 0.3);
+        color: #6ee7b7;
+      }
+    </style>
+
+    <div class="dc-auth-wrapper">
       
-      <div class="text-center space-y-2">
-        <div class="w-14 h-14 rounded-2xl bg-white border border-slate-200 p-1.5 shadow-sm mx-auto flex items-center justify-center overflow-hidden">
-          <img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-full h-full object-contain" onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" />
-        </div>
-        <h2 class="text-2xl font-black text-slate-900 dark:text-white">
-          ${isRegister ? 'কাস্টমার নতুন অ্যাকাউন্ট তৈরি' : 'কাস্টমার লগইন'}
-        </h2>
-        <p class="text-xs text-slate-500">
-          ${isRegister ? 'অর্ডার ট্র্যাক ও দ্রুত শপিং করতে নিবন্ধন করুন' : 'আপনার মোবাইল নম্বর ও পাসওয়ার্ড দিয়ে প্রবেশ করুন'}
-        </p>
-      </div>
+      <!-- Ambient Glow Overlays -->
+      <div class="dc-auth-glow-1"></div>
+      <div class="dc-auth-glow-2"></div>
 
-      <div class="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-4 text-xs">
+      <!-- Main Auth Card Container -->
+      <div class="dc-auth-card">
         
-        <form id="customer-auth-form" class="space-y-3.5" data-auth-mode="${isRegister ? 'register' : 'login'}">
+        <!-- Header Branding & Logo -->
+        <div class="text-center space-y-2.5 mb-6">
+          <div class="dc-brand-ring">
+            <span class="dc-pulse-dot"></span>
+            <img 
+              src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" 
+              alt="Dream Cart BD Logo" 
+              class="w-full h-full object-contain rounded-xl"
+              onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';"
+            />
+          </div>
+
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              ${isRegister ? 'কাস্টমার নতুন নিবন্ধন' : 'কাস্টমার লগইন পোর্টাল'}
+            </h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              ${isRegister 
+                ? 'নিবন্ধন সম্পন্ন করলেই আপনার তথ্য সরাসরি গুগল শিটে জমা হবে' 
+                : 'শুধুমাত্র অফিসিয়াল Customers তালিকায় থাকা তথ্য অনুযায়ী প্রবেশ'}
+            </p>
+          </div>
+
+          <!-- Verified Security Badge -->
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+            <span>🔒</span>
+            <span>256-Bit SSL সুরক্ষিত • গুগল শিট লাইভ গেটওয়ে</span>
+          </div>
+        </div>
+
+        <!-- Segmented Tab Switcher (Login vs Register) -->
+        <div class="dc-auth-tabs">
+          <a 
+            href="/customer/login" 
+            class="dc-auth-tab-btn ${!isRegister ? 'active' : ''}"
+          >
+            <span>🔐</span>
+            <span>লগইন করুন</span>
+          </a>
+          <a 
+            href="/customer/register" 
+            class="dc-auth-tab-btn ${isRegister ? 'active' : ''}"
+          >
+            <span>📝</span>
+            <span>নতুন অ্যাকাউন্ট</span>
+          </a>
+        </div>
+
+        <!-- Dynamic Inline Error Alert Box -->
+        <div id="auth-error-alert" class="hidden mb-4 p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-xl text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2.5">
+          <span class="text-base flex-shrink-0">⚠️</span>
+          <div id="auth-error-msg" class="flex-1 font-semibold leading-relaxed"></div>
+        </div>
+
+        <!-- The Main Submission Form -->
+        <form id="customer-auth-form" data-auth-mode="${isRegister ? 'register' : 'login'}">
+          
           ${isRegister ? `
-            <div>
-              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পূর্ণ নাম *</label>
-              <input type="text" id="auth-name" required placeholder="মোঃ তানভীর হাসান" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" />
+            <!-- ================= REGISTER FIELDS (COLUMNS A TO M) ================= -->
+            
+            <!-- Column A & G (USER_ID preview) -->
+            <div class="p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl mb-3 flex items-center justify-between text-[11px]">
+              <span class="font-bold text-slate-500">🏷️ কাস্টমার আইডি (User_ID):</span>
+              <span class="font-mono font-black text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">স্বয়ংক্রিয় তৈরি হবে (CUST-******)</span>
             </div>
 
-            <div>
-              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">ইমেইল ঠিকানা</label>
-              <input type="email" id="auth-mail" placeholder="user@gmail.com" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" />
+            <!-- Column C (Name) -->
+            <div class="dc-field-group">
+              <label class="dc-field-label">
+                <span>পূর্ণ নাম (Name)</span>
+                <span class="text-rose-500 font-bold">*</span>
+              </label>
+              <div class="dc-input-container">
+                <span class="dc-input-icon">👤</span>
+                <input 
+                  type="text" 
+                  id="auth-name" 
+                  required 
+                  placeholder="যেমন: মোঃ তানভীর হাসান" 
+                  class="dc-input-field" 
+                />
+              </div>
             </div>
 
-            <div>
-              <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">ডেলিভারি ঠিকানা *</label>
-              <textarea id="auth-addr" required rows="2" placeholder="বাসা নং, রোড, থানা, জেলা..." class="form-control text-xs w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800"></textarea>
+            <!-- Column D (Mobile) -->
+            <div class="dc-field-group">
+              <label class="dc-field-label">
+                <span>মোবাইল নম্বর (Mobile)</span>
+                <span class="text-rose-500 font-bold">*</span>
+              </label>
+              <div class="dc-input-container">
+                <span class="dc-input-icon">📞</span>
+                <input 
+                  type="tel" 
+                  id="auth-phone" 
+                  required 
+                  pattern="[0-9]{11}" 
+                  placeholder="017XXXXXXXX (১১ ডিজিট)" 
+                  class="dc-input-field font-mono" 
+                />
+              </div>
+              <span class="text-[10px] text-slate-400 mt-0.5">অর্ডারের আপডেট ও লগইন এর জন্য ব্যবহৃত হবে (কলাম D)</span>
             </div>
-          ` : ""}
 
-          <div>
-            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">মোবাইল নম্বর *</label>
-            <input type="tel" id="auth-phone" required pattern="[0-9]{11}" placeholder="01700000000" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 font-mono" />
-          </div>
+            <!-- Column E (Mail) -->
+            <div class="dc-field-group">
+              <label class="dc-field-label">
+                <span>ইমেইল ঠিকানা (Mail)</span>
+                <span class="text-slate-400 text-[10px]">(ঐচ্ছিক)</span>
+              </label>
+              <div class="dc-input-container">
+                <span class="dc-input-icon">✉️</span>
+                <input 
+                  type="email" 
+                  id="auth-mail" 
+                  placeholder="name@example.com" 
+                  class="dc-input-field" 
+                />
+              </div>
+            </div>
 
-          <div>
-            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পাসওয়ার্ড *</label>
-            <input type="password" id="auth-pass" required placeholder="••••••••" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" />
-          </div>
+            <!-- Column F (Address) -->
+            <div class="dc-field-group">
+              <label class="dc-field-label">
+                <span>ডেলিভারি ও পূর্ণ ঠিকানা (Address)</span>
+                <span class="text-rose-500 font-bold">*</span>
+              </label>
+              <div class="dc-input-container">
+                <span class="dc-input-icon" style="top: 14px;">📍</span>
+                <textarea 
+                  id="auth-addr" 
+                  required 
+                  rows="2" 
+                  placeholder="বাসা/হোল্ডিং নং, রোড, এলাকা/গ্রাম, থানা, জেলা..." 
+                  class="dc-textarea-field"
+                ></textarea>
+              </div>
+              <span class="text-[10px] text-slate-400 mt-0.5">ক্যাশ অন ডেলিভারিতে পার্সেল পৌঁছানোর সঠিক ঠিকানা (কলাম F)</span>
+            </div>
 
-          <button type="submit" class="btn-primary w-full py-3 text-xs font-bold shadow-md rounded-xl">
-            ${isRegister ? 'নিবন্ধন সম্পন্ন করুন →' : 'লগইন করুন →'}
+            <!-- Column B (Profile_photo selection) -->
+            <div class="dc-field-group">
+              <label class="dc-field-label">
+                <span>প্রোফাইল ছবি (Profile_photo)</span>
+                <span class="text-slate-400 text-[10px]">(ঐচ্ছিক)</span>
+              </label>
+              
+              <!-- Quick Avatar Selector -->
+              <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                <button type="button" class="avatar-preset-btn dc-avatar-chip active" data-avatar-url="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120" title="পুরুষ অ্যাভাটার ১">👨‍💼</button>
+                <button type="button" class="avatar-preset-btn dc-avatar-chip" data-avatar-url="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120" title="মহিলা অ্যাভাটার ১">👩‍💼</button>
+                <button type="button" class="avatar-preset-btn dc-avatar-chip" data-avatar-url="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=120" title="অ্যাভাটার ৩">🧑</button>
+                <button type="button" class="avatar-preset-btn dc-avatar-chip" data-avatar-url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120" title="অ্যাভাটার ৪">🧔</button>
+                <button type="button" class="avatar-preset-btn dc-avatar-chip" data-avatar-url="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120" title="অ্যাভাটার ৫">🧕</button>
+              </div>
+
+              <div class="dc-input-container">
+                <span class="dc-input-icon">🖼️</span>
+                <input 
+                  type="url" 
+                  id="auth-photo" 
+                  value="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120"
+                  placeholder="ছবির সরাসরি লিঙ্ক (ঐচ্ছিক)" 
+                  class="dc-input-field text-xs" 
+                />
+              </div>
+            </div>
+
+            <!-- Column H (Password) -->
+            <div class="dc-field-group">
+              <label class="dc-field-label">
+                <span>পাসওয়ার্ড (Password)</span>
+                <span class="text-rose-500 font-bold">*</span>
+              </label>
+              <div class="dc-input-container">
+                <span class="dc-input-icon">🔑</span>
+                <input 
+                  type="password" 
+                  id="auth-pass" 
+                  required 
+                  minlength="4"
+                  placeholder="কমপক্ষে ৪ অক্ষরের পাসওয়ার্ড" 
+                  class="dc-input-field" 
+                />
+                <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-pass" title="পাসওয়ার্ড দেখুন">
+                  👁️
+                </button>
+              </div>
+            </div>
+
+            <!-- Password Confirmation -->
+            <div class="dc-field-group">
+              <label class="dc-field-label">
+                <span>পাসওয়ার্ড নিশ্চিতকরণ (Confirm Password)</span>
+                <span class="text-rose-500 font-bold">*</span>
+              </label>
+              <div class="dc-input-container">
+                <span class="dc-input-icon">🔐</span>
+                <input 
+                  type="password" 
+                  id="auth-confirm-pass" 
+                  required 
+                  minlength="4"
+                  placeholder="একই পাসওয়ার্ড পুনরায় লিখুন" 
+                  class="dc-input-field" 
+                />
+                <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-confirm-pass" title="পাসওয়ার্ড দেখুন">
+                  👁️
+                </button>
+              </div>
+            </div>
+
+            <!-- Column I-M Information Badge -->
+            <div class="p-2.5 bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl mb-3 text-[10px] text-emerald-800 dark:text-emerald-300">
+              ✓ ডিফল্ট স্ট্যাটাস: <strong>Active</strong> | অর্ডার রেট: <strong>100%</strong> (কলাম I থেকে M হিসেবে শিটে সেভ হবে)
+            </div>
+
+            <!-- Terms agreement -->
+            <div class="flex items-center gap-2 mb-3 text-xs text-slate-600 dark:text-slate-400">
+              <input type="checkbox" id="auth-terms" checked required class="rounded text-emerald-600" />
+              <label for="auth-terms" class="cursor-pointer">
+                আমি Dream Cart BD-এর <a href="/terms" class="text-emerald-600 font-bold underline">শর্তাবলী</a> ও <a href="/privacy" class="text-emerald-600 font-bold underline">গোপনীয়তা নীতি</a> মেনে নিচ্ছি।
+              </label>
+            </div>
+
+          ` : `
+            <!-- ================= LOGIN FIELDS ================= -->
+
+            <!-- Mobile / Email / Identifier -->
+            <div class="dc-field-group">
+              <label class="dc-field-label">
+                <span>মোবাইল নম্বর অথবা ইমেইল</span>
+                <span class="text-rose-500 font-bold">*</span>
+              </label>
+              <div class="dc-input-container">
+                <span class="dc-input-icon">📞</span>
+                <input 
+                  type="text" 
+                  id="auth-phone" 
+                  required 
+                  placeholder="017XXXXXXXX বা user@gmail.com" 
+                  class="dc-input-field" 
+                />
+              </div>
+              <span class="text-[10px] text-slate-400 mt-0.5">Customers শিটে সংরক্ষিত মোবাইল নম্বর বা ইমেইল প্রদান করুন</span>
+            </div>
+
+            <!-- Password -->
+            <div class="dc-field-group">
+              <label class="dc-field-label">
+                <span>পাসওয়ার্ড (Password)</span>
+                <span class="text-rose-500 font-bold">*</span>
+              </label>
+              <div class="dc-input-container">
+                <span class="dc-input-icon">🔑</span>
+                <input 
+                  type="password" 
+                  id="auth-pass" 
+                  required 
+                  placeholder="আপনার পাসওয়ার্ড লিখুন" 
+                  class="dc-input-field" 
+                />
+                <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-pass" title="পাসওয়ার্ড দেখুন">
+                  👁️
+                </button>
+              </div>
+            </div>
+
+            <!-- Remember me & Help Link -->
+            <div class="flex items-center justify-between text-xs pt-1 pb-2">
+              <label class="flex items-center gap-2 cursor-pointer text-slate-600 dark:text-slate-400">
+                <input type="checkbox" id="auth-remember" checked class="rounded text-emerald-600" />
+                <span>মনে রাখুন</span>
+              </label>
+              <a 
+                href="https://wa.me/8801581703822?text=Dream%20Cart%20BD%20Customer%20Password%20Help" 
+                target="_blank" 
+                class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
+              >
+                পাসওয়ার্ড ভুলে গেছেন?
+              </a>
+            </div>
+
+          `}
+
+          <!-- SUBMIT CTA BUTTON -->
+          <button type="submit" class="dc-auth-submit-btn">
+            <span>${isRegister ? 'অ্যাকাউন্ট তৈরি ও ডেসবোর্ডে প্রবেশ করুন' : 'লগইন করুন ও ডেসবোর্ডে প্রবেশ করুন'}</span>
+            <span>→</span>
           </button>
+
+          <!-- Security note -->
+          <p class="text-[11px] text-center text-slate-400 dark:text-slate-500 mt-2.5">
+            🔒 শুধুমাত্র অনুমোদিত <strong>Customers</strong> তালিকা অনুযায়ী সুরক্ষিত যাচাইকরণ সম্পন্ন হবে।
+          </p>
+
         </form>
 
-        <div class="pt-3 border-t border-slate-100 dark:border-slate-800 text-center space-y-2">
+        <!-- Switch between Login and Register -->
+        <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 text-center space-y-2 text-xs">
           ${isRegister ? `
-            <p class="text-slate-500">ইতিমধ্যে অ্যাকাউন্ট আছে? <a href="/customer/login" class="text-emerald-600 font-bold hover:underline">এখানে লগইন করুন</a></p>
+            <p class="text-slate-500 dark:text-slate-400">
+              ইতিমধ্যে অ্যাকাউন্ট আছে? 
+              <a href="/customer/login" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
+                এখানে লগইন করুন →
+              </a>
+            </p>
           ` : `
-            <p class="text-slate-500">অ্যাকাউন্ট নেই? <a href="/customer/register" class="text-emerald-600 font-bold hover:underline">নতুন অ্যাকাউন্ট খুলুন</a></p>
+            <p class="text-slate-500 dark:text-slate-400">
+              আপনার কোনো অ্যাকাউন্ট নেই? 
+              <a href="/customer/register" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
+                নতুন অ্যাকাউন্ট খুলুন (ফ্রি) →
+              </a>
+            </p>
           `}
-          
-          <div class="pt-2 flex items-center justify-center gap-2">
-            <a href="/customer/dashboard" class="btn-secondary py-1.5 px-3.5 text-xs font-bold rounded-lg">
-              গেস্ট ড্যাশবোর্ড দেখুন →
-            </a>
-            <a href="/products" class="btn-primary py-1.5 px-3.5 text-xs font-bold rounded-lg">
-              🛍️ শপ ভিজিট করুন
-            </a>
+        </div>
+
+        <!-- Live Google Sheets Database Sync Badge -->
+        <div class="dc-sheet-status-box">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping flex-shrink-0"></span>
+          <div>
+            <strong>🟢 Google Spreadsheet "Customers" লাইভ সিঙ্ক</strong>
+            <div class="text-[10px] opacity-80 mt-0.5">কলাম A (USER_ID) থেকে M (Order_Success_Rate) রিয়েল-টাইমে আপডেট হয়।</div>
           </div>
+        </div>
+
+        <!-- 4-Item Customer Benefits & Trust Perks Grid -->
+        <div class="dc-perks-grid">
+          <div class="dc-perk-item">
+            <span class="dc-perk-icon">🚚</span>
+            <div>
+              <div class="font-bold text-slate-800 dark:text-slate-200">ক্যাশ অন ডেলিভারি</div>
+              <div class="text-slate-500 text-[10px]">সারা বাংলাদেশে হোম ডেলিভারি সুবিধা</div>
+            </div>
+          </div>
+
+          <div class="dc-perk-item">
+            <span class="dc-perk-icon">🛡️</span>
+            <div>
+              <div class="font-bold text-slate-800 dark:text-slate-200">১০০% আসল পণ্য</div>
+              <div class="text-slate-500 text-[10px]">জেনুইন কোয়ালিটি ও অফিসিয়াল ওয়ারেন্টি</div>
+            </div>
+          </div>
+
+          <div class="dc-perk-item">
+            <span class="dc-perk-icon">📦</span>
+            <div>
+              <div class="font-bold text-slate-800 dark:text-slate-200">লাইভ ট্র্যাকিং</div>
+              <div class="text-slate-500 text-[10px]">তাৎক্ষণিক অর্ডার অবস্থান দেখার সুবিধা</div>
+            </div>
+          </div>
+
+          <div class="dc-perk-item">
+            <span class="dc-perk-icon">💬</span>
+            <div>
+              <div class="font-bold text-slate-800 dark:text-slate-200">২৪/৭ কাস্টমার কেয়ার</div>
+              <div class="text-slate-500 text-[10px]">হোয়াটসঅ্যাপ: 01581703822</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Helpful Navigation Shortcuts -->
+        <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs mt-4">
+          <a href="/products" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1">
+            <span>🛍️</span>
+            <span>শপ ভিজিট করুন</span>
+          </a>
+          <a href="/track" class="text-slate-500 hover:text-slate-700 font-semibold">
+            🚚 অর্ডার ট্র্যাক
+          </a>
+          <a href="/contact" class="text-slate-500 hover:text-slate-700 font-semibold">
+            📞 যোগাযোগ
+          </a>
         </div>
 
       </div>
