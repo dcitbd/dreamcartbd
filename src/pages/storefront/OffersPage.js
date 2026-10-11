@@ -250,7 +250,7 @@ export function renderOffersPage() {
         </div>
       </div>
 
-      <!-- Section: Platform Core Advantages & Guarantee Grid (অতিরিক্ত সুবিধার লিষ্ট কার্ড) -->
+      <!-- Section: Platform Core Advantages & Guarantee Grid (৫টি অতিরিক্ত সুবিধার লিষ্ট কার্ড) -->
       <div class="space-y-4">
         <div class="flex items-center gap-2">
           <span class="text-lg">🛡️</span>
