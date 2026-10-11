@@ -13,6 +13,17 @@ import { cartStore } from '../../store/cartStore.js';
 import { toast } from '../../components/Toast.js';
 import { formatCurrency } from '../../utils/format.js';
 
+// Safe HTML escaper
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // Global cache for site latency
 let cachedLatency = 28;
 
@@ -20,7 +31,6 @@ let cachedLatency = 28;
 export async function measureWebsiteSpeed() {
   const start = performance.now();
   try {
-    // Ping a lightweight static asset with cache-busting timestamp
     await fetch('/src/styles/main.css?ping=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
   } catch (e) {
     // Fallback if offline
@@ -89,6 +99,7 @@ if (typeof window !== 'undefined') {
       }
 
       if (prod) {
+        if (!prod.product_id) prod.product_id = prod.sku || productId;
         cartStore.addItem(prod, 1);
         toast.show({
           type: "success",
@@ -156,21 +167,18 @@ if (typeof window !== 'undefined') {
     container.insertAdjacentHTML('beforeend', typingHtml);
     container.scrollTop = container.scrollHeight;
 
-    // Simulate realistic thoughtful processing time (350ms - 550ms)
+    // Simulate realistic processing time
     setTimeout(async () => {
       const typingEl = document.getElementById(typingId);
       if (typingEl) typingEl.remove();
 
-      // Ingest live catalog from apiClient
       const allProds = (apiClient.products && apiClient.products.length > 0)
         ? apiClient.products
         : (apiClient.sheetProducts || INITIAL_PRODUCTS);
 
-      // Ingest categories & brands
       const categories = apiClient.sheetCategories || [];
       const brands = apiClient.sheetBrands || [];
 
-      // Generate AI Answer
       const aiResponse = generateAiResponse(msg, allProds, categories, brands, cachedLatency);
 
       const aiTime = new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' });
@@ -191,7 +199,6 @@ if (typeof window !== 'undefined') {
       container.insertAdjacentHTML('beforeend', aiMsgHtml);
       container.scrollTop = container.scrollHeight;
 
-      // Persist to session storage
       try {
         sessionStorage.setItem('dcbd_chat_html', container.innerHTML);
       } catch (e) {}
@@ -236,21 +243,11 @@ if (typeof window !== 'undefined') {
   };
 }
 
-function escapeHtml(str) {
-  return (str || '')
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
 /**
  * Intelligent AI Answer Generator
- * Deeply aware of live products, website structure, performance speed, policies, and contacts.
  */
 function generateAiResponse(query, products, categories, brands, latency) {
-  const q = query.toLowerCase().trim();
+  const q = String(query || '').toLowerCase().trim();
 
   // 1. Website Speed / Performance inquiries ("ওয়েবসাইটের গতি বুঝতে পারবে")
   if (
@@ -259,11 +256,12 @@ function generateAiResponse(query, products, categories, brands, latency) {
     q.includes('ফাস্ট') || q.includes('লেটেন্সি') || q.includes('latency') ||
     q.includes('ping') || q.includes('পিং') || q.includes('পারফরম্যান্স') || q.includes('performance')
   ) {
-    const rating = latency < 45 ? '⚡ আল্ট্রা-ফাস্ট (Ultra Fast)' : (latency < 100 ? '🚀 অত্যন্ত দ্রুত (Excellent)' : '🟢 স্বাভাবিক (Good)');
+    const currentSpeed = latency || 28;
+    const rating = currentSpeed < 45 ? '⚡ আল্ট্রা-ফাস্ট (Ultra Fast)' : (currentSpeed < 100 ? '🚀 অত্যন্ত দ্রুত (Excellent)' : '🟢 স্বাভাবিক (Good)');
     return {
       text: `
         <strong>📊 ড্রিম কার্ট বিডি লাইভ পারফরম্যান্স ও স্পিড রিপোর্ট:</strong><br/>
-        • <strong>বর্তমান রেসপন্স টাইম:</strong> <span class="font-mono text-emerald-600 dark:text-emerald-400 font-black text-sm">${latency}ms</span> (${rating})<br/>
+        • <strong>বর্তমান রেসপন্স টাইম:</strong> <span class="font-mono text-emerald-600 dark:text-emerald-400 font-black text-sm">${currentSpeed}ms</span> (${rating})<br/>
         • <strong>গুগল শিট গেটওয়ে সিঙ্ক:</strong> সক্রিয় ও লাইভ কানেক্টেড<br/>
         • <strong>সিডিএন ও ক্যাশিং:</strong> ক্লাউড অপ্টিমাইজড ও জিরো হ্যাশ (#) ক্লিন পাথ আর্কিটেকচার<br/>
         • <strong>লোডিং স্পিড:</strong> গড় পেজ লোডিং টাইম ০.৩ সেকেন্ডের নিচে!<br/><br/>
@@ -414,17 +412,15 @@ function generateAiResponse(query, products, categories, brands, latency) {
   // 11. Product Specific Search or Catalog Inquiries
   let matchedProds = [];
 
-  // Keyword-based search across all products in catalog
-  matchedProds = products.filter(p => {
-    const name = (p.name || p.p_name || '').toLowerCase();
-    const cat = (p.category || '').toLowerCase();
-    const subCat = (p.sub_category || '').toLowerCase();
-    const brand = (p.brand || '').toLowerCase();
-    const desc = (p.description || '').toLowerCase();
-    const spec = (p.specification || '').toLowerCase();
-    const sku = (p.sku || p.product_id || '').toLowerCase();
+  matchedProds = (products || []).filter(p => {
+    if (!p) return false;
+    const name = String(p.name || p.p_name || '').toLowerCase();
+    const cat = String(p.category || '').toLowerCase();
+    const subCat = String(p.sub_category || '').toLowerCase();
+    const brand = String(p.brand || '').toLowerCase();
+    const desc = String(p.description || '').toLowerCase();
+    const sku = String(p.sku || p.product_id || '').toLowerCase();
 
-    // Check specific terms
     if (q.includes('স্মার্টওয়াচ') || q.includes('ঘড়ি') || q.includes('watch')) {
       return cat.includes('watch') || name.includes('watch') || name.includes('স্মার্ট');
     }
@@ -444,7 +440,6 @@ function generateAiResponse(query, products, categories, brands, latency) {
       return brand.includes('kieslect') || name.includes('kieslect');
     }
 
-    // Direct multi-word matching
     const words = q.split(/\s+/).filter(w => w.length > 2);
     if (words.length > 0) {
       return words.some(w => name.includes(w) || cat.includes(w) || brand.includes(w) || sku.includes(w) || desc.includes(w));
@@ -453,12 +448,10 @@ function generateAiResponse(query, products, categories, brands, latency) {
     return false;
   });
 
-  // If no match by specific terms, and user asked for "পণ্য", "দাম", "অফার", "সব", show featured products
   if (matchedProds.length === 0 && (q.includes('পণ্য') || q.includes('দাম') || q.includes('অফার') || q.includes('সব') || q.includes('list') || q.includes('product') || q.includes('সেরা'))) {
-    matchedProds = products.slice(0, 4);
+    matchedProds = (products || []).slice(0, 4);
   }
 
-  // If matched products exist, format interactive cards
   if (matchedProds.length > 0) {
     const displayList = matchedProds.slice(0, 3);
     const cardsHtml = `
@@ -469,8 +462,8 @@ function generateAiResponse(query, products, categories, brands, latency) {
         <div class="grid grid-cols-1 gap-2">
           ${displayList.map(p => {
             const img = p.thumbnail || (p.images && p.images[0]) || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200';
-            const price = p.selling_price || 0;
-            const orig = p.original_price || (price * 1.15);
+            const price = Number(p.selling_price) || 0;
+            const orig = Number(p.original_price) || (price * 1.15);
             const inStock = (p.stock === undefined || Number(p.stock) > 0);
             const slug = p.slug || p.sku || p.product_id;
 
@@ -535,10 +528,7 @@ function generateAiResponse(query, products, categories, brands, latency) {
  * Main Render Function for /chat & /contact Page
  */
 export async function renderLiveChatPage() {
-  // Trigger background speed test
   setTimeout(measureWebsiteSpeed, 100);
-
-  // Pre-load sheet products into apiClient if needed
   apiClient.loadProductsFromSheet().catch(() => {});
 
   const currentLatency = cachedLatency;
