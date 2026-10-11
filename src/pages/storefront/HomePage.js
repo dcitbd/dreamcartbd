@@ -1,6 +1,7 @@
 /**
  * DREAM CART BD — HOME PAGE (HomePage.js)
  * Implements user requirements:
+ * - 5 Default Pre-loaded Banners: Kitchen, Health, Home Appliance, Medicine, Stationery
  * - Dynamic Auto-sliding Hero Banners (directly integrated with Banners Sheet & Admin Portal management)
  * - Guaranteed banner display with explicit responsive heights, high contrast, and smooth auto-slide
  * - Extra Notice / Trust badges (spacious card system with high contrast)
@@ -92,29 +93,62 @@ export async function renderHomePage() {
     return st !== 'inactive' && st !== 'disabled' && st !== 'false';
   });
 
-  // Default fallback banners if sheet is empty or loading
+  // 5 Core Default Banners (Kitchen, Health, Home Appliance, Medicine, Stationery)
   const defaultBanners = [
     {
       banner_id: "BAN-01",
-      title: "প্রিমিয়াম স্মার্ট গ্যাজেট ও লাইফস্টাইল কালেকশন",
-      subtitle: "স্মার্টওয়াচ, অর্গানিক হেলথ ফুড, ট্যাকটিক্যাল লাইট ও হোম সেফটি এক্সেসরিজে সেরা ক্যাশ অন ডেলিভারি অফার।",
-      tag: "মেগা অফার ২০২৬",
-      image_url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&auto=format&fit=crop&q=80",
-      link_url: "/products",
-      button_text: "এখনই অর্ডার করুন"
+      title: "আধুনিক কিচেন ও স্মার্ট কুকিং গ্যাজেট",
+      subtitle: "রান্নাঘরকে করুন আরও সহজ ও নিরাপদ — গ্যাস সেফটি ডিভাইস, ব্লেন্ডার ও প্রিমিয়াম কিচেনওয়্যার।",
+      tag: "কিচেন স্পেশাল",
+      image_url: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1600&auto=format&fit=crop&q=80",
+      link_url: "/products?cat=Kitchen",
+      button_text: "কিচেন আইটেম দেখুন",
+      status: "Active"
     },
     {
       banner_id: "BAN-02",
-      title: "অর্গানিক ফুড ও ন্যাচারাল হেলথ সাপ্লিমেন্ট",
-      subtitle: "১০০% খাঁটি সুন্দরবন মধু ও প্রিমিয়াম ভেষজ সামগ্রী সেরা মূল্যে সংগ্রহ করুন।",
-      tag: "স্বাস্থ্যকর জীবন",
+      title: "১০০% খাঁটি অর্গানিক ফুড ও হেলথ সাপ্লিমেন্ট",
+      subtitle: "সুন্দরবনের প্রাকৃতিক মধু, চিয়া সিড, কালোজিরা তেল ও পুষ্টিকর ভেষজ খাদ্য উপাদান।",
+      tag: "সুস্থ জীবন",
       image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1600&auto=format&fit=crop&q=80",
       link_url: "/products?cat=Organic%20%26%20Health",
-      button_text: "কালেকশন দেখুন"
+      button_text: "অর্গানিক ফুড দেখুন",
+      status: "Active"
+    },
+    {
+      banner_id: "BAN-03",
+      title: "স্মার্ট হোম অ্যাপ্লায়েন্স ও ইলেকট্রনিক্স কালেকশন",
+      subtitle: "দৈনন্দিন জীবনকে আরামদায়ক করতে নির্ভরযোগ্য ও বিদ্যুৎ সাশ্রয়ী হোম ইলেকট্রনিক্স সমাধান।",
+      tag: "স্মার্ট হোম",
+      image_url: "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=1600&auto=format&fit=crop&q=80",
+      link_url: "/products?cat=Home%20Appliances",
+      button_text: "অ্যাপ্লায়েন্স কালেকশন",
+      status: "Active"
+    },
+    {
+      banner_id: "BAN-04",
+      title: "মেডিসিন ও নির্ভরযোগ্য হোম হেলথকেয়ার ডিভাইস",
+      subtitle: "ডিজিটাল বিপি মেশিন, গ্লুকোমিটার, নেবুলাইজার ও জরুরি ফার্স্ট এইড ও মেডিকেয়ার সামগ্রী।",
+      tag: "স্বাস্থ্য সুরক্ষা",
+      image_url: "https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=1600&auto=format&fit=crop&q=80",
+      link_url: "/products?cat=Medicine%20%26%20Healthcare",
+      button_text: "মেডিকেয়ার পণ্য দেখুন",
+      status: "Active"
+    },
+    {
+      banner_id: "BAN-05",
+      title: "স্টেশনারি, স্টাডি ও অফিস ডেস্ক এক্সেসরিজ",
+      subtitle: "ছাত্র-ছাত্রী ও কর্পোরেট প্রফেশনালদের জন্য কোয়ালিটি নোটবুক, অর্গানাইজার ও স্মার্ট ডেস্ক গ্যাজেট।",
+      tag: "স্টাডি ও অফিস",
+      image_url: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=1600&auto=format&fit=crop&q=80",
+      link_url: "/products?cat=Stationery",
+      button_text: "স্টেশনারি দেখুন",
+      status: "Active"
     }
   ];
 
-  const banners = activeBanners.length > 0 ? activeBanners : defaultBanners;
+  // If custom banners uploaded in admin/sheet, prioritize them; otherwise ensure all 5 core categories are displayed
+  const banners = activeBanners.length >= 4 ? activeBanners : defaultBanners;
 
   // Group and deduplicate by Main Category name
   // Each unique category name appears EXACTLY ONCE on the homepage!
@@ -817,16 +851,16 @@ export async function renderHomePage() {
 
     <div class="dc-home-container">
       
-      <!-- 1. Auto-sliding Banners Hero Section (Managed via Admin Portal & Google Sheets) -->
+      <!-- 1. Auto-sliding Banners Hero Section (Kitchen, Health, Home Appliance, Medicine, Stationery) -->
       <section class="dc-hero-section">
         <div id="hero-slider">
           
           ${banners.map((b, idx) => {
-            const imgUrl = b.image_url || b.Image_URL || b.image || b.Image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&auto=format&fit=crop&q=80';
+            const imgUrl = b.image_url || b.Image_URL || b.image || b.Image || 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1600&auto=format&fit=crop&q=80';
             const title = (b.title || b.Title || '').trim();
             const subtitle = (b.subtitle || b.Subtitle || '').trim();
             const tag = (b.tag || b.Tag || 'বিশেষ অফার').trim();
-            const btnText = (b.button_text || b.Button_Text || 'এখনই অর্ডার করুন').trim();
+            const btnText = (b.button_text || b.Button_Text || 'এখনই দেখুন').trim();
             const linkUrl = b.link_url || b.link || b.Link || b.Link_URL || '/products';
             const isActive = idx === 0;
 
@@ -841,7 +875,7 @@ export async function renderHomePage() {
                   src="${imgUrl}" 
                   alt="${title || 'Dream Cart BD Banner'}" 
                   class="absolute inset-0 w-full h-full object-cover object-center select-none"
-                  onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&auto=format&fit=crop&q=80';"
+                  onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1600&auto=format&fit=crop&q=80';"
                 />
                 
                 <!-- High-Contrast Readable Gradient Overlay -->
