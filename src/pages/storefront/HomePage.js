@@ -1,9 +1,9 @@
 /**
  * DREAM CART BD — HOME PAGE (HomePage.js)
  * Implements user requirements:
- * - Luxury, spacious responsive layout with generous padding and margins (ZERO clutter)
- * - Auto-sliding banners (interactive slider with dots and prev/next controls)
- * - Extra Notice / Trust badges (spacious small card system with high contrast)
+ * - Dynamic Auto-sliding Hero Banners (directly integrated with Banners Sheet & Admin Portal management)
+ * - Guaranteed banner display with explicit responsive heights, high contrast, and smooth auto-slide
+ * - Extra Notice / Trust badges (spacious card system with high contrast)
  * - Featured Brands showcase (enclosed in clean modular card)
  * - Category product showcase: Unique categories only (each category appears once, clean section card)
  * - Interactive subcategory pill filters under each category header
@@ -29,21 +29,27 @@ if (typeof window !== 'undefined' && !window.__dcbdSliderInitialized) {
     currentSlide = (index + slides.length) % slides.length;
     slides.forEach((s, idx) => {
       if (idx === currentSlide) {
-        s.classList.remove('opacity-0', 'pointer-events-none', 'z-0');
-        s.classList.add('opacity-100', 'z-10');
+        s.classList.add('active-slide');
+        s.style.opacity = '1';
+        s.style.zIndex = '10';
+        s.style.visibility = 'visible';
+        s.style.pointerEvents = 'auto';
       } else {
-        s.classList.remove('opacity-100', 'z-10');
-        s.classList.add('opacity-0', 'pointer-events-none', 'z-0');
+        s.classList.remove('active-slide');
+        s.style.opacity = '0';
+        s.style.zIndex = '0';
+        s.style.visibility = 'hidden';
+        s.style.pointerEvents = 'none';
       }
     });
 
     dots.forEach((d, idx) => {
       if (idx === currentSlide) {
         d.classList.add('bg-emerald-500', 'w-10');
-        d.classList.remove('bg-white/30', 'w-8');
+        d.classList.remove('bg-white/40', 'w-8');
       } else {
         d.classList.remove('bg-emerald-500', 'w-10');
-        d.classList.add('bg-white/30', 'w-8');
+        d.classList.add('bg-white/40', 'w-8');
       }
     });
   };
@@ -80,18 +86,35 @@ export async function renderHomePage() {
   const brands = (brandRes.data && brandRes.data.items) || [];
   const rawBanners = (bannerRes.data && bannerRes.data.items) || [];
 
-  // Default fallback banners if empty
+  // Filter active banners dynamically from Google Sheets & Admin Portal
+  const activeBanners = rawBanners.filter(b => {
+    const st = String(b.status || b.Status || 'Active').trim().toLowerCase();
+    return st !== 'inactive' && st !== 'disabled' && st !== 'false';
+  });
+
+  // Default fallback banners if sheet is empty or loading
   const defaultBanners = [
     {
+      banner_id: "BAN-01",
       title: "প্রিমিয়াম স্মার্ট গ্যাজেট ও লাইফস্টাইল কালেকশন",
       subtitle: "স্মার্টওয়াচ, অর্গানিক হেলথ ফুড, ট্যাকটিক্যাল লাইট ও হোম সেফটি এক্সেসরিজে সেরা ক্যাশ অন ডেলিভারি অফার।",
       tag: "মেগা অফার ২০২৬",
       image_url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&auto=format&fit=crop&q=80",
       link_url: "/products",
-      button_text: "এখনই কিনুন"
+      button_text: "এখনই অর্ডার করুন"
+    },
+    {
+      banner_id: "BAN-02",
+      title: "অর্গানিক ফুড ও ন্যাচারাল হেলথ সাপ্লিমেন্ট",
+      subtitle: "১০০% খাঁটি সুন্দরবন মধু ও প্রিমিয়াম ভেষজ সামগ্রী সেরা মূল্যে সংগ্রহ করুন।",
+      tag: "স্বাস্থ্যকর জীবন",
+      image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1600&auto=format&fit=crop&q=80",
+      link_url: "/products?cat=Organic%20%26%20Health",
+      button_text: "কালেকশন দেখুন"
     }
   ];
-  const banners = rawBanners.length > 0 ? rawBanners : defaultBanners;
+
+  const banners = activeBanners.length > 0 ? activeBanners : defaultBanners;
 
   // Group and deduplicate by Main Category name
   // Each unique category name appears EXACTLY ONCE on the homepage!
@@ -181,20 +204,89 @@ export async function renderHomePage() {
         }
       }
 
-      /* Hero Banner Section */
+      /* ==========================================================================
+         HERO BANNER SLIDER (Explicit Responsive Height & High Visual Contrast)
+         ========================================================================== */
       .dc-hero-section {
         position: relative;
-        overflow: hidden;
+        width: 100%;
+        min-height: 360px;
+        height: 380px;
         border-radius: 24px;
+        overflow: hidden;
         background: #020617;
         border: 1px solid rgba(30, 41, 59, 0.85);
         box-shadow: 0 16px 36px -12px rgba(0, 0, 0, 0.35);
+        box-sizing: border-box;
       }
 
-      @media (max-width: 640px) {
+      @media (min-width: 640px) {
         .dc-hero-section {
+          min-height: 440px;
+          height: 460px;
+        }
+      }
+
+      @media (min-width: 1024px) {
+        .dc-hero-section {
+          min-height: 480px;
+          height: 500px;
+        }
+      }
+
+      @media (max-width: 639px) {
+        .dc-hero-section {
+          min-height: 340px;
+          height: 360px;
           border-radius: 18px;
         }
+      }
+
+      #hero-slider {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-height: 340px;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+      }
+
+      @media (min-width: 640px) {
+        #hero-slider {
+          min-height: 440px;
+        }
+      }
+
+      @media (min-width: 1024px) {
+        #hero-slider {
+          min-height: 480px;
+        }
+      }
+
+      .banner-slide {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        box-sizing: border-box;
+      }
+
+      .banner-slide.active-slide {
+        opacity: 1 !important;
+        z-index: 10 !important;
+        pointer-events: auto !important;
+        visibility: visible !important;
+      }
+
+      .banner-slide:not(.active-slide) {
+        opacity: 0 !important;
+        z-index: 0 !important;
+        pointer-events: none !important;
+        visibility: hidden !important;
       }
 
       /* Reusable Home Section Card Module */
@@ -725,54 +817,76 @@ export async function renderHomePage() {
 
     <div class="dc-home-container">
       
-      <!-- 1. Auto-sliding Banners Hero Section -->
+      <!-- 1. Auto-sliding Banners Hero Section (Managed via Admin Portal & Google Sheets) -->
       <section class="dc-hero-section">
-        <div id="hero-slider" class="relative w-full min-h-[340px] sm:min-h-[440px] md:min-h-[480px] flex items-center">
+        <div id="hero-slider">
           
-          ${banners.map((b, idx) => `
-            <div class="banner-slide ${idx === 0 ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'} absolute inset-0 transition-opacity duration-1000 ease-in-out flex items-center" data-index="${idx}">
-              
-              <!-- Background Image with Gradient Overlay -->
-              <img 
-                src="${b.image_url}" 
-                alt="${b.title}" 
-                class="absolute inset-0 w-full h-full object-cover object-center opacity-40 select-none"
-              />
-              <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-transparent"></div>
-              
-              <!-- Content Overlay -->
-              <div class="relative z-10 max-w-2xl px-6 sm:px-12 md:px-16 py-10 space-y-4">
-                <span class="inline-flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 font-extrabold text-[11px] px-3.5 py-1.5 rounded-full uppercase tracking-wider">
-                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  ${b.tag || "বিশেষ অফার"}
-                </span>
+          ${banners.map((b, idx) => {
+            const imgUrl = b.image_url || b.Image_URL || b.image || b.Image || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&auto=format&fit=crop&q=80';
+            const title = (b.title || b.Title || '').trim();
+            const subtitle = (b.subtitle || b.Subtitle || '').trim();
+            const tag = (b.tag || b.Tag || 'বিশেষ অফার').trim();
+            const btnText = (b.button_text || b.Button_Text || 'এখনই অর্ডার করুন').trim();
+            const linkUrl = b.link_url || b.link || b.Link || b.Link_URL || '/products';
+            const isActive = idx === 0;
 
-                <h1 class="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight">
-                  ${b.title}
-                </h1>
+            return `
+              <div 
+                class="banner-slide ${isActive ? 'active-slide' : ''}" 
+                data-index="${idx}"
+                style="opacity: ${isActive ? '1' : '0'}; z-index: ${isActive ? '10' : '0'}; visibility: ${isActive ? 'visible' : 'hidden'}; pointer-events: ${isActive ? 'auto' : 'none'};"
+              >
+                <!-- Background Image (Vibrant & Crisp) -->
+                <img 
+                  src="${imgUrl}" 
+                  alt="${title || 'Dream Cart BD Banner'}" 
+                  class="absolute inset-0 w-full h-full object-cover object-center select-none"
+                  onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=1600&auto=format&fit=crop&q=80';"
+                />
+                
+                <!-- High-Contrast Readable Gradient Overlay -->
+                <div class="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/75 to-transparent sm:from-slate-950/90 sm:via-slate-950/60 sm:to-transparent"></div>
+                
+                <!-- Content Overlay -->
+                <div class="relative z-10 max-w-2xl px-6 sm:px-12 md:px-16 py-8 sm:py-12 space-y-3.5 sm:space-y-4">
+                  ${tag ? `
+                    <span class="inline-flex items-center gap-1.5 bg-emerald-500/25 border border-emerald-400/50 text-emerald-300 font-extrabold text-[11px] sm:text-xs px-3.5 py-1.5 rounded-full uppercase tracking-wider backdrop-blur-xs">
+                      <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      ${tag}
+                    </span>
+                  ` : ''}
 
-                <p class="text-xs sm:text-sm md:text-base text-slate-300 leading-relaxed max-w-lg">
-                  ${b.subtitle}
-                </p>
+                  ${title ? `
+                    <h1 class="text-2xl sm:text-4xl md:text-5xl font-black text-white tracking-tight leading-tight drop-shadow-md">
+                      ${title}
+                    </h1>
+                  ` : ''}
 
-                <div class="pt-2 flex flex-wrap items-center gap-3">
-                  <a href="${b.link_url || '/products'}" class="btn-primary text-xs sm:text-sm py-2.5 sm:py-3 px-6 shadow-glow">
-                    ${b.button_text || 'এখনই অর্ডার করুন'} →
-                  </a>
-                  <a href="/offers" class="btn-secondary text-xs sm:text-sm py-2.5 sm:py-3 px-5 bg-white/10 text-white border-white/20 hover:bg-white/20 backdrop-blur-sm">
-                    সব অফার দেখুন
-                  </a>
+                  ${subtitle ? `
+                    <p class="text-xs sm:text-sm md:text-base text-slate-200 leading-relaxed max-w-lg drop-shadow-sm font-medium">
+                      ${subtitle}
+                    </p>
+                  ` : ''}
+
+                  <div class="pt-2 flex flex-wrap items-center gap-3">
+                    <a href="${linkUrl}" class="btn-primary text-xs sm:text-sm py-2.5 sm:py-3 px-6 shadow-glow font-bold rounded-xl transition">
+                      ${btnText} →
+                    </a>
+                    <a href="/offers" class="btn-secondary text-xs sm:text-sm py-2.5 sm:py-3 px-5 bg-white/15 text-white border-white/30 hover:bg-white/25 backdrop-blur-sm font-bold rounded-xl transition">
+                      সব অফার দেখুন
+                    </a>
+                  </div>
                 </div>
+
               </div>
+            `;
+          }).join("")}
 
-            </div>
-          `).join("")}
-
-          <!-- Slider Controls -->
+          <!-- Slider Dot Controls -->
           <div class="absolute bottom-5 left-6 sm:left-16 z-20 flex items-center gap-2">
             ${banners.map((_, i) => `
               <button 
-                class="slider-dot w-8 h-2 rounded-full transition-all ${i === 0 ? 'bg-emerald-500 w-10' : 'bg-white/30'}"
+                class="slider-dot w-8 h-2 rounded-full transition-all ${i === 0 ? 'bg-emerald-500 w-10' : 'bg-white/40'}"
                 data-slide-target="${i}"
                 aria-label="Go to slide ${i + 1}"
                 onclick="window.__dcbdGoSlide && window.__dcbdGoSlide(${i})"
@@ -780,11 +894,11 @@ export async function renderHomePage() {
             `).join("")}
           </div>
 
-          <!-- Prev/Next Arrow Buttons -->
-          <button id="slider-btn-prev" class="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white items-center justify-center backdrop-blur-sm transition cursor-pointer" aria-label="Previous Slide" onclick="window.__dcbdPrevSlide && window.__dcbdPrevSlide()">
+          <!-- Prev/Next Navigation Arrows -->
+          <button id="slider-btn-prev" class="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white items-center justify-center backdrop-blur-sm transition cursor-pointer border border-white/20" aria-label="Previous Slide" onclick="window.__dcbdPrevSlide && window.__dcbdPrevSlide()">
             ‹
           </button>
-          <button id="slider-btn-next" class="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white items-center justify-center backdrop-blur-sm transition cursor-pointer" aria-label="Next Slide" onclick="window.__dcbdNextSlide && window.__dcbdNextSlide()">
+          <button id="slider-btn-next" class="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/50 hover:bg-black/80 text-white items-center justify-center backdrop-blur-sm transition cursor-pointer border border-white/20" aria-label="Next Slide" onclick="window.__dcbdNextSlide && window.__dcbdNextSlide()">
             ›
           </button>
 
@@ -810,7 +924,7 @@ export async function renderHomePage() {
           </div>
           <div class="dc-trust-text-wrap">
             <h4 class="dc-trust-title">১০০% আসল পণ্য</h4>
-            <p class="dc-trust-desc">অথেন্টিক পণ্যের শতভাগ নিশ্চয়তা</p>
+            <p class="dc-trust-desc">অথেন্টিক পণ্যের শতভাগ নিশ্চয়তা</p>
           </div>
         </div>
 
@@ -848,7 +962,7 @@ export async function renderHomePage() {
                 <h2 class="dc-section-title">
                   টপ ব্র্যান্ড সমূহ (Featured Brands)
                 </h2>
-                <p class="dc-section-subtitle">আমাদের অফিসিয়াল ব্র্যান্ড পার্টনারগণ</p>
+                <p class="dc-section-subtitle">আমাদের অফিসিয়াল ব্র্যান্ড পার্টনারগণ</p>
               </div>
             </div>
             <a href="/brands" class="dc-section-link-btn">
@@ -937,7 +1051,7 @@ export async function renderHomePage() {
             </div>
             <div class="dc-section-title-wrap">
               <h2 class="dc-section-title">
-                সকল জনপ্রিয় পণ্য (Trending Collection)
+                সকল জনপ্রিয় পণ্য (Trending Collection)
               </h2>
               <p class="dc-section-subtitle">আমাদের সেরা সেলিং ও ট্রেন্ডিং আইটেমসমূহ</p>
             </div>
@@ -962,7 +1076,7 @@ export async function renderHomePage() {
             আমাদের সাথে রিসেলার বা পাইকারি ব্যবসা শুরু করুন!
           </h3>
           <p class="text-xs sm:text-sm text-emerald-100/90 leading-relaxed">
-            কোনো ধরনের ইনভেস্টমেন্ট ছাড়া নিজের ফেসবুক পেজ থেকে ড্রপশিপিং রিসেলিং করুন অথবা পাইকারি দামে বেশি মুনাফায় ব্যবসা বাড়ান।
+            কোনো ধরনের ইনভেস্টমেন্ট ছাড়া নিজের ফেসবুক পেজ থেকে ড্রপশিপিং রিসেলিং করুন অথবা পাইকারি দামে বেশি মুনাফায় ব্যবসা বাড়ান।
           </p>
         </div>
         <div class="flex flex-wrap items-center justify-center gap-3">
