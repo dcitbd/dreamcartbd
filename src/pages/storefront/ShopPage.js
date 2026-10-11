@@ -1,7 +1,9 @@
 /**
- * DREAM CART BD — PRODUCTS CATALOG PAGE (ShopPage.js)
+ * DREAM CART BD — PRODUCTS CATALOG PAGE (ShopPage.js / ProductsPage.js)
  * Implements user requirements:
  * - 60 pcs show per page (with pagination)
+ * - Mobile 2-grid product layout: balanced typography, compact padding, uniform card heights
+ * - Strict 2-line title clamping and character limit so cards never break across rows
  * - Filter by Category > Sub Category > Child Category tree (derived directly from products in Products sheet)
  * - Brand filter as dropdown
  * - Stock status filter: (In-Stock (selected by default), Out of Stock, All)
@@ -126,7 +128,6 @@ export async function renderShopPage(params = {}) {
   } else if (stockFilter === 'out_of_stock') {
     filteredProducts = filteredProducts.filter(p => Number(p.stock !== undefined ? p.stock : 25) <= 0);
   }
-  // if 'all', no stock filtering
 
   // Sorting
   if (sort === "low_high") {
@@ -171,6 +172,67 @@ export async function renderShopPage(params = {}) {
   }
 
   return `
+    <style id="dc-shop-products-styles">
+      /* Responsive Products Catalog Layout */
+      .product-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important;
+        gap: 1.25rem !important;
+        width: 100% !important;
+      }
+
+      @media (max-width: 1023px) {
+        .product-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 0.875rem !important;
+        }
+      }
+
+      /* 2-Column Mobile Grid for Products Page */
+      @media (max-width: 640px) {
+        .product-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 0.5rem !important;
+        }
+
+        .product-card {
+          border-radius: 0.875rem !important;
+        }
+
+        .product-card-title {
+          font-size: 11.5px !important;
+          line-height: 1.25 !important;
+          min-height: 2.3em !important;
+          max-height: 2.3em !important;
+          display: -webkit-box !important;
+          -webkit-line-clamp: 2 !important;
+          -webkit-box-orient: vertical !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+      }
+
+      /* Universal Title Line Clamp with fixed height */
+      .product-card-title {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-height: 2.4em;
+        max-height: 2.4em;
+        line-height: 1.3;
+      }
+
+      /* Smooth elevation */
+      .product-card {
+        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      }
+      .product-card:hover {
+        transform: translateY(-3px);
+      }
+    </style>
+
     <div class="space-y-6 pb-20">
       
       <!-- Breadcrumb & Page Header -->
@@ -438,4 +500,6 @@ export async function renderShopPage(params = {}) {
   `;
 }
 
+export const renderProductsPage = renderShopPage;
 export const renderProductListPage = renderShopPage;
+export default renderShopPage;
