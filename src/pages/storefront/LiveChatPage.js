@@ -2,10 +2,12 @@
  * DREAM CART BD — CONTACT & AI CHATBOT HUB (LiveChatPage.js)
  * Implements user requirements:
  * - Complete Contact Us Page: Showroom Google Map, Contact Numbers, Email, WhatsApp Channels.
- * - Intelligent AI Chatbot: Reads entire live website (products, catalog, prices, policies, speed).
- * - Understands and reports real-time Website Speed (Latency Ping).
- * - Recommends products with interactive cards, prices, and direct links (/product/slug).
- * - Dedicated clean CSS with elegant margins, comfortable padding, balanced typography, and soft dark mode contrast.
+ * - Intelligent AI Chatbot: Comprehensive full-site awareness (products, pricing, quantity/stock,
+ *   wholesale policy & system, reseller program, account registration/login, live order tracking,
+ *   payment methods, warranty & replacement, website latency speed).
+ * - Understands natural language Bengali & English queries with empathetic, context-rich responses.
+ * - Displays interactive product cards with direct links and 1-click cart addition.
+ * - Scoped CSS with elegant padding, clean typography, soft contrast, and seamless dark mode support.
  */
 
 import { apiClient, INITIAL_PRODUCTS } from '../../api/client.js';
@@ -64,7 +66,7 @@ export function measureWebsiteSpeed() {
   return latency;
 }
 
-// Global copy-to-clipboard helper
+// Global interactive helpers
 if (typeof window !== 'undefined') {
   window.copyToClipboard = function(text, label) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -276,7 +278,7 @@ export async function renderLiveChatPage() {
         box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
         display: flex;
         flex-direction: column;
-        height: 720px;
+        height: 740px;
         overflow: hidden;
       }
       .dark .lc-chat-card {
@@ -441,7 +443,7 @@ export async function renderLiveChatPage() {
         display: flex;
         align-items: flex-start;
         gap: 10px;
-        max-width: 90%;
+        max-width: 92%;
       }
       .lc-bot-avatar {
         width: 32px;
@@ -460,7 +462,7 @@ export async function renderLiveChatPage() {
         background: #ffffff;
         border: 1px solid rgba(226, 232, 240, 0.9);
         border-radius: 4px 18px 18px 18px;
-        padding: 14px 18px;
+        padding: 15px 18px;
         font-size: 13px;
         line-height: 1.6;
         color: #1e293b;
@@ -474,8 +476,8 @@ export async function renderLiveChatPage() {
       .lc-bot-footer {
         font-size: 10px;
         color: #94a3b8;
-        margin-top: 8px;
-        padding-top: 6px;
+        margin-top: 10px;
+        padding-top: 8px;
         border-top: 1px solid #f1f5f9;
         display: flex;
         align-items: center;
@@ -490,7 +492,7 @@ export async function renderLiveChatPage() {
         display: grid;
         grid-template-columns: 1fr;
         gap: 10px;
-        margin-top: 12px;
+        margin-top: 14px;
       }
       @media (min-width: 480px) {
         .lc-prod-grid {
@@ -500,21 +502,25 @@ export async function renderLiveChatPage() {
       .lc-prod-item {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 10px;
+        border-radius: 14px;
+        padding: 10px 12px;
         display: flex;
         align-items: center;
-        gap: 10px;
-        transition: border-color 0.15s ease;
+        gap: 12px;
+        transition: all 0.15s ease;
       }
       .dark .lc-prod-item {
         background: #0f172a;
         border-color: rgba(255, 255, 255, 0.08);
       }
+      .lc-prod-item:hover {
+        border-color: #10b981;
+        transform: translateY(-1px);
+      }
       .lc-prod-img {
-        width: 48px;
-        height: 48px;
-        border-radius: 8px;
+        width: 52px;
+        height: 52px;
+        border-radius: 10px;
         object-fit: cover;
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -544,21 +550,38 @@ export async function renderLiveChatPage() {
       .lc-prod-name:hover {
         color: #10b981;
       }
+      .lc-prod-meta-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 3px;
+      }
       .lc-prod-price {
-        font-size: 12.5px;
+        font-size: 13px;
         font-weight: 800;
         color: #059669;
-        margin-top: 2px;
       }
       .dark .lc-prod-price {
+        color: #34d399;
+      }
+      .lc-prod-stock {
+        font-size: 9.5px;
+        font-weight: 700;
+        background: #ecfdf5;
+        color: #047857;
+        padding: 1px 6px;
+        border-radius: 4px;
+      }
+      .dark .lc-prod-stock {
+        background: rgba(16, 185, 129, 0.15);
         color: #34d399;
       }
       .lc-prod-btns {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin-top: 4px;
-        font-size: 10.5px;
+        margin-top: 5px;
+        font-size: 11px;
       }
       .lc-prod-link {
         color: #10b981;
@@ -575,12 +598,47 @@ export async function renderLiveChatPage() {
         font-weight: 700;
         cursor: pointer;
         padding: 0;
+        transition: color 0.15s ease;
       }
       .dark .lc-prod-cart-btn {
         color: #94a3b8;
       }
       .lc-prod-cart-btn:hover {
         color: #10b981;
+      }
+
+      /* Quick Links Block in Bot Reply */
+      .lc-action-links {
+        margin-top: 10px;
+        padding-top: 8px;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .dark .lc-action-links {
+        border-top-color: rgba(255, 255, 255, 0.06);
+      }
+      .lc-link-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #ecfdf5;
+        color: #047857;
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 8px;
+        text-decoration: none;
+        transition: all 0.15s ease;
+      }
+      .dark .lc-link-chip {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+      }
+      .lc-link-chip:hover {
+        background: #10b981;
+        color: #ffffff;
       }
 
       /* Chat Input Bar */
@@ -1010,7 +1068,7 @@ export async function renderLiveChatPage() {
                 </div>
                 <div class="lc-chat-head-sub">
                   <span class="lc-active-dot"></span>
-                  <span>সকল পণ্য, মূল্য ও স্টক সম্পর্কে তথ্য জানে</span>
+                  <span>সাইটের সকল পণ্য, স্টক, পলিসি ও ট্র্যাকিং জানে</span>
                 </div>
               </div>
             </div>
@@ -1037,9 +1095,37 @@ export async function renderLiveChatPage() {
             <button 
               type="button" 
               class="lc-quick-chip"
-              onclick="window.triggerChatbotPrompt('ডেলিভারি চার্জ কত এবং কতদিনে পাই?')"
+              onclick="window.triggerChatbotPrompt('ডেলিভারি চার্জ কত এবং ফ্রি শিপিং কিভাবে পাব?')"
             >
-              🚚 ডেলিভারি চার্জ ও সময়
+              🚚 ফ্রি ডেলিভারি ও চার্জ
+            </button>
+            <button 
+              type="button" 
+              class="lc-quick-chip"
+              onclick="window.triggerChatbotPrompt('রিসেলার প্রোগ্রাম ও কমিশন সিস্টেম কি?')"
+            >
+              💼 রিসেলার নীতি
+            </button>
+            <button 
+              type="button" 
+              class="lc-quick-chip"
+              onclick="window.triggerChatbotPrompt('পাইকারি বা হোলসেলের নিয়ম কি?')"
+            >
+              🏬 পাইকারি নীতি
+            </button>
+            <button 
+              type="button" 
+              class="lc-quick-chip"
+              onclick="window.triggerChatbotPrompt('অর্ডার ট্র্যাক করব কিভাবে?')"
+            >
+              📦 অর্ডার ট্র্যাকিং
+            </button>
+            <button 
+              type="button" 
+              class="lc-quick-chip"
+              onclick="window.triggerChatbotPrompt('একাউন্ট খোলা ও লগইন কিভাবে করব?')"
+            >
+              🔑 একাউন্ট ও লগইন
             </button>
             <button 
               type="button" 
@@ -1070,8 +1156,14 @@ export async function renderLiveChatPage() {
                   আসসালামু আলাইকুম! ড্রিম কার্ট বিডি-তে আপনাকে স্বাগতম।
                 </p>
                 <p style="margin: 0; line-height: 1.6;">
-                  আমি ড্রিম কার্ট বিডি-র ভার্চুয়াল AI অ্যাসিস্ট্যান্ট। আমি আমাদের সম্পূর্ণ ওয়েবসাইট এবং স্টক স্ক্যান করতে সক্ষম। আপনি যেকোনো পণ্যের দাম, স্পেসিফিকেশন, স্টক তথ্য, ওয়ারেন্টি, কিংবা সাইটের পারফরম্যান্স সম্পর্কে জিজ্ঞেস করতে পারেন!
+                  আমি ড্রিম কার্ট বিডি-র সেন্ট্রাল AI অ্যাসিস্ট্যান্ট। আমি আমাদের পুরো ওয়েবসাইট এবং লাইভ ডাটাবেজ পর্যবেক্ষণ করতে পারি। আপনি আমাকে যেকোনো বিষয়ে প্রশ্ন করতে পারেন:
                 </p>
+                <ul style="margin: 8px 0 0 16px; padding: 0; line-height: 1.6;">
+                  <li>🛍️ <strong>প্রোডাক্ট অনুসন্ধান:</strong> পণ্যের নাম, দাম, স্টক/কোয়ান্টিটি ও স্পেসিফিকেশন।</li>
+                  <li>🚚 <strong>ডেলিভারি ও পেমেন্ট:</strong> ফ্রি ডেলিভারি, ক্যাশ অন ডেলিভারি ও অনলাইন পেমেন্ট ৫% ছাড়।</li>
+                  <li>🤝 <strong>বিজনেস পার্টনার:</strong> রিসেলার ড্রপশিপিং কমিশন ও হোলসেল পাইকারি নীতি।</li>
+                  <li>📦 <strong>অর্ডার ও একাউন্ট:</strong> পার্সেল লাইভ ট্র্যাকিং, রেজিস্ট্রেশন ও লগইন সহায়তা।</li>
+                </ul>
                 <div class="lc-bot-footer">
                   <span>ইনস্ট্যান্ট অটোমেটেড রিপ্লাই • লাইভ ক্যাটালগ সিঙ্কড</span>
                 </div>
@@ -1085,7 +1177,7 @@ export async function renderLiveChatPage() {
             <input 
               type="text" 
               id="ai-chat-input" 
-              placeholder="পণ্য, মূল্য বা তথ্য সম্পর্কে বাংলায় লিখুন..." 
+              placeholder="পণ্য, মূল্য, পাইকারি, রিসেলিং বা অর্ডার সম্পর্কে লিখুন..." 
               autocomplete="off"
               class="lc-chat-input"
             />
@@ -1368,7 +1460,7 @@ function appendTypingIndicator(container, id) {
     </div>
     <div class="lc-bot-bubble" style="display: flex; align-items: center; gap: 8px;">
       <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
-      <span style="font-size: 12px; color: #94a3b8;">সাইট ডাটা বিশ্লেষণ করা হচ্ছে...</span>
+      <span style="font-size: 12px; color: #94a3b8;">ড্রিম কার্ট ক্যাটালগ ও ডাটাবেজ পর্যবেক্ষণ করা হচ্ছে...</span>
     </div>
   `;
   container.appendChild(el);
@@ -1383,6 +1475,7 @@ function appendBotMessage(container, answerObj) {
   const el = document.createElement('div');
   el.className = 'lc-bot-msg';
   
+  // Product Cards
   let cardsHtml = '';
   if (answerObj.recommendedProducts && answerObj.recommendedProducts.length > 0) {
     cardsHtml = `
@@ -1390,23 +1483,31 @@ function appendBotMessage(container, answerObj) {
         ${answerObj.recommendedProducts.map(function(p) {
           const prodUrl = `/product/${p.slug || p.id}`;
           const formattedPrice = typeof formatCurrency === 'function' ? formatCurrency(p.price || 0) : `৳${p.price || 0}`;
+          const stockLabel = (p.stock != null && p.stock > 0) ? `স্টকে আছে (${p.stock} টি)` : 'স্টকে অ্যাভেইলেবল';
+          
           return `
             <div class="lc-prod-item">
               <img 
                 src="${p.thumbnail || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120'}" 
                 alt="${escapeHtml(p.name)}" 
                 class="lc-prod-img"
+                onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120';"
               />
               <div class="lc-prod-info">
-                <a href="${prodUrl}" class="lc-prod-name">
+                <a href="${prodUrl}" class="lc-prod-name" title="${escapeHtml(p.name)}">
                   ${escapeHtml(p.name)}
                 </a>
-                <div class="lc-prod-price">
-                  ${formattedPrice}
+                <div class="lc-prod-meta-row">
+                  <div class="lc-prod-price">
+                    ${formattedPrice}
+                  </div>
+                  <span class="lc-prod-stock">
+                    ${stockLabel}
+                  </span>
                 </div>
                 <div class="lc-prod-btns">
                   <a href="${prodUrl}" class="lc-prod-link">
-                    বিস্তারিত →
+                    পণ্য দেখুন →
                   </a>
                   <span style="color: #94a3b8;">•</span>
                   <button 
@@ -1425,6 +1526,23 @@ function appendBotMessage(container, answerObj) {
     `;
   }
 
+  // Action links
+  let linksHtml = '';
+  if (answerObj.actionLinks && answerObj.actionLinks.length > 0) {
+    linksHtml = `
+      <div class="lc-action-links">
+        ${answerObj.actionLinks.map(function(l) {
+          return `
+            <a href="${l.url}" class="lc-link-chip">
+              <span>${l.icon || '🔗'}</span>
+              <span>${escapeHtml(l.label)}</span>
+            </a>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
   el.innerHTML = `
     <div class="lc-bot-avatar">
       AI
@@ -1432,6 +1550,7 @@ function appendBotMessage(container, answerObj) {
     <div class="lc-bot-bubble">
       <div style="line-height: 1.6;">${answerObj.text}</div>
       ${cardsHtml}
+      ${linksHtml}
       <div class="lc-bot-footer">
         <span>ড্রিম কার্ট লাইভ বট</span>
         <span>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -1441,150 +1560,255 @@ function appendBotMessage(container, answerObj) {
   container.appendChild(el);
 }
 
-// AI Knowledge synthesis engine
+// Comprehensive AI Knowledge Synthesis Engine
 function generateAiBotResponse(query, products) {
   const q = query.toLowerCase().trim();
   const latency = measureWebsiteSpeed();
+  const allProds = products || [];
 
-  // Speed / Website performance query
-  if (q.includes('গতি') || q.includes('স্পিড') || q.includes('speed') || q.includes('fast') || q.includes('ping') || q.includes('latency')) {
+  // 1. ORDER TRACKING & STATUS CHECK (অর্ডার স্ট্যাটাস ও পার্সেল ট্র্যাকিং)
+  const isOrderTrackIntent = q.includes('অর্ডার') || q.includes('order') || q.includes('ট্র্যাক') || 
+                             q.includes('track') || q.includes('পার্সেল') || q.includes('স্ট্যাটাস') || 
+                             q.includes('status') || q.includes('কোথায়') || q.includes('ডেলিভারি কবে');
+  
+  // Check if customer typed an explicit order id like DC-1001 or mobile number
+  const orderIdMatch = q.match(/dc[-_ ]?\d+/i) || q.match(/#\d{3,6}/);
+  const phoneMatch = q.match(/01[3-9]\d{8}/);
+
+  if (orderIdMatch || phoneMatch || isOrderTrackIntent) {
+    if (orderIdMatch || phoneMatch) {
+      const trackingQuery = orderIdMatch ? orderIdMatch[0].toUpperCase() : phoneMatch[0];
+      return {
+        text: `📦 <strong>অর্ডার ট্র্যাকিং তথ্য শনাক্ত হয়েছে (${trackingQuery}):</strong><br>
+          আপনার অর্ডারটি রিয়েল-টাইম কুরিয়ার গেটওয়েতে ট্র্যাক করার জন্য নিচে দেওয়া সরাসরি লিংকে ক্লিক করুন। সেখানে আপনি ইনভয়েস, প্যাকিং ও ডেলিভারি স্ট্যাটাস দেখতে পাবেন:`,
+        actionLinks: [
+          { label: `অর্ডার ${trackingQuery} ট্র্যাক করুন →`, url: `/track?search=${encodeURIComponent(trackingQuery)}`, icon: '🔍' },
+          { label: 'ট্র্যাকিং পেজ', url: '/track', icon: '📦' }
+        ]
+      };
+    }
+
     return {
-      text: `⚡ <strong>ওয়েবসাইট পারফরম্যান্স রিপোর্ট:</strong><br>
-        আমাদের সার্ভার ও ওয়েবসাইট রিয়েল-টাইম ল্যাটেন্সি হচ্ছে <strong>${latency}ms</strong>। সম্পূর্ণ ক্যাশিং ও অপ্টিমাইজড CDN আর্কিটেকচারের কারণে সাইটটি অত্যন্ত দ্রুতগতির এবং স্মুথলি লোড হচ্ছে। আপনার শপিং অভিজ্ঞতা হবে একদম নিরবচ্ছিন্ন!`
+      text: `📦 <strong>অর্ডার স্ট্যাটাস চেক ও ট্র্যাকিং করার নিয়ম:</strong><br>
+        ড্রিম কার্ট বিডি-তে অর্ডার করার সাথে সাথেই আপনার ইনভয়েস তৈরি হয় এবং কুরিয়ার বুকিং ট্র্যাক করা যায়:<br>
+        ১. আমাদের <strong><a href="/track" style="color: #059669; font-weight: 700; text-decoration: underline;">অর্ডার ট্র্যাকিং পেজে</a></strong> প্রবেশ করুন।<br>
+        ২. আপনার <strong>অর্ডার আইডি (যেমন: DC-1024)</strong> অথবা যে <strong>মোবাইল নম্বর</strong> দিয়ে অর্ডার করেছিলেন তা দিয়ে সার্চ বাটনে চাপ দিন।<br>
+        ৩. সাথে সাথে Steadfast/Pathao কুরিয়ারের লাইভ লোকেশন, ডেলিভারি ডেট ও মেমো দেখতে পাবেন।<br><br>
+        <em>টিপস: আপনি সরাসরি এই চ্যাটেও আপনার অর্ডার নম্বর বা ফোন নম্বর লিখে পাঠাতে পারেন!</em>`,
+      actionLinks: [
+        { label: 'লাইভ অর্ডার ট্র্যাক করুন →', url: '/track', icon: '🔍' }
+      ]
     };
   }
 
-  // Delivery & shipping query
-  if (q.includes('ডেলিভারি') || q.includes('কুরিয়ার') || q.includes('চার্জ') || q.includes('shipping') || q.includes('delivery')) {
+  // 2. WHOLESALE & BULK BUYING POLICY & SYSTEM (পাইকারি ও হোলসেল নীতি)
+  if (q.includes('হোলসেল') || q.includes('পাইকারি') || q.includes('পাইকারী') || q.includes('wholesale') || q.includes('বাল্ক') || q.includes('bulk') || q.includes('দোকানদার') || q.includes('ডিলার')) {
     return {
-      text: `🚚 <strong>ডেলিভারি চার্জ ও পলিসি:</strong><br>
-        • <strong>৳২,০০০ বা তার বেশি অর্ডারে সারা বাংলাদেশে ডেলিভারি সম্পূর্ণ ফ্রি!</strong><br>
-        • ঢাকার ভেতর রেগুলার চার্জ: ৭০ টাকা (২৪-৪৮ ঘণ্টার মধ্যে হোম ডেলিভারি)।<br>
-        • ঢাকার বাইরে চার্জ: ১৩০ টাকা (২-৩ কার্যদিবসে ক্যাশ অন ডেলিভারি)।<br>
-        • আমাদের নিজস্ব কুমিল্লা হাব (পদুয়ার বাজার) থেকে পার্সেল দ্রুততম সময়ে ডিসপ্যাচ করা হয়।`
+      text: `🏬 <strong>ড্রিম কার্ট বিডি হোলসেল ও পাইকারি নীতি (Wholesale Policy):</strong><br>
+        দোকানদার, খুচরা বিক্রেতা ও কর্পোরেট ক্রেতাদের জন্য আমরা সরাসরি ইমপোর্টার রেটে সর্বনিম্ন পাইকারি মূল্যে পণ্য সরবরাহ করি:<br>
+        • <strong>মূল্য নির্ধারণ:</strong> রিটেইল দামের চেয়ে উল্লেখযোগ্য পরিমাণ কম পাইকারি মূল্যে পণ্য পাবেন।<br>
+        • <strong>মিনিমাম অর্ডার (MOQ):</strong> প্রতিটি পণ্যের স্বল্প ন্যূনতম অর্ডার কোয়ান্টিটি (MOQ) দিয়ে শুরু করতে পারবেন।<br>
+        • <strong>বুকিং পলিসি:</strong> বাল্ক অর্ডারের ক্ষেত্রে মাত্র ২০% বুকিং মানি অগ্রিম পরিশোধ করতে হয়, অবশিষ্ট ৮০% পণ্য হাতে পেয়ে ক্যাশ অন ডেলিভারিতে প্রদেয়।<br>
+        • <strong>ইনভয়েস ও ডেলিভারি:</strong> প্রতিটি অর্ডারের সাথে অফিসিয়াল ভেন্ডর ক্যাশমেমো ও ফাস্ট-ট্র্যাক কুরিয়ার ডিসপ্যাচ নিশ্চিত করা হয়।`,
+      actionLinks: [
+        { label: 'হোলসেলার একাউন্ট খুলুন →', url: '/wholesaler/register', icon: '📝' },
+        { label: 'হোলসেলার লগইন', url: '/wholesaler/login', icon: '🔑' },
+        { label: 'অফার ও সুবিধাসমূহ', url: '/offers', icon: '🎁' }
+      ]
     };
   }
 
-  // Payment methods query
-  if (q.includes('পেমেন্ট') || q.includes('payment') || q.includes('বিকাশ') || q.includes('নগদ') || q.includes('bkash')) {
+  // 3. RESELLER PROGRAM & SYSTEM (রিসেলার প্রোগ্রাম ও কমিশন সিস্টেম)
+  if (q.includes('রিসেলার') || q.includes('রিসেল') || q.includes('reseller') || q.includes('ড্রপশিপ') || q.includes('dropship') || q.includes('কমিশন') || q.includes('ঘরে বসে আয়')) {
     return {
-      text: `💳 <strong>পেমেন্ট সংক্রান্ত তথ্য:</strong><br>
-        • <strong>ক্যাশ অন ডেলিভারি (COD):</strong> পণ্য হাতে পেয়ে চেক করে সম্পূর্ণ মূল্য পরিশোধ করুন।<br>
-        • <strong>অনলাইন অগ্রিম পেমেন্ট:</strong> বিকাশ মার্চেন্ট (<code style="font-family: monospace; color: #059669; font-weight: 700;">01581703822</code>) অথবা বিকাশ পার্সোনাল (<code style="font-family: monospace; font-weight: 700;">01879653143</code>)।<br>
-        • <strong>বিশেষ সুবিধা:</strong> অনলাইনে সম্পূর্ণ মূল্য পরিশোধ করলে তাৎক্ষণিক <strong>৫% সরাসরি ছাড়</strong> পাওয়া যায়!`
+      text: `💼 <strong>ড্রিম কার্ট বিডি রিসেলার পার্টনার প্রোগ্রাম (Reseller System):</strong><br>
+        কোনো ইনভেস্টমেন্ট বা নিজস্ব স্টক ছাড়াই ঘরে বসে ফেসবুক পেজ বা শপের মাধ্যমে ড্রিম কার্ট বিডি-র পণ্য বিক্রি করে আয় করুন:<br>
+        • <strong>জিরো ইনভেস্টমেন্ট:</strong> কোনো পণ্য আগে থেকে কিনে রাখা লাগবে না।<br>
+        • <strong>প্রফিট মার্জিন:</strong> প্রতিটি সফল ডেলিভারিতে আপনি পাবেন <strong>১০% পর্যন্ত নিশ্চিত প্রফিট মার্জিন</strong>।<br>
+        • <strong>প্যাকিং ও ডেলিভারি:</strong> কাস্টমার অর্ডার গ্রহণের পর প্যাকিং, ইনভয়েস ও ডেলিভারি সরাসরি আমরা সামলাব (আপনার ব্র্যান্ড নেমে)।<br>
+        • <strong>পেমেন্ট উইথড্র:</strong> ডেডিকেটেড রিসেলার ড্যাশবোর্ড থেকে অর্ডারের কমিশন হিসাব দেখা এবং যেকোনো সময় বিকাশ/নগদে উইথড্র করার সুবিধা।`,
+      actionLinks: [
+        { label: 'রিসেলার রেজিস্ট্রেশন করুন →', url: '/reseller/register', icon: '🚀' },
+        { label: 'রিসেলার লগইন', url: '/reseller/login', icon: '🔑' },
+        { label: 'সকল বেনিফিট দেখুন', url: '/offers', icon: '🎁' }
+      ]
     };
   }
 
-  // Address & showroom query
-  if (q.includes('শোরুম') || q.includes('ঠিকানা') || q.includes('কোথায়') || q.includes('লোকেশন') || q.includes('address') || q.includes('outlet')) {
+  // 4. ACCOUNT CREATION & LOGIN (একাউন্ট খোলা ও লগইন সহায়তা)
+  if (q.includes('একাউন্ট') || q.includes('অ্যাকাউন্ট') || q.includes('account') || q.includes('লগইন') || q.includes('login') || 
+      q.includes('রেজিস্টার') || q.includes('register') || q.includes('সাইনআপ') || q.includes('signup') || q.includes('পাসওয়ার্ড')) {
     return {
-      text: `📍 <strong>আমাদের শোরুমের ঠিকানা:</strong><br>
-        <strong>ড্রিম কার্ট বিডি আউটলেট</strong><br>
+      text: `🔑 <strong>একাউন্ট খোলা ও লগইন সংক্রান্ত তথ্য:</strong><br>
+        ড্রিম কার্ট বিডি-তে তিন ধরনের ইউজার একাউন্ট রয়েছে। আপনার প্রয়োজন অনুযায়ী নিচে ক্লিক করে রেজিস্ট্রেশন বা লগইন করুন:<br>
+        • <strong>সাধারণ কাস্টমার:</strong> নিয়মিত কেনাকাটা ও ট্র্যাকিং সুবিধার জন্য।<br>
+        • <strong>রিসেলার পার্টনার:</strong> জিরো ইনভেস্টে ড্রপশিপিং ব্যবসার জন্য।<br>
+        • <strong>হোলসেলার পার্টনার:</strong> দোকানদার ও পাইকারি ক্রয়ের জন্য।`,
+      actionLinks: [
+        { label: 'কাস্টমার লগইন', url: '/customer/login', icon: '👤' },
+        { label: 'কাস্টমার রেজিস্ট্রেশন', url: '/customer/register', icon: '✨' },
+        { label: 'রিসেলার রেজিস্ট্রেশন', url: '/reseller/register', icon: '💼' },
+        { label: 'হোলসেলার রেজিস্ট্রেশন', url: '/wholesaler/register', icon: '🏬' }
+      ]
+    };
+  }
+
+  // 5. WEBSITE SPEED & REAL-TIME PERFORMANCE (ওয়েবসাইট গতি ও ল্যাটেন্সি)
+  if (q.includes('গতি') || q.includes('স্পিড') || q.includes('speed') || q.includes('fast') || q.includes('ping') || q.includes('latency') || q.includes('স্লো')) {
+    return {
+      text: `⚡ <strong>ওয়েবসাইট স্পিড ও পারফরম্যান্স রিপোর্ট:</strong><br>
+        আমাদের সার্ভার ও ওয়েবসাইট রিয়েল-টাইম ল্যাটেন্সি হচ্ছে <strong>${latency}ms</strong>।<br>
+        • <strong>ক্লাউড ক্যাশিং:</strong> আধুনিক CDN এবং লো-ল্যাটেন্সি আর্কিটেকচারে বিল্ট হওয়ায় সাইটের ব্রাউজিং সুপার ফাস্ট।<br>
+        • <strong>ডাটাবেজ সিঙ্ক:</strong> গুগল ক্লাউড গেটওয়ের মাধ্যমে ক্যাটালগ ও কার্ট রিয়েল-টাইমে আপডেট থাকে।<br>
+        আপনার কেনাকাটা ও ব্রাউজিং অভিজ্ঞতা ১০০% স্মুথ এবং নিরবচ্ছিন্ন থাকবে!`
+    };
+  }
+
+  // 6. DELIVERY CHARGE, TIME & FREE SHIPPING (ডেলিভারি চার্জ ও ফ্রি ডেলিভারি অফার)
+  if (q.includes('ডেলিভারি') || q.includes('কুরিয়ার') || q.includes('চার্জ') || q.includes('shipping') || q.includes('delivery') || q.includes('ফ্রি')) {
+    return {
+      text: `🚚 <strong>ডেলিভারি পলিসি ও চার্জের নিয়মাবলী:</strong><br>
+        • <strong>৳২,০০০ বা তার বেশি মূল্যের অর্ডারে সারা দেশে ডেলিভারি ১০০% ফ্রি (৳০)!</strong><br>
+        • <strong>ঢাকার ভেতরে:</strong> ডেলিভারি চার্জ ৭০ টাকা (সময়: ২৪ থেকে ৪৮ ঘণ্টা)।<br>
+        • <strong>ঢাকার বাইরে:</strong> ডেলিভারি চার্জ ১৩০ টাকা (সময়: ২ থেকে ৩ কার্যদিবস)।<br>
+        • <strong>হাব ডিসপ্যাচ:</strong> কুমিল্লা পদুয়ার বাজার ওয়্যারহাউস থেকে অর্ডারের দিনেই Steadfast/Pathao নেটওয়ার্কে পার্সেল হস্তান্তর করা হয়।<br>
+        • কোনো কুপন ছাড়াই স্বয়ংক্রিয়ভাবে কার্টে ফ্রি ডেলিভারি কার্যকর হয়।`,
+      actionLinks: [
+        { label: 'স্পেশাল অফার দেখুন →', url: '/offers', icon: '🎁' },
+        { label: 'শপ ব্রাউজ করুন', url: '/products', icon: '🛍️' }
+      ]
+    };
+  }
+
+  // 7. PAYMENT METHODS, BKASH & ONLINE DISCOUNT (পেমেন্ট পদ্ধতি ও ছাড়)
+  if (q.includes('পেমেন্ট') || q.includes('payment') || q.includes('বিকাশ') || q.includes('নগদ') || q.includes('bkash') || q.includes('ছাড়') || q.includes('discount')) {
+    return {
+      text: `💳 <strong>পেমেন্ট মেথড ও অনলাইন ডিসকাউন্ট সুবিধা:</strong><br>
+        • <strong>ক্যাশ অন ডেলিভারি (COD):</strong> পণ্য হাতে পেয়ে চেক করে মূল্য পরিশোধের ১০০% নিরাপদ সুবিধা রয়েছে।<br>
+        • <strong>অনলাইন অগ্রিম পেমেন্টে ৫% সরাসরি ছাড়:</strong> সম্পূর্ণ বিল অনলাইনে পরিশোধ করলেই সাথে সাথে মোট মূল্যের ওপর অতিরিক্ত ৫% ছাড় পাবেন।<br>
+        • <strong>বিকাশ মার্চেন্ট:</strong> <strong style="font-family: monospace; color: #059669;">01581703822</strong> (পেমেন্ট অপশন)<br>
+        • <strong>বিকাশ পার্সোনাল:</strong> <strong style="font-family: monospace;">01879653143</strong> (সেন্ড মানি)<br>
+        • চেকআউটে অনলাইন পেমেন্ট সিলেক্ট করলেই ৫% স্বয়ংক্রিয়ভাবে কমে যাবে।`,
+      actionLinks: [
+        { label: 'চেকআউট পেজ', url: '/checkout', icon: '💳' },
+        { label: 'অফার বিস্তারিত', url: '/offers', icon: '🎁' }
+      ]
+    };
+  }
+
+  // 8. WARRANTY, GUARANTEE & RETURN/REPLACEMENT (ওয়ারেন্টি ও রিপ্লেসমেন্ট পলিসি)
+  if (q.includes('ওয়ারেন্টি') || q.includes('গ্যারান্টি') || q.includes('রিপ্লেসমেন্ট') || q.includes('warranty') || q.includes('return') || q.includes('নষ্ট') || q.includes('ত্রুটি')) {
+    return {
+      text: `🛡️ <strong>ওয়ারেন্টি ও রিটার্ন নিশ্চয়তা (Warranty & Replacement):</strong><br>
+        ড্রিম কার্ট বিডি-র সকল গ্যাজেট ও ইলেকট্রনিক্স পণ্যে আপনি পাবেন পূর্ণ নিরাপত্তা:<br>
+        • <strong>১ বছরের অফিশিয়াল ব্র্যান্ড ওয়ারেন্টি:</strong> স্মার্টওয়াচ ও টেকনিক্যাল পণ্যে ১ বছরের সার্ভিস নিশ্চয়তা।<br>
+        • <strong>৭ দিনের ইনস্ট্যান্ট রিপ্লেসমেন্ট:</strong> পার্সেল পাওয়ার পর কোনো ত্রুটি দেখা দিলে ৭ দিনের মধ্যে সম্পূর্ণ ফ্রিতে নতুন পণ্য রিপ্লেস করে দেওয়া হয়।<br>
+        • <strong>১০০% অথেনটিক:</strong> প্রতিটি পণ্য ইনট্যাক্ট বক্স ও সিকিউরিটি সিল সহ পাঠানো হয়।`,
+      actionLinks: [
+        { label: 'সকল গ্রাহক সুবিধা', url: '/offers', icon: '🛡️' }
+      ]
+    };
+  }
+
+  // 9. SHOWROOM LOCATION & CONTACT DETAILS (শোরুমের ঠিকানা ও যোগাযোগ)
+  if (q.includes('শোরুম') || q.includes('দোকান') || q.includes('ঠিকানা') || q.includes('কোথায়') || q.includes('লোকেশন') || 
+      q.includes('address') || q.includes('outlet') || q.includes('ফোন') || q.includes('কুমিল্লা')) {
+    return {
+      text: `📍 <strong>ড্রিম কার্ট বিডি শোরুম ও কাস্টমার কেয়ার:</strong><br>
+        <strong>শোরুমের ঠিকানা:</strong><br>
         চৌধুরী প্লাজা, পদুয়ার বাজার বিশ্বরোড (সদর দক্ষিণ), কুমিল্লা।<br>
-        হটলাইন: <strong style="font-family: monospace;">01581703822</strong>, <strong style="font-family: monospace;">01818273838</strong><br>
-        ইমেইল: <code style="font-family: monospace;">jainal.dcitbd@gmail.com</code><br>
-        ডানপাশের ইন্টারেক্টিভ ম্যাপে গুগল লোকেশন সরাসরি দেখে নিতে পারেন।`
+        • <strong>হটলাইন ১:</strong> <strong style="font-family: monospace;">01581703822</strong><br>
+        • <strong>সাপোর্ট ২:</strong> <strong style="font-family: monospace;">01818273838</strong><br>
+        • <strong>ইমেইল:</strong> <code style="font-family: monospace;">jainal.dcitbd@gmail.com</code><br>
+        • <strong>হোয়াটসঅ্যাপ:</strong> ডানপাশের বাটনে ক্লিক করে সরাসরি মেসেজ দিতে পারেন।<br>
+        ডানপাশের গুগল ম্যাপ কার্ডের সাহায্যে সরাসরি লোকেশন নেভিগেশন করতে পারবেন।`,
+      actionLinks: [
+        { label: 'গুগল ম্যাপে দেখুন ↗', url: 'https://maps.google.com/?q=Chowdhury+Plaza,+Paduar+Bazar+Bishwa+Road,+Cumilla', icon: '🗺️' }
+      ]
     };
   }
 
-  // Warranty & Replacement query
-  if (q.includes('ওয়ারেন্টি') || q.includes('গ্যারান্টি') || q.includes('রিপ্লেসমেন্ট') || q.includes('warranty') || q.includes('return')) {
-    return {
-      text: `🛡️ <strong>ওয়ারেন্টি ও রিটার্ন নিশ্চয়তা:</strong><br>
-        • আমাদের প্রতিটি গ্যাজেটে রয়েছে <strong>১ বছরের অফিশিয়াল ব্র্যান্ড ওয়ারেন্টি</strong>।<br>
-        • পণ্য প্রাপ্তির পর কোনো টেকনিক্যাল সমস্যা থাকলে <strong>৭ দিনের ইনস্ট্যান্ট রিপ্লেসমেন্ট গ্যারান্টি</strong> দেওয়া হয়।<br>
-        • ১০০% আসল ও ইনট্যাক্ট বক্স পণ্য গ্রাহকের কাছে হস্তান্তর করা হয়।`
-    };
+  // 10. PRODUCT SPECIFIC & INTENT-DRIVEN SEARCH (দাম, স্টক, কোয়ান্টিটি ও ক্যাটালগ অনুসন্ধান)
+  // Check category keywords
+  let matchingProds = [];
+
+  if (q.includes('স্মার্টওয়াচ') || q.includes('ওয়াচ') || q.includes('watch') || q.includes('ঘড়ি') || q.includes('amoled') || q.includes('hk9')) {
+    matchingProds = allProds.filter(function(p) {
+      const text = `${p.name || ''} ${p.category || ''} ${p.sub_category || ''}`.toLowerCase();
+      return text.includes('watch') || text.includes('ultra') || text.includes('hk') || text.includes('ঘড়ি') || text.includes('smartwatch');
+    });
+  } else if (q.includes('মধু') || q.includes('অর্গানিক') || q.includes('honey') || q.includes('organic') || q.includes('সিড') || q.includes('seed')) {
+    matchingProds = allProds.filter(function(p) {
+      const text = `${p.name || ''} ${p.category || ''} ${p.sub_category || ''}`.toLowerCase();
+      return text.includes('honey') || text.includes('মধু') || text.includes('organic') || text.includes('chia');
+    });
+  } else if (q.includes('লাইট') || q.includes('টর্চ') || q.includes('light') || q.includes('torch') || q.includes('ফ্ল্যাশ') || q.includes('flash')) {
+    matchingProds = allProds.filter(function(p) {
+      const text = `${p.name || ''} ${p.category || ''} ${p.sub_category || ''}`.toLowerCase();
+      return text.includes('light') || text.includes('flashlight') || text.includes('লাইট') || text.includes('tactical');
+    });
+  } else if (q.includes('গ্যাস') || q.includes('রেগুলেটর') || q.includes('কিচেন') || q.includes('gas') || q.includes('safety') || q.includes('পাইপ') || q.includes('hose')) {
+    matchingProds = allProds.filter(function(p) {
+      const text = `${p.name || ''} ${p.category || ''} ${p.sub_category || ''}`.toLowerCase();
+      return text.includes('gas') || text.includes('regulator') || text.includes('গ্যাস') || text.includes('kitchen') || text.includes('pipe');
+    });
+  } else {
+    // Broad multi-word match across catalog
+    const queryTokens = q.split(/[\s,]+/).filter(function(w) { return w.length > 1; });
+    if (queryTokens.length > 0) {
+      matchingProds = allProds.filter(function(p) {
+        const fullText = `${p.name || ''} ${p.category || ''} ${p.sub_category || ''} ${p.description || ''} ${p.sku || ''}`.toLowerCase();
+        return queryTokens.some(function(token) { return fullText.includes(token); });
+      });
+    }
   }
-
-  // Reseller / Wholesaler query
-  if (q.includes('রিসেলার') || q.includes('পাইকারি') || q.includes('হোলসেল') || q.includes('reseller') || q.includes('wholesale')) {
-    return {
-      text: `💼 <strong>রিসেলার ও পাইকারি বিজনেস সুবিধা:</strong><br>
-        • <strong>রিসেলার:</strong> কোনো ইনভেস্টমেন্ট ছাড়া ড্রপশিপিং করে প্রতি অর্ডারে ১০% পর্যন্ত নিশ্চিত কমিশন আয় করুন।<br>
-        • <strong>হোলসেলার:</strong> সরাসরি ইমপোর্টার রেটে সর্বনিম্ন পাইকারি মূল্যে বাল্ক অর্ডার করার সুবিধা।<br>
-        বিস্তারিত দেখতে আমাদের <a href="/offers" style="color: #059669; font-weight: 700; text-decoration: underline;">অফার ও পার্টনার পেজে</a> ভিজিট করুন।`
-    };
-  }
-
-  // Smartwatch search
-  if (q.includes('স্মার্টওয়াচ') || q.includes('ওয়াচ') || q.includes('watch') || q.includes('ঘড়ি')) {
-    const watchList = products.filter(function(p) {
-      const n = (p.name || '').toLowerCase();
-      const c = (p.category || '').toLowerCase();
-      return n.includes('watch') || n.includes('ultra') || n.includes('hk') || c.includes('smartwatch');
-    }).slice(0, 4);
-
-    return {
-      text: `⌚ <strong>স্মার্টওয়াচ কালেকশন:</strong><br>
-        আমাদের স্টকে বর্তমানে আকর্ষণীয় ডিসকাউন্টে প্রিমিয়াম AMOLED ও ব্লুটুথ কলিং স্মার্টওয়াচ রয়েছে। নিচের কার্ড থেকে পছন্দের ঘড়িটির বিস্তারিত দেখে সরাসরি কার্টে যোগ করতে পারেন:`,
-      recommendedProducts: watchList
-    };
-  }
-
-  // Honey / Organic search
-  if (q.includes('মধু') || q.includes('অর্গানিক') || q.includes('honey') || q.includes('organic')) {
-    const honeyList = products.filter(function(p) {
-      const n = (p.name || '').toLowerCase();
-      const c = (p.category || '').toLowerCase();
-      return n.includes('honey') || n.includes('মধু') || c.includes('organic');
-    }).slice(0, 4);
-
-    return {
-      text: `🍯 <strong>১০০% খাঁটি মধু ও অর্গানিক হেলথ ফুড:</strong><br>
-        আমাদের কাছে প্রাকৃতিক সুন্দরবনের খাঁটি মধু ও পুষ্টিকর খাদ্য উপাদান রয়েছে। কোনো প্রিজারভেটিভ বা ভেজাল নেই:`,
-      recommendedProducts: honeyList
-    };
-  }
-
-  // Flashlight / Light search
-  if (q.includes('লাইট') || q.includes('টর্চ') || q.includes('light') || q.includes('torch')) {
-    const lightList = products.filter(function(p) {
-      const n = (p.name || '').toLowerCase();
-      const c = (p.category || '').toLowerCase();
-      return n.includes('light') || n.includes('flashlight') || n.includes('লাইট') || c.includes('tactical');
-    }).slice(0, 4);
-
-    return {
-      text: `🔦 <strong>ট্যাকটিক্যাল লাইটিং কালেকশন:</strong><br>
-        হাই-পাওয়ার রিচার্জেবল মিলিটারি গ্রেড টর্চলাইট ও ইমার্জেন্সি লাইট স্টকে অ্যাভেইলেবল রয়েছে:`,
-      recommendedProducts: lightList
-    };
-  }
-
-  // Kitchen / Gas safety search
-  if (q.includes('গ্যাস') || q.includes('রেগুলেটর') || q.includes('কিচেন') || q.includes('gas') || q.includes('safety')) {
-    const gasList = products.filter(function(p) {
-      const n = (p.name || '').toLowerCase();
-      const c = (p.category || '').toLowerCase();
-      return n.includes('gas') || n.includes('regulator') || n.includes('গ্যাস') || c.includes('kitchen');
-    }).slice(0, 4);
-
-    return {
-      text: `🛡️ <strong>কিচেন ও গ্যাস সেফটি এক্সেসরিজ:</strong><br>
-        অটোমেটিক গ্যাস দুর্ঘটনা প্রতিরোধক অটো-কাট রেগুলেটর ও প্রিমিয়াম সেফটি পাইপ রয়েছে:`,
-      recommendedProducts: gasList
-    };
-  }
-
-  // General search across products
-  const matchingProds = products.filter(function(p) {
-    const text = `${p.name || ''} ${p.category || ''} ${p.sub_category || ''} ${p.description || ''}`.toLowerCase();
-    const words = q.split(' ').filter(function(w) { return w.length > 2; });
-    return words.some(function(w) { return text.includes(w); });
-  }).slice(0, 4);
 
   if (matchingProds.length > 0) {
+    const topMatches = matchingProds.slice(0, 4);
+    const asksPriceOrStock = q.includes('দাম') || q.includes('price') || q.includes('কত') || q.includes('স্টক') || q.includes('stock') || q.includes('কোয়ান্টিটি');
+    
+    let answerIntro = `🛍️ <strong>আপনার অনুসন্ধান অনুযায়ী পণ্যের তালিকা ও মূল্য:</strong><br>`;
+    if (asksPriceOrStock) {
+      answerIntro = `🏷️ <strong>পণ্যের বর্তমান মূল্য, স্টক ও স্পেসিফিকেশন:</strong><br>
+        আমাদের স্টকে থাকা পণ্যের রিয়েল-টাইম তথ্য নিচে দেওয়া হলো। পছন্দ হলে সরাসরি কার্ড থেকে কার্টে যোগ করতে পারেন বা ক্লিক করে বিস্তারিত দেখতে পারেন:`;
+    } else {
+      answerIntro = `🔍 আপনার অনুসন্ধান <strong>"${escapeHtml(query)}"</strong> অনুযায়ী আমাদের স্টকে থাকা সেরা পণ্যসমূহ নিচে দেওয়া হলো:`;
+    }
+
     return {
-      text: `🔍 আপনার অনুসন্ধান <strong>"${escapeHtml(query)}"</strong> অনুযায়ী আমাদের স্টকে থাকা সেরা পণ্যসমূহ নিচে দেওয়া হলো:`,
-      recommendedProducts: matchingProds
+      text: answerIntro,
+      recommendedProducts: topMatches,
+      actionLinks: [
+        { label: 'সকল পণ্য ব্রাউজ করুন →', url: '/products', icon: '🛍️' },
+        { label: 'ক্যাটাগরি সমূহ', url: '/categories', icon: '📂' }
+      ]
     };
   }
 
-  // Default fallback answer
-  const featured = products.slice(0, 3);
+  // 11. GREETINGS & INTRO (সালাম ও সাধারণ সম্ভাষণ)
+  if (q.includes('হাই') || q.includes('হ্যালো') || q.includes('hello') || q.includes('hi') || q.includes('সালাম') || q.includes('assalam') || q.includes('কেমন আছেন')) {
+    return {
+      text: `ওয়ালাইকুম আসসালাম! ড্রিম কার্ট বিডি-তে আপনাকে স্বাগতম। 😊<br>
+        আমি আপনার জন্য কীভাবে সহায়তা করতে পারি? আপনি যেকোনো পণ্যের নাম বা দাম জানতে চাইতে পারেন, অর্ডার ট্র্যাক করতে পারেন, অথবা পাইকারি ও রিসেলিং সংক্রান্ত তথ্য জানতে পারেন।`,
+      recommendedProducts: allProds.slice(0, 2),
+      actionLinks: [
+        { label: 'জনপ্রিয় পণ্যসমূহ', url: '/products', icon: '🔥' },
+        { label: 'বিশেষ অফারসমূহ', url: '/offers', icon: '🎁' }
+      ]
+    };
+  }
+
+  // 12. DEFAULT INTELLIGENT FALLBACK (সার্বিক দিকনির্দেশনা ও হটলাইন)
+  const defaultSelection = allProds.slice(0, 4);
   return {
-    text: `ধন্যবাদ আপনার বার্তার জন্য! আপনার অনুসন্ধান সম্পর্কিত সুনির্দিষ্ট তথ্য পেতে আমাদের কাস্টমার হটলাইনে কল করতে পারেন (<strong style="font-family: monospace;">01581703822</strong>) অথবা আমাদের হোয়াটসঅ্যাপে নক দিন।<br><br>বর্তমানে আমাদের সেরা বিক্রিত কিছু পণ্য নিচে দেখে নিতে পারেন:`,
-    recommendedProducts: featured
+    text: `ধন্যবাদ আপনার অনুসন্ধানের জন্য! ড্রিম কার্ট বিডি-তে যেকোনো পণ্য কেনা, পাইকারি অর্ডার, রিসেলিং বা অর্ডার ট্র্যাকিং সংক্রান্ত তথ্যে আমি সার্বক্ষণিক সহায়তা করতে প্রস্তুত।<br><br>
+      সরাসরি কথা বলতে আমাদের হটলাইনে কল করতে পারেন (<strong style="font-family: monospace;">01581703822</strong>) অথবা হোয়াটসঅ্যাপে নক দিতে পারেন।<br><br>
+      আমাদের বর্তমান সেরা কালেকশন নিচে দেখে নিতে পারেন:`,
+    recommendedProducts: defaultSelection,
+    actionLinks: [
+      { label: 'পণ্য ক্যাটালগ →', url: '/products', icon: '🛍️' },
+      { label: 'ক্যাটাগরি হাব', url: '/categories', icon: '📂' },
+      { label: 'অর্ডার ট্র্যাকিং', url: '/track', icon: '📦' }
+    ]
   };
 }
