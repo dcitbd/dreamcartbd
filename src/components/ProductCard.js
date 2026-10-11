@@ -1,16 +1,13 @@
 /**
  * DREAM CART BD — PRODUCT CARD COMPONENT (ProductCard.js)
  * Implements user requirements:
- * - Fully functional Favourite / Wishlist toggle that instantly saves products to Favourite page
- * - High-contrast text and background colors for both Light & Dark modes
- * - Direct clickable product link on Image and Title to open Product Details
- * - Image container with top-left Love/Wishlist button (non-conflicting sibling to product link)
- * - Discount percentage badge & stock status pill
- * - Mobile 2-grid optimized layout: compact typography, scaled padding, uniform height
- * - Title character truncation & 2-line clamp to prevent uneven/broken grid cards
- * - Role-based pricing (Customer, Reseller, Wholesaler) with minimum order quantity alert
- * - Order Now / Pre-order CTA button
- * - Quick action toolbar: Cart Icon + Favourite Icon + WhatsApp 1 + WhatsApp 2
+ * - High-end modern responsive design with 2-grid mobile optimization
+ * - Perfectly sized Cart, Wishlist, and WhatsApp icons (strictly controlled dimensions, zero overflow)
+ * - Uniform 2-line title clamping and 40-character safe truncation to prevent uneven cards
+ * - Dual WhatsApp hotline direct chat links (01581703822 & 01818273838) with WhatsApp branding
+ * - Fully functional Wishlist/Favourite toggle synced between image and toolbar
+ * - High-contrast styling for both Light & Dark modes
+ * - 100% backward/forward compatible with main.js event listeners and store state
  */
 
 import { formatCurrency } from '../utils/format.js';
@@ -145,7 +142,7 @@ export function renderProductCard(product) {
   const brandName = product.brand || "Dream Cart BD";
   const sku = product.sku || productId;
 
-  // Title character formatting & safe truncation so cards never break across rows
+  // Title character formatting & safe truncation (40 chars) so cards never break across grid rows
   const rawTitle = (product.name || product.p_name || "পণ্য").trim();
   const maxTitleChars = 40;
   const displayTitle = rawTitle.length > maxTitleChars 
@@ -179,10 +176,10 @@ export function renderProductCard(product) {
   const wa2Url = `https://wa.me/8801818273838?text=${waText}`;
 
   return `
-    <div class="product-card group relative bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-card-hover transition-all duration-300 flex flex-col overflow-hidden" data-product-id="${productId}">
+    <div class="product-card group relative bg-white dark:bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 shadow-xs hover:shadow-card-hover transition-all duration-200 flex flex-col overflow-hidden" data-product-id="${productId}">
       
       <!-- Product Image Container -->
-      <div class="relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+      <div class="card-img-wrap relative aspect-square w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
         
         <!-- Clickable Image Link to Product Details -->
         <a href="/product/${slug}" class="block w-full h-full cursor-pointer card-img-click" data-slug="${slug}" data-product-id="${productId}">
@@ -190,7 +187,7 @@ export function renderProductCard(product) {
             src="${thumbnail}" 
             alt="${escapeHtml(rawTitle)}" 
             loading="lazy"
-            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-400 ease-out"
             onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80';"
           />
         </a>
@@ -198,7 +195,7 @@ export function renderProductCard(product) {
         <!-- Love / Favourite Icon (Front top-left overlay) -->
         <button 
           type="button"
-          class="btn-toggle-favourite absolute top-1.5 sm:top-2.5 left-1.5 sm:left-2.5 z-20 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/95 dark:bg-slate-800/95 backdrop-blur-md flex items-center justify-center shadow-xs hover:scale-110 active:scale-95 transition cursor-pointer border border-slate-200/60 dark:border-slate-700/60 ${isFavourite ? 'is-favourite text-rose-500 !bg-rose-50 dark:!bg-rose-950/50' : 'text-slate-400 hover:text-rose-500'}"
+          class="btn-toggle-favourite card-fav-floating ${isFavourite ? 'is-favourite' : ''}"
           data-product-id="${productId}"
           data-product-name="${escapeHtml(rawTitle)}"
           data-product-price="${displayedPrice}"
@@ -208,47 +205,38 @@ export function renderProductCard(product) {
           aria-label="Wishlist"
           onclick="window.toggleProductCardFavourite(event, this);"
         >
-          <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current pointer-events-none" viewBox="0 0 24 24">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" class="pointer-events-none" style="width: 14px; height: 14px; max-width: 14px; max-height: 14px;">
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
           </svg>
         </button>
 
         <!-- Discount Percentage Badge (Front top-right) -->
         ${discountPercent > 0 ? `
-          <div class="absolute top-1.5 sm:top-2.5 right-1.5 sm:right-2.5 z-10 bg-gradient-to-r from-rose-500 to-pink-600 text-white font-extrabold text-[9px] sm:text-[11px] px-1.5 sm:px-2.5 py-0.5 rounded-full shadow-xs">
+          <div class="card-discount-pill">
             -${discountPercent}%
           </div>
         ` : ""}
 
         <!-- Stock Status Pill (Bottom Left overlay) -->
-        <div class="absolute bottom-1.5 sm:bottom-2 left-1.5 sm:left-2 z-10">
-          ${isOutOfStock ? `
-            <span class="bg-rose-600/90 backdrop-blur-md text-white font-bold text-[8.5px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs">
-              স্টক শেষ
-            </span>
-          ` : `
-            <span class="bg-emerald-600/90 backdrop-blur-md text-white font-bold text-[8.5px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs flex items-center gap-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
-              মজুদ: ${stock}
-            </span>
-          `}
+        <div class="card-stock-pill ${isOutOfStock ? 'card-stock-out' : 'card-stock-in'}">
+          ${isOutOfStock ? 'স্টক শেষ' : `মজুদ: ${stock}`}
         </div>
 
       </div>
 
-      <!-- Card Body -->
-      <div class="p-2.5 sm:p-3.5 flex-1 flex flex-col justify-between">
+      <!-- Card Body Content -->
+      <div class="card-content flex-1 flex flex-col justify-between">
         
         <!-- Brand Name + SKU -->
         <div>
-          <div class="flex items-center justify-between text-[9.5px] sm:text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1 gap-1.5">
+          <div class="card-meta-row">
             <span class="truncate hover:text-emerald-600 transition">${escapeHtml(brandName)}</span>
-            <span class="font-mono text-[8.5px] sm:text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded">${escapeHtml(sku)}</span>
+            <span class="card-meta-sku font-mono">${escapeHtml(sku)}</span>
           </div>
 
           <!-- Product Name (Strict 2-line clamp with uniform height to prevent card breakage) -->
           <h3 
-            class="product-card-title text-[11.5px] sm:text-[13px] font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition leading-snug mb-1.5" 
+            class="card-title product-card-title" 
             title="${escapeHtml(rawTitle)}"
           >
             <a href="/product/${slug}" class="hover:text-emerald-600 transition card-img-click" data-slug="${slug}" data-product-id="${productId}">
@@ -257,47 +245,44 @@ export function renderProductCard(product) {
           </h3>
         </div>
 
-        <!-- Subtle separator -->
-        <div class="border-t border-slate-100 dark:border-slate-800 my-1 sm:my-1.5"></div>
-
         <!-- Price Section based on account type -->
-        <div class="space-y-0.5 sm:space-y-1">
+        <div style="margin-top: 2px;">
           ${roleLabel ? `
-            <div class="text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+            <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; color: #059669; margin-bottom: 2px;">
               ${roleLabel}
             </div>
           ` : ""}
 
-          <div class="flex items-baseline gap-1 sm:gap-2 flex-wrap">
-            <span class="text-xs sm:text-base font-black text-slate-900 dark:text-white">
+          <div class="card-price-row">
+            <span class="card-price-current">
               ${formatCurrency(displayedPrice)}
             </span>
             ${isDiscounted ? `
-              <span class="text-[10px] sm:text-xs text-slate-400 dark:text-slate-500 line-through">
+              <span class="card-price-regular">
                 ${formatCurrency(originalPrice)}
               </span>
             ` : ""}
-            <span class="text-[8.5px] sm:text-[10px] font-medium text-slate-400 dark:text-slate-500">
+            <span class="card-price-stock">
               (${stock} মজুদ)
             </span>
           </div>
 
           <!-- Wholesaler Minimum Order Quantity Warning -->
           ${isWholesale ? `
-            <div class="text-[9.5px] sm:text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded mt-0.5">
+            <div class="card-moq-badge" style="margin-top: 3px;">
               <span>⚠️</span> সর্বনিম্ন: ${minOrderQty} পিস
             </div>
           ` : ""}
         </div>
 
-        <div class="border-t border-slate-100 dark:border-slate-800 my-1 sm:my-1.5"></div>
-
-        <!-- Order Action Button (Order Now vs Pre Order) -->
-        <div class="space-y-1 sm:space-y-1.5">
+        <!-- Actions Section (Order CTA + Compact Toolbar) -->
+        <div style="margin-top: 4px; display: flex; flex-direction: column; gap: 4px;">
+          
+          <!-- Primary CTA Button -->
           ${isOutOfStock ? `
             <button 
               type="button"
-              class="btn-pre-order w-full py-1.5 sm:py-2 px-2 sm:px-3 bg-amber-500 hover:bg-amber-600 active:scale-98 text-slate-950 font-bold text-[10.5px] sm:text-xs rounded-lg sm:rounded-xl shadow-xs transition flex items-center justify-center gap-1 cursor-pointer"
+              class="btn-pre-order card-btn-action card-btn-preorder"
               data-product-id="${productId}"
             >
               <span>⏳</span> প্রি-অর্ডার
@@ -305,31 +290,35 @@ export function renderProductCard(product) {
           ` : `
             <button 
               type="button"
-              class="btn-order-now w-full py-1.5 sm:py-2 px-2 sm:px-3 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-[10.5px] sm:text-xs rounded-lg sm:rounded-xl shadow-xs transition flex items-center justify-center gap-1 cursor-pointer"
+              class="btn-order-now card-btn-action card-btn-order"
               data-product-id="${productId}"
             >
               <span>⚡</span> অর্ডার করুন
             </button>
           `}
 
-          <!-- Quick Action Icon Toolbar: Cart Icon + Favourite Icon + Send WhatsApp 1 + Send WhatsApp 2 -->
-          <div class="grid grid-cols-4 gap-1 pt-0.5">
+          <!-- Quick Action Icon Toolbar: Cart Icon + Favourite Icon + WhatsApp 1 + WhatsApp 2 -->
+          <div class="card-toolbar">
             
             <!-- Cart Icon -->
             <button 
               type="button"
-              class="btn-quick-add bg-slate-100 hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-emerald-950/50 text-slate-700 hover:text-emerald-600 dark:text-slate-300 p-1 sm:p-1.5 h-7 sm:h-8 rounded-lg sm:rounded-xl border border-slate-200/80 dark:border-slate-700 transition flex items-center justify-center cursor-pointer"
+              class="btn-quick-add card-tool-btn card-tool-cart"
               data-product-id="${productId}"
               title="কার্টে যোগ করুন"
               aria-label="Add to Cart"
             >
-              <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pointer-events-none" style="width: 13px; height: 13px; max-width: 13px; max-height: 13px;">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+              </svg>
             </button>
 
             <!-- Favourite Icon (Bottom toolbar) -->
             <button 
               type="button"
-              class="btn-toggle-favourite bg-slate-100 hover:bg-rose-50 dark:bg-slate-800 dark:hover:bg-rose-950/50 text-slate-700 hover:text-rose-600 dark:text-slate-300 p-1 sm:p-1.5 h-7 sm:h-8 rounded-lg sm:rounded-xl border border-slate-200/80 dark:border-slate-700 transition flex items-center justify-center cursor-pointer ${isFavourite ? 'is-favourite text-rose-500 !bg-rose-50 dark:!bg-rose-950/50' : ''}"
+              class="btn-toggle-favourite card-tool-btn card-tool-fav ${isFavourite ? 'is-favourite' : ''}"
               data-product-id="${productId}"
               data-product-name="${escapeHtml(rawTitle)}"
               data-product-price="${displayedPrice}"
@@ -339,30 +328,38 @@ export function renderProductCard(product) {
               aria-label="Wishlist"
               onclick="window.toggleProductCardFavourite(event, this);"
             >
-              <svg class="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current pointer-events-none" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" class="pointer-events-none" style="width: 13px; height: 13px; max-width: 13px; max-height: 13px;">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+              </svg>
             </button>
 
-            <!-- Send WhatsApp 1 -->
+            <!-- WhatsApp 1 -->
             <a 
               href="${wa1Url}" 
               target="_blank" 
               rel="noopener noreferrer"
-              class="bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 p-1 h-7 sm:h-8 rounded-lg sm:rounded-xl border border-emerald-200 dark:border-emerald-800 transition flex items-center justify-center text-[8px] sm:text-[9.5px] font-bold"
+              class="card-tool-btn card-tool-wa1"
               title="WhatsApp: 01581703822"
               aria-label="WhatsApp 1"
             >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" class="pointer-events-none" style="width: 10.5px; height: 10.5px; max-width: 10.5px; max-height: 10.5px;">
+                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.24 8.24-1.44 0-2.85-.38-4.08-1.1l-.29-.17-3.12.82.83-3.04-.19-.3A8.13 8.13 0 0 1 3.8 11.91c0-4.54 3.69-8.24 8.24-8.24zm4.52 11.64c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.25-1.5-1.4-1.75-.14-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43l-.47-.01c-.17 0-.44.06-.67.31-.23.25-.87.85-.87 2.08s.89 2.42 1.01 2.59c.13.17 1.75 2.67 4.24 3.75.59.26 1.05.41 1.41.53.6.19 1.14.16 1.57.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.12-.22-.19-.47-.32z"/>
+              </svg>
               <span>WA 1</span>
             </a>
 
-            <!-- Send WhatsApp 2 -->
+            <!-- WhatsApp 2 -->
             <a 
               href="${wa2Url}" 
               target="_blank" 
               rel="noopener noreferrer"
-              class="bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/40 dark:hover:bg-teal-900/50 text-teal-700 dark:text-teal-300 p-1 h-7 sm:h-8 rounded-lg sm:rounded-xl border border-teal-200 dark:border-teal-800 transition flex items-center justify-center text-[8px] sm:text-[9.5px] font-bold"
+              class="card-tool-btn card-tool-wa2"
               title="WhatsApp: 01818273838"
               aria-label="WhatsApp 2"
             >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" class="pointer-events-none" style="width: 10.5px; height: 10.5px; max-width: 10.5px; max-height: 10.5px;">
+                <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.23 8.23 0 0 1 2.41 5.82c0 4.54-3.7 8.24-8.24 8.24-1.44 0-2.85-.38-4.08-1.1l-.29-.17-3.12.82.83-3.04-.19-.3A8.13 8.13 0 0 1 3.8 11.91c0-4.54 3.69-8.24 8.24-8.24zm4.52 11.64c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.25-1.5-1.4-1.75-.14-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43l-.47-.01c-.17 0-.44.06-.67.31-.23.25-.87.85-.87 2.08s.89 2.42 1.01 2.59c.13.17 1.75 2.67 4.24 3.75.59.26 1.05.41 1.41.53.6.19 1.14.16 1.57.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.12-.22-.19-.47-.32z"/>
+              </svg>
               <span>WA 2</span>
             </a>
 
