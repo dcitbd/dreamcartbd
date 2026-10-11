@@ -8,13 +8,689 @@
  * - Uniform 2-line title clamping and 40-character safe truncation to prevent uneven cards
  * - Dual WhatsApp hotline direct chat links (01581703822 & 01818273838) with WhatsApp branding
  * - Fully functional Wishlist/Favourite toggle synced between image and store
- * - High-contrast styling for both Light & Dark modes
+ * - Dedicated rich scoped CSS for luxury e-commerce styling, micro-animations, and dark mode
  * - 100% backward/forward compatible with main.js event listeners and store state
  */
 
 import { formatCurrency } from '../utils/format.js';
 import { authStore } from '../store/authStore.js';
 import { favouriteStore } from '../store/favouriteStore.js';
+
+// Comprehensive CSS for Product Card Component
+export const PRODUCT_CARD_STYLES = `
+/* ==========================================================================
+   DREAM CART BD — LUXURY RESPONSIVE PRODUCT CARD STYLING
+   ========================================================================== */
+.dc-product-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.25s ease;
+  min-width: 0;
+  box-sizing: border-box;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+.dark .dc-product-card {
+  background-color: #0f172a;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.3);
+}
+
+.dc-product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(16, 185, 129, 0.4);
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+.dark .dc-product-card:hover {
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(16, 185, 129, 0.4);
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+/* Image Wrapper with 1:1 Aspect Ratio */
+.dc-card-img-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  background-color: #f8fafc;
+}
+
+.dark .dc-card-img-wrap {
+  background-color: #1e293b;
+}
+
+.dc-card-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  display: block;
+}
+
+.dc-product-card:hover .dc-card-img-wrap img {
+  transform: scale(1.06);
+}
+
+/* Floating Discount Badge (Top-Left) */
+.dc-discount-pill {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  box-shadow: 0 3px 10px rgba(220, 38, 38, 0.35);
+  letter-spacing: 0.3px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* Floating Favourite / Wishlist Heart Button (Top-Right) */
+.dc-fav-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 0;
+  outline: none;
+}
+
+.dark .dc-fav-btn {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+}
+
+.dc-fav-btn:hover {
+  transform: scale(1.15);
+  color: #f43f5e;
+  border-color: #fecdd3;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.25);
+}
+
+.dc-fav-btn:active {
+  transform: scale(0.95);
+}
+
+.dc-fav-btn.is-favourite {
+  color: #f43f5e !important;
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  box-shadow: 0 3px 10px rgba(244, 63, 94, 0.25);
+}
+
+.dark .dc-fav-btn.is-favourite {
+  background: rgba(244, 63, 94, 0.2) !important;
+  border-color: rgba(244, 63, 94, 0.4) !important;
+}
+
+.dc-fav-btn svg {
+  width: 15px !important;
+  height: 15px !important;
+  max-width: 15px !important;
+  max-height: 15px !important;
+  display: block !important;
+  transition: transform 0.2s ease;
+}
+
+/* Floating Stock Status Badge (Bottom-Left on image) */
+.dc-stock-pill {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 10;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.dc-stock-in {
+  background: rgba(6, 95, 70, 0.9);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(6, 95, 70, 0.3);
+}
+
+.dc-stock-out {
+  background: rgba(225, 29, 72, 0.92);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(225, 29, 72, 0.3);
+}
+
+.dc-pulse-dot {
+  width: 5.5px;
+  height: 5.5px;
+  border-radius: 50%;
+  background: #ffffff;
+  animation: dcPulse 1.6s infinite ease-in-out;
+}
+
+@keyframes dcPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.75); }
+}
+
+/* Card Body Content */
+.dc-card-body {
+  padding: 12px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+  gap: 8px;
+  box-sizing: border-box;
+}
+
+/* Brand & Reviews Header Row */
+.dc-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.dc-brand-text {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #059669;
+  letter-spacing: 0.5px;
+  max-width: 58%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dark .dc-brand-text {
+  color: #34d399;
+}
+
+.dc-reviews-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  border: 1px solid #fde68a;
+  white-space: nowrap;
+}
+
+.dark .dc-reviews-badge {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+}
+
+.dc-reviews-star {
+  color: #f59e0b;
+  font-size: 11px;
+}
+
+/* Product Title with Strict 2-Line Clamp & Fixed Uniform Height */
+.dc-card-title,
+.product-card-title {
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  line-height: 1.35 !important;
+  margin: 0 !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  min-height: 2.7em !important;
+  max-height: 2.7em !important;
+}
+
+.dark .dc-card-title,
+.dark .product-card-title {
+  color: #f8fafc !important;
+}
+
+.dc-card-title a,
+.product-card-title a {
+  color: inherit !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease !important;
+}
+
+.dc-card-title a:hover,
+.product-card-title a:hover {
+  color: #10b981 !important;
+}
+
+.dark .dc-card-title a:hover,
+.dark .product-card-title a:hover {
+  color: #34d399 !important;
+}
+
+/* Price Box */
+.dc-price-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dc-price-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dc-price-current {
+  font-size: 16px;
+  font-weight: 900;
+  color: #065f46;
+  font-family: 'Plus Jakarta Sans', monospace;
+  line-height: 1.1;
+}
+
+.dark .dc-price-current {
+  color: #34d399;
+}
+
+.dc-price-regular {
+  font-size: 11px;
+  color: #94a3b8;
+  text-decoration: line-through;
+  font-weight: 600;
+}
+
+.dc-savings-tag {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #e11d48;
+  background: #ffe4e6;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+}
+
+.dark .dc-savings-tag {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+}
+
+.dc-role-badge {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #047857;
+  letter-spacing: 0.3px;
+}
+
+.dark .dc-role-badge {
+  color: #34d399;
+}
+
+.dc-moq-alert {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 2px 6px;
+  border-radius: 5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.dark .dc-moq-alert {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+/* Actions Section */
+.dc-actions-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+/* Primary Action Row: Order Now (flex-1) + Quick Cart Button */
+.dc-cta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dc-btn-order {
+  flex: 1;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 3px 10px -2px rgba(16, 185, 129, 0.4);
+  white-space: nowrap;
+  outline: none;
+}
+
+.dc-btn-order:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 16px -2px rgba(16, 185, 129, 0.5);
+}
+
+.dc-btn-order:active {
+  transform: translateY(0);
+}
+
+.dc-btn-preorder {
+  flex: 1;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 3px 10px -2px rgba(245, 158, 11, 0.4);
+  white-space: nowrap;
+  outline: none;
+}
+
+.dc-btn-preorder:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 16px -2px rgba(245, 158, 11, 0.5);
+}
+
+.dc-btn-preorder:active {
+  transform: translateY(0);
+}
+
+.dc-btn-cart {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  padding: 0;
+  flex-shrink: 0;
+  outline: none;
+}
+
+.dark .dc-btn-cart {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+}
+
+.dc-btn-cart:hover {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #a7f3d0;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+}
+
+.dark .dc-btn-cart:hover {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.dc-btn-cart:active {
+  transform: translateY(0);
+}
+
+.dc-btn-cart svg {
+  width: 16px !important;
+  height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  display: block !important;
+}
+
+/* Secondary Action Row: Dual WhatsApp Hotlines (50% / 50% split) */
+.dc-wa-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.dc-wa-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6.5px 8px;
+  border-radius: 9px;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.dc-wa-btn-1 {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.dark .dc-wa-btn-1 {
+  background: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.dc-wa-btn-1:hover {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+}
+
+.dc-wa-btn-2 {
+  background: #ccfbf1;
+  color: #0f766e;
+  border: 1px solid #99f6e4;
+}
+
+.dark .dc-wa-btn-2 {
+  background: rgba(20, 184, 166, 0.12);
+  color: #2dd4bf;
+  border-color: rgba(20, 184, 166, 0.25);
+}
+
+.dc-wa-btn-2:hover {
+  background: #0d9488;
+  color: #ffffff;
+  border-color: #0d9488;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(13, 148, 136, 0.3);
+}
+
+.dc-wa-btn svg {
+  width: 12px !important;
+  height: 12px !important;
+  max-width: 12px !important;
+  max-height: 12px !important;
+  display: block !important;
+}
+
+/* Mobile 2-Grid Responsive Optimization (Screen <= 640px) */
+@media (max-width: 640px) {
+  .dc-product-card {
+    border-radius: 14px;
+  }
+
+  .dc-card-body {
+    padding: 9px 10px 11px;
+    gap: 6px;
+  }
+
+  .dc-discount-pill {
+    top: 6px;
+    left: 6px;
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+
+  .dc-fav-btn {
+    top: 6px;
+    right: 6px;
+    width: 28px;
+    height: 28px;
+  }
+
+  .dc-fav-btn svg {
+    width: 13px !important;
+    height: 13px !important;
+  }
+
+  .dc-stock-pill {
+    bottom: 6px;
+    left: 6px;
+    font-size: 8.5px;
+    padding: 2px 5px;
+  }
+
+  .dc-brand-text {
+    font-size: 9px;
+  }
+
+  .dc-reviews-badge {
+    font-size: 9px;
+    padding: 1.5px 5px;
+  }
+
+  .dc-card-title,
+  .product-card-title {
+    font-size: 11.5px !important;
+    min-height: 2.6em !important;
+    max-height: 2.6em !important;
+    line-height: 1.3 !important;
+  }
+
+  .dc-price-current {
+    font-size: 14px;
+  }
+
+  .dc-price-regular {
+    font-size: 10px;
+  }
+
+  .dc-savings-tag {
+    font-size: 8.5px;
+  }
+
+  .dc-cta-row {
+    gap: 4px;
+  }
+
+  .dc-btn-order,
+  .dc-btn-preorder {
+    padding: 6.5px 8px;
+    font-size: 11px;
+    border-radius: 8px;
+  }
+
+  .dc-btn-cart {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .dc-btn-cart svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .dc-wa-row {
+    gap: 4px;
+  }
+
+  .dc-wa-btn {
+    padding: 5px 6px;
+    font-size: 8.5px;
+    border-radius: 7px;
+    gap: 3px;
+  }
+
+  .dc-wa-btn svg {
+    width: 10.5px !important;
+    height: 10.5px !important;
+  }
+}
+`;
+
+// Safely mount styles to document head in browser once
+if (typeof window !== 'undefined' && !window.__dcbdCardStylesMounted && typeof document !== 'undefined') {
+  window.__dcbdCardStylesMounted = true;
+  if (!document.getElementById('dc-product-card-styles')) {
+    try {
+      const s = document.createElement('style');
+      s.id = 'dc-product-card-styles';
+      s.textContent = PRODUCT_CARD_STYLES;
+      document.head.appendChild(s);
+    } catch(e) {}
+  }
+}
 
 // Safe HTML escaper helper
 function escapeHtml(str) {
@@ -139,6 +815,7 @@ export function renderProductCard(product) {
 
   const isDiscounted = originalPrice > displayedPrice;
   const discountPercent = isDiscounted ? Math.round(((originalPrice - displayedPrice) / originalPrice) * 100) : 0;
+  const discountSavings = isDiscounted ? (originalPrice - displayedPrice) : 0;
 
   const thumbnail = product.thumbnail || (product.images && product.images[0]) || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80";
   const brandName = product.brand || "Dream Cart BD";
@@ -275,6 +952,9 @@ export function renderProductCard(product) {
               <span class="dc-price-regular">
                 ${formatCurrency(originalPrice)}
               </span>
+              <span class="dc-savings-tag">
+                সাশ্রয়: ${formatCurrency(discountSavings)}
+              </span>
             ` : ""}
           </div>
 
@@ -287,7 +967,7 @@ export function renderProductCard(product) {
         </div>
 
         <!-- Actions Section (Order CTA + Cart + Dual WhatsApp) -->
-        <div style="display: flex; flex-direction: column; gap: 5px; margin-top: 4px;">
+        <div class="dc-actions-wrap">
           
           <!-- Primary CTA Row: Order Now (flex-1) + Quick Add to Cart -->
           <div class="dc-cta-row">
