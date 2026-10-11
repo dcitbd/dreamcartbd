@@ -2,15 +2,68 @@
  * DREAM CART BD — HOME PAGE (HomePage.js)
  * Implements user requirements:
  * - Notice bar (Offer, Contact)
- * - Auto-sliding banners (unlimited banners supported)
+ * - Auto-sliding banners (interactive slider with dots and prev/next controls)
  * - Extra Notice / opportunities (small card system)
  * - Brands small cards (from Brands sheet)
  * - Category product show: Unique categories only (each category appears once, products appear once)
- * - Responsive layout for mobile, tablet, laptop, and TV
+ * - Mobile 2-grid product layout: balanced typography, compact padding, uniform card heights
+ * - Strict 2-line title clamping and character limit so cards never break across rows
+ * - Dedicated clean scoped CSS with high contrast in Light & Dark modes
  */
 
 import { renderProductCard } from '../../components/ProductCard.js';
 import { apiClient } from '../../api/client.js';
+
+// Setup banner auto-slider safely in browser
+if (typeof window !== 'undefined' && !window.__dcbdSliderInitialized) {
+  window.__dcbdSliderInitialized = true;
+  let currentSlide = 0;
+
+  window.__dcbdGoSlide = function(index) {
+    const slides = document.querySelectorAll('.banner-slide');
+    const dots = document.querySelectorAll('.slider-dot');
+    if (!slides.length) return;
+    
+    currentSlide = (index + slides.length) % slides.length;
+    slides.forEach((s, idx) => {
+      if (idx === currentSlide) {
+        s.classList.remove('opacity-0', 'pointer-events-none', 'z-0');
+        s.classList.add('opacity-100', 'z-10');
+      } else {
+        s.classList.remove('opacity-100', 'z-10');
+        s.classList.add('opacity-0', 'pointer-events-none', 'z-0');
+      }
+    });
+
+    dots.forEach((d, idx) => {
+      if (idx === currentSlide) {
+        d.classList.add('bg-emerald-500', 'w-10');
+        d.classList.remove('bg-white/30', 'w-8');
+      } else {
+        d.classList.remove('bg-emerald-500', 'w-10');
+        d.classList.add('bg-white/30', 'w-8');
+      }
+    });
+  };
+
+  window.__dcbdNextSlide = function() {
+    window.__dcbdGoSlide(currentSlide + 1);
+  };
+
+  window.__dcbdPrevSlide = function() {
+    window.__dcbdGoSlide(currentSlide - 1);
+  };
+
+  // Auto slide every 5 seconds
+  if (typeof setInterval !== 'undefined') {
+    setInterval(function() {
+      const slider = document.getElementById('hero-slider');
+      if (slider && document.body.contains(slider)) {
+        window.__dcbdNextSlide();
+      }
+    }, 5000);
+  }
+}
 
 export async function renderHomePage() {
   const [prodRes, catRes, brandRes, bannerRes] = await Promise.all([
@@ -91,6 +144,83 @@ export async function renderHomePage() {
   const uniqueCategories = Array.from(uniqueCategoryMap.values()).filter(c => c.products.length > 0);
 
   return `
+    <style id="dc-home-page-styles">
+      /* Responsive Products Catalog Layout */
+      .product-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important;
+        gap: 1.25rem !important;
+        width: 100% !important;
+      }
+
+      @media (max-width: 1023px) {
+        .product-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 0.875rem !important;
+        }
+      }
+
+      /* 2-Column Mobile Grid on Home Page */
+      @media (max-width: 640px) {
+        .product-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 0.5rem !important;
+        }
+
+        .product-card {
+          border-radius: 0.875rem !important;
+        }
+
+        .product-card-title {
+          font-size: 11.5px !important;
+          line-height: 1.25 !important;
+          min-height: 2.3em !important;
+          max-height: 2.3em !important;
+          display: -webkit-box !important;
+          -webkit-line-clamp: 2 !important;
+          -webkit-box-orient: vertical !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+
+        .product-card .btn-order-now,
+        .product-card .btn-pre-order {
+          padding: 6px 8px !important;
+          font-size: 10.5px !important;
+          border-radius: 8px !important;
+        }
+
+        .product-card .btn-quick-add,
+        .product-card .btn-toggle-favourite,
+        .product-card a[href*="wa.me"] {
+          height: 28px !important;
+          padding: 2px !important;
+          font-size: 8px !important;
+          border-radius: 8px !important;
+        }
+      }
+
+      /* Universal Title Line Clamp with fixed height to prevent card breakage */
+      .product-card-title {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-height: 2.4em;
+        max-height: 2.4em;
+        line-height: 1.3;
+      }
+
+      /* Smooth elevation & hover effects */
+      .product-card {
+        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      }
+      .product-card:hover {
+        transform: translateY(-3px);
+      }
+    </style>
+
     <div class="space-y-10 sm:space-y-14 pb-16">
       
       <!-- 1. Auto-sliding Banners Hero Section -->
@@ -149,10 +279,10 @@ export async function renderHomePage() {
           </div>
 
           <!-- Prev/Next Arrow Buttons -->
-          <button id="slider-btn-prev" class="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white items-center justify-center backdrop-blur-sm transition" aria-label="Previous Slide" onclick="window.__dcbdPrevSlide && window.__dcbdPrevSlide()">
+          <button id="slider-btn-prev" class="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white items-center justify-center backdrop-blur-sm transition cursor-pointer" aria-label="Previous Slide" onclick="window.__dcbdPrevSlide && window.__dcbdPrevSlide()">
             ‹
           </button>
-          <button id="slider-btn-next" class="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white items-center justify-center backdrop-blur-sm transition" aria-label="Next Slide" onclick="window.__dcbdNextSlide && window.__dcbdNextSlide()">
+          <button id="slider-btn-next" class="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-black/40 hover:bg-black/70 text-white items-center justify-center backdrop-blur-sm transition cursor-pointer" aria-label="Next Slide" onclick="window.__dcbdNextSlide && window.__dcbdNextSlide()">
             ›
           </button>
 
@@ -160,40 +290,40 @@ export async function renderHomePage() {
       </section>
 
       <!-- 2. Extra Notice / Opportunities (Small Card System) -->
-      <section class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+      <section class="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4">
         
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-center gap-3 hover:border-emerald-500/40 transition">
-          <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl flex-shrink-0">
+        <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3 hover:border-emerald-500/40 transition">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
             🚚
           </div>
           <div>
             <h4 class="text-xs font-bold text-slate-900 dark:text-white">সারা দেশে ডেলিভারি</h4>
-            <p class="text-[10px] text-slate-500 dark:text-slate-400">২-৩ কর্মদিবসে ক্যাশ অন ডেলিভারি</p>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400">২-৩ দিনে ক্যাশ অন ডেলিভারি</p>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-center gap-3 hover:border-emerald-500/40 transition">
-          <div class="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl flex-shrink-0">
+        <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3 hover:border-emerald-500/40 transition">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
             🛡️
           </div>
           <div>
             <h4 class="text-xs font-bold text-slate-900 dark:text-white">১০০% আসল পণ্য</h4>
-            <p class="text-[10px] text-slate-500 dark:text-slate-400">অথেন্টিক ইম্পোর্টার গ্যারান্টি</p>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400">অথেন্টিক পণ্যের নিশ্চয়তা</p>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-center gap-3 hover:border-emerald-500/40 transition">
-          <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl flex-shrink-0">
+        <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3 hover:border-emerald-500/40 transition">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
             🎁
           </div>
           <div>
-            <h4 class="text-xs font-bold text-slate-900 dark:text-white">৫% অনলাইন ডিসকাউন্ট</h4>
-            <p class="text-[10px] text-slate-500 dark:text-slate-400">বিকাশ/নগদ পেমেন্টে অতিরিক্ত ছাড়</p>
+            <h4 class="text-xs font-bold text-slate-900 dark:text-white">অনলাইন ডিসকাউন্ট</h4>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400">বিকাশ/নগদে অতিরিক্ত ছাড়</p>
           </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-center gap-3 hover:border-emerald-500/40 transition">
-          <div class="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl flex-shrink-0">
+        <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs flex items-center gap-2.5 sm:gap-3 hover:border-emerald-500/40 transition">
+          <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
             💬
           </div>
           <div>
@@ -218,13 +348,13 @@ export async function renderHomePage() {
           </a>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5 sm:gap-3">
           ${brands.map(b => `
             <a 
               href="/products?brand=${encodeURIComponent(b.brand_name)}" 
-              class="group bg-white dark:bg-slate-900 p-3.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500 hover:shadow-card-hover transition flex flex-col items-center justify-center text-center gap-2"
+              class="group bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200/90 dark:border-slate-800 hover:border-emerald-500 hover:shadow-card-hover transition flex flex-col items-center justify-center text-center gap-1.5 sm:gap-2"
             >
-              <div class="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-800 p-1 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-50 dark:bg-slate-800 p-1 flex items-center justify-center group-hover:scale-110 transition-transform">
                 <img 
                   src="${b.brand_image}" 
                   alt="${b.brand_name}" 
@@ -232,7 +362,7 @@ export async function renderHomePage() {
                   onerror="this.onerror=null; this.src='https://cdn.iconscout.com/icon/free/png-256/free-shield-icon-download-in-svg-png-gif-file-formats--safety-protection-security-secure-protect-pack-crime-icons-1779836.png?f=webp&w=128';"
                 />
               </div>
-              <span class="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 transition">
+              <span class="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-emerald-600 transition truncate max-w-full">
                 ${b.brand_name}
               </span>
             </a>
