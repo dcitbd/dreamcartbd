@@ -5,7 +5,7 @@
  * - Intelligent AI Chatbot: Reads entire live website (products, catalog, prices, policies, speed).
  * - Understands and reports real-time Website Speed (Latency Ping).
  * - Recommends products with interactive cards, prices, and direct links (/product/slug).
- * - Smooth CSS card hover animations, glowing pulse indicators, and staggered entrance effects.
+ * - Dedicated clean CSS with elegant margins, comfortable padding, balanced typography, and soft dark mode contrast.
  */
 
 import { apiClient, INITIAL_PRODUCTS } from '../../api/client.js';
@@ -54,7 +54,7 @@ export function measureWebsiteSpeed() {
   if (typeof document !== 'undefined') {
     const statEl = document.getElementById('live-speed-stat');
     if (statEl) {
-      statEl.textContent = `${latency}ms`;
+      statEl.textContent = `${latency}ms (সুপার ফাস্ট)`;
     }
     const chatSpeedEl = document.getElementById('chat-speed-indicator');
     if (chatSpeedEl) {
@@ -128,34 +128,862 @@ export async function renderLiveChatPage() {
   }, 100);
 
   return `
-    <div class="space-y-8 pb-24 max-w-6xl mx-auto">
+    <style id="dc-chat-styles">
+      .lc-wrapper {
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        max-width: 1140px;
+        margin: 0 auto;
+        padding: 16px 16px 64px;
+      }
+
+      /* Header */
+      .lc-header {
+        margin-bottom: 28px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .dark .lc-header {
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+      }
+      .lc-breadcrumbs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #94a3b8;
+        margin-bottom: 8px;
+      }
+      .lc-breadcrumbs a {
+        color: #64748b;
+        text-decoration: none;
+        transition: color 0.15s ease;
+      }
+      .lc-breadcrumbs a:hover {
+        color: #10b981;
+      }
+      .dark .lc-breadcrumbs a {
+        color: #94a3b8;
+      }
+      .dark .lc-breadcrumbs a:hover {
+        color: #34d399;
+      }
+      .lc-title-row {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      @media (min-width: 640px) {
+        .lc-title-row {
+          flex-direction: row;
+          align-items: center;
+          justify-content: space-between;
+        }
+      }
+      .lc-main-title {
+        font-size: 24px;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.3;
+        margin: 0;
+      }
+      .dark .lc-main-title {
+        color: #f8fafc;
+      }
+      @media (min-width: 640px) {
+        .lc-main-title {
+          font-size: 28px;
+        }
+      }
+      .lc-subtitle {
+        font-size: 13.5px;
+        color: #64748b;
+        margin: 6px 0 0;
+        line-height: 1.5;
+      }
+      .dark .lc-subtitle {
+        color: #94a3b8;
+      }
+      .lc-speed-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        padding: 8px 16px;
+        border-radius: 9999px;
+        align-self: flex-start;
+      }
+      .dark .lc-speed-pill {
+        background: rgba(16, 185, 129, 0.12);
+        border-color: rgba(16, 185, 129, 0.25);
+      }
+      .lc-ping-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10b981;
+        position: relative;
+      }
+      .lc-ping-dot::after {
+        content: '';
+        position: absolute;
+        inset: -3px;
+        border-radius: 50%;
+        background: rgba(16, 185, 129, 0.4);
+        animation: lcPulse 1.8s infinite;
+      }
+      @keyframes lcPulse {
+        0% { transform: scale(1); opacity: 0.8; }
+        50% { transform: scale(1.8); opacity: 0; }
+        100% { transform: scale(1); opacity: 0; }
+      }
+      .lc-speed-label {
+        font-size: 10.5px;
+        color: #64748b;
+        font-weight: 500;
+      }
+      .dark .lc-speed-label {
+        color: #94a3b8;
+      }
+      .lc-speed-val {
+        font-size: 12.5px;
+        font-weight: 800;
+        color: #059669;
+        font-family: monospace;
+      }
+      .dark .lc-speed-val {
+        color: #34d399;
+      }
+
+      /* Two Column Layout */
+      .lc-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 28px;
+        align-items: start;
+      }
+      @media (min-width: 1024px) {
+        .lc-grid {
+          grid-template-columns: 7fr 5fr;
+        }
+      }
+
+      /* AI Chat Box */
+      .lc-chat-card {
+        background: #ffffff;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: 20px;
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+        display: flex;
+        flex-direction: column;
+        height: 720px;
+        overflow: hidden;
+      }
+      .dark .lc-chat-card {
+        background: #0f172a;
+        border-color: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.45);
+      }
+      .lc-chat-head {
+        background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+        padding: 16px 20px;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+      }
+      .lc-chat-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+      }
+      .lc-chat-head-title {
+        font-size: 15px;
+        font-weight: 800;
+        margin: 0;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .lc-version-tag {
+        background: rgba(255, 255, 255, 0.2);
+        font-size: 9.5px;
+        font-weight: 700;
+        padding: 2px 7px;
+        border-radius: 9999px;
+        letter-spacing: 0.4px;
+      }
+      .lc-chat-head-sub {
+        font-size: 11.5px;
+        color: rgba(255, 255, 255, 0.9);
+        margin: 2px 0 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .lc-active-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #6ee7b7;
+        animation: lcPulse 2s infinite;
+      }
+      .lc-chat-speed-box {
+        text-align: right;
+      }
+      .lc-chat-speed-txt {
+        font-size: 10px;
+        color: rgba(255, 255, 255, 0.8);
+      }
+      .lc-chat-speed-badge {
+        background: rgba(0, 0, 0, 0.22);
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 8px;
+        font-family: monospace;
+        display: inline-block;
+        margin-top: 2px;
+      }
+
+      /* Quick Actions Bar */
+      .lc-quick-bar {
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow-x: auto;
+        flex-shrink: 0;
+      }
+      .dark .lc-quick-bar {
+        background: #1e293b;
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+      }
+      .lc-quick-label {
+        font-size: 10.5px;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        flex-shrink: 0;
+      }
+      .lc-quick-chip {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #334155;
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 5px 12px;
+        border-radius: 9999px;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .dark .lc-quick-chip {
+        background: #0f172a;
+        border-color: rgba(255, 255, 255, 0.12);
+        color: #cbd5e1;
+      }
+      .lc-quick-chip:hover {
+        border-color: #10b981;
+        color: #059669;
+        background: #ecfdf5;
+      }
+      .dark .lc-quick-chip:hover {
+        border-color: #10b981;
+        color: #34d399;
+        background: rgba(16, 185, 129, 0.12);
+      }
+
+      /* Message Stream */
+      .lc-msg-stream {
+        flex: 1;
+        padding: 18px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        background: #f8fafc;
+      }
+      .dark .lc-msg-stream {
+        background: #0b1120;
+      }
+      .lc-user-msg {
+        display: flex;
+        justify-content: flex-end;
+        align-items: flex-end;
+        gap: 8px;
+        max-width: 85%;
+        margin-left: auto;
+      }
+      .lc-user-bubble {
+        background: #059669;
+        color: #ffffff;
+        padding: 12px 16px;
+        border-radius: 18px 18px 4px 18px;
+        font-size: 13px;
+        line-height: 1.5;
+        box-shadow: 0 2px 8px rgba(5, 150, 105, 0.2);
+      }
+      .lc-bot-msg {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        max-width: 90%;
+      }
+      .lc-bot-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #10b981;
+        color: #ffffff;
+        font-size: 11px;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .lc-bot-bubble {
+        background: #ffffff;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: 4px 18px 18px 18px;
+        padding: 14px 18px;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #1e293b;
+        box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.04);
+      }
+      .dark .lc-bot-bubble {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.08);
+        color: #e2e8f0;
+      }
+      .lc-bot-footer {
+        font-size: 10px;
+        color: #94a3b8;
+        margin-top: 8px;
+        padding-top: 6px;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .dark .lc-bot-footer {
+        border-top-color: rgba(255, 255, 255, 0.06);
+      }
+
+      /* Recommended Products Inside Chat */
+      .lc-prod-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      @media (min-width: 480px) {
+        .lc-prod-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .lc-prod-item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: border-color 0.15s ease;
+      }
+      .dark .lc-prod-item {
+        background: #0f172a;
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+      .lc-prod-img {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        object-fit: cover;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        flex-shrink: 0;
+      }
+      .dark .lc-prod-img {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.1);
+      }
+      .lc-prod-info {
+        min-width: 0;
+        flex: 1;
+      }
+      .lc-prod-name {
+        font-size: 12px;
+        font-weight: 700;
+        color: #0f172a;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-decoration: none;
+        display: block;
+      }
+      .dark .lc-prod-name {
+        color: #f8fafc;
+      }
+      .lc-prod-name:hover {
+        color: #10b981;
+      }
+      .lc-prod-price {
+        font-size: 12.5px;
+        font-weight: 800;
+        color: #059669;
+        margin-top: 2px;
+      }
+      .dark .lc-prod-price {
+        color: #34d399;
+      }
+      .lc-prod-btns {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+        font-size: 10.5px;
+      }
+      .lc-prod-link {
+        color: #10b981;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .lc-prod-link:hover {
+        text-decoration: underline;
+      }
+      .lc-prod-cart-btn {
+        background: none;
+        border: none;
+        color: #64748b;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 0;
+      }
+      .dark .lc-prod-cart-btn {
+        color: #94a3b8;
+      }
+      .lc-prod-cart-btn:hover {
+        color: #10b981;
+      }
+
+      /* Chat Input Bar */
+      .lc-chat-form {
+        padding: 14px 18px;
+        background: #ffffff;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+      .dark .lc-chat-form {
+        background: #0f172a;
+        border-top-color: rgba(255, 255, 255, 0.08);
+      }
+      .lc-chat-input {
+        flex: 1;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 11px 16px;
+        font-size: 13px;
+        color: #0f172a;
+        outline: none;
+        transition: border-color 0.15s ease;
+      }
+      .dark .lc-chat-input {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.12);
+        color: #f8fafc;
+      }
+      .lc-chat-input:focus {
+        border-color: #10b981;
+      }
+      .lc-chat-send {
+        background: #10b981;
+        color: #ffffff;
+        border: none;
+        border-radius: 12px;
+        padding: 11px 18px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: background 0.15s ease, transform 0.15s ease;
+      }
+      .lc-chat-send:hover {
+        background: #059669;
+        transform: translateY(-1px);
+      }
+
+      /* Right Column Cards */
+      .lc-right-card {
+        background: #ffffff;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: 20px;
+        padding: 24px 22px;
+        box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.04);
+        margin-bottom: 24px;
+        transition: all 0.2s ease;
+      }
+      .dark .lc-right-card {
+        background: #0f172a;
+        border-color: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+      }
+      .lc-right-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 18px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .dark .lc-right-head {
+        border-bottom-color: rgba(255, 255, 255, 0.06);
+      }
+      .lc-right-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .dark .lc-right-title {
+        color: #f8fafc;
+      }
+      .lc-right-badge {
+        font-size: 11px;
+        font-weight: 700;
+        background: #ecfdf5;
+        color: #047857;
+        padding: 4px 10px;
+        border-radius: 9999px;
+      }
+      .dark .lc-right-badge {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+      }
+
+      /* Contact Row */
+      .lc-contact-row {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 12px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+      }
+      .dark .lc-contact-row {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+      .lc-contact-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+      }
+      .lc-contact-icon {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+      .lc-cicon-green { background: #ecfdf5; }
+      .dark .lc-cicon-green { background: rgba(16, 185, 129, 0.15); }
+      .lc-cicon-teal { background: #ccfbf1; }
+      .dark .lc-cicon-teal { background: rgba(20, 184, 166, 0.15); }
+      .lc-cicon-blue { background: #dbeafe; }
+      .dark .lc-cicon-blue { background: rgba(59, 130, 246, 0.15); }
+
+      .lc-contact-meta {
+        min-width: 0;
+      }
+      .lc-contact-label {
+        font-size: 10.5px;
+        color: #94a3b8;
+        font-weight: 500;
+      }
+      .lc-contact-val {
+        font-size: 13px;
+        font-weight: 800;
+        font-family: monospace;
+        color: #0f172a;
+        text-decoration: none;
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .dark .lc-contact-val {
+        color: #f8fafc;
+      }
+      .lc-contact-val:hover {
+        color: #10b981;
+      }
+      .lc-contact-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-shrink: 0;
+      }
+      .lc-btn-copy {
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        color: #64748b;
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .dark .lc-btn-copy {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.12);
+        color: #cbd5e1;
+      }
+      .lc-btn-copy:hover {
+        border-color: #10b981;
+        color: #10b981;
+      }
+      .lc-btn-call {
+        background: #10b981;
+        color: #ffffff;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: background 0.15s ease;
+      }
+      .lc-btn-call:hover {
+        background: #059669;
+      }
+      .lc-btn-call-alt {
+        background: #f1f5f9;
+        color: #334155;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.15s ease;
+      }
+      .dark .lc-btn-call-alt {
+        background: rgba(255, 255, 255, 0.08);
+        color: #e2e8f0;
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+      .lc-btn-call-alt:hover {
+        color: #10b981;
+        border-color: #10b981;
+      }
+
+      /* WhatsApp Buttons Box */
+      .lc-wa-box {
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        border-radius: 14px;
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+      .dark .lc-wa-box {
+        background: rgba(16, 185, 129, 0.08);
+        border-color: rgba(16, 185, 129, 0.2);
+      }
+      .lc-wa-title {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #065f46;
+        margin: 0 0 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .dark .lc-wa-title {
+        color: #6ee7b7;
+      }
+      .lc-wa-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .lc-wa-btn-1 {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        background: #10b981;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 9px 12px;
+        border-radius: 10px;
+        text-decoration: none;
+        transition: background 0.15s ease;
+      }
+      .lc-wa-btn-1:hover {
+        background: #059669;
+      }
+      .lc-wa-btn-2 {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        background: #0d9488;
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 9px 12px;
+        border-radius: 10px;
+        text-decoration: none;
+        transition: background 0.15s ease;
+      }
+      .lc-wa-btn-2:hover {
+        background: #0f766e;
+      }
+
+      /* Map Container */
+      .lc-map-frame {
+        width: 100%;
+        height: 220px;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        background: #f1f5f9;
+      }
+      .dark .lc-map-frame {
+        border-color: rgba(255, 255, 255, 0.1);
+        background: #1e293b;
+      }
+      .lc-map-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: 10px;
+        font-size: 11.5px;
+      }
+      .lc-map-addr {
+        color: #64748b;
+      }
+      .dark .lc-map-addr {
+        color: #94a3b8;
+      }
+      .lc-map-link {
+        color: #10b981;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      .lc-map-link:hover {
+        text-decoration: underline;
+      }
+
+      /* Feedback Form */
+      .lc-form-group {
+        margin-bottom: 12px;
+      }
+      .lc-form-label {
+        display: block;
+        font-size: 12px;
+        font-weight: 700;
+        color: #334155;
+        margin-bottom: 5px;
+      }
+      .dark .lc-form-label {
+        color: #cbd5e1;
+      }
+      .lc-form-input {
+        width: 100%;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 9px 12px;
+        font-size: 12.5px;
+        color: #0f172a;
+        outline: none;
+        box-sizing: border-box;
+        transition: border-color 0.15s ease;
+      }
+      .dark .lc-form-input {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.12);
+        color: #f8fafc;
+      }
+      .lc-form-input:focus {
+        border-color: #10b981;
+      }
+      .lc-form-submit {
+        width: 100%;
+        background: #10b981;
+        color: #ffffff;
+        border: none;
+        border-radius: 10px;
+        padding: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.15s ease;
+      }
+      .lc-form-submit:hover {
+        background: #059669;
+      }
+    </style>
+
+    <div class="lc-wrapper">
       
       <!-- Top Page Header -->
-      <div class="border-b border-slate-200/80 dark:border-slate-800 pb-4 text-center sm:text-left">
-        <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-1 justify-center sm:justify-start">
-          <a href="/" class="hover:text-emerald-600 transition">হোম</a>
+      <div class="lc-header">
+        <div class="lc-breadcrumbs">
+          <a href="/">হোম</a>
           <span>/</span>
-          <span class="text-slate-700 dark:text-slate-300 font-bold">যোগাযোগ ও লাইভ চ্যাট</span>
+          <span>যোগাযোগ ও লাইভ চ্যাট</span>
         </div>
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="lc-title-row">
           <div>
-            <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center justify-center sm:justify-start gap-2">
-              <span>💬</span> যোগাযোগ ও AI কাস্টমার অ্যাসিস্ট্যান্ট
+            <h1 class="lc-main-title">
+              💬 যোগাযোগ ও AI কাস্টমার অ্যাসিস্ট্যান্ট
             </h1>
-            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            <p class="lc-subtitle">
               আমাদের অফিসিয়াল শোরুম ম্যাপ, যোগাযোগের নম্বর, হোয়াটসঅ্যাপ এবং স্বয়ংক্রিয় এআই সাপোর্ট
             </p>
           </div>
 
           <!-- Real-Time Website Speed Badge -->
-          <div class="inline-flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-2xl px-3.5 py-2 shadow-xs self-center sm:self-auto">
-            <span class="relative flex h-2.5 w-2.5">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
-            <div class="text-left">
-              <div class="text-[9px] text-slate-400 font-medium">ওয়েবসাইট স্পিড (সার্ভার ল্যাটেন্সি)</div>
-              <div class="text-xs font-mono font-black text-emerald-600 dark:text-emerald-400" id="live-speed-stat">
+          <div class="lc-speed-pill">
+            <span class="lc-ping-dot"></span>
+            <div>
+              <div class="lc-speed-label">ওয়েবসাইট স্পিড (সার্ভার ল্যাটেন্সি)</div>
+              <div class="lc-speed-val" id="live-speed-stat">
                 ${liveSpeed}ms (সুপার ফাস্ট)
               </div>
             </div>
@@ -164,69 +992,65 @@ export async function renderLiveChatPage() {
       </div>
 
       <!-- Main Layout: AI Chatboard (Left) + Contact Details & Map (Right) -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div class="lc-grid">
         
-        <!-- ============================================== -->
-        <!-- LEFT: INTELLIGENT AI CHAT BOARD (lg:col-span-7) -->
-        <!-- ============================================== -->
-        <div class="lg:col-span-7 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm flex flex-col h-[740px] overflow-hidden card-animated">
+        <!-- LEFT: INTELLIGENT AI CHAT BOARD -->
+        <div class="lc-chat-card">
           
           <!-- Chat Header -->
-          <div class="p-4 sm:p-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white flex items-center justify-between flex-shrink-0">
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-md text-white font-black flex items-center justify-center text-lg flex-shrink-0 border border-white/30 shadow-xs">
+          <div class="lc-chat-head">
+            <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+              <div class="lc-chat-avatar">
                 🤖
               </div>
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <h3 class="text-sm sm:text-base font-black truncate">Dream Cart AI অ্যাসিস্ট্যান্ট</h3>
-                  <span class="bg-emerald-400/30 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider border border-white/20">
-                    Live V2.5
-                  </span>
+              <div style="min-width: 0;">
+                <div class="lc-chat-head-title">
+                  <span>Dream Cart AI অ্যাসিস্ট্যান্ট</span>
+                  <span class="lc-version-tag">Live V2.5</span>
                 </div>
-                <div class="text-[11px] text-emerald-100 flex items-center gap-2">
-                  <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
+                <div class="lc-chat-head-sub">
+                  <span class="lc-active-dot"></span>
                   <span>সকল পণ্য, মূল্য ও স্টক সম্পর্কে তথ্য জানে</span>
                 </div>
               </div>
             </div>
 
             <!-- Ping status indicator inside chat -->
-            <div class="text-right flex-shrink-0">
-              <div class="text-[10px] text-emerald-200">ওয়েব গতি</div>
-              <div class="text-xs font-mono font-bold text-white bg-black/20 px-2 py-0.5 rounded-lg" id="chat-speed-indicator">
+            <div class="lc-chat-speed-box">
+              <div class="lc-chat-speed-txt">ওয়েব গতি</div>
+              <div class="lc-chat-speed-badge" id="chat-speed-indicator">
                 ${liveSpeed}ms
               </div>
             </div>
           </div>
 
           <!-- Quick Action Buttons -->
-          <div class="p-2.5 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-700/60 flex items-center gap-2 overflow-x-auto no-scrollbar text-xs">
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider pl-1 flex-shrink-0">প্রশ্ন করুন:</span>
+          <div class="lc-quick-bar">
+            <span class="lc-quick-label">প্রশ্ন করুন:</span>
             <button 
               type="button" 
-              class="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:border-emerald-500 hover:text-emerald-600 transition whitespace-nowrap text-[11px]"
+              class="lc-quick-chip"
               onclick="window.triggerChatbotPrompt('স্মার্টওয়াচ কি কি আছে এবং দাম কত?')"
             >
               ⌚ স্মার্টওয়াচ কালেকশন
             </button>
             <button 
               type="button" 
-              class="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:border-emerald-500 hover:text-emerald-600 transition whitespace-nowrap text-[11px]"
+              class="lc-quick-chip"
               onclick="window.triggerChatbotPrompt('ডেলিভারি চার্জ কত এবং কতদিনে পাই?')"
             >
               🚚 ডেলিভারি চার্জ ও সময়
             </button>
             <button 
               type="button" 
-              class="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:border-emerald-500 hover:text-emerald-600 transition whitespace-nowrap text-[11px]"
+              class="lc-quick-chip"
               onclick="window.triggerChatbotPrompt('ওয়েবসাইটের গতি কেমন?')"
             >
               ⚡ ওয়েবসাইট স্পিড
             </button>
             <button 
               type="button" 
-              class="px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 font-medium hover:border-emerald-500 hover:text-emerald-600 transition whitespace-nowrap text-[11px]"
+              class="lc-quick-chip"
               onclick="window.triggerChatbotPrompt('শোরুমের ঠিকানা কোথায়?')"
             >
               📍 শোরুম ঠিকানা
@@ -234,22 +1058,22 @@ export async function renderLiveChatPage() {
           </div>
 
           <!-- Chat Conversation Log Window -->
-          <div id="ai-chat-messages" class="flex-1 p-4 sm:p-5 overflow-y-auto space-y-4 text-xs sm:text-sm bg-slate-50/50 dark:bg-slate-950/40">
+          <div id="ai-chat-messages" class="lc-msg-stream">
             
             <!-- Default Welcome Bot Message -->
-            <div class="flex items-start gap-2.5 max-w-[92%] sm:max-w-[85%] animate-fadeIn">
-              <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-2xs">
+            <div class="lc-bot-msg">
+              <div class="lc-bot-avatar">
                 AI
               </div>
-              <div class="bg-white dark:bg-slate-800 rounded-2xl rounded-tl-xs p-3.5 border border-slate-200/90 dark:border-slate-700/80 shadow-2xs space-y-2 text-slate-800 dark:text-slate-200">
-                <p class="font-bold text-emerald-600 dark:text-emerald-400">
+              <div class="lc-bot-bubble">
+                <p style="font-weight: 700; color: #059669; margin: 0 0 6px;">
                   আসসালামু আলাইকুম! ড্রিম কার্ট বিডি-তে আপনাকে স্বাগতম।
                 </p>
-                <p class="text-xs leading-relaxed">
+                <p style="margin: 0; line-height: 1.6;">
                   আমি ড্রিম কার্ট বিডি-র ভার্চুয়াল AI অ্যাসিস্ট্যান্ট। আমি আমাদের সম্পূর্ণ ওয়েবসাইট এবং স্টক স্ক্যান করতে সক্ষম। আপনি যেকোনো পণ্যের দাম, স্পেসিফিকেশন, স্টক তথ্য, ওয়ারেন্টি, কিংবা সাইটের পারফরম্যান্স সম্পর্কে জিজ্ঞেস করতে পারেন!
                 </p>
-                <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700">
-                  ইনস্ট্যান্ট অটোমেটেড রিপ্লাই • লাইভ ক্যাটালগ সিঙ্কড
+                <div class="lc-bot-footer">
+                  <span>ইনস্ট্যান্ট অটোমেটেড রিপ্লাই • লাইভ ক্যাটালগ সিঙ্কড</span>
                 </div>
               </div>
             </div>
@@ -257,18 +1081,18 @@ export async function renderLiveChatPage() {
           </div>
 
           <!-- Chat Input Area -->
-          <form id="ai-chat-form" class="p-3.5 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 flex items-center gap-2 flex-shrink-0">
+          <form id="ai-chat-form" class="lc-chat-form">
             <input 
               type="text" 
               id="ai-chat-input" 
               placeholder="পণ্য, মূল্য বা তথ্য সম্পর্কে বাংলায় লিখুন..." 
               autocomplete="off"
-              class="form-control text-xs sm:text-sm flex-1 py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 focus:border-emerald-500 outline-none text-slate-900 dark:text-white"
+              class="lc-chat-input"
             />
             <button 
               type="submit" 
               id="ai-chat-send-btn"
-              class="btn-primary py-2.5 px-4 sm:px-5 text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-sm rounded-xl cursor-pointer"
+              class="lc-chat-send"
             >
               <span>পাঠান</span>
               <span>➤</span>
@@ -277,100 +1101,90 @@ export async function renderLiveChatPage() {
 
         </div>
 
-        <!-- ============================================== -->
-        <!-- RIGHT: CONTACT INFO, WHATSAPP & MAP (lg:col-span-5) -->
-        <!-- ============================================== -->
-        <div class="lg:col-span-5 space-y-6">
+        <!-- RIGHT: CONTACT INFO, WHATSAPP & MAP -->
+        <div>
           
           <!-- Contact Numbers & Channels Card -->
-          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-xs space-y-5 card-animated">
-            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 class="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+          <div class="lc-right-card">
+            <div class="lc-right-head">
+              <h3 class="lc-right-title">
                 <span>📞</span> সরাসরি যোগাযোগ করুন
               </h3>
-              <span class="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full">
+              <span class="lc-right-badge">
                 সকাল ৮টা - রাত ১০টা
               </span>
             </div>
 
-            <div class="space-y-3.5">
+            <div>
               
               <!-- Phone 1 -->
-              <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between gap-3">
-                <div class="flex items-center gap-3 min-w-0">
-                  <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 flex items-center justify-center text-base flex-shrink-0">
+              <div class="lc-contact-row">
+                <div class="lc-contact-left">
+                  <div class="lc-contact-icon lc-cicon-green">
                     📱
                   </div>
-                  <div class="min-w-0">
-                    <div class="text-[10px] text-slate-400 font-medium">অফিশিয়াল হটলাইন ১</div>
-                    <a href="tel:01581703822" class="text-sm font-black font-mono text-slate-900 dark:text-white hover:text-emerald-600 transition">
+                  <div class="lc-contact-meta">
+                    <div class="lc-contact-label">অফিশিয়াল হটলাইন ১</div>
+                    <a href="tel:01581703822" class="lc-contact-val">
                       01581703822
                     </a>
                   </div>
                 </div>
-                <div class="flex items-center gap-1.5 flex-shrink-0">
+                <div class="lc-contact-actions">
                   <button 
                     type="button" 
-                    class="p-2 text-xs bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-emerald-600 cursor-pointer"
+                    class="lc-btn-copy"
                     title="নম্বর কপি করুন"
                     onclick="window.copyToClipboard('01581703822', 'হটলাইন ১')"
                   >
                     📋
                   </button>
-                  <a 
-                    href="tel:01581703822" 
-                    class="btn-primary text-xs py-1.5 px-3 rounded-lg font-bold flex items-center gap-1"
-                  >
+                  <a href="tel:01581703822" class="lc-btn-call">
                     কল করুন
                   </a>
                 </div>
               </div>
 
               <!-- Phone 2 -->
-              <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between gap-3">
-                <div class="flex items-center gap-3 min-w-0">
-                  <div class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300 flex items-center justify-center text-base flex-shrink-0">
+              <div class="lc-contact-row">
+                <div class="lc-contact-left">
+                  <div class="lc-contact-icon lc-cicon-teal">
                     📞
                   </div>
-                  <div class="min-w-0">
-                    <div class="text-[10px] text-slate-400 font-medium">কাস্টমার সাপোর্ট ২</div>
-                    <a href="tel:01818273838" class="text-sm font-black font-mono text-slate-900 dark:text-white hover:text-emerald-600 transition">
+                  <div class="lc-contact-meta">
+                    <div class="lc-contact-label">কাস্টমার সাপোর্ট ২</div>
+                    <a href="tel:01818273838" class="lc-contact-val">
                       01818273838
                     </a>
                   </div>
                 </div>
-                <div class="flex items-center gap-1.5 flex-shrink-0">
+                <div class="lc-contact-actions">
                   <button 
                     type="button" 
-                    class="p-2 text-xs bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-emerald-600 cursor-pointer"
+                    class="lc-btn-copy"
                     title="নম্বর কপি করুন"
                     onclick="window.copyToClipboard('01818273838', 'সাপোর্ট ২')"
                   >
                     📋
                   </button>
-                  <a 
-                    href="tel:01818273838" 
-                    class="btn-secondary text-xs py-1.5 px-3 rounded-lg font-bold border border-slate-200 dark:border-slate-700 flex items-center gap-1 hover:text-emerald-600"
-                  >
+                  <a href="tel:01818273838" class="lc-btn-call-alt">
                     কল করুন
                   </a>
                 </div>
               </div>
 
               <!-- WhatsApp Direct Buttons -->
-              <div class="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2.5">
-                <div class="flex items-center gap-2">
-                  <span class="text-xl">💬</span>
-                  <div class="text-xs font-bold text-emerald-900 dark:text-emerald-200">
-                    হোয়াটসঅ্যাপে সরাসরি চ্যাট করুন
-                  </div>
+              <div class="lc-wa-box">
+                <div class="lc-wa-title">
+                  <span>💬</span>
+                  <span>হোয়াটসঅ্যাপে সরাসরি চ্যাট করুন</span>
                 </div>
-                <div class="grid grid-cols-2 gap-2 text-xs">
+                <div class="lc-wa-grid">
                   <a 
                     href="https://wa.me/8801581703822?text=Hello%20Dream%20Cart%20BD" 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl text-center shadow-xs transition flex items-center justify-center gap-1.5"
+                    class="lc-wa-btn-1"
                   >
                     <span>হোয়াটসঅ্যাপ ১</span>
                     <span>↗</span>
@@ -379,7 +1193,7 @@ export async function renderLiveChatPage() {
                     href="https://wa.me/8801818273838?text=Hello%20Dream%20Cart%20BD" 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    class="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-3 rounded-xl text-center shadow-xs transition flex items-center justify-center gap-1.5"
+                    class="lc-wa-btn-2"
                   >
                     <span>হোয়াটসঅ্যাপ ২</span>
                     <span>↗</span>
@@ -388,21 +1202,21 @@ export async function renderLiveChatPage() {
               </div>
 
               <!-- Email Address -->
-              <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex items-center justify-between gap-3">
-                <div class="flex items-center gap-3 min-w-0">
-                  <div class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 flex items-center justify-center text-base flex-shrink-0">
+              <div class="lc-contact-row" style="margin-bottom: 0;">
+                <div class="lc-contact-left">
+                  <div class="lc-contact-icon lc-cicon-blue">
                     ✉️
                   </div>
-                  <div class="min-w-0">
-                    <div class="text-[10px] text-slate-400 font-medium">অফিশিয়াল ইমেইল</div>
-                    <a href="mailto:jainal.dcitbd@gmail.com" class="text-xs font-bold text-slate-900 dark:text-white truncate block hover:text-emerald-600">
+                  <div class="lc-contact-meta">
+                    <div class="lc-contact-label">অফিশিয়াল ইমেইল</div>
+                    <a href="mailto:jainal.dcitbd@gmail.com" class="lc-contact-val" style="font-family: inherit; font-size: 12px;">
                       jainal.dcitbd@gmail.com
                     </a>
                   </div>
                 </div>
                 <button 
                   type="button" 
-                  class="p-2 text-xs bg-white dark:bg-slate-700 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:text-emerald-600 cursor-pointer flex-shrink-0"
+                  class="lc-btn-copy"
                   title="ইমেইল কপি করুন"
                   onclick="window.copyToClipboard('jainal.dcitbd@gmail.com', 'ইমেইল')"
                 >
@@ -414,18 +1228,18 @@ export async function renderLiveChatPage() {
           </div>
 
           <!-- Showroom Google Maps Card -->
-          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-5 shadow-xs space-y-3.5 card-animated">
-            <div class="flex items-center justify-between">
-              <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                <span>📍</span> শোরুম ম্যাপ লোকেশন (Showroom Map)
+          <div class="lc-right-card">
+            <div class="lc-right-head">
+              <h3 class="lc-right-title">
+                <span>📍</span> শোরুম ম্যাপ লোকেশন
               </h3>
-              <span class="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-bold px-2 py-0.5 rounded-full">
+              <span class="lc-right-badge">
                 কুমিল্লা আউটলেট
               </span>
             </div>
 
             <!-- Responsive Google Maps Iframe -->
-            <div class="w-full h-56 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 relative bg-slate-100 dark:bg-slate-800">
+            <div class="lc-map-frame">
               <iframe 
                 src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14644.25418186105!2d91.1685458!3d23.4220317!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x37547f3f1e941dfb%3A0x77d130325fa1bf9e!2sPaduar%20Bazar%20Bishwa%20Road%2C%20Cumilla!5e0!3m2!1sen!2sbd!4v1700000000000!5m2!1sen!2sbd" 
                 width="100%" 
@@ -438,13 +1252,13 @@ export async function renderLiveChatPage() {
               ></iframe>
             </div>
 
-            <div class="flex items-center justify-between text-xs pt-1">
-              <span class="text-slate-500 dark:text-slate-400 text-[11px]">পদুয়ার বাজার বিশ্বরোড, সদর দক্ষিণ, কুমিল্লা</span>
+            <div class="lc-map-footer">
+              <span class="lc-map-addr">পদুয়ার বাজার বিশ্বরোড, সদর দক্ষিণ, কুমিল্লা</span>
               <a 
                 href="https://maps.google.com/?q=Chowdhury+Plaza,+Paduar+Bazar+Bishwa+Road,+Cumilla" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1 text-xs"
+                class="lc-map-link"
               >
                 গুগল ম্যাপে খুলুন ↗
               </a>
@@ -452,37 +1266,38 @@ export async function renderLiveChatPage() {
           </div>
 
           <!-- Send Message / Feedback Form -->
-          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-xs space-y-4 card-animated">
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
-              <span>✉️</span> কাস্টমার ফিডব্যাক ও মেসেজ ফরম
-            </h3>
+          <div class="lc-right-card" style="margin-bottom: 0;">
+            <div class="lc-right-head">
+              <h3 class="lc-right-title">
+                <span>✉️</span> কাস্টমার ফিডব্যাক ও মেসেজ ফরম
+              </h3>
+            </div>
 
             <form 
               id="livechat-contact-form" 
-              class="space-y-3 text-xs"
               onsubmit="event.preventDefault(); alert('ধন্যবাদ! আপনার বার্তাটি সফলভাবে গৃহীত হয়েছে। আমাদের সাপোর্ট প্রতিনিধি শীঘ্রই আপনার সাথে যোগাযোগ করবেন।'); this.reset();"
             >
-              <div>
-                <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">আপনার নাম *</label>
-                <input type="text" required placeholder="মোঃ তানভীর হাসান" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 outline-none" />
+              <div class="lc-form-group">
+                <label class="lc-form-label">আপনার নাম *</label>
+                <input type="text" required placeholder="মোঃ তানভীর হাসান" class="lc-form-input" />
               </div>
 
-              <div>
-                <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">মোবাইল নম্বর *</label>
-                <input type="tel" required placeholder="01700000000" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 font-mono outline-none" />
+              <div class="lc-form-group">
+                <label class="lc-form-label">মোবাইল নম্বর *</label>
+                <input type="tel" required placeholder="01700000000" class="lc-form-input" style="font-family: monospace;" />
               </div>
 
-              <div>
-                <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">বিষয় (Subject)</label>
-                <input type="text" placeholder="যেমন: পণ্য সংক্রান্ত অনুসন্ধান / পাইকারি অর্ডার" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 outline-none" />
+              <div class="lc-form-group">
+                <label class="lc-form-label">বিষয় (Subject)</label>
+                <input type="text" placeholder="যেমন: পণ্য সংক্রান্ত অনুসন্ধান / পাইকারি অর্ডার" class="lc-form-input" />
               </div>
 
-              <div>
-                <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">বার্তা (Message) *</label>
-                <textarea required rows="3" placeholder="আপনার বার্তাটি বিস্তারিত লিখুন..." class="form-control text-xs w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 outline-none leading-relaxed"></textarea>
+              <div class="lc-form-group">
+                <label class="lc-form-label">বার্তা (Message) *</label>
+                <textarea required rows="3" placeholder="আপনার বার্তাটি বিস্তারিত লিখুন..." class="lc-form-input" style="resize: vertical;"></textarea>
               </div>
 
-              <button type="submit" class="btn-primary w-full py-2.5 text-xs font-bold shadow-md cursor-pointer">
+              <button type="submit" class="lc-form-submit">
                 বার্তা পাঠান →
               </button>
             </form>
@@ -533,11 +1348,11 @@ function setupAiChatEngine(products) {
 
 function appendUserMessage(container, text) {
   const el = document.createElement('div');
-  el.className = 'flex justify-end items-end gap-2 max-w-[85%] ml-auto animate-fadeIn';
+  el.className = 'lc-user-msg';
   el.innerHTML = `
-    <div class="bg-emerald-600 text-white rounded-2xl rounded-tr-xs p-3.5 shadow-2xs space-y-1">
-      <p class="leading-relaxed">${escapeHtml(text)}</p>
-      <div class="text-[9px] text-emerald-200 text-right">আপনি</div>
+    <div class="lc-user-bubble">
+      <p style="margin: 0; line-height: 1.5;">${escapeHtml(text)}</p>
+      <div style="font-size: 9.5px; opacity: 0.8; text-align: right; margin-top: 3px;">আপনি</div>
     </div>
   `;
   container.appendChild(el);
@@ -546,16 +1361,14 @@ function appendUserMessage(container, text) {
 function appendTypingIndicator(container, id) {
   const el = document.createElement('div');
   el.id = id;
-  el.className = 'flex items-start gap-2.5 max-w-[85%] animate-fadeIn';
+  el.className = 'lc-bot-msg';
   el.innerHTML = `
-    <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-2xs">
+    <div class="lc-bot-avatar">
       AI
     </div>
-    <div class="bg-white dark:bg-slate-800 rounded-2xl rounded-tl-xs p-3.5 border border-slate-200/90 dark:border-slate-700/80 shadow-2xs flex items-center gap-1.5">
-      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-bounce"></span>
-      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.2s]"></span>
-      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.4s]"></span>
-      <span class="text-xs text-slate-400 pl-1">সাইট ডাটা বিশ্লেষণ করা হচ্ছে...</span>
+    <div class="lc-bot-bubble" style="display: flex; align-items: center; gap: 8px;">
+      <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
+      <span style="font-size: 12px; color: #94a3b8;">সাইট ডাটা বিশ্লেষণ করা হচ্ছে...</span>
     </div>
   `;
   container.appendChild(el);
@@ -568,37 +1381,37 @@ function removeTypingIndicator(id) {
 
 function appendBotMessage(container, answerObj) {
   const el = document.createElement('div');
-  el.className = 'flex items-start gap-2.5 max-w-[92%] sm:max-w-[85%] animate-fadeIn';
+  el.className = 'lc-bot-msg';
   
   let cardsHtml = '';
   if (answerObj.recommendedProducts && answerObj.recommendedProducts.length > 0) {
     cardsHtml = `
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+      <div class="lc-prod-grid">
         ${answerObj.recommendedProducts.map(function(p) {
           const prodUrl = `/product/${p.slug || p.id}`;
           const formattedPrice = typeof formatCurrency === 'function' ? formatCurrency(p.price || 0) : `৳${p.price || 0}`;
           return `
-            <div class="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 flex items-center gap-2.5 shadow-2xs">
+            <div class="lc-prod-item">
               <img 
                 src="${p.thumbnail || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=120'}" 
                 alt="${escapeHtml(p.name)}" 
-                class="w-12 h-12 rounded-lg object-cover bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex-shrink-0"
+                class="lc-prod-img"
               />
-              <div class="min-w-0 flex-1">
-                <a href="${prodUrl}" class="text-xs font-bold text-slate-900 dark:text-white truncate block hover:text-emerald-600">
+              <div class="lc-prod-info">
+                <a href="${prodUrl}" class="lc-prod-name">
                   ${escapeHtml(p.name)}
                 </a>
-                <div class="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                <div class="lc-prod-price">
                   ${formattedPrice}
                 </div>
-                <div class="flex items-center gap-1.5 mt-1">
-                  <a href="${prodUrl}" class="text-[10px] font-bold text-emerald-600 hover:underline">
+                <div class="lc-prod-btns">
+                  <a href="${prodUrl}" class="lc-prod-link">
                     বিস্তারিত →
                   </a>
-                  <span>•</span>
+                  <span style="color: #94a3b8;">•</span>
                   <button 
                     type="button" 
-                    class="text-[10px] text-slate-500 hover:text-emerald-600 font-bold"
+                    class="lc-prod-cart-btn"
                     onclick="window.addChatProductToCart('${p.id}')"
                   >
                     + কার্ট
@@ -613,13 +1426,13 @@ function appendBotMessage(container, answerObj) {
   }
 
   el.innerHTML = `
-    <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-2xs">
+    <div class="lc-bot-avatar">
       AI
     </div>
-    <div class="bg-white dark:bg-slate-800 rounded-2xl rounded-tl-xs p-3.5 border border-slate-200/90 dark:border-slate-700/80 shadow-2xs space-y-2 text-slate-800 dark:text-slate-200">
-      <div class="text-xs sm:text-sm leading-relaxed">${answerObj.text}</div>
+    <div class="lc-bot-bubble">
+      <div style="line-height: 1.6;">${answerObj.text}</div>
       ${cardsHtml}
-      <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
+      <div class="lc-bot-footer">
         <span>ড্রিম কার্ট লাইভ বট</span>
         <span>${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
       </div>
@@ -657,7 +1470,7 @@ function generateAiBotResponse(query, products) {
     return {
       text: `💳 <strong>পেমেন্ট সংক্রান্ত তথ্য:</strong><br>
         • <strong>ক্যাশ অন ডেলিভারি (COD):</strong> পণ্য হাতে পেয়ে চেক করে সম্পূর্ণ মূল্য পরিশোধ করুন।<br>
-        • <strong>অনলাইন অগ্রিম পেমেন্ট:</strong> বিকাশ মার্চেন্ট (<code class="font-mono text-emerald-600 font-bold">01581703822</code>) অথবা বিকাশ পার্সোনাল (<code class="font-mono font-bold">01879653143</code>)।<br>
+        • <strong>অনলাইন অগ্রিম পেমেন্ট:</strong> বিকাশ মার্চেন্ট (<code style="font-family: monospace; color: #059669; font-weight: 700;">01581703822</code>) অথবা বিকাশ পার্সোনাল (<code style="font-family: monospace; font-weight: 700;">01879653143</code>)।<br>
         • <strong>বিশেষ সুবিধা:</strong> অনলাইনে সম্পূর্ণ মূল্য পরিশোধ করলে তাৎক্ষণিক <strong>৫% সরাসরি ছাড়</strong> পাওয়া যায়!`
     };
   }
@@ -668,8 +1481,8 @@ function generateAiBotResponse(query, products) {
       text: `📍 <strong>আমাদের শোরুমের ঠিকানা:</strong><br>
         <strong>ড্রিম কার্ট বিডি আউটলেট</strong><br>
         চৌধুরী প্লাজা, পদুয়ার বাজার বিশ্বরোড (সদর দক্ষিণ), কুমিল্লা।<br>
-        হটলাইন: <strong class="font-mono">01581703822</strong>, <strong class="font-mono">01818273838</strong><br>
-        ইমেইল: <code class="font-mono">jainal.dcitbd@gmail.com</code><br>
+        হটলাইন: <strong style="font-family: monospace;">01581703822</strong>, <strong style="font-family: monospace;">01818273838</strong><br>
+        ইমেইল: <code style="font-family: monospace;">jainal.dcitbd@gmail.com</code><br>
         ডানপাশের ইন্টারেক্টিভ ম্যাপে গুগল লোকেশন সরাসরি দেখে নিতে পারেন।`
     };
   }
@@ -690,7 +1503,7 @@ function generateAiBotResponse(query, products) {
       text: `💼 <strong>রিসেলার ও পাইকারি বিজনেস সুবিধা:</strong><br>
         • <strong>রিসেলার:</strong> কোনো ইনভেস্টমেন্ট ছাড়া ড্রপশিপিং করে প্রতি অর্ডারে ১০% পর্যন্ত নিশ্চিত কমিশন আয় করুন।<br>
         • <strong>হোলসেলার:</strong> সরাসরি ইমপোর্টার রেটে সর্বনিম্ন পাইকারি মূল্যে বাল্ক অর্ডার করার সুবিধা।<br>
-        বিস্তারিত দেখতে আমাদের <a href="/offers" class="text-emerald-600 font-bold underline">অফার ও পার্টনার পেজে</a> ভিজিট করুন।`
+        বিস্তারিত দেখতে আমাদের <a href="/offers" style="color: #059669; font-weight: 700; text-decoration: underline;">অফার ও পার্টনার পেজে</a> ভিজিট করুন।`
     };
   }
 
@@ -771,7 +1584,7 @@ function generateAiBotResponse(query, products) {
   // Default fallback answer
   const featured = products.slice(0, 3);
   return {
-    text: `ধন্যবাদ আপনার বার্তার জন্য! আপনার অনুসন্ধান সম্পর্কিত সুনির্দিষ্ট তথ্য পেতে আমাদের কাস্টমার হটলাইনে কল করতে পারেন (<strong class="font-mono">01581703822</strong>) অথবা আমাদের হোয়াটসঅ্যাপে নক দিন।<br><br>বর্তমানে আমাদের সেরা বিক্রিত কিছু পণ্য নিচে দেখে নিতে পারেন:`,
+    text: `ধন্যবাদ আপনার বার্তার জন্য! আপনার অনুসন্ধান সম্পর্কিত সুনির্দিষ্ট তথ্য পেতে আমাদের কাস্টমার হটলাইনে কল করতে পারেন (<strong style="font-family: monospace;">01581703822</strong>) অথবা আমাদের হোয়াটসঅ্যাপে নক দিন।<br><br>বর্তমানে আমাদের সেরা বিক্রিত কিছু পণ্য নিচে দেখে নিতে পারেন:`,
     recommendedProducts: featured
   };
 }
