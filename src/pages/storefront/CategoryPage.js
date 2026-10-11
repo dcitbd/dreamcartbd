@@ -10,6 +10,17 @@
 
 import { apiClient, INITIAL_CATEGORIES } from '../../api/client.js';
 
+// Safe HTML escaper (prevents XSS & syntax breaks)
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // Default enriched hierarchies to guarantee rich sub/child trees even before sheet syncs
 const DEFAULT_CAT_HIERARCHIES = {
   "smartwatches": {
@@ -101,7 +112,7 @@ if (typeof window !== 'undefined') {
   };
 
   // Switch selected category in the main view
-  window.selectCategoryTab = function(catKey) {
+  window.selectCategoryTab = function(safeKey) {
     // Hide all category panes
     document.querySelectorAll('.category-detail-pane').forEach(p => {
       p.classList.add('hidden');
@@ -113,13 +124,13 @@ if (typeof window !== 'undefined') {
     });
 
     // Show target pane
-    const targetPane = document.getElementById('pane-' + catKey);
+    const targetPane = document.getElementById('pane-' + safeKey);
     if (targetPane) {
       targetPane.classList.remove('hidden');
     }
 
     // Highlight target sidebar card
-    const targetCard = document.getElementById('side-card-' + catKey);
+    const targetCard = document.getElementById('side-card-' + safeKey);
     if (targetCard) {
       targetCard.classList.add('active-cat');
     }
@@ -147,24 +158,24 @@ if (typeof window !== 'undefined') {
   };
 }
 
-function escapeHtml(str) {
-  return (str || '')
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
 export async function renderCategoryPage(params = {}) {
-  // Fetch fresh categories and products in parallel
-  const [catRes, prodRes] = await Promise.all([
-    apiClient.request("categories/list"),
-    apiClient.request("products/list")
-  ]);
+  const safeParams = params || {};
 
-  const rawCategories = (catRes.data && catRes.data.items) || [];
-  const products = (prodRes.data && prodRes.data.items) || [];
+  // Fetch fresh categories and products in parallel
+  let rawCategories = [];
+  let products = [];
+
+  try {
+    const [catRes, prodRes] = await Promise.all([
+      apiClient.request("categories/list"),
+      apiClient.request("products/list")
+    ]);
+    rawCategories = (catRes && catRes.data && catRes.data.items) || [];
+    products = (prodRes && prodRes.data && prodRes.data.items) || [];
+  } catch (e) {
+    rawCategories = INITIAL_CATEGORIES || [];
+    products = apiClient.products || [];
+  }
 
   // Map for strict deduplication: Key = normalized category name (lower-cased)
   const catMap = new Map();
@@ -189,9 +200,10 @@ export async function renderCategoryPage(params = {}) {
     });
   });
 
-  // 2. Ingest API Categories (Merge & deduplicate by name)
-  rawCategories.forEach((c, idx) => {
-    const rawName = (c.category || '').trim();
+  // 2. Ingest API Categories (Merge & deduplicate strictly by name)
+  rawCategories.forEach((c) => {
+    if (!c) return;
+    const rawName = String(c.category || '').trim();
     if (!rawName || rawName.toLowerCase() === 'test id' || rawName.toLowerCase() === 'category') return;
 
     const key = rawName.toLowerCase();
@@ -210,11 +222,13 @@ export async function renderCategoryPage(params = {}) {
       catObj.category_image = c.category_image;
     }
 
-    // Parse subcategories
-    if (c.sub_category) {
-      const subList = c.sub_category.split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
-      const childList = (c.chail_category || c.child_category || '')
-        .split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
+    // Safely parse subcategories and child categories (protect against non-string values)
+    const rawSub = c.sub_category != null ? String(c.sub_category) : '';
+    const rawChild = (c.chail_category || c.child_category) != null ? String(c.chail_category || c.child_category) : '';
+
+    if (rawSub) {
+      const subList = rawSub.split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
+      const childList = rawChild.split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
 
       subList.forEach(sName => {
         const sKey = sName.toLowerCase();
@@ -232,7 +246,8 @@ export async function renderCategoryPage(params = {}) {
 
   // 3. Ingest Products data for exact matching sub and child associations
   products.forEach(p => {
-    const pCat = (p.category || '').trim();
+    if (!p) return;
+    const pCat = String(p.category || '').trim();
     if (!pCat || pCat.toLowerCase() === 'test id') return;
 
     const key = pCat.toLowerCase();
@@ -247,8 +262,8 @@ export async function renderCategoryPage(params = {}) {
     }
 
     const catObj = catMap.get(key);
-    const pSub = (p.sub_category || '').trim();
-    const pChild = (p.child_category || '').trim();
+    const pSub = p.sub_category != null ? String(p.sub_category).trim() : '';
+    const pChild = p.child_category != null ? String(p.child_category).trim() : '';
 
     if (pSub) {
       const sKey = pSub.toLowerCase();
@@ -267,7 +282,7 @@ export async function renderCategoryPage(params = {}) {
   // 4. Calculate counts and build final structure
   const categories = Array.from(catMap.values()).map((catObj, catIdx) => {
     const matchingProds = products.filter(p => 
-      (p.category && p.category.trim().toLowerCase() === catObj.category.toLowerCase())
+      p && p.category && String(p.category).trim().toLowerCase() === catObj.category.toLowerCase()
     );
 
     // Prefer product image if category image missing
@@ -279,12 +294,12 @@ export async function renderCategoryPage(params = {}) {
     // Build structured subcategories list
     const subCategoriesList = Array.from(catObj.subCatsMap.values()).map(subObj => {
       const subProds = matchingProds.filter(p => 
-        (p.sub_category && p.sub_category.trim().toLowerCase() === subObj.name.toLowerCase())
+        p && p.sub_category && String(p.sub_category).trim().toLowerCase() === subObj.name.toLowerCase()
       );
 
       const children = Array.from(subObj.childCats).map(chName => {
         const childProds = subProds.filter(p => 
-          (p.child_category && p.child_category.trim().toLowerCase() === chName.toLowerCase())
+          p && p.child_category && String(p.child_category).trim().toLowerCase() === chName.toLowerCase()
         );
         return {
           name: chName,
@@ -310,7 +325,7 @@ export async function renderCategoryPage(params = {}) {
   }).sort((a, b) => b.matchingCount - a.matchingCount || a.category.localeCompare(b.category));
 
   // Determine which category is active by default
-  const queryCat = (params.cat || params.category || '').toLowerCase().trim();
+  const queryCat = String(safeParams.cat || safeParams.category || '').toLowerCase().trim();
   let activeIndex = 0;
   if (queryCat) {
     const foundIdx = categories.findIndex(c => 
@@ -380,17 +395,17 @@ export async function renderCategoryPage(params = {}) {
           <!-- Vertical Stack of Category Cards (একটার নিচে একটা) -->
           <div id="sidebar-categories-list" class="space-y-3 max-h-[640px] overflow-y-auto pr-1 no-scrollbar">
             ${categories.map((c, idx) => {
-              const catKey = c.catagory_slug;
+              const safeKey = 'cat-node-' + idx;
               const isActive = (idx === activeIndex);
 
               return `
                 <div 
-                  id="side-card-${catKey}"
+                  id="side-card-${safeKey}"
                   class="cat-sidebar-card card-stagger-${(idx \% 6) + 1}${isActive ? 'active-cat' : ''} bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 p-3.5 flex flex-col justify-between space-y-3 select-none"
                   data-cat-name="${escapeHtml(c.category)}"
                   data-cat-id="${c.catagory_id}"
                   data-cat-slug="${c.catagory_slug}"
-                  onclick="window.selectCategoryTab('${catKey}')"
+                  onclick="window.selectCategoryTab('${safeKey}')"
                 >
                   <div class="flex items-center gap-3">
                     <!-- Category Image -->
@@ -448,12 +463,12 @@ export async function renderCategoryPage(params = {}) {
         <main class="lg:col-span-8 space-y-6">
           
           ${categories.map((c, idx) => {
-            const catKey = c.catagory_slug;
+            const safeKey = 'cat-node-' + idx;
             const isHidden = (idx !== activeIndex);
 
             return `
               <div 
-                id="pane-${catKey}" 
+                id="pane-${safeKey}" 
                 class="category-detail-pane ${isHidden ? 'hidden' : ''} space-y-6 animate-fadeIn"
               >
                 
@@ -540,9 +555,8 @@ export async function renderCategoryPage(params = {}) {
                   <!-- Subcategory List (Stacked Vertically একটার নিচে একটা করে) -->
                   <div class="space-y-4">
                     ${c.subCategories.length > 0 ? c.subCategories.map((sub, sIdx) => {
-                      const treeId = `tree-${catKey}-${sIdx}`;
+                      const treeId = `tree-item-${idx}-${sIdx}`;
                       const hasChildren = sub.children && sub.children.length > 0;
-                      // Keep first subcategory open by default for rich visual introduction
                       const isDefaultOpen = (sIdx === 0);
 
                       return `
@@ -594,7 +608,7 @@ export async function renderCategoryPage(params = {}) {
                           >
                             ${hasChildren ? `
                               <div class="tree-stem-container space-y-2.5">
-                                ${sub.children.map((ch, chIdx) => `
+                                ${sub.children.map((ch) => `
                                   <div class="tree-branch-node">
                                     <div class="tree-leaf-card bg-white dark:bg-slate-900 rounded-xl border border-slate-200/90 dark:border-slate-700/80 p-3 flex items-center justify-between gap-3 shadow-2xs">
                                       <div class="flex items-center gap-2.5 min-w-0">
@@ -611,7 +625,7 @@ export async function renderCategoryPage(params = {}) {
 
                                       <!-- Direct Shop link for child category -->
                                       <a 
-                                        href="/products?cat=${encodeURIComponent(c.category)}&sub=${encodeURIComponent(sub.name)}&child=${encodeURIComponent(ch.name)}" 
+                                        href="/products?cat=${encodeURIComponent(c.category)}&sub=${encodeURIComponent(sub.name)}" 
                                         class="btn-primary text-[10px] font-bold py-1 px-2.5 rounded-lg shadow-2xs whitespace-nowrap"
                                       >
                                         পণ্য দেখুন →
