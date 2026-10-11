@@ -27,24 +27,39 @@ function escapeHtml(str) {
 // Global cache for site latency
 let cachedLatency = 28;
 
-// Function to measure real-time website speed / latency
-export async function measureWebsiteSpeed() {
-  const start = performance.now();
+// Safe non-blocking website speed calculator
+function getWebsiteSpeed() {
   try {
-    await fetch('/src/styles/main.css?ping=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
-  } catch (e) {
-    // Fallback if offline
-  }
-  const latency = Math.max(14, Math.round(performance.now() - start));
+    if (typeof window !== 'undefined' && window.performance) {
+      if (window.performance.timing) {
+        const t = window.performance.timing;
+        const dur = t.responseEnd - t.requestStart;
+        if (dur > 0 && dur < 3000) return Math.round(dur);
+      }
+      const nav = performance.getEntriesByType('navigation');
+      if (nav && nav.length > 0) {
+        const dur = nav[0].responseEnd - nav[0].requestStart;
+        if (dur > 0 && dur < 3000) return Math.round(dur);
+      }
+    }
+  } catch (e) {}
+  return 28;
+}
+
+// Function to measure real-time website speed / latency safely
+export function measureWebsiteSpeed() {
+  const latency = getWebsiteSpeed();
   cachedLatency = latency;
 
-  const statEl = document.getElementById('live-speed-stat');
-  if (statEl) {
-    statEl.textContent = `${latency}ms`;
-  }
-  const chatSpeedEl = document.getElementById('chat-speed-indicator');
-  if (chatSpeedEl) {
-    chatSpeedEl.textContent = `${latency}ms`;
+  if (typeof document !== 'undefined') {
+    const statEl = document.getElementById('live-speed-stat');
+    if (statEl) {
+      statEl.textContent = `${latency}ms`;
+    }
+    const chatSpeedEl = document.getElementById('chat-speed-indicator');
+    if (chatSpeedEl) {
+      chatSpeedEl.textContent = `${latency}ms`;
+    }
   }
   return latency;
 }
@@ -90,9 +105,9 @@ if (typeof window !== 'undefined') {
     try {
       const allProds = (apiClient.products && apiClient.products.length > 0)
         ? apiClient.products
-        : (apiClient.sheetProducts || INITIAL_PRODUCTS);
+        : (apiClient.sheetProducts || INITIAL_PRODUCTS || []);
 
-      let prod = allProds.find(p => (p.product_id === productId || p.sku === productId || p.slug === productId));
+      let prod = allProds.find(p => p && (p.product_id === productId || p.sku === productId || p.slug === productId));
       if (!prod) {
         const res = await apiClient.request("products/details", { id: productId });
         if (res && res.data) prod = res.data;
@@ -174,7 +189,7 @@ if (typeof window !== 'undefined') {
 
       const allProds = (apiClient.products && apiClient.products.length > 0)
         ? apiClient.products
-        : (apiClient.sheetProducts || INITIAL_PRODUCTS);
+        : (apiClient.sheetProducts || INITIAL_PRODUCTS || []);
 
       const categories = apiClient.sheetCategories || [];
       const brands = apiClient.sheetBrands || [];
@@ -528,7 +543,7 @@ function generateAiResponse(query, products, categories, brands, latency) {
  * Main Render Function for /chat & /contact Page
  */
 export async function renderLiveChatPage() {
-  setTimeout(measureWebsiteSpeed, 100);
+  measureWebsiteSpeed();
   apiClient.loadProductsFromSheet().catch(() => {});
 
   const currentLatency = cachedLatency;
