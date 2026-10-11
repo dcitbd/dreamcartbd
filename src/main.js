@@ -622,6 +622,40 @@ function attachEventListeners() {
       return;
     }
 
+    // Password Eye Toggle (Show/Hide Password)
+    const togglePassBtn = e.target.closest('.btn-toggle-auth-pass') || e.target.closest('#btn-toggle-auth-pass');
+    if (togglePassBtn) {
+      const targetId = togglePassBtn.getAttribute('data-target') || 'auth-pass';
+      const passInp = document.getElementById(targetId);
+      if (passInp) {
+        if (passInp.type === 'password') {
+          passInp.type = 'text';
+          togglePassBtn.innerHTML = '🙈';
+          togglePassBtn.title = 'পাসওয়ার্ড লুকান';
+        } else {
+          passInp.type = 'password';
+          togglePassBtn.innerHTML = '👁️';
+          togglePassBtn.title = 'পাসওয়ার্ড দেখুন';
+        }
+      }
+      return;
+    }
+
+    // Avatar Preset Click Handler on Registration Form
+    const avatarBtn = e.target.closest('.avatar-preset-btn');
+    if (avatarBtn) {
+      const photoUrl = avatarBtn.getAttribute('data-avatar-url') || '';
+      const photoInp = document.getElementById('auth-photo');
+      if (photoInp) photoInp.value = photoUrl;
+      document.querySelectorAll('.avatar-preset-btn').forEach(b => {
+        b.classList.remove('active', 'border-emerald-600', 'bg-emerald-50', 'ring-2', 'ring-emerald-500');
+      });
+      avatarBtn.classList.add('active', 'border-emerald-600', 'bg-emerald-50', 'ring-2', 'ring-emerald-500');
+      const previewImg = document.getElementById('avatar-preview-display');
+      if (previewImg && photoUrl) previewImg.src = photoUrl;
+      return;
+    }
+
     // Clear entire cart
     if (e.target.closest('#btn-clear-cart')) {
       cartStore.clear();
@@ -752,65 +786,132 @@ function attachEventListeners() {
       return;
     }
 
-    // B. Customer Login & Registration Form Submission
+    // B. Customer Login & Registration Form Submission (Strict Customers Sheet Authentication)
     if (e.target.id === 'customer-auth-form') {
       e.preventDefault();
       const form = e.target;
       const isRegister = form.getAttribute('data-auth-mode') === 'register' || !!document.getElementById('auth-name');
-      const phone = document.getElementById('auth-phone')?.value.trim();
-      const pass = document.getElementById('auth-pass')?.value.trim();
-      const name = document.getElementById('auth-name')?.value.trim() || 'সম্মানিত গ্রাহক';
-      const mail = document.getElementById('auth-mail')?.value.trim() || '';
-      const addr = document.getElementById('auth-addr')?.value.trim() || '';
+      const phoneInput = document.getElementById('auth-phone');
+      const passInput = document.getElementById('auth-pass');
+      const phone = phoneInput?.value.trim() || '';
+      const pass = passInput?.value.trim() || '';
 
-      if (!phone || phone.length < 11) {
-        toast.show({ type: "error", title: "সতর্কতা", message: "সঠিক ১১ ডিজিটের মোবাইল নম্বর প্রদান করুন।" });
+      const errAlert = document.getElementById('auth-error-alert');
+      const errMsg = document.getElementById('auth-error-msg');
+      const displayError = (msg) => {
+        if (errAlert && errMsg) {
+          errMsg.textContent = msg;
+          errAlert.classList.remove('hidden');
+        }
+        toast.show({ type: 'error', title: isRegister ? 'নিবন্ধন ত্রুটি' : 'লগইন ব্যর্থ', message: msg, duration: 5000 });
+      };
+
+      if (errAlert) errAlert.classList.add('hidden');
+
+      if (!phone) {
+        displayError('অনুগ্রহ করে মোবাইল নম্বর বা ইমেইল প্রদান করুন।');
+        phoneInput?.focus();
         return;
       }
       if (!pass || pass.length < 4) {
-        toast.show({ type: "error", title: "সতর্কতা", message: "পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে।" });
+        displayError('পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে।');
+        passInput?.focus();
         return;
       }
 
+      let name = '';
+      let mail = '';
+      let addr = '';
+      let photo = '';
+
+      if (isRegister) {
+        name = document.getElementById('auth-name')?.value.trim() || '';
+        mail = document.getElementById('auth-mail')?.value.trim() || '';
+        addr = document.getElementById('auth-addr')?.value.trim() || '';
+        photo = document.getElementById('auth-photo')?.value.trim() || '';
+        const confirmPass = document.getElementById('auth-confirm-pass')?.value.trim() || '';
+
+        if (!name) {
+          displayError('অনুগ্রহ করে আপনার পূর্ণ নাম প্রদান করুন।');
+          document.getElementById('auth-name')?.focus();
+          return;
+        }
+        if (phone.length < 11) {
+          displayError('সঠিক ১১ ডিজিটের মোবাইল নম্বর প্রদান করুন (যেমন: 017XXXXXXXX)।');
+          phoneInput?.focus();
+          return;
+        }
+        if (!addr) {
+          displayError('অনুগ্রহ করে ডেলিভারি ও যোগাযোগের সম্পূর্ণ ঠিকানা প্রদান করুন।');
+          document.getElementById('auth-addr')?.focus();
+          return;
+        }
+        if (confirmPass && confirmPass !== pass) {
+          displayError('পাসওয়ার্ড ও নিশ্চিতকরণ পাসওয়ার্ড একই নয়। দয়া করে মিলিয়ে নিন।');
+          document.getElementById('auth-confirm-pass')?.focus();
+          return;
+        }
+      }
+
       const submitBtn = form.querySelector('button[type="submit"]');
+      const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = `<span>⏳</span> <span>${isRegister ? 'অ্যাকাউন্ট তৈরি হচ্ছে...' : 'প্রবেশ করা হচ্ছে...'}</span>`;
+        submitBtn.innerHTML = `<span>⏳</span> <span>${isRegister ? 'গুগল শিটে সেভ হচ্ছে...' : 'Customers তালিকায় যাচাই হচ্ছে...'}</span>`;
       }
 
       try {
-        const payload = {
+        const payload = isRegister ? {
           name: name,
           mobile: phone,
           phone: phone,
           mail: mail,
           email: mail,
           address: addr,
+          profile_photo: photo,
+          password: pass,
+          account_type: 'CUSTOMER'
+        } : {
+          identifier: phone,
+          mobile: phone,
+          phone: phone,
+          mail: phone.includes('@') ? phone : '',
+          email: phone.includes('@') ? phone : '',
           password: pass,
           account_type: 'CUSTOMER'
         };
 
-        await apiClient.request(isRegister ? "customers/register" : "customers/login", payload);
-        authStore.setUser(payload, "TOKEN-CUST-" + Date.now(), "CUSTOMER");
+        const res = await apiClient.request(isRegister ? 'customers/register' : 'customers/login', payload);
+
+        if (!res || !res.success) {
+          displayError(res?.message || (isRegister ? 'নিবন্ধন সম্পন্ন করা যায়নি।' : 'মোবাইল নম্বর/ইমেইল অথবা পাসওয়ার্ড সঠিক নয়। Customers তালিকায় আপনার তথ্য পাওয়া যায়নি।'));
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origBtnHtml;
+          }
+          return;
+        }
+
+        const userData = res.data || payload;
+        authStore.setUser(userData, 'TOKEN-CUST-' + Date.now(), 'CUSTOMER');
 
         toast.show({
-          type: "success",
-          title: isRegister ? "নিবন্ধন সম্পন্ন!" : "লগইন সফল!",
-          message: `স্বাগতম, ${name}! আপনার ড্যাশবোর্ডে প্রবেশ করা হয়েছে।`,
+          type: 'success',
+          title: isRegister ? 'নিবন্ধন সম্পন্ন!' : 'লগইন সফল!',
+          message: `স্বাগতম, ${userData.name || name || 'সম্মানিত গ্রাহক'}! আপনার ড্যাশবোর্ডে প্রবেশ করা হয়েছে।`,
           duration: 4000
         });
 
+        // Instant navigation to customer dashboard
         router.navigate('/customer/dashboard');
 
       } catch (err) {
-        console.error("Auth error:", err);
-        const fallback = { name, mobile: phone, phone, mail, address: addr, account_type: 'CUSTOMER' };
-        authStore.setUser(fallback, "TOKEN-CUST-OFFLINE", "CUSTOMER");
-        router.navigate('/customer/dashboard');
+        console.error('Auth error:', err);
+        displayError(err.message || 'সার্ভার বা শিটের সাথে সংযোগে সমস্যা হয়েছে। অনুগ্রহ করে কিছুক্ষণ পর চেষ্টা করুন।');
       } finally {
-        if (submitBtn) {
+        if (submitBtn && submitBtn.disabled) {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = isRegister ? 'নিবন্ধন সম্পন্ন করুন →' : 'লগইন করুন →';
+          submitBtn.innerHTML = origBtnHtml;
         }
       }
       return;
