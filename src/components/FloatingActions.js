@@ -4,6 +4,7 @@
  * - Desktop: Sleek floating dock with 4 vibrant brand buttons (Cart, WhatsApp, Call, Chat).
  * - Mobile: Collapsed under a single compact 48px floating launcher button positioned above the bottom bar.
  *   Tapping expands/collapses the speed-dial contact buttons.
+ * - Contact info sub-menus (WhatsApp, Call) positioned on the RIGHT side of buttons when dock is on the left.
  */
 
 import { cartStore } from '../store/cartStore.js';
@@ -48,8 +49,8 @@ export function renderFloatingActions() {
             </svg>
           </button>
 
-          <!-- WhatsApp Sub-Menu Popup -->
-          <div id="wa-sub-menu" class="hidden absolute right-14 bottom-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-2.5 space-y-1.5 w-60 z-50 text-xs backdrop-blur-md">
+          <!-- WhatsApp Sub-Menu Popup (Shows directly on the RIGHT side of button) -->
+          <div id="wa-sub-menu" class="hidden absolute left-14 bottom-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-2.5 space-y-1.5 w-60 z-50 text-xs backdrop-blur-md" style="left: calc(100% + 12px); right: auto;">
             <div class="font-bold text-slate-800 dark:text-white px-2 py-1 text-[11px] border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <span class="flex items-center gap-1.5">
                 <span style="width: 8px; height: 8px; border-radius: 9999px; background: #25D366;"></span>
@@ -87,8 +88,8 @@ export function renderFloatingActions() {
             </svg>
           </button>
 
-          <!-- Call Sub-Menu Popup -->
-          <div id="call-sub-menu" class="hidden absolute right-14 bottom-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-2.5 space-y-1.5 w-56 z-50 text-xs backdrop-blur-md">
+          <!-- Call Sub-Menu Popup (Shows directly on the RIGHT side of button) -->
+          <div id="call-sub-menu" class="hidden absolute left-14 bottom-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-2.5 space-y-1.5 w-56 z-50 text-xs backdrop-blur-md" style="left: calc(100% + 12px); right: auto;">
             <div class="font-bold text-slate-800 dark:text-white px-2 py-1 text-[11px] border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <span class="flex items-center gap-1.5">
                 <span style="width: 8px; height: 8px; border-radius: 9999px; background: #0284c7;"></span>
@@ -117,7 +118,7 @@ export function renderFloatingActions() {
         <div>
           <a 
             href="/chat" 
-            id="btn-floating-chat"
+            id="btn-floating-chat" 
             class="floating-btn floating-btn-chat"
             title="লাইভ চ্যাট সাপোর্ট"
             aria-label="Live Chat"
