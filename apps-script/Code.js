@@ -151,6 +151,17 @@ function dispatchAction(action, payload) {
     case "reviews/add":
       return handleReviewAdd(ss, payload);
 
+    case "customers/list":
+      return getSheetDataAsJson(ss, "Customers");
+
+    case "customers/login":
+      return handleCustomerLogin(ss, payload);
+
+    case "customers/register":
+    case "customers/create":
+    case "customers/add":
+      return handleCustomerRegistration(ss, payload);
+
     default:
       return { status: "success", success: true, message: "Action executed: " + action };
   }
@@ -591,4 +602,174 @@ function setupAllSystemSheets() {
   });
 
   return { status: "success", success: true, message: "All 20 sheets successfully initialized!" };
+}
+
+function handleCustomerRegistration(ss, payload) {
+  var sheet = ss.getSheetByName("Customers");
+  if (!sheet) {
+    sheet = ss.insertSheet("Customers");
+    sheet.appendRow([
+      "USER_ID", "Profile_photo", "Name", "Mobile", "Mail", "Address", "User_ID", "Password", "Status", "Success_order", "Cancel_Order", "Total_Order", "Order_Success_Rate"
+    ]);
+    sheet.setFrozenRows(1);
+  }
+
+  var rawPhone = String(payload.mobile || payload.phone || "").trim();
+  var cleanPhone = rawPhone.replace(/^(\+?88)/, "").replace(/[\s\-]/g, "");
+  if (cleanPhone.length === 10 && cleanPhone.charAt(0) === '1') cleanPhone = '0' + cleanPhone;
+
+  var rawMail = String(payload.mail || payload.email || "").trim().toLowerCase();
+  var rawPass = String(payload.password || "").trim();
+  var rawName = String(payload.name || "সম্মানিত গ্রাহক").trim();
+  var rawAddr = String(payload.address || "").trim();
+  var rawPhoto = String(payload.profile_photo || payload.Profile_photo || "").trim();
+
+  // Check if phone or email already registered in Customers sheet
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    var rowMobile = String(data[i][3] || "").trim().replace(/^(\+?88)/, "").replace(/[\s\-]/g, "");
+    if (rowMobile.length === 10 && rowMobile.charAt(0) === '1') rowMobile = '0' + rowMobile;
+    var rowMail = String(data[i][4] || "").trim().toLowerCase();
+
+    if ((cleanPhone && rowMobile === cleanPhone) || (rawMail && rowMail === rawMail)) {
+      return {
+        status: "error",
+        success: false,
+        message: "এই মোবাইল নম্বর বা ইমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট তৈরি করা আছে। অনুগ্রহ করে লগইন করুন।"
+      };
+    }
+  }
+
+  var userId = payload.user_id || payload.USER_ID || ("CUST-" + Math.floor(100000 + Math.random() * 900000));
+
+  // Exact 13 Columns:
+  // A=USER_ID, B=Profile_photo, C=Name, D=Mobile, E=Mail, F=Address, G=User_ID, H=Password, I=Status, J=Success_order, K=Cancel_Order, L=Total_Order, M=Order_Success_Rate
+  var row = [
+    userId,               // A = USER_ID
+    rawPhoto,             // B = Profile_photo
+    rawName,              // C = Name
+    cleanPhone,           // D = Mobile
+    rawMail,              // E = Mail
+    rawAddr,              // F = Address
+    userId,               // G = User_ID
+    rawPass,              // H = Password
+    "Active",             // I = Status
+    0,                    // J = Success_order
+    0,                    // K = Cancel_Order
+    0,                    // L = Total_Order
+    "100%"                // M = Order_Success_Rate
+  ];
+
+  sheet.appendRow(row);
+
+  return {
+    status: "success",
+    success: true,
+    message: "কাস্টমার অ্যাকাউন্ট সফলভাবে শিটে জমা হয়েছে!",
+    data: {
+      user_id: userId,
+      USER_ID: userId,
+      profile_photo: rawPhoto,
+      name: rawName,
+      mobile: cleanPhone,
+      phone: cleanPhone,
+      mail: rawMail,
+      email: rawMail,
+      address: rawAddr,
+      account_type: "CUSTOMER",
+      role: "Customer",
+      status: "Active",
+      success_order: 0,
+      cancel_order: 0,
+      total_order: 0,
+      order_success_rate: "100%"
+    }
+  };
+}
+
+function handleCustomerLogin(ss, payload) {
+  var sheet = ss.getSheetByName("Customers");
+  if (!sheet) {
+    return { status: "error", success: false, message: "Customers শিট পাওয়া যায়নি।" };
+  }
+
+  var identifier = String(payload.phone || payload.mobile || payload.identifier || payload.mail || payload.email || payload.username || "").trim();
+  var inputPass = String(payload.password || "").trim();
+
+  var cleanPhone = identifier.replace(/^(\+?88)/, "").replace(/[\s\-]/g, "");
+  if (cleanPhone.length === 10 && cleanPhone.charAt(0) === '1') cleanPhone = '0' + cleanPhone;
+  var cleanMail = identifier.toLowerCase();
+
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    var rUserIdA = String(data[i][0] || "").trim().toLowerCase();
+    var rPhoto = String(data[i][1] || "").trim();
+    var rName = String(data[i][2] || "").trim();
+    var rMobile = String(data[i][3] || "").trim().replace(/^(\+?88)/, "").replace(/[\s\-]/g, "");
+    if (rMobile.length === 10 && rMobile.charAt(0) === '1') rMobile = '0' + rMobile;
+    var rMail = String(data[i][4] || "").trim().toLowerCase();
+    var rAddr = String(data[i][5] || "").trim();
+    var rUserIdG = String(data[i][6] || "").trim().toLowerCase();
+    var rPass = String(data[i][7] || "").trim();
+    var rStatus = String(data[i][8] || "Active").trim();
+    var rSuccessOrder = Number(data[i][9] || 0);
+    var rCancelOrder = Number(data[i][10] || 0);
+    var rTotalOrder = Number(data[i][11] || 0);
+    var rRate = String(data[i][12] || "100%").trim();
+
+    var isMatch = (cleanPhone && rMobile === cleanPhone) ||
+                  (cleanMail && rMail === cleanMail) ||
+                  (rUserIdA && rUserIdA === identifier.toLowerCase()) ||
+                  (rUserIdG && rUserIdG === identifier.toLowerCase());
+
+    if (isMatch) {
+      if (rStatus.toLowerCase() === "blocked" || rStatus.toLowerCase() === "inactive" || rStatus.toLowerCase() === "suspended") {
+        return {
+          status: "error",
+          success: false,
+          message: "আপনার অ্যাকাউন্টটি সাময়িকভাবে স্থগিত বা ব্লক করা আছে। কাস্টমার সাপোর্টে যোগাযোগ করুন।"
+        };
+      }
+
+      if (rPass !== inputPass) {
+        return {
+          status: "error",
+          success: false,
+          message: "ভুল পাসওয়ার্ড! অনুগ্রহ করে সঠিক পাসওয়ার্ড প্রদান করুন।"
+        };
+      }
+
+      var customerProfile = {
+        user_id: data[i][0] || data[i][6] || ("CUST-" + i),
+        USER_ID: data[i][0] || data[i][6] || ("CUST-" + i),
+        profile_photo: rPhoto,
+        name: rName,
+        mobile: data[i][3],
+        phone: data[i][3],
+        mail: data[i][4],
+        email: data[i][4],
+        address: rAddr,
+        status: rStatus,
+        success_order: rSuccessOrder,
+        cancel_order: rCancelOrder,
+        total_order: rTotalOrder,
+        order_success_rate: rRate,
+        account_type: "CUSTOMER",
+        role: "Customer"
+      };
+
+      return {
+        status: "success",
+        success: true,
+        message: "লগইন সফল হয়েছে!",
+        data: customerProfile
+      };
+    }
+  }
+
+  return {
+    status: "error",
+    success: false,
+    message: "মোবাইল নম্বর/ইমেইল অথবা পাসওয়ার্ড সঠিক নয়। Customers তালিকায় আপনার তথ্য পাওয়া যায়নি।"
+  };
 }
