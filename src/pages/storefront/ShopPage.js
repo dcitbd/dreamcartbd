@@ -11,11 +11,34 @@
  * - Filter by price / sort
  * - Search keyword support
  * - Role-based pricing in cards
+ * - 10-Minute Cyclic Product Rotation: Automatically shifts/rotates products so every item gets featured on the 1st page
  */
 
 import { apiClient } from '../../api/client.js';
 import { renderProductCard } from '../../components/ProductCard.js';
 import { SearchService } from '../../services/SearchService.js';
+
+/**
+ * 10-Minute Cyclic Rotation Engine:
+ * Deterministically rotates products every 10 minutes so that all products
+ * take turns appearing on the first page and rotate positions seamlessly.
+ */
+export function rotateProductsByTime(products = [], intervalMinutes = 10, pageSize = 60, customTimestamp = null) {
+  if (!Array.isArray(products) || products.length <= 1) return products;
+
+  const N = products.length;
+  const now = customTimestamp !== null ? customTimestamp : Date.now();
+  const intervalMs = intervalMinutes * 60 * 1000;
+  const timeBlock = Math.floor(now / intervalMs);
+
+  // If there are more products than pageSize, shift by a chunk so later pages rotate to page 1
+  // If <= pageSize, shift by 1 each interval so every product takes turns at the top
+  const shiftStep = N > pageSize ? Math.max(1, Math.floor(pageSize / 3)) : 1;
+  const offset = (timeBlock * shiftStep) % N;
+
+  if (offset === 0) return [...products];
+  return [...products.slice(offset), ...products.slice(0, offset)];
+}
 
 export async function renderShopPage(params = {}) {
   const cat = (params.cat || "").trim();
@@ -132,7 +155,8 @@ export async function renderShopPage(params = {}) {
 
     // Sorting:
     // When sort === "featured" (default): strictly preserve relevance ranking!
-    // Direct matches are ranked by match score descending, followed by related products by relatedness score.
+    // Direct matches are ranked by match score descending.
+    // Related products rotate every 10 minutes so all related options take turns appearing!
     if (sort === "low_high") {
       directMatches.sort((a, b) => Number(a.selling_price) - Number(b.selling_price));
       relatedProducts.sort((a, b) => Number(a.selling_price) - Number(b.selling_price));
@@ -142,6 +166,9 @@ export async function renderShopPage(params = {}) {
     } else if (sort === "name_asc") {
       directMatches.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       relatedProducts.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } else {
+      // Default featured: related products rotate cyclically every 10 minutes
+      relatedProducts = rotateProductsByTime(relatedProducts, 10, pageSize);
     }
 
     filteredProducts = [...directMatches, ...relatedProducts];
@@ -174,6 +201,9 @@ export async function renderShopPage(params = {}) {
       filteredProducts.sort((a, b) => Number(b.selling_price) - Number(a.selling_price));
     } else if (sort === "name_asc") {
       filteredProducts.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } else {
+      // Default (Featured): 10-Minute Periodic Rotation so all products cycle to the 1st page!
+      filteredProducts = rotateProductsByTime(filteredProducts, 10, pageSize);
     }
   }
 
@@ -198,6 +228,27 @@ export async function renderShopPage(params = {}) {
       if (dClear) dClear.classList.remove('hidden');
       if (mClear) mClear.classList.remove('hidden');
     }, 10);
+  }
+
+  // Automatic 10-Minute Real-Time Periodic Rotation Listener in Browser
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    if (window.__dcbdProductRotationTimer) {
+      clearTimeout(window.__dcbdProductRotationTimer);
+    }
+    const ROTATION_INTERVAL_MS = 10 * 60 * 1000;
+    const nowMs = Date.now();
+    const timeUntilNextRotate = ROTATION_INTERVAL_MS - (nowMs % ROTATION_INTERVAL_MS) + 500;
+
+    window.__dcbdProductRotationTimer = setTimeout(() => {
+      const currentPath = window.router ? window.router.getCleanPath() : window.location.pathname;
+      if (currentPath === '/products' || currentPath === '/shop' || currentPath === '/search') {
+        const activeEl = document.activeElement;
+        const isUserTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+        if (!isUserTyping && window.router && typeof window.router.resolve === 'function') {
+          window.router.resolve();
+        }
+      }
+    }, timeUntilNextRotate);
   }
 
   const hasActiveFilters = Boolean(cat || subCat || childCat || brand || stockFilter !== 'in_stock' || search);
@@ -486,7 +537,7 @@ export async function renderShopPage(params = {}) {
                 class="form-control py-1.5 px-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-white outline-none"
                 onchange="(window.router ? window.router.navigate : function(u){ window.location.href=u; })('${buildFilterUrl({ sort: '__VAL__' })}'.replace('__VAL__', encodeURIComponent(this.value)))"
               >
-                <option value="featured" ${sort === 'featured' ? 'selected' : ''}>জনপ্রিয় পণ্য (Featured)</option>
+                <option value="featured" ${sort === 'featured' ? 'selected' : ''}>জনপ্রিয় পণ্য (১০ মি. ঘূর্ণায়মান)</option>
                 <option value="low_high" ${sort === 'low_high' ? 'selected' : ''}>দাম: কম থেকে বেশি (Low to High)</option>
                 <option value="high_low" ${sort === 'high_low' ? 'selected' : ''}>দাম: বেশি থেকে কম (High to Low)</option>
                 <option value="name_asc" ${sort === 'name_asc' ? 'selected' : ''}>নাম: A থেকে Z</option>
