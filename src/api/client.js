@@ -98,7 +98,7 @@ function fetchSheetViaGviz(sheetName) {
           const val = cell ? (cell.f !== undefined && cell.f !== null ? cell.f : (cell.v !== undefined && cell.v !== null ? cell.v : '')) : '';
           rowObj[key] = val;
           rowObj[colName] = val;
-          rowObj[`col_${idx}`] = val;
+          rowObj["col_" + idx] = val;
           if (val !== '') hasData = true;
         });
 
@@ -195,6 +195,7 @@ async function sendToAppsScript(action, payload) {
   return { status: 'success', success: true };
 }
 
+
 export function normalizeBDPhone(phone) {
   if (!phone) return '';
   let str = String(phone).trim().replace(/[\s\-\(\)]/g, '');
@@ -218,7 +219,6 @@ class ApiClient {
     this.sheetCategories = this.loadLocal('dcbd_sheet_categories', null);
     this.sheetBrands = this.loadLocal('dcbd_sheet_brands', null);
     this.sheetOrders = this.loadLocal('dcbd_sheet_orders', []);
-    this.sheetCustomers = this.loadLocal('dcbd_sheet_customers', []);
   }
 
   loadLocal(key, defaultVal) {
@@ -461,34 +461,59 @@ class ApiClient {
             (p.child_category && p.child_category.toLowerCase() === catLower)
           );
         }
-
         if (payload.brand) {
           const brandLower = payload.brand.toLowerCase().trim();
           items = items.filter(p => p.brand && p.brand.toLowerCase() === brandLower);
         }
-
-        if (payload.featured) {
-          items = items.slice(0, 10);
+        if (payload.in_stock) {
+          items = items.filter(p => Number(p.stock) > 0);
+        }
+        if (payload.search) {
+          const q = payload.search.toLowerCase().trim();
+          items = items.filter(p => 
+            p.name.toLowerCase().includes(q) || 
+            (p.sku && p.sku.toLowerCase().includes(q)) ||
+            (p.brand && p.brand.toLowerCase().includes(q)) ||
+            (p.category && p.category.toLowerCase().includes(q))
+          );
+        }
+        if (payload.sort === "low_high") {
+          items.sort((a, b) => a.selling_price - b.selling_price);
+        } else if (payload.sort === "high_low") {
+          items.sort((a, b) => b.selling_price - a.selling_price);
+        } else if (payload.sort === "name_asc") {
+          items.sort((a, b) => a.name.localeCompare(b.name));
         }
 
         return {
           success: true,
           data: {
-            items,
+            items: items,
             total: items.length
           }
         };
       }
 
       case "products/details": {
-        const target = (payload.id || payload.slug || payload.sku || '').toString().trim().toLowerCase();
         const products = await this.loadProductsFromSheet();
+        const rawTarget = (payload.id || payload.slug || payload.sku || '').toString().trim();
+        const target = rawTarget.toLowerCase();
+        let decodedTarget = target;
+        try { decodedTarget = decodeURIComponent(target); } catch(e){}
 
-        let found = products.find(p => 
-          (p.sku && p.sku.toString().trim().toLowerCase() === target) ||
-          (p.product_id && p.product_id.toString().trim().toLowerCase() === target) ||
-          (p.slug && p.slug.toString().trim().toLowerCase() === target)
-        );
+        const found = products.find(p => {
+          const pId = (p.product_id || '').toString().trim().toLowerCase();
+          const sku = (p.sku || '').toString().trim().toLowerCase();
+          const slug = (p.slug || '').toString().trim().toLowerCase();
+          const name = (p.name || p.p_name || '').toString().trim().toLowerCase();
+          const normName = name.replace(/[^a-z0-9]+/g, '-');
+          
+          return pId === target || pId === decodedTarget ||
+                 sku === target || sku === decodedTarget ||
+                 slug === target || slug === decodedTarget ||
+                 name === target || name === decodedTarget ||
+                 normName === target || normName === decodedTarget;
+        });
 
         if (found) {
           return { success: true, data: found };
@@ -641,7 +666,7 @@ class ApiClient {
         return { success: true, message: "ব্র্যান্ড মুছে ফেলা হয়েছে।" };
       }
 
-      case "orders/get":
+            case "orders/get":
       case "orders/details": {
         const queryId = (payload.orderId || payload.order_id || payload.id || payload.phone || '').toString().trim().toLowerCase();
         
