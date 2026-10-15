@@ -1,13 +1,12 @@
 /**
- * DREAM CART BD — MAIN NAVIGATION BAR WITH INTELLIGENT VISUAL PRODUCT READER & SEARCH REPORT (Header.js)
+ * DREAM CART BD — MAIN NAVIGATION BAR WITH SHEET PRODUCT IMAGE MATCHER & SEARCH REPORT (Header.js)
  * High-performance, pixel-perfect header component:
  * - Desktop: Notice bar, compact crisp logo (42px), wide predictive search bar with inline Visual AI Camera Search, nav actions, auth menu, dark mode.
  * - Mobile: Sleek native app bar with compact logo (36px) & dedicated search bar with Camera Search button.
- * - Multi-Engine Visual Product Reader:
- *     1. Live Google Sheet Catalog Sync (excludes fake demo products when real store products exist).
- *     2. 128-bit Perceptual Hash (dHash + vHash) + 8x8 Center-Weighted Spatial RGB + 24-bin HSV Histogram + Natural Dimension Matcher (with parallel direct CORS + wsrv.nl + corsproxy fallback).
- *     3. Multimodal AI Vision Catalog Matcher + On-Device MobileNet Semantic Object Classifier for camera/external photos.
- *     4. Patched SearchService integration so /products?search=... always displays the exact visually-matched products and injects a full Visual Search Report banner on the results page.
+ * - Sheet Product Image Matcher:
+ *     1. Syncs 100% of products loaded from Google Sheets (apiClient.loadProductsFromSheet).
+ *     2. Extracts Dual-Resolution Visual Fingerprints (64x64 Foreground-Masked 16x16 RGB Grid + Auto-Cropped 12x12 Foreground Object RGB Grid + 144-Cell Normalized Luminance Structure Vector + 32-Bin Foreground HSV Histogram) for every product image in the store.
+ *     3. Accurately matches the uploaded product image against store product images, calculates the exact Match Percentage (%), searches that exact product's name below on /products, and displays the match percentage both in the search bar report and on the search results page.
  * - Ultra-high Stacking Context (z-index: 999999): Never goes under sliders, product cards, or sticky sidebars.
  * - ZERO Full-Screen Blur: No annoying screen blur overlays.
  */
@@ -19,7 +18,7 @@ import { apiClient } from '../api/client.js';
 import { formatCurrency } from '../utils/format.js';
 import { SearchService } from '../services/SearchService.js';
 
-// Core Platform Fallback Products (Used ONLY if Google Sheet is completely empty/unreachable)
+// Core Platform Fallback Products (Used ONLY if Google Sheet is completely unreachable/empty)
 const CORE_VISUAL_PRODUCTS = [
   {
     sku: "DCBD-SM-001",
@@ -81,25 +80,6 @@ const GENERIC_FILE_TOKENS = new Set([
   "jpeg", "jpg", "png", "webp", "gif", "bmp", "avif", "heic", "svg", "unnamed"
 ]);
 
-// Bilingual Visual Keyword & ImageNet Object Class Expansion Map
-const VISUAL_KEYWORD_MAP = [
-  { keys: ["watch", "smartwatch", "digital watch", "stopwatch", "analog clock", "wall clock", "dial", "amoled", "gts", "kieslect", "amazfit", "band", "tracker", "t500", "hk9", "colmi", "haylou", "mibro", "ঘড়ি", "ঘড়ি", "স্মার্টওয়াচ", "স্মার্টওয়াচ"], query: "Smartwatch", label: "স্মার্টওয়াচ ও ঘড়ি (Smartwatch & Watch)" },
-  { keys: ["honey", "honeycomb", "modhu", "sundarban", "jar", "syrup", "মধু", "সুন্দরবন"], query: "মধু", label: "খাঁটি প্রাকৃতিক মধু (Natural Honey)" },
-  { keys: ["chia", "seed", "seeds", "kalojira", "oil", "ghee", "dates", "organic", "herbal", "supplement", "vitamin", "nut", "food", "spice", "masala", "tea", "coffee", "চিয়া", "চিয়া", "কালোজিরা", "ঘি", "অর্গানিক", "ভেষজ", "তেল", "খেজুর"], query: "Organic", label: "অর্গানিক ফুড ও হেলথ (Organic & Health)" },
-  { keys: ["torch", "flashlight", "spotlight", "light", "led", "lamp", "table lamp", "lampshade", "lantern", "solar", "bulb", "cob", "tactical", "টর্চ", "লাইট", "লণ্ঠন", "সোলার", "ল্যাম্প", "বাল্ব"], query: "Light", label: "ট্যাকটিক্যাল এলইডি ও লাইটিং (LED & Lighting)" },
-  { keys: ["gas", "regulator", "gas pump", "barometer", "odometer", "lpg", "cylinder", "stove", "burner", "safety", "fire", "গ্যাস", "রেগুলেটর", "চুলা", "সিলিন্ডার"], query: "Gas", label: "কিচেন গ্যাস সেফটি ডিভাইস (Gas Safety)" },
-  { keys: ["blender", "mixer", "juicer", "grinder", "chopper", "kettle", "teapot", "coffeepot", "cooker", "dutch oven", "frying pan", "wok", "spatula", "pot", "knife", "cleaver", "kitchen", "spoon", "rack", "sink", "pitcher", "water jug", "plate", "bowl", "tray", "ব্লেন্ডার", "জুসার", "কেটলি", "কিচেন", "রান্নাঘর", "কুকার", "প্যান"], query: "Kitchen", label: "কিচেন ও কুকিং গ্যাজেট (Kitchen Gadget)" },
-  { keys: ["bp", "blood", "pressure", "glucometer", "diabetes", "strip", "nebulizer", "oximeter", "thermometer", "stethoscope", "syringe", "pill bottle", "medicine", "medical", "health", "firstaid", "mask", "scale", "weighing", "বিপি", "প্রেশার", "ডায়াবেটিস", "নেবুলাইজার", "মেডিসিন", "হেলথকেয়ার", "থার্মোমিটার"], query: "Medicine", label: "মেডিসিন ও হেলথকেয়ার ডিভাইস (Healthcare)" },
-  { keys: ["pen", "ballpoint", "fountain pen", "pencil", "notebook", "binder", "diary", "book", "paper", "envelope", "ruler", "calculator", "abacus", "organizer", "desk", "stationery", "marker", "eraser", "school", "office", "কলম", "খাতা", "নোটবুক", "স্টেশনারি", "ক্যালকুলেটর", "ডায়েরি"], query: "Stationery", label: "স্টেশনারি ও অফিস এক্সেসরিজ (Stationery)" },
-  { keys: ["earbud", "earphone", "headphone", "airpod", "tws", "neckband", "speaker", "loudspeaker", "bluetooth", "audio", "mic", "microphone", "ipod", "radio", "ইয়ারবাড", "হেডফোন", "স্পিকার", "মাইক্রোফোন"], query: "Audio", label: "অডিও, ইয়ারবাড ও স্পিকার (Audio & Earbuds)" },
-  { keys: ["powerbank", "charger", "cable", "adapter", "usb", "typec", "battery", "holder", "stand", "tripod", "mobile", "cellular telephone", "phone", "case", "cover", "পাওয়ারব্যাংক", "চার্জার", "কেবল", "স্ট্যান্ড"], query: "Charger", label: "পাওয়ারব্যাংক ও মোবাইল এক্সেসরিজ (Accessories)" },
-  { keys: ["trimmer", "shaver", "clipper", "hair dryer", "dryer", "straightener", "grooming", "razor", "comb", "ট্রিমার", "শেভার", "হেয়ার"], query: "Trimmer", label: "গ্রুমিং ও পার্সোনাল কেয়ার (Personal Care)" },
-  { keys: ["fan", "electric fan", "cooler", "ac", "heater", "space heater", "iron", "smoothing iron", "appliance", "vacuum", "humidifier", "microwave", "toaster", "ফ্যান", "আয়রন", "অ্যাপ্লায়েন্স"], query: "Home Appliances", label: "হোম অ্যাপ্লায়েন্স (Home Appliances)" },
-  { keys: ["router", "modem", "wifi", "camera", "cctv", "ipcam", "security", "smartplug", "remote control", "রাউটার", "ক্যামেরা", "সিসিটিভি"], query: "Camera", label: "স্মার্ট সিকিউরিটি ও নেটওয়ার্ক (Smart Security)" },
-  { keys: ["bag", "backpack", "purse", "wallet", "handbag", "mailbag", "luggage", "shoe", "running shoe", "sandal", "sneaker", "sunglasses", "shirt", "t-shirt", "jersey", "watch", "ব্যাগ", "মানিব্যাগ", "জুতা", "সানগ্লাস", "টি-শার্ট"], query: "Lifestyle", label: "ফ্যাশন ও লাইফস্টাইল (Fashion & Lifestyle)" },
-  { keys: ["perfume", "lotion", "cream", "soap", "shampoo", "cosmetic", "makeup", "lipstick", "face", "skin", "পারফিউম", "ক্রিম", "লোশন", "কসমেটিকস"], query: "Cosmetics", label: "বিউটি ও স্কিনকেয়ার (Beauty & Skincare)" }
-];
-
 // Global Visual Search Controller (Module singleton attached to window)
 if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
   window.__dcbdVisualSearchInit = true;
@@ -110,7 +90,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
 
   // =========================================================================
   // PATCH SearchService so multi-word product names with numbers NEVER return 0
-  // and so active Visual Search reports rank the exact visual matches first!
+  // and so active Visual Search reports show the exact matched product(s) below!
   // =========================================================================
   const origCalculateRelevance = SearchService.calculateRelevance;
   const origSearch = SearchService.search;
@@ -120,7 +100,6 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     const rawScore = origCalculateRelevance ? origCalculateRelevance(product, query) : 0;
     if (rawScore > 0) return rawScore;
 
-    // Fallback when origCalculateRelevance falsely triggered isSkuQuery on a product name with digits
     const qNorm = SearchService.normalize ? SearchService.normalize(query) : String(query).toLowerCase().trim();
     const pName = SearchService.normalize ? SearchService.normalize(product.name || product.p_name || '') : String(product.name || product.p_name || '').toLowerCase();
     const pCat = SearchService.normalize ? SearchService.normalize(product.category || '') : String(product.category || '').toLowerCase();
@@ -161,7 +140,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     const qTrim = (query || "").trim();
     const activeReport = window.__dcbdActiveVisualReport;
 
-    // If this search matches the active Visual Image Search report, return the exact visual match ranking!
+    // When an Image Search is active, return the exact visually matched product(s) from the Sheet!
     if (
       activeReport &&
       qTrim &&
@@ -172,34 +151,52 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     ) {
       const byKey = new Map();
       allProducts.forEach(p => {
-        const k = String(p.sku || p.product_id || p.slug || p.name || '').toLowerCase();
-        if (k) byKey.set(k, p);
+        const k1 = String(p.sku || '').trim().toLowerCase();
+        const k2 = String(p.product_id || '').trim().toLowerCase();
+        const k3 = String(p.slug || '').trim().toLowerCase();
+        const k4 = String(p.name || p.p_name || '').trim().toLowerCase();
+        if (k1) byKey.set(k1, p);
+        if (k2) byKey.set(k2, p);
+        if (k3) byKey.set(k3, p);
+        if (k4) byKey.set(k4, p);
       });
+
+      const resolveRealProduct = (vp) => {
+        return (
+          byKey.get(String(vp.sku || '').trim().toLowerCase()) ||
+          byKey.get(String(vp.product_id || '').trim().toLowerCase()) ||
+          byKey.get(String(vp.slug || '').trim().toLowerCase()) ||
+          byKey.get(String(vp.name || vp.p_name || '').trim().toLowerCase()) ||
+          vp
+        );
+      };
 
       const directMatches = [];
       const relatedProducts = [];
       const usedKeys = new Set();
 
       (activeReport.directMatches || []).forEach((vp, idx) => {
-        const k = String(vp.sku || vp.product_id || vp.slug || vp.name || '').toLowerCase();
-        const realProd = byKey.get(k) || vp;
-        if (k && !usedKeys.has(k)) {
-          usedKeys.add(k);
+        const realProd = resolveRealProduct(vp);
+        const uKey = String(realProd.sku || realProd.product_id || realProd.slug || realProd.name || idx).toLowerCase();
+        if (!usedKeys.has(uKey)) {
+          usedKeys.add(uKey);
           directMatches.push({
             ...realProd,
-            _searchScore: 1000 - idx * 25,
+            _matchConfidence: vp._matchConfidence || activeReport.confidence,
+            _searchScore: 1500 - idx * 50,
             _isDirectMatch: true
           });
         }
       });
 
       (activeReport.relatedProducts || []).forEach((vp, idx) => {
-        const k = String(vp.sku || vp.product_id || vp.slug || vp.name || '').toLowerCase();
-        const realProd = byKey.get(k) || vp;
-        if (k && !usedKeys.has(k)) {
-          usedKeys.add(k);
+        const realProd = resolveRealProduct(vp);
+        const uKey = String(realProd.sku || realProd.product_id || realProd.slug || realProd.name || idx).toLowerCase();
+        if (!usedKeys.has(uKey)) {
+          usedKeys.add(uKey);
           relatedProducts.push({
             ...realProd,
+            _matchConfidence: vp._matchConfidence || 0,
             _relatedScore: 500 - idx * 10,
             _isDirectMatch: false
           });
@@ -218,11 +215,9 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
       }
     }
 
-    // Standard search using our patched calculateRelevance
     const res = origSearch ? origSearch(allProducts, query, options) : { directMatches: [], relatedProducts: [], allResults: [], query: qTrim, totalCount: 0 };
     if (res.totalCount > 0 || !qTrim) return res;
 
-    // Fallback re-ranking using patched SearchService.calculateRelevance
     const scored = (Array.isArray(allProducts) ? allProducts : [])
       .map(p => ({ product: p, score: SearchService.calculateRelevance(p, qTrim) }))
       .filter(it => it.score > 0)
@@ -239,7 +234,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
   };
 
   // =========================================================================
-  // 1. LIVE GOOGLE SHEETS CATALOG LOADER (Excludes fake demo items when real sheet items exist)
+  // 1. LIVE GOOGLE SHEETS CATALOG LOADER
   // =========================================================================
   window.__dcbdGetStoreCatalog = async function() {
     let allProds = [];
@@ -252,14 +247,12 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
       }
     }
 
-    // Check if allProds only has the single initial placeholder product (DCBD-SM-001)
     const isOnlyPlaceholder =
       allProds.length === 0 ||
       (allProds.length === 1 && String(allProds[0].sku || '') === 'DCBD-SM-001');
 
     if (isOnlyPlaceholder) {
       try {
-        // Pass true (forceRefresh) so client.js awaits fetchSheetViaGviz('Products')!
         const fetched = await apiClient.loadProductsFromSheet(true);
         if (Array.isArray(fetched) && fetched.length > 0) {
           allProds = [...fetched];
@@ -267,13 +260,11 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
       } catch (e) {}
     }
 
-    // Filter out any empty test rows
     allProds = allProds.filter(p => {
       const name = String(p.name || p.p_name || '').trim().toLowerCase();
       return name && name !== 'test id';
     });
 
-    // If real products exist from Google Sheets, DO NOT pollute them with CORE_VISUAL_PRODUCTS!
     if (allProds.length > 1 || (allProds.length === 1 && String(allProds[0].sku) !== 'DCBD-SM-001')) {
       return allProds;
     }
@@ -281,20 +272,21 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     return [...CORE_VISUAL_PRODUCTS];
   };
 
-  // Normalize image URLs (handles Google Drive view links, protocol-relative URLs, etc.)
+  // Normalize image URLs (supports Google Drive share/view/thumbnail links, etc.)
   function normalizeProductImageUrl(rawUrl) {
     if (!rawUrl) return '';
     let u = String(rawUrl).trim();
     if (!u) return '';
     if (u.startsWith('//')) u = 'https:' + u;
-    const driveMatch = u.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=view&)?id=))([a-zA-Z0-9_-]{15,})/);
+    const driveMatch =
+      u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=view&)?id=|thumbnail\?id=)([a-zA-Z0-9_-]{15,})/) ||
+      u.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]{15,})/);
     if (driveMatch && driveMatch[1]) {
-      return 'https://lh3.googleusercontent.com/d/' + driveMatch[1] + '=w400';
+      return 'https://drive.google.com/thumbnail?id=' + driveMatch[1] + '&sz=w400';
     }
     return u;
   }
 
-  // Helper: Convert RGB (0-255) to HSV (h: 0-360, s: 0-1, v: 0-1)
   function rgbToHsv(r, g, b) {
     const rn = r / 255, gn = g / 255, bn = b / 255;
     const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
@@ -314,72 +306,124 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
   }
 
   // =========================================================================
-  // 2. 128-BIT PERCEPTUAL HASH + 8x8 SPATIAL RGB + FOREGROUND HSV FINGERPRINT
+  // 2. HIGH-PRECISION DUAL-RESOLUTION VISUAL FINGERPRINT EXTRACTOR (64x64)
+  //    - Foreground-Masked 16x16 Full-Frame RGB Grid (256 cells)
+  //    - Auto-Cropped 12x12 Foreground Object RGB Grid (144 cells)
+  //    - 144-Cell Mean/Std Normalized Luminance Structure Vector (normLums)
+  //    - 32-Bin Foreground-Only HSV Color Histogram
   // =========================================================================
   function extractImageFingerprintFromElement(imgEl) {
     try {
-      const SIZE = 32;
+      const SIZE = 64;
       const canvas = document.createElement('canvas');
       canvas.width = SIZE;
       canvas.height = SIZE;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) return null;
 
-      const natW = imgEl.naturalWidth || imgEl.width || 32;
-      const natH = imgEl.naturalHeight || imgEl.height || 32;
+      const natW = imgEl.naturalWidth || imgEl.width || 64;
+      const natH = imgEl.naturalHeight || imgEl.height || 64;
 
       ctx.drawImage(imgEl, 0, 0, SIZE, SIZE);
       const imgData = ctx.getImageData(0, 0, SIZE, SIZE).data;
 
-      // Auto-detect uniform border margins so screenshots with padding crop to the product
+      // 1. Estimate border background color from outer 2px perimeter
       let bgR = 0, bgG = 0, bgB = 0, bgCnt = 0;
       for (let i = 0; i < SIZE; i++) {
-        const t = (0 * SIZE + i) * 4;
-        const b = ((SIZE - 1) * SIZE + i) * 4;
-        const l = (i * SIZE + 0) * 4;
-        const r = (i * SIZE + (SIZE - 1)) * 4;
-        bgR += imgData[t] + imgData[b] + imgData[l] + imgData[r];
-        bgG += imgData[t + 1] + imgData[b + 1] + imgData[l + 1] + imgData[r + 1];
-        bgB += imgData[t + 2] + imgData[b + 2] + imgData[l + 2] + imgData[r + 2];
-        bgCnt += 4;
+        for (let d = 0; d < 2; d++) {
+          const t = (d * SIZE + i) * 4;
+          const b = (((SIZE - 1 - d) * SIZE) + i) * 4;
+          const l = (i * SIZE + d) * 4;
+          const r = (i * SIZE + (SIZE - 1 - d)) * 4;
+          bgR += imgData[t] + imgData[b] + imgData[l] + imgData[r];
+          bgG += imgData[t + 1] + imgData[b + 1] + imgData[l + 1] + imgData[r + 1];
+          bgB += imgData[t + 2] + imgData[b + 2] + imgData[l + 2] + imgData[r + 2];
+          bgCnt += 4;
+        }
       }
       bgR /= bgCnt; bgG /= bgCnt; bgB /= bgCnt;
 
-      // 1. 128-bit Perceptual Hash: 64-bit Horizontal dHash + 64-bit Vertical vHash
-      const dHash = [];
-      for (let y = 0; y < 8; y++) {
-        for (let x = 0; x < 8; x++) {
-          const sx1 = Math.min(SIZE - 1, Math.floor(((x + 0.5) / 9) * SIZE));
-          const sx2 = Math.min(SIZE - 1, Math.floor(((x + 1.5) / 9) * SIZE));
-          const sy = Math.min(SIZE - 1, Math.floor(((y + 0.5) / 8) * SIZE));
-          const i1 = (sy * SIZE + sx1) * 4;
-          const i2 = (sy * SIZE + sx2) * 4;
-          const lum1 = 0.299 * imgData[i1] + 0.587 * imgData[i1 + 1] + 0.114 * imgData[i1 + 2];
-          const lum2 = 0.299 * imgData[i2] + 0.587 * imgData[i2 + 1] + 0.114 * imgData[i2 + 2];
-          dHash.push(lum1 >= lum2 ? 1 : 0);
-        }
-      }
-      for (let y = 0; y < 8; y++) {
-        for (let x = 0; x < 8; x++) {
-          const sx = Math.min(SIZE - 1, Math.floor(((x + 0.5) / 8) * SIZE));
-          const sy1 = Math.min(SIZE - 1, Math.floor(((y + 0.5) / 9) * SIZE));
-          const sy2 = Math.min(SIZE - 1, Math.floor(((y + 1.5) / 9) * SIZE));
-          const i1 = (sy1 * SIZE + sx) * 4;
-          const i2 = (sy2 * SIZE + sx) * 4;
-          const lum1 = 0.299 * imgData[i1] + 0.587 * imgData[i1 + 1] + 0.114 * imgData[i1 + 2];
-          const lum2 = 0.299 * imgData[i2] + 0.587 * imgData[i2 + 1] + 0.114 * imgData[i2 + 2];
-          dHash.push(lum1 >= lum2 ? 1 : 0);
+      // 2. 16x16 Full-Frame Grid (256 cells x 3 RGB = 768 values) + Foreground Mask
+      const fullGrid = new Float32Array(256 * 3);
+      const fgMask = new Uint8Array(256);
+      let fgCellCount = 0;
+
+      for (let gy = 0; gy < 16; gy++) {
+        for (let gx = 0; gx < 16; gx++) {
+          let sr = 0, sg = 0, sb = 0;
+          for (let py = gy * 4; py < (gy + 1) * 4; py++) {
+            for (let px = gx * 4; px < (gx + 1) * 4; px++) {
+              const idx = (py * SIZE + px) * 4;
+              sr += imgData[idx];
+              sg += imgData[idx + 1];
+              sb += imgData[idx + 2];
+            }
+          }
+          const mr = sr / 16, mg = sg / 16, mb = sb / 16;
+          const cellIdx = gy * 16 + gx;
+          fullGrid[cellIdx * 3] = mr;
+          fullGrid[cellIdx * 3 + 1] = mg;
+          fullGrid[cellIdx * 3 + 2] = mb;
+
+          const distBg = Math.abs(mr - bgR) + Math.abs(mg - bgG) + Math.abs(mb - bgB);
+          if (distBg > 26) {
+            fgMask[cellIdx] = 1;
+            fgCellCount++;
+          }
         }
       }
 
-      // 2. 8x8 Spatial RGB Grid (64 cells x 3 channels = 192 values)
-      const spatialRgb = [];
-      const cellSize = SIZE / 8; // 4px per cell
-      for (let gy = 0; gy < 8; gy++) {
-        for (let gx = 0; gx < 8; gx++) {
+      // If image has no uniform background (full-bleed photo), mark center cells as foreground
+      if (fgCellCount < 16) {
+        for (let gy = 2; gy < 14; gy++) {
+          for (let gx = 2; gx < 14; gx++) {
+            fgMask[gy * 16 + gx] = 1;
+          }
+        }
+      }
+
+      // 3. Find tight Foreground Bounding Box [minX, minY, maxX, maxY] on 64x64
+      let minX = SIZE, minY = SIZE, maxX = 0, maxY = 0, fgPixelCount = 0;
+      for (let py = 1; py < SIZE - 1; py++) {
+        for (let px = 1; px < SIZE - 1; px++) {
+          const idx = (py * SIZE + px) * 4;
+          const dist = Math.abs(imgData[idx] - bgR) + Math.abs(imgData[idx + 1] - bgG) + Math.abs(imgData[idx + 2] - bgB);
+          if (dist > 28 && imgData[idx + 3] > 40) {
+            if (px < minX) minX = px;
+            if (px > maxX) maxX = px;
+            if (py < minY) minY = py;
+            if (py > maxY) maxY = py;
+            fgPixelCount++;
+          }
+        }
+      }
+
+      if (fgPixelCount < 60 || (maxX - minX) < 10 || (maxY - minY) < 10) {
+        minX = 4; minY = 4; maxX = SIZE - 5; maxY = SIZE - 5;
+      } else {
+        minX = Math.max(0, minX - 1);
+        minY = Math.max(0, minY - 1);
+        maxX = Math.min(SIZE - 1, maxX + 1);
+        maxY = Math.min(SIZE - 1, maxY + 1);
+      }
+
+      const cropW = Math.max(1, maxX - minX + 1);
+      const cropH = Math.max(1, maxY - minY + 1);
+
+      // 4. 12x12 Cropped Foreground Object Grid (144 cells) & Normalized Luminance Vector
+      const fgGrid = new Float32Array(144 * 3);
+      const rawLums = new Float32Array(144);
+      let lumSum = 0;
+
+      for (let gy = 0; gy < 12; gy++) {
+        for (let gx = 0; gx < 12; gx++) {
+          const y0 = minY + Math.floor((gy * cropH) / 12);
+          const y1 = Math.max(y0 + 1, minY + Math.floor(((gy + 1) * cropH) / 12));
+          const x0 = minX + Math.floor((gx * cropW) / 12);
+          const x1 = Math.max(x0 + 1, minX + Math.floor(((gx + 1) * cropW) / 12));
           let sr = 0, sg = 0, sb = 0, cnt = 0;
-          for (let py = gy * cellSize; py < (gy + 1) * cellSize; py++) {
-            for (let px = gx * cellSize; px < (gx + 1) * cellSize; px++) {
+          for (let py = y0; py < y1 && py < SIZE; py++) {
+            for (let px = x0; px < x1 && px < SIZE; px++) {
               const idx = (py * SIZE + px) * 4;
               sr += imgData[idx];
               sg += imgData[idx + 1];
@@ -387,106 +431,107 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
               cnt++;
             }
           }
-          spatialRgb.push(sr / cnt, sg / cnt, sb / cnt);
+          cnt = cnt || 1;
+          const mr = sr / cnt, mg = sg / cnt, mb = sb / cnt;
+          const cIdx = gy * 12 + gx;
+          fgGrid[cIdx * 3] = mr;
+          fgGrid[cIdx * 3 + 1] = mg;
+          fgGrid[cIdx * 3 + 2] = mb;
+
+          const lum = 0.299 * mr + 0.587 * mg + 0.114 * mb;
+          rawLums[cIdx] = lum;
+          lumSum += lum;
         }
       }
 
-      // 3. 24-bin Foreground HSV Histogram & Color Ratios
-      const hist = new Array(24).fill(0);
-      let fgTotal = 0;
-      let amberGold = 0, greenHerbal = 0, redOrange = 0, blueCyan = 0, purplePink = 0;
-      let darkMetallic = 0, whiteClean = 0, brightBeam = 0, brownWarm = 0;
+      const meanLum = lumSum / 144;
+      let lumVar = 0;
+      for (let i = 0; i < 144; i++) {
+        const d = rawLums[i] - meanLum;
+        lumVar += d * d;
+      }
+      const stdLum = Math.max(1.5, Math.sqrt(lumVar / 144));
+      const normLums = new Float32Array(144);
+      for (let i = 0; i < 144; i++) {
+        normLums[i] = (rawLums[i] - meanLum) / stdLum;
+      }
 
-      for (let py = 2; py < SIZE - 2; py++) {
-        for (let px = 2; px < SIZE - 2; px++) {
+      // 5. 32-Bin Foreground-Only HSV Color Histogram (16 Hue + 8 Sat + 8 Val)
+      const hist = new Float32Array(32);
+      let histWeight = 0;
+      let amberGold = 0, greenHerbal = 0, redOrange = 0, blueCyan = 0, purplePink = 0;
+      let darkMetallic = 0, whiteClean = 0, brownWarm = 0;
+
+      for (let py = minY; py <= maxY; py++) {
+        for (let px = minX; px <= maxX; px++) {
           const idx = (py * SIZE + px) * 4;
           const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2], a = imgData[idx + 3];
           if (a < 40) continue;
 
           const distBg = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
-          const isCenterCore = (px >= 7 && px < 25 && py >= 7 && py < 25);
-          if (distBg < 24 && !isCenterCore) continue;
+          const isCore = (px >= minX + cropW * 0.2 && px <= maxX - cropW * 0.2 && py >= minY + cropH * 0.2 && py <= maxY - cropH * 0.2);
+          if (distBg < 24 && !isCore) continue;
 
-          const weight = isCenterCore ? 2.2 : 1.0;
-          fgTotal += weight;
+          const w = isCore ? 2.0 : 1.0;
+          histWeight += w;
 
           const { h, s, v } = rgbToHsv(r, g, b);
-
-          if (s > 0.14 && v > 0.14) {
-            const hBin = Math.min(11, Math.floor(h / 30));
-            hist[hBin] += weight;
+          if (s > 0.12 && v > 0.12) {
+            const hBin = Math.min(15, Math.floor((h / 360) * 16));
+            hist[hBin] += w;
           }
-          const sBin = 12 + Math.min(5, Math.floor(s * 6));
-          const vBin = 18 + Math.min(5, Math.floor(v * 6));
-          hist[sBin] += weight;
-          hist[vBin] += weight;
+          const sBin = 16 + Math.min(7, Math.floor(s * 8));
+          const vBin = 24 + Math.min(7, Math.floor(v * 8));
+          hist[sBin] += w;
+          hist[vBin] += w;
 
-          if (v > 0.88 && s < 0.14) {
-            brightBeam += weight;
-            whiteClean += weight;
-          } else if (v > 0.72 && s < 0.18) {
-            whiteClean += weight;
-          } else if (v < 0.28) {
-            darkMetallic += weight;
-          } else if (s < 0.16 && v >= 0.28 && v <= 0.72) {
-            darkMetallic += weight * 0.7;
-          } else {
-            if (h >= 18 && h <= 58 && s >= 0.24) {
-              if (v < 0.55) brownWarm += weight;
-              else amberGold += weight;
-            } else if ((h >= 0 && h < 18) || h >= 340) {
-              redOrange += weight;
-            } else if (h > 58 && h <= 165) {
-              greenHerbal += weight;
-            } else if (h > 165 && h <= 255) {
-              blueCyan += weight;
-            } else if (h > 255 && h < 340) {
-              purplePink += weight;
-            }
-          }
+          if (v > 0.78 && s < 0.16) whiteClean += w;
+          else if (v < 0.28 || (s < 0.15 && v < 0.65)) darkMetallic += w;
+          else if (h >= 18 && h <= 58 && s >= 0.22) {
+            if (v < 0.55) brownWarm += w;
+            else amberGold += w;
+          } else if ((h >= 0 && h < 18) || h >= 340) redOrange += w;
+          else if (h > 58 && h <= 165) greenHerbal += w;
+          else if (h > 165 && h <= 255) blueCyan += w;
+          else if (h > 255 && h < 340) purplePink += w;
         }
       }
 
-      const normDenom = fgTotal || 1;
-      const normHist = hist.map(v => v / normDenom);
+      const hDenom = histWeight || 1;
+      for (let i = 0; i < 32; i++) {
+        hist[i] /= hDenom;
+      }
 
       const toneScores = [
-        { key: "black", score: darkMetallic / normDenom, label: "কালো / মেটালিক (Black / Metallic)", keywords: ["black", "dark", "metal", "grey", "gray", "silver", "কালো", "সিলভার"] },
-        { key: "amber", score: (amberGold + brownWarm * 0.8) / normDenom, label: "সোনালী / অ্যাম্বার (Golden / Amber)", keywords: ["gold", "golden", "amber", "honey", "yellow", "brown", "মধু", "সোনালী", "হলুদ", "ঘি", "তেল"] },
-        { key: "white", score: whiteClean / normDenom, label: "সাদা / ব্রাইট (White / Clean)", keywords: ["white", "silver", "light", "clear", "সাদা"] },
-        { key: "red", score: redOrange / normDenom, label: "লাল / অরেঞ্জ (Red / Orange)", keywords: ["red", "orange", "rose", "safety", "gas", "লাল", "কমলা"] },
-        { key: "green", score: greenHerbal / normDenom, label: "সবুজ / ন্যাচারাল (Green / Natural)", keywords: ["green", "organic", "herbal", "mint", "সবুজ", "অর্গানিক"] },
-        { key: "blue", score: blueCyan / normDenom, label: "নীল / সায়ান (Blue / Cyan)", keywords: ["blue", "navy", "cyan", "sky", "নীল"] },
-        { key: "pink", score: purplePink / normDenom, label: "গোলাপী / পার্পল (Pink / Purple)", keywords: ["pink", "purple", "violet", "magenta", "গোলাপী", "বেগুনি"] }
+        { key: "black", score: darkMetallic / hDenom, label: "কালো / মেটালিক (Black / Metallic)" },
+        { key: "amber", score: (amberGold + brownWarm * 0.8) / hDenom, label: "সোনালী / অ্যাম্বার (Golden / Amber)" },
+        { key: "white", score: whiteClean / hDenom, label: "সাদা / ব্রাইট (White / Clean)" },
+        { key: "red", score: redOrange / hDenom, label: "লাল / অরেঞ্জ (Red / Orange)" },
+        { key: "green", score: greenHerbal / hDenom, label: "সবুজ / ন্যাচারাল (Green / Natural)" },
+        { key: "blue", score: blueCyan / hDenom, label: "নীল / সায়ান (Blue / Cyan)" },
+        { key: "pink", score: purplePink / hDenom, label: "গোলাপী / পার্পল (Pink / Purple)" }
       ].sort((a, b) => b.score - a.score);
 
       return {
-        dHash,
-        spatialRgb,
-        normHist,
+        fullGrid,
+        fgMask,
+        fgGrid,
+        normLums,
+        hist,
         natW,
         natH,
         aspectRatio: natW / (natH || 1),
-        dominantTone: toneScores[0],
-        secondaryTone: toneScores[1],
-        ratios: {
-          amberGold: (amberGold + brownWarm * 0.7) / normDenom,
-          greenHerbal: greenHerbal / normDenom,
-          redOrange: redOrange / normDenom,
-          blueCyan: blueCyan / normDenom,
-          purplePink: purplePink / normDenom,
-          darkMetallic: darkMetallic / normDenom,
-          whiteClean: whiteClean / normDenom,
-          brightBeam: brightBeam / normDenom
-        }
+        dominantTone: toneScores[0]
       };
     } catch (err) {
       return null;
     }
   }
 
-  // Parallel Race Image Loader (Direct CORS + wsrv.nl + corsproxy fallback + non-CORS dimension reader)
-  function loadImageWithCorsFallback(rawUrl, timeoutMs = 3500) {
+  // =========================================================================
+  // 3. FAST SEQUENTIAL-FALLBACK CORS IMAGE LOADER (1.5KB 64x64 Edge Thumbnails)
+  // =========================================================================
+  function loadImageWithCorsFallback(rawUrl, timeoutMs = 4000) {
     return new Promise((resolve) => {
       const url = normalizeProductImageUrl(rawUrl);
       if (!url) return resolve(null);
@@ -513,7 +558,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
         }
       };
 
-      // If data: URL, load directly
+      // Local data: or blob: URL loads immediately
       if (url.startsWith('data:') || url.startsWith('blob:')) {
         const dImg = new Image();
         dImg.onload = () => { clearTimeout(timer); done(dImg); };
@@ -522,31 +567,54 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
         return;
       }
 
-      let failedCount = 0;
-      const totalAttempts = 3;
-      const onFail = () => {
-        failedCount++;
-        if (failedCount >= totalAttempts) {
+      // Step 4 fallback: codetabs / allorigins
+      const tryBackupProxy2 = () => {
+        const pImg2 = new Image();
+        pImg2.crossOrigin = 'anonymous';
+        pImg2.onload = () => {
+          clearTimeout(timer);
+          done(canReadPixels(pImg2) ? pImg2 : null);
+        };
+        pImg2.onerror = () => {
           clearTimeout(timer);
           done(null);
-        }
+        };
+        pImg2.src = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
       };
 
-      // Attempt 1: Direct CORS load
-      const directImg = new Image();
-      directImg.crossOrigin = 'anonymous';
-      directImg.onload = () => {
-        if (canReadPixels(directImg)) {
-          clearTimeout(timer);
-          done(directImg);
-        } else {
-          onFail();
-        }
+      // Step 3 fallback: corsproxy.io
+      const tryBackupProxy1 = () => {
+        const pImg1 = new Image();
+        pImg1.crossOrigin = 'anonymous';
+        pImg1.onload = () => {
+          if (canReadPixels(pImg1)) {
+            clearTimeout(timer);
+            done(pImg1);
+          } else {
+            tryBackupProxy2();
+          }
+        };
+        pImg1.onerror = tryBackupProxy2;
+        pImg1.src = 'https://corsproxy.io/?' + encodeURIComponent(url);
       };
-      directImg.onerror = onFail;
-      directImg.src = url;
 
-      // Attempt 2: wsrv.nl global Cloudflare CORS proxy (NO fit=cover so full image aspect is preserved!)
+      // Step 2 fallback: Direct image with crossOrigin="anonymous"
+      const tryDirect = () => {
+        const directImg = new Image();
+        directImg.crossOrigin = 'anonymous';
+        directImg.onload = () => {
+          if (canReadPixels(directImg)) {
+            clearTimeout(timer);
+            done(directImg);
+          } else {
+            tryBackupProxy1();
+          }
+        };
+        directImg.onerror = tryBackupProxy1;
+        directImg.src = url;
+      };
+
+      // Step 1 Primary: wsrv.nl 128px edge thumbnail (preserves exact aspect ratio, ~2KB, HTTP/2 multiplexed, CORS enabled!)
       const wsrvImg = new Image();
       wsrvImg.crossOrigin = 'anonymous';
       wsrvImg.onload = () => {
@@ -554,30 +622,16 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
           clearTimeout(timer);
           done(wsrvImg);
         } else {
-          onFail();
+          tryDirect();
         }
       };
-      wsrvImg.onerror = onFail;
+      wsrvImg.onerror = tryDirect;
       wsrvImg.src = 'https://wsrv.nl/?url=' + encodeURIComponent(url) + '&w=128&output=jpg';
-
-      // Attempt 3: corsproxy.io fallback
-      const corsProxyImg = new Image();
-      corsProxyImg.crossOrigin = 'anonymous';
-      corsProxyImg.onload = () => {
-        if (canReadPixels(corsProxyImg)) {
-          clearTimeout(timer);
-          done(corsProxyImg);
-        } else {
-          onFail();
-        }
-      };
-      corsProxyImg.onerror = onFail;
-      corsProxyImg.src = 'https://corsproxy.io/?' + encodeURIComponent(url);
     });
   }
 
-  // Get or compute visual fingerprints for a store product (supports multiple images per product)
-  async function getProductFingerprint(product) {
+  // Compute and cache visual fingerprints for a product (supports up to 3 images per product)
+  async function getProductFingerprintsList(product) {
     const key = String(product.sku || product.product_id || product.slug || product.name || '');
     if (window.__dcbdProductFingerprints.has(key)) {
       return window.__dcbdProductFingerprints.get(key);
@@ -585,141 +639,102 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
 
     const rawUrls = [
       product.thumbnail,
-      ...(Array.isArray(product.images) ? product.images.slice(0, 2) : [])
+      ...(Array.isArray(product.images) ? product.images.slice(0, 3) : [])
     ].filter(Boolean);
-    const uniqueUrls = Array.from(new Set(rawUrls.map(normalizeProductImageUrl).filter(Boolean)));
-    if (uniqueUrls.length === 0) return null;
+    const uniqueUrls = Array.from(new Set(rawUrls.map(normalizeProductImageUrl).filter(Boolean))).slice(0, 3);
+    if (uniqueUrls.length === 0) return [];
 
-    const imgEl = await loadImageWithCorsFallback(uniqueUrls[0], 3400);
-    if (!imgEl) return null;
-
-    const fp = extractImageFingerprintFromElement(imgEl);
-    if (fp) {
-      window.__dcbdProductFingerprints.set(key, fp);
+    const fps = [];
+    for (const u of uniqueUrls) {
+      const imgEl = await loadImageWithCorsFallback(u, 3800);
+      if (imgEl) {
+        const fp = extractImageFingerprintFromElement(imgEl);
+        if (fp) fps.push(fp);
+      }
     }
-    return fp;
+
+    if (fps.length > 0) {
+      window.__dcbdProductFingerprints.set(key, fps);
+    }
+    return fps;
   }
 
-  // Compare two visual fingerprints -> returns calibrated similarity score (0 to 100)
-  // Unrelated images score 0-20; visually similar images score 60-80; same product images score 82-100!
+  // =========================================================================
+  // 4. FOREGROUND-MASKED & AUTO-CROPPED SIMILARITY COMPARATOR (0% to 100%)
+  // =========================================================================
   function compareFingerprints(fpA, fpB) {
     if (!fpA || !fpB) return 0;
 
-    // 1. 128-bit Perceptual Hash similarity above 50% random baseline (0 to 45 points)
-    let sameBits = 0;
-    const totalBits = fpA.dHash.length || 128;
-    for (let i = 0; i < totalBits; i++) {
-      if (fpA.dHash[i] === fpB.dHash[i]) sameBits++;
+    // 1. Foreground-Masked 16x16 Full-Frame RGB Grid Similarity (Ignores shared empty background!)
+    let fullDiffSum = 0;
+    let unionCells = 0;
+    for (let i = 0; i < 256; i++) {
+      if (fpA.fgMask[i] || fpB.fgMask[i]) {
+        const base = i * 3;
+        const dr = Math.abs(fpA.fullGrid[base] - fpB.fullGrid[base]);
+        const dg = Math.abs(fpA.fullGrid[base + 1] - fpB.fullGrid[base + 1]);
+        const db = Math.abs(fpA.fullGrid[base + 2] - fpB.fullGrid[base + 2]);
+        fullDiffSum += (dr + dg + db) / 3;
+        unionCells++;
+      }
     }
-    const rawBitRatio = sameBits / totalBits;
-    const hashSim = Math.max(0, (rawBitRatio - 0.48) / 0.52) * 45;
-
-    // 2. Center-weighted 8x8 Spatial RGB similarity (0 to 35 points)
-    let weightedDiff = 0;
-    let totalWeight = 0;
-    for (let cell = 0; cell < 64; cell++) {
-      const gx = cell % 8, gy = Math.floor(cell / 8);
-      const isCore = (gx >= 2 && gx <= 5) && (gy >= 2 && gy <= 5);
-      const w = isCore ? 2.5 : 0.8;
-      const base = cell * 3;
-      const dr = Math.abs(fpA.spatialRgb[base] - fpB.spatialRgb[base]);
-      const dg = Math.abs(fpA.spatialRgb[base + 1] - fpB.spatialRgb[base + 1]);
-      const db = Math.abs(fpA.spatialRgb[base + 2] - fpB.spatialRgb[base + 2]);
-      weightedDiff += ((dr + dg + db) / 3) * w;
-      totalWeight += w;
+    if (unionCells < 8) {
+      for (let i = 0; i < 256; i++) {
+        const base = i * 3;
+        fullDiffSum += (Math.abs(fpA.fullGrid[base] - fpB.fullGrid[base]) + Math.abs(fpA.fullGrid[base + 1] - fpB.fullGrid[base + 1]) + Math.abs(fpA.fullGrid[base + 2] - fpB.fullGrid[base + 2])) / 3;
+      }
+      unionCells = 256;
     }
-    const avgRgbDiff = weightedDiff / (totalWeight || 1);
-    const spatialSim = Math.max(0, 1 - avgRgbDiff / 60) * 35;
+    const avgFullDiff = fullDiffSum / unionCells;
+    const fullGridSim = Math.max(0, (1 - avgFullDiff / 75) * 100);
 
-    // 3. Foreground 24-bin HSV Histogram intersection above baseline (0 to 20 points)
-    let histIntersection = 0;
-    let histTotalA = 0;
-    for (let i = 0; i < 24; i++) {
-      histIntersection += Math.min(fpA.normHist[i], fpB.normHist[i]);
-      histTotalA += fpA.normHist[i];
+    // 2. Auto-Cropped 12x12 Foreground Object RGB Grid Similarity (144 cells)
+    let fgDiffSum = 0;
+    for (let i = 0; i < 144; i++) {
+      const base = i * 3;
+      const dr = Math.abs(fpA.fgGrid[base] - fpB.fgGrid[base]);
+      const dg = Math.abs(fpA.fgGrid[base + 1] - fpB.fgGrid[base + 1]);
+      const db = Math.abs(fpA.fgGrid[base + 2] - fpB.fgGrid[base + 2]);
+      fgDiffSum += (dr + dg + db) / 3;
     }
-    const rawHistRatio = histTotalA > 0 ? (histIntersection / histTotalA) : 0;
-    const histSim = Math.max(0, (rawHistRatio - 0.22) / 0.78) * 20;
+    const avgFgDiff = fgDiffSum / 144;
+    const fgGridSim = Math.max(0, (1 - avgFgDiff / 75) * 100);
 
-    let total = hashSim + spatialSim + histSim;
+    // 3. Normalized Luminance Structure Cosine Correlation (-1 to +1 -> 0 to 100)
+    let dot = 0, normA = 0, normB = 0;
+    for (let i = 0; i < 144; i++) {
+      const a = fpA.normLums[i];
+      const b = fpB.normLums[i];
+      dot += a * b;
+      normA += a * a;
+      normB += b * b;
+    }
+    const denom = Math.sqrt(normA * normB) + 1e-6;
+    const corr = dot / denom;
+    const structSim = Math.max(0, corr * 100);
 
-    // Bonus if aspect ratios are very close
-    if (fpA.aspectRatio && fpB.aspectRatio) {
-      const arDiff = Math.abs(fpA.aspectRatio - fpB.aspectRatio);
-      if (arDiff < 0.05 && total > 45) total += 4;
+    // 4. Foreground-Only 32-Bin HSV Histogram Intersection (0 to 100)
+    let histInter = 0, histSumA = 0;
+    for (let i = 0; i < 32; i++) {
+      histInter += Math.min(fpA.hist[i], fpB.hist[i]);
+      histSumA += fpA.hist[i];
+    }
+    const rawHistRatio = histSumA > 0 ? (histInter / histSumA) : 0;
+    const histSim = Math.max(0, ((rawHistRatio - 0.20) / 0.80) * 100);
+
+    // Combine metrics:
+    const bestGridSim = Math.max(fullGridSim, fgGridSim);
+    let score = bestGridSim * 0.45 + structSim * 0.35 + histSim * 0.20;
+
+    // If pixel grids and structure both match strongly (same product image!), reflect true high match %
+    if (bestGridSim >= 85 && structSim >= 80) {
+      score = Math.max(score, bestGridSim * 0.75 + structSim * 0.25);
+    }
+    if (avgFullDiff < 10 || avgFgDiff < 10) {
+      score = Math.max(score, 96 + (10 - Math.min(avgFullDiff, avgFgDiff)) * 0.35);
     }
 
-    return Math.min(100, Math.round(total * 10) / 10);
-  }
-
-  // =========================================================================
-  // 3. MULTIMODAL AI VISION + ON-DEVICE MOBILENET RECOGNITION FOR CAMERA PHOTOS
-  // =========================================================================
-  function createCompactJpegDataUrl(imgEl, maxDim = 256) {
-    try {
-      const c = document.createElement('canvas');
-      const w = imgEl.naturalWidth || imgEl.width || 256;
-      const h = imgEl.naturalHeight || imgEl.height || 256;
-      const scale = Math.min(1, maxDim / Math.max(w, h));
-      c.width = Math.max(32, Math.round(w * scale));
-      c.height = Math.max(32, Math.round(h * scale));
-      const ctx = c.getContext('2d');
-      ctx.drawImage(imgEl, 0, 0, c.width, c.height);
-      return c.toDataURL('image/jpeg', 0.72);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  // Call keyless OpenAI-compatible Vision API with the store's actual catalog list
-  async function recognizeWithCatalogAIVision(imgEl, allProds, timeoutMs = 4200) {
-    if (!imgEl || !Array.isArray(allProds) || allProds.length === 0) return null;
-    const compactDataUrl = createCompactJpegDataUrl(imgEl, 256);
-    if (!compactDataUrl) return null;
-
-    const catalogLines = allProds.slice(0, 80).map((p, idx) => {
-      return `${idx}|${p.sku || ''}|${p.name || p.p_name || ''}|${p.category || ''}|${p.sub_category || ''}|${p.brand || ''}`;
-    }).join('\n');
-
-    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-    const timer = setTimeout(() => { if (controller) controller.abort(); }, timeoutMs);
-
-    try {
-      const resp = await fetch('https://text.pollinations.ai/openai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller ? controller.signal : undefined,
-        body: JSON.stringify({
-          model: 'openai',
-          temperature: 0.1,
-          response_format: { type: 'json_object' },
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an e-commerce visual product matcher. Given an uploaded product image and a store catalog (Index|SKU|Name|Category|SubCategory|Brand), identify what product is in the image and pick the best matching product index(es) from the catalog. Respond ONLY in valid JSON: {"best_index": number, "matched_indices": [number], "detected_keywords": "string", "detected_label_bn": "string"}'
-            },
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: 'Store Catalog:\n' + catalogLines + '\n\nMatch the product in this image to the catalog and return JSON:' },
-                { type: 'image_url', image_url: { url: compactDataUrl } }
-              ]
-            }
-          ]
-        })
-      });
-      clearTimeout(timer);
-      if (!resp.ok) return null;
-      const data = await resp.json();
-      const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-      if (!content) return null;
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) return null;
-      return JSON.parse(jsonMatch[0]);
-    } catch (e) {
-      clearTimeout(timer);
-      return null;
-    }
+    return Math.min(99, Math.max(0, Math.round(score)));
   }
 
   // Extract meaningful search tokens from a filename (ignoring camera prefixes & timestamps)
@@ -745,297 +760,153 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
   }
 
   // =========================================================================
-  // 4. MASTER VISUAL PRODUCT ANALYZER & CATALOG MATCHER
+  // 5. MASTER SHEET PRODUCT IMAGE MATCHER
   // =========================================================================
-  window.__dcbdAnalyzeProductImage = async function(dataUrl, fileName, explicitCategory = '') {
+  window.__dcbdAnalyzeProductImage = async function(dataUrl, fileName, explicitCategory = '', onProgress = null) {
     const allProds = await window.__dcbdGetStoreCatalog();
 
-    // 1. Load uploaded image & extract its 128-bit + 8x8 RGB + 24-bin HSV visual fingerprint
-    const uploadedImgEl = await loadImageWithCorsFallback(dataUrl, 2500);
+    // 1. Load uploaded image & extract its 64x64 Dual-Resolution Fingerprint
+    const uploadedImgEl = await loadImageWithCorsFallback(dataUrl, 3000);
     const userFp = uploadedImgEl ? extractImageFingerprintFromElement(uploadedImgEl) : null;
 
-    // 2. Check optional native browser BarcodeDetector / TextDetector
-    let detectedTextTokens = [];
-    if (uploadedImgEl && typeof window !== 'undefined') {
-      try {
-        if ('TextDetector' in window) {
-          const td = new window.TextDetector();
-          const texts = await td.detect(uploadedImgEl);
-          texts.forEach(t => {
-            if (t && t.rawValue) {
-              detectedTextTokens.push(...extractMeaningfulFileTokens(t.rawValue));
-            }
-          });
-        }
-      } catch (e) {}
+    // 2. Fingerprint ALL products from the Sheet in fast parallel batches (No 60-product cap!)
+    const totalProds = allProds.length;
+    const batchSize = 10;
+    for (let i = 0; i < totalProds; i += batchSize) {
+      if (typeof onProgress === 'function') {
+        onProgress(Math.min(totalProds, i + batchSize), totalProds);
+      }
+      const chunk = allProds.slice(i, i + batchSize);
+      await Promise.all(chunk.map(p => getProductFingerprintsList(p).catch(() => [])));
     }
 
-    // 3. Extract meaningful tokens from filename + OCR text
-    const fileTokens = [
-      ...extractMeaningfulFileTokens(fileName),
-      ...detectedTextTokens
-    ];
-    const cleanFilePhrase = fileTokens.join(' ');
-
-    // Check if filename / OCR tokens match our Visual Keyword Map
-    let mappedConcept = null;
-    for (const entry of VISUAL_KEYWORD_MAP) {
-      if (fileTokens.some(t => entry.keys.some(k => (t.length >= 3 && k.includes(t)) || (k.length >= 3 && t.includes(k))))) {
-        mappedConcept = entry;
-        break;
-      }
-    }
-
-    // 4. Compute visual fingerprints for store products AND run AI Vision in parallel!
-    // Batch fingerprint loading in chunks of 12 so proxies never rate-limit
-    const fingerprintTask = (async () => {
-      const batchSize = 12;
-      for (let i = 0; i < Math.min(allProds.length, 60); i += batchSize) {
-        const chunk = allProds.slice(i, i + batchSize);
-        await Promise.all(chunk.map(p => getProductFingerprint(p).catch(() => null)));
-      }
-    })();
-
-    const aiVisionTask = uploadedImgEl
-      ? recognizeWithCatalogAIVision(uploadedImgEl, allProds, 4000).catch(() => null)
-      : Promise.resolve(null);
-
-    const [, aiResult] = await Promise.all([fingerprintTask, aiVisionTask]);
-
-    // Check if AI Vision returned specific matched product indices or keywords
-    const aiMatchedIndices = new Set();
-    let aiBestIndex = -1;
-    let aiKeywords = '';
-    if (aiResult) {
-      if (typeof aiResult.best_index === 'number' && aiResult.best_index >= 0 && aiResult.best_index < allProds.length) {
-        aiBestIndex = aiResult.best_index;
-        aiMatchedIndices.add(aiResult.best_index);
-      }
-      if (Array.isArray(aiResult.matched_indices)) {
-        aiResult.matched_indices.forEach(idx => {
-          if (typeof idx === 'number' && idx >= 0 && idx < allProds.length) {
-            aiMatchedIndices.add(idx);
-          }
-        });
-      }
-      if (aiResult.detected_keywords) {
-        aiKeywords = String(aiResult.detected_keywords).trim();
-      }
-    }
-
-    // 5. Score EVERY product in allProds combining:
-    //    (A) Direct Visual Image Similarity (0-100 pts)
-    //    (B) AI Vision Catalog Match (0-96 pts)
-    //    (C) Filename, Asset URL & OCR Relevance Score (0-100 pts)
-    //    (D) Foreground Color & Category Visual Profile Score
+    // 3. Check if filename matches a specific product's image URL or product name
     const rawFileClean = String(fileName || '')
       .replace(/\.[a-zA-Z0-9]{2,5}$/, '')
       .replace(/\s*\(\d+\)\s*$/, '')
       .trim()
       .toLowerCase();
+    const fileTokens = extractMeaningfulFileTokens(fileName);
+    const cleanFilePhrase = fileTokens.join(' ');
 
-    const scoredProducts = allProds.map((p, idx) => {
+    // 4. Score EVERY product in the Sheet against the uploaded image
+    const scoredProducts = allProds.map(p => {
       const key = String(p.sku || p.product_id || p.slug || p.name || '');
-      const prodFp = window.__dcbdProductFingerprints.get(key) || null;
+      const prodFps = window.__dcbdProductFingerprints.get(key) || [];
 
-      // (A) Visual Image Similarity (Calibrated 128-bit dHash/vHash + 8x8 Spatial RGB + 24-bin HSV)
+      // (A) Pure Image-to-Image Visual Similarity across all images of this product (0-99%)
       let visualScore = 0;
-      if (userFp && prodFp) {
-        visualScore = compareFingerprints(userFp, prodFp);
+      if (userFp && prodFps.length > 0) {
+        for (const pfp of prodFps) {
+          const sim = compareFingerprints(userFp, pfp);
+          if (sim > visualScore) visualScore = sim;
+        }
       }
 
-      // (B) AI Vision Score
-      let aiScore = 0;
-      if (idx === aiBestIndex) {
-        aiScore = 94;
-      } else if (aiMatchedIndices.has(idx)) {
-        aiScore = 84;
-      } else if (aiKeywords) {
-        const aiRel = SearchService.calculateRelevance(p, aiKeywords);
-        if (aiRel > 0) aiScore = Math.min(82, 45 + aiRel * 0.08);
-      }
-
-      // (C) Filename, Image Asset URL & OCR Match
-      let textScore = 0;
+      // (B) Exact Image Asset Filename or Product Name Match in Filename
+      let fileMatchScore = 0;
       const prodImgUrls = [p.thumbnail, ...(Array.isArray(p.images) ? p.images : [])].filter(Boolean).join(' ').toLowerCase();
-      if (rawFileClean.length >= 4 && !GENERIC_FILE_TOKENS.has(rawFileClean) && prodImgUrls.includes(rawFileClean)) {
-        textScore = 100; // Exact saved image filename match!
-      }
-      if (cleanFilePhrase) {
+      if (rawFileClean.length >= 5 && !GENERIC_FILE_TOKENS.has(rawFileClean) && prodImgUrls.includes(rawFileClean)) {
+        fileMatchScore = 99;
+      } else if (cleanFilePhrase.length >= 3) {
         const rel = SearchService.calculateRelevance(p, cleanFilePhrase);
-        if (rel > 0) {
-          textScore = Math.max(textScore, Math.min(96, 45 + rel * 0.1));
-        }
-      }
-      if (mappedConcept) {
-        const prodText = `${p.name || ''} ${p.p_name || ''} ${p.category || ''} ${p.sub_category || ''} ${p.child_category || ''} ${p.description || ''}`.toLowerCase();
-        if (
-          prodText.includes(mappedConcept.query.toLowerCase()) ||
-          mappedConcept.keys.some(k => prodText.includes(k))
-        ) {
-          textScore = Math.max(textScore, 78);
-        }
+        if (rel >= 500) fileMatchScore = 92;
+        else if (rel >= 200) fileMatchScore = 78;
       }
 
-      // (D) Foreground Color & Category Visual Profile Match
-      let profileScore = 0;
-      if (userFp) {
-        const prodFullText = `${p.name || ''} ${p.p_name || ''} ${p.category || ''} ${p.sub_category || ''} ${p.child_category || ''} ${p.color || ''} ${p.description || ''}`.toLowerCase();
-        const domTone = userFp.dominantTone;
-        const secTone = userFp.secondaryTone;
-
-        if (domTone && domTone.keywords.some(kw => prodFullText.includes(kw))) {
-          profileScore += 18 * domTone.score;
-        }
-        if (secTone && secTone.keywords.some(kw => prodFullText.includes(kw))) {
-          profileScore += 10 * secTone.score;
-        }
-
-        const r = userFp.ratios;
-        if (r.amberGold > 0.24 && /honey|মধু|organic|অর্গানিক|oil|তেল|ghee|ঘি|food|dates|খেজুর|gold|সোনালী|হলুদ/i.test(prodFullText)) {
-          profileScore += 32 * r.amberGold;
-        }
-        if (r.greenHerbal > 0.20 && /organic|অর্গানিক|herbal|ভেষজ|health|seed|চিয়া|চিয়া|tea|natural|স্কিন|সবুজ/i.test(prodFullText)) {
-          profileScore += 32 * r.greenHerbal;
-        }
-        if (r.redOrange > 0.20 && /gas|গ্যাস|regulator|রেগুলেটর|safety|সেফটি|kitchen|কিচেন|stove|চুলা|red|লাল/i.test(prodFullText)) {
-          profileScore += 32 * r.redOrange;
-        }
-        if (r.blueCyan > 0.20 && /medical|মেডিকেল|medicine|মেডিসিন|bp|blood|nebulizer|নেবুলাইজার|glucometer|oximeter|health|হেলথ|stationery|স্টেশনারি|water|নীল/i.test(prodFullText)) {
-          profileScore += 30 * r.blueCyan;
-        }
-        if (r.brightBeam > 0.32 && /torch|টর্চ|light|লাইট|led|এলইডি|lamp|ল্যাম্প|lantern|লণ্ঠন|solar|সোলার|appliance|অ্যাপ্লায়েন্স|kettle|blender/i.test(prodFullText)) {
-          profileScore += 28 * r.brightBeam;
-        }
-        if (r.whiteClean > 0.38 && /appliance|অ্যাপ্লায়েন্স|blender|ব্লেন্ডার|kettle|কেটলি|medicine|মেডিসিন|health|হেলথ|stationery|স্টেশনারি|notebook|খাতা|earbud|airpod/i.test(prodFullText)) {
-          profileScore += 24 * r.whiteClean;
-        }
-        if (r.darkMetallic > 0.38 && /watch|ঘড়ি|ঘড়ি|smartwatch|স্মার্টওয়াচ|স্মার্টওয়াচ|torch|টর্চ|speaker|স্পিকার|earbud|powerbank|trimmer|ট্রিমার|black|কালো/i.test(prodFullText)) {
-          profileScore += 22 * r.darkMetallic;
-        }
-      }
-
-      // Master Score Combination:
-      // Priority 1: Exact / Strong Visual Fingerprint Match (visualScore >= 68) or Exact File Match (textScore >= 90)
-      // Priority 2: AI Vision Catalog Match (aiScore >= 80)
-      // Priority 3: Combined Visual + Text + Color Profile
-      const maxPrimary = Math.max(visualScore, aiScore, textScore);
-      const totalScore = maxPrimary + (visualScore * 0.25) + (aiScore * 0.25) + (textScore * 0.25) + (profileScore * 0.45);
+      const finalMatchPercent = Math.max(visualScore, fileMatchScore);
 
       return {
         product: p,
         visualScore,
-        aiScore,
-        textScore,
-        profileScore,
-        maxPrimary,
-        totalScore
+        fileMatchScore,
+        matchPercent: finalMatchPercent
       };
     });
 
-    // Sort products by totalScore descending
-    scoredProducts.sort((a, b) => b.totalScore - a.totalScore);
+    // Sort strictly by matchPercent descending (and visualScore as tie-breaker)
+    scoredProducts.sort((a, b) => (b.matchPercent - a.matchPercent) || (b.visualScore - a.visualScore));
 
-    const bestEntry = scoredProducts[0] || { product: allProds[0], totalScore: 75, maxPrimary: 75 };
+    const bestEntry = scoredProducts[0] || { product: allProds[0], matchPercent: 0, visualScore: 0 };
     const bestProduct = bestEntry.product;
+    const confidence = bestEntry.matchPercent;
 
-    // Confidence percentage (78% - 99%)
-    const confidence = Math.min(99, Math.max(78, Math.round(bestEntry.maxPrimary >= 75 ? bestEntry.maxPrimary : 78 + (bestEntry.totalScore * 0.15))));
-
-    // Build directMatches and relatedProducts for both the popup report and ShopPage.js!
-    const topCategory = (bestProduct && bestProduct.category ? bestProduct.category : '').trim().toLowerCase();
-    const topSubCategory = (bestProduct && bestProduct.sub_category ? bestProduct.sub_category : '').trim().toLowerCase();
-
+    // Build directMatches:
+    // Put ONLY the matched product(s) in directMatches so a single uploaded product image
+    // shows THAT exact product (and not unrelated products)!
     const directMatches = [];
     const relatedProducts = [];
     const seenIds = new Set();
 
+    const topCategory = (bestProduct && bestProduct.category ? bestProduct.category : '').trim().toLowerCase();
+
     scoredProducts.forEach((entry, idx) => {
-      const id = String(entry.product.sku || entry.product.product_id || entry.product.slug || entry.product.name || '').toLowerCase();
-      if (!id || seenIds.has(id)) return;
+      const id = String(entry.product.sku || entry.product.product_id || entry.product.slug || entry.product.name || idx).toLowerCase();
+      if (seenIds.has(id)) return;
 
-      const pCat = (entry.product.category || '').trim().toLowerCase();
-      const pSub = (entry.product.sub_category || '').trim().toLowerCase();
-      const isSameCat = topCategory && pCat === topCategory;
-      const isSameSub = topSubCategory && pSub === topSubCategory;
-
-      if (idx === 0 || entry.totalScore >= bestEntry.totalScore * 0.72 || isSameSub) {
+      // Only include in directMatches if it is the #1 best match OR has a very close visual match (>= 78% and within 6% of best)
+      if (idx === 0 || (entry.matchPercent >= 78 && entry.matchPercent >= confidence - 6)) {
         seenIds.add(id);
         directMatches.push({
           ...entry.product,
-          _matchConfidence: idx === 0 ? confidence : Math.max(70, Math.min(95, Math.round(entry.maxPrimary || entry.totalScore))),
+          _matchConfidence: entry.matchPercent,
           _isBestMatch: idx === 0,
           _isDirectMatch: true
         });
-      } else if (isSameCat || entry.totalScore >= bestEntry.totalScore * 0.45) {
-        seenIds.add(id);
-        relatedProducts.push({
-          ...entry.product,
-          _matchConfidence: Math.max(62, Math.min(88, Math.round(entry.totalScore))),
-          _isBestMatch: false,
-          _isDirectMatch: false
-        });
-      }
-    });
-
-    // Ensure relatedProducts has items if catalog is small
-    if (directMatches.length + relatedProducts.length < 6) {
-      scoredProducts.forEach(entry => {
-        if (directMatches.length + relatedProducts.length >= 8) return;
-        const id = String(entry.product.sku || entry.product.product_id || entry.product.slug || entry.product.name || '').toLowerCase();
-        if (id && !seenIds.has(id)) {
+      } else {
+        const pCat = (entry.product.category || '').trim().toLowerCase();
+        if ((topCategory && pCat === topCategory) || relatedProducts.length < 4) {
           seenIds.add(id);
           relatedProducts.push({
             ...entry.product,
-            _matchConfidence: 65,
+            _matchConfidence: entry.matchPercent,
             _isBestMatch: false,
             _isDirectMatch: false
           });
         }
-      });
-    }
+      }
+    });
 
-    const matchedProducts = [...directMatches, ...relatedProducts];
-
-    // Determine the clean search query & label
-    let matchedQuery = '';
-    let matchedLabel = '';
-
-    if (explicitCategory) {
-      matchedQuery = explicitCategory;
-      matchedLabel = explicitCategory;
-    } else if (bestProduct) {
-      matchedQuery = (bestProduct.name || bestProduct.p_name || bestProduct.category || '').trim();
-      matchedLabel = (aiResult && aiResult.detected_label_bn)
-        ? `${bestProduct.name || bestProduct.p_name} (${aiResult.detected_label_bn})`
-        : (bestProduct.name || bestProduct.p_name || bestProduct.category || 'শনাক্তকৃত পণ্য').trim();
-    }
+    const matchedQuery = explicitCategory
+      ? explicitCategory
+      : (bestProduct ? (bestProduct.name || bestProduct.p_name || bestProduct.sku || '').trim() : '');
 
     const reportObj = {
       bestProduct,
       matchedQuery,
-      matchedLabel,
+      matchedLabel: bestProduct ? (bestProduct.name || bestProduct.p_name || '') : '',
       confidence,
       uploadedDataUrl: dataUrl,
-      detectedColorLabel: userFp && userFp.dominantTone ? userFp.dominantTone.label : 'অটো ডিটেক্টেড (Auto)',
+      detectedColorLabel: userFp && userFp.dominantTone ? userFp.dominantTone.label : 'অটো ডিটেক্টেড',
       directMatches,
-      relatedProducts,
-      matchedProducts: matchedProducts.slice(0, 10),
-      totalMatchedCount: matchedProducts.length
+      relatedProducts: relatedProducts.slice(0, 8),
+      matchedProducts: [...directMatches, ...relatedProducts.slice(0, 4)],
+      totalMatchedCount: directMatches.length
     };
 
-    // Save active visual report globally so SearchService.search & ShopPage use the exact visual matches!
     window.__dcbdActiveVisualReport = reportObj;
-
     return reportObj;
   };
 
-  // Inject Visual Search Report Banner at the top of #app-content when /products?search=... renders
+  // =========================================================================
+  // 6. INJECT VISUAL SEARCH REPORT BANNER & % MATCH BADGE ON /PRODUCTS PAGE
+  // =========================================================================
   window.__dcbdInjectPageVisualReport = function(report) {
     if (!report || typeof document === 'undefined') return;
-    setTimeout(() => {
+    let attempts = 0;
+
+    const tryInject = () => {
+      attempts++;
       const appContent = document.getElementById('app-content');
       if (!appContent) return;
+
+      // Wait until router.resolve() has finished replacing the loading skeleton with ShopPage
+      const hasProductGrid = appContent.querySelector('.product-grid') || appContent.querySelector('h1');
+      if (!hasProductGrid && attempts < 30) {
+        setTimeout(tryInject, 120);
+        return;
+      }
+
       const existing = document.getElementById('dcbd-page-visual-report-banner');
       if (existing) existing.remove();
 
@@ -1046,26 +917,26 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
 
       const bannerDiv = document.createElement('div');
       bannerDiv.id = 'dcbd-page-visual-report-banner';
-      bannerDiv.style.cssText = 'background: linear-gradient(135deg, #0f172a 0%, #064e3b 100%); border: 1.5px solid rgba(16, 185, 129, 0.5); border-radius: 20px; padding: 16px 20px; margin-bottom: 20px; color: #ffffff; box-shadow: 0 12px 30px -8px rgba(5, 150, 105, 0.35);';
+      bannerDiv.style.cssText = 'background: linear-gradient(135deg, #0f172a 0%, #064e3b 100%); border: 1.5px solid rgba(16, 185, 129, 0.55); border-radius: 20px; padding: 16px 20px; margin-bottom: 20px; color: #ffffff; box-shadow: 0 12px 30px -8px rgba(5, 150, 105, 0.35);';
       bannerDiv.innerHTML = `
         <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
           <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
             <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-              <div style="width: 58px; height: 58px; border-radius: 12px; overflow: hidden; border: 2px solid #34d399; background: #020617; position: relative;" title="আপনার দেওয়া ছবি">
+              <div style="width: 60px; height: 60px; border-radius: 12px; overflow: hidden; border: 2px solid #34d399; background: #020617; position: relative;" title="আপনার দেওয়া ছবি">
                 <img src="${report.uploadedDataUrl}" alt="Uploaded" style="width: 100%; height: 100%; object-fit: cover;" />
-                <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(2,6,23,0.85); color: #6ee7b7; font-size: 8px; font-weight: 800; text-align: center; padding: 1px 0;">প্রদত্ত ছবি</span>
+                <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(2,6,23,0.85); color: #6ee7b7; font-size: 8px; font-weight: 800; text-align: center; padding: 1px 0;">আপনার ছবি</span>
               </div>
               <span style="color: #34d399; font-size: 16px; font-weight: 900;">⇄</span>
-              <div style="width: 58px; height: 58px; border-radius: 12px; overflow: hidden; border: 2px solid #fbbf24; background: #020617; position: relative;" title="শনাক্তকৃত পণ্য">
+              <div style="width: 60px; height: 60px; border-radius: 12px; overflow: hidden; border: 2px solid #fbbf24; background: #020617; position: relative;" title="শনাক্তকৃত পণ্য">
                 <img src="${prodThumb}" alt="Matched" style="width: 100%; height: 100%; object-fit: cover;" />
-                <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(2,6,23,0.85); color: #fde68a; font-size: 8px; font-weight: 800; text-align: center; padding: 1px 0;">সেরা মিল</span>
+                <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(2,6,23,0.85); color: #fde68a; font-size: 8px; font-weight: 800; text-align: center; padding: 1px 0;">${report.confidence}% মিল</span>
               </div>
             </div>
             <div style="min-width: 0; flex: 1;">
-              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 4px;">
-                <span style="background: #10b981; color: #022c22; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 9999px;">📊 ভিজ্যুয়াল সার্চ রিপোর্ট • ${report.confidence}% মিল</span>
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 5px;">
+                <span style="background: #10b981; color: #022c22; font-size: 11px; font-weight: 900; padding: 2.5px 10px; border-radius: 9999px;">🎯 ছবির সাথে ${report.confidence}% মিলেছে</span>
                 ${bestProd.category ? `<span style="background: rgba(255,255,255,0.12); color: #6ee7b7; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">📂 ${bestProd.category}</span>` : ''}
-                <span style="background: rgba(255,255,255,0.1); color: #e2e8f0; font-size: 10px; padding: 2px 8px; border-radius: 9999px;">🎨 ${report.detectedColorLabel}</span>
+                ${bestProd.sku ? `<span style="background: rgba(255,255,255,0.1); color: #e2e8f0; font-size: 10px; font-family: monospace; padding: 2px 8px; border-radius: 9999px;">SKU: ${bestProd.sku}</span>` : ''}
               </div>
               <h3 style="font-size: 15px; font-weight: 900; color: #ffffff; margin: 0 0 3px 0; line-height: 1.3;">
                 শনাক্তকৃত প্রোডাক্ট: ${bestProd.name || bestProd.p_name}
@@ -1073,7 +944,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
               <div style="font-size: 12px; color: #cbd5e1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
                 <span>মূল্য: <strong style="color: #34d399; font-weight: 900;">${formatCurrency(bestProd.selling_price)}</strong></span>
                 <span>•</span>
-                <span>মোট মিল পাওয়া গেছে: <strong style="color: #fde68a;">${report.totalMatchedCount} টি পণ্য</strong></span>
+                <span>মিলের হার: <strong style="color: #fde68a; font-weight: 900;">${report.confidence}%</strong></span>
               </div>
             </div>
           </div>
@@ -1088,23 +959,34 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
         </div>
       `;
       appContent.insertBefore(bannerDiv, appContent.firstChild);
-    }, 350);
+
+      // Also attach a visible "% মিল" badge onto the first matched product card in the grid
+      const firstCardImgWrap = appContent.querySelector('.product-grid .dc-card-img-wrap, .product-grid .img-box');
+      if (firstCardImgWrap && !firstCardImgWrap.querySelector('.dcbd-visual-match-pill')) {
+        const pill = document.createElement('div');
+        pill.className = 'dcbd-visual-match-pill';
+        pill.style.cssText = 'position: absolute; bottom: 8px; left: 8px; z-index: 15; background: rgba(6, 78, 59, 0.92); color: #6ee7b7; border: 1px solid #34d399; font-size: 10px; font-weight: 900; padding: 3px 8px; border-radius: 9999px; box-shadow: 0 4px 10px rgba(0,0,0,0.35); backdrop-filter: blur(4px);';
+        pill.textContent = `🎯 ${report.confidence}% ছবির মিল`;
+        firstCardImgWrap.appendChild(pill);
+      }
+    };
+
+    setTimeout(tryInject, 100);
   };
 
-  // Pre-warm catalog fingerprints quietly in background after initial page load
+  // Pre-warm all sheet product fingerprints in background after page load
   if (typeof setTimeout !== 'undefined') {
     setTimeout(async () => {
       try {
         const prods = await window.__dcbdGetStoreCatalog();
-        for (let i = 0; i < Math.min(prods.length, 30); i += 6) {
-          const slice = prods.slice(i, i + 6);
-          await Promise.all(slice.map(p => getProductFingerprint(p).catch(() => null)));
+        for (let i = 0; i < prods.length; i += 8) {
+          const slice = prods.slice(i, i + 8);
+          await Promise.all(slice.map(p => getProductFingerprintsList(p).catch(() => [])));
         }
       } catch (e) {}
-    }, 2500);
+    }, 1500);
   }
 
-  // Backward-compatible wrapper
   window.__dcbdDetectImageCategory = function(dataUrl, fileName, callback) {
     window.__dcbdAnalyzeProductImage(dataUrl, fileName, '').then(report => {
       callback(report.matchedQuery, report.matchedLabel, report);
@@ -1203,14 +1085,14 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     reader.onload = function(e) {
       if (previewImg) previewImg.src = e.target.result;
       if (scanStatus) {
-        scanStatus.innerHTML = '<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> প্রোডাক্টের ছবি পড়া হচ্ছে ও স্টোর ক্যাটালগের সাথে মিলানো হচ্ছে...';
+        scanStatus.innerHTML = '<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> ওয়েবসাইটের প্রোডাক্টগুলোর ছবির সাথে মিলানো হচ্ছে...';
       }
 
       if (popup) popup.classList.remove('hidden');
 
       setTimeout(() => {
         window.__dcbdProcessVisualMatch(file.name, e.target.result, '', isMobile);
-      }, 350);
+      }, 250);
     };
     reader.onerror = function() {
       alert('ছবি লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
@@ -1232,13 +1114,18 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     const resultsList = document.getElementById(`${prefix}img-results-list`);
     const scanStatus = document.getElementById(`${prefix}img-scan-status`);
 
-    // 1. Read the uploaded product image and match against live store catalog
-    const report = await window.__dcbdAnalyzeProductImage(dataUrl, fileName, explicitCategory);
+    // 1. Compare uploaded image against all Sheet products with live progress
+    const report = await window.__dcbdAnalyzeProductImage(dataUrl, fileName, explicitCategory, (doneCount, totalCount) => {
+      if (scanStatus) {
+        scanStatus.innerHTML = `<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> প্রোডাক্টের ছবির সাথে মিলানো হচ্ছে (${doneCount}/${totalCount})...`;
+      }
+    });
+
     const matchedQuery = report.matchedQuery || '';
     const bestProd = report.bestProduct;
-    const matches = report.matchedProducts || [];
+    const directMatches = report.directMatches || [];
 
-    // 2. Update Header search inputs with detected product query
+    // 2. Put the matched product's exact name into the search input
     const dInput = document.getElementById('global-search-input');
     const mInput = document.getElementById('mobile-search-input');
     const dClear = document.getElementById('global-search-clear-btn');
@@ -1248,82 +1135,61 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     if (dClear && matchedQuery) dClear.classList.remove('hidden');
     if (mClear && matchedQuery) mClear.classList.remove('hidden');
 
-    // 3. Update Scan Status text with detected product report headline
+    // 3. Update Scan Status text with exact match percentage
     if (scanStatus) {
-      scanStatus.innerHTML = `✅ শনাক্ত হয়েছে: <strong class="text-white ml-1">${bestProd ? (bestProd.name || bestProd.p_name) : report.matchedLabel}</strong> (${report.confidence}% মিল)`;
+      scanStatus.innerHTML = `✅ ছবির সাথে <strong class="text-amber-300 mx-1">${report.confidence}%</strong> মিলেছে: <strong class="text-white ml-1">${bestProd ? (bestProd.name || bestProd.p_name) : ''}</strong>`;
     }
 
-    // 4. Render Comprehensive Visual Search Report (সার্চ রিপোর্ট) inside popup
+    // 4. Render Visual Search Report inside popup showing the matched product & exact % match
     if (resultsList) {
       const topTarget = bestProd ? (bestProd.slug || bestProd.product_id || bestProd.sku || '') : '';
       const safeQueryEscaped = matchedQuery.replace(/'/g, "\\'");
       const bestThumb = bestProd ? (bestProd.thumbnail || (bestProd.images && bestProd.images[0]) || '') : '';
 
       resultsList.innerHTML = `
-        <!-- Visual Search Analysis Report Summary Card -->
-        <div style="background: rgba(6, 78, 59, 0.35); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px;">
+        <!-- Visual Match Summary Card -->
+        <div style="background: rgba(6, 78, 59, 0.4); border: 1.5px solid rgba(16, 185, 129, 0.6); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px;">
           <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
             <span style="font-size: 11px; font-weight: 800; color: #6ee7b7; display: inline-flex; align-items: center; gap: 4px;">
-              <span>📊</span> <span>ভিজ্যুয়াল সার্চ রিপোর্ট (Search Report)</span>
+              <span>🎯</span> <span>ছবি ম্যাচিং রিপোর্ট</span>
             </span>
-            <span style="background: #10b981; color: #022c22; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 9999px;">
-              ${report.confidence}% ম্যাচ
+            <span style="background: #10b981; color: #022c22; font-size: 11px; font-weight: 900; padding: 2px 9px; border-radius: 9999px;">
+              ${report.confidence}% মিল পাওয়া গেছে
             </span>
           </div>
 
           <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
             <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
-              <img src="${dataUrl}" alt="Uploaded" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover; border: 1.5px solid #34d399;" title="আপনার দেওয়া ছবি" />
-              <span style="color: #34d399; font-size: 12px; font-weight: 900;">→</span>
-              <img src="${bestThumb}" alt="Matched" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover; border: 1.5px solid #fbbf24;" title="শনাক্তকৃত পণ্য" />
+              <img src="${dataUrl}" alt="Uploaded" style="width: 44px; height: 44px; border-radius: 8px; object-fit: cover; border: 1.5px solid #34d399;" title="আপনার দেওয়া ছবি" />
+              <span style="color: #34d399; font-size: 13px; font-weight: 900;">⇄</span>
+              <img src="${bestThumb}" alt="Matched" style="width: 44px; height: 44px; border-radius: 8px; object-fit: cover; border: 1.5px solid #fbbf24;" title="মিলে যাওয়া প্রোডাক্ট" />
             </div>
             <div style="min-width: 0; flex: 1;">
               <div style="font-size: 12px; font-weight: 800; color: #ffffff; line-height: 1.3; margin-bottom: 2px;">
-                ${bestProd ? (bestProd.name || bestProd.p_name) : report.matchedLabel}
+                ${bestProd ? (bestProd.name || bestProd.p_name) : ''}
               </div>
-              <div style="font-size: 11px; font-weight: 800; color: #34d399;">
-                ${bestProd ? formatCurrency(bestProd.selling_price) : ''}
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 11px;">
+                <span style="font-weight: 900; color: #34d399;">${bestProd ? formatCurrency(bestProd.selling_price) : ''}</span>
+                <span style="color: #fde68a; font-weight: 800;">• ${report.confidence}% মিলেছে</span>
               </div>
             </div>
           </div>
 
           <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: 10px; color: #cbd5e1;">
             ${bestProd && bestProd.category ? `<span style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px; color: #34d399; font-weight: 700;">📂 ${bestProd.category}</span>` : ''}
-            ${bestProd && bestProd.brand ? `<span style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px;">🏷️ ${bestProd.brand}</span>` : ''}
-            <span style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px;">🎨 ${report.detectedColorLabel}</span>
-            <span style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px; color: #fde68a; font-weight: 700;">📦 ${matches.length}টি মিল পাওয়া গেছে</span>
+            ${bestProd && bestProd.sku ? `<span style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px; font-family: monospace;">SKU: ${bestProd.sku}</span>` : ''}
           </div>
         </div>
 
-        <!-- Action Buttons: View Matched Product or Full Search Report Page -->
-        <div style="display: grid; grid-template-columns: ${topTarget ? '1fr 1fr' : '1fr'}; gap: 6px; margin-bottom: 8px;">
-          ${topTarget ? `
-            <button 
-              type="button"
-              onclick="window.__dcbdCloseVisualSearch(true); if(window.router) window.router.navigate('/product/' + encodeURIComponent('${topTarget.replace(/'/g, "\\'")}')); else window.location.href='/product/' + encodeURIComponent('${topTarget.replace(/'/g, "\\'")}');"
-              style="padding: 8px 10px; border-radius: 10px; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; font-weight: 800; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px; border: none; cursor: pointer;"
-            >
-              <span>✨</span> <span>পণ্যটি বিস্তারিত দেখুন</span>
-            </button>
-          ` : ''}
-          <button 
-            type="button"
-            onclick="window.__dcbdCloseVisualSearch(true); if(window.router) { window.router.navigate('/products?search=' + encodeURIComponent('${safeQueryEscaped}') + '&stock=all'); window.__dcbdInjectPageVisualReport(window.__dcbdActiveVisualReport); } else window.location.href='/products?search=' + encodeURIComponent('${safeQueryEscaped}') + '&stock=all';"
-            style="padding: 8px 10px; border-radius: 10px; background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(16, 185, 129, 0.5); color: #6ee7b7; font-weight: 800; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer;"
-          >
-            <span>🔍</span> <span>পেজে সকল রেজাল্ট (${matches.length}) →</span>
-          </button>
-        </div>
-
-        <!-- Matched Catalog Products List -->
-        ${matches.map((p, idx) => {
+        <!-- Matched Product Card(s) -->
+        ${directMatches.map((p, idx) => {
           const productTarget = (p.slug || p.product_id || p.sku || "").replace(/'/g, "\\'");
-          const thumbImg = p.thumbnail || (p.images && p.images[0]) || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100";
-          const isBest = idx === 0;
+          const thumbImg = p.thumbnail || (p.images && p.images[0]) || "";
+          const pct = p._matchConfidence || report.confidence;
           return `
           <div 
-            class="flex items-center gap-3 p-2.5 bg-slate-800/90 hover:bg-slate-750 border ${isBest ? 'border-emerald-500/80' : 'border-slate-700/80'} rounded-xl cursor-pointer transition hover:border-emerald-500 group"
-            style="${isBest ? 'background: rgba(6, 78, 59, 0.25); border-color: rgba(16, 185, 129, 0.65);' : ''}"
+            class="flex items-center gap-3 p-2.5 bg-slate-800/90 hover:bg-slate-750 border border-emerald-500/80 rounded-xl cursor-pointer transition hover:border-emerald-400 group"
+            style="background: rgba(6, 78, 59, 0.28);"
             onclick="window.__dcbdCloseVisualSearch(true); if (window.router) window.router.navigate('/product/' + encodeURIComponent('${productTarget}')); else window.location.href='/product/' + encodeURIComponent('${productTarget}');"
           >
             <img 
@@ -1333,7 +1199,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
             />
             <div class="min-w-0 flex-1">
               <div class="flex items-center gap-1.5">
-                ${isBest ? `<span style="background: #10b981; color: #022c22; font-size: 9px; font-weight: 900; padding: 1px 5px; border-radius: 4px; flex-shrink: 0;">★ সেরা মিল</span>` : ''}
+                <span style="background: #10b981; color: #022c22; font-size: 9px; font-weight: 900; padding: 1px 6px; border-radius: 4px; flex-shrink: 0;">${pct}% মিল</span>
                 <div class="text-xs font-bold text-white truncate leading-snug group-hover:text-emerald-400 transition">${p.name || p.p_name}</div>
               </div>
               <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 flex-wrap">
@@ -1355,7 +1221,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     if (popup) popup.classList.remove('hidden');
     window.__dcbdFilePickingActive = false;
 
-    // 5. Navigate main page (#app-content) to show the exact visually matched products AND inject the Visual Search Report banner!
+    // 5. Search the matched product's name below on the page (/products?search=...) and inject the % match banner!
     if (matchedQuery) {
       const targetUrl = '/products?search=' + encodeURIComponent(matchedQuery) + '&stock=all';
       if (window.router && typeof window.router.navigate === 'function') {
@@ -1365,7 +1231,6 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     }
   };
 
-  // Quick Category Tag: Instantly fills search bar & redirects to /products?search=...
   window.__dcbdSearchVisualTag = function(tag, isMobile = false) {
     window.__dcbdActiveVisualReport = null;
     let query = tag;
@@ -1388,7 +1253,6 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     }
   };
 
-  // Global listeners for document
   if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('click', (e) => {
       if (
@@ -1827,7 +1691,7 @@ export function renderHeader() {
                   📸
                 </div>
                 <div>
-                  <h4 class="text-xs font-bold text-white">ছবি দিয়ে পণ্য খুঁজুন (Visual Product Reader)</h4>
+                  <h4 class="text-xs font-bold text-white">ছবি দিয়ে পণ্য খুঁজুন (Sheet Product Image Matcher)</h4>
                 </div>
               </div>
               <button 
@@ -1860,31 +1724,6 @@ export function renderHeader() {
                   <span>ক্যামেরা ওপেন</span>
                 </button>
               </div>
-
-              <!-- Quick Categories (Auto Redirection on Click) -->
-              <div class="pt-1.5">
-                <div class="text-[10px] font-bold text-slate-400 mb-1.5">অথবা জনপ্রিয় ক্যাটাগরির মিল খুঁজুন (অটো সার্চ):</div>
-                <div class="flex flex-wrap gap-1">
-                  <button type="button" onclick="window.__dcbdSearchVisualTag('smartwatches', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
-                    ⌚ স্মার্টওয়াচ
-                  </button>
-                  <button type="button" onclick="window.__dcbdSearchVisualTag('organic-health', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
-                    🍯 অরগানিক
-                  </button>
-                  <button type="button" onclick="window.__dcbdSearchVisualTag('torch', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
-                    🔦 লাইট
-                  </button>
-                  <button type="button" onclick="window.__dcbdSearchVisualTag('gas', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
-                    🛡️ কিচেন ও গ্যাস
-                  </button>
-                  <button type="button" onclick="window.__dcbdSearchVisualTag('Healthcare', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
-                    🩺 হেলথকেয়ার
-                  </button>
-                  <button type="button" onclick="window.__dcbdSearchVisualTag('Stationery', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
-                    📚 স্টেশনারি
-                  </button>
-                </div>
-              </div>
             </div>
 
             <!-- 2. Scanning Preview -->
@@ -1906,7 +1745,7 @@ export function renderHeader() {
             <!-- 3. Matched Results & Full Search Report -->
             <div id="d-img-results-area" class="hidden space-y-2 border-t border-slate-800 pt-2">
               <div class="flex items-center justify-between text-[11px] font-bold text-slate-300">
-                <span>সার্চ রিপোর্ট ও মিল থাকা পণ্যসমূহ:</span>
+                <span>মিলে যাওয়া প্রোডাক্ট ও ম্যাচিং হার:</span>
                 <button type="button" onclick="window.__dcbdTriggerFilePick('file', false)" class="text-[10px] text-emerald-400 hover:underline cursor-pointer">
                   🔄 অন্য ছবি দিন
                 </button>
@@ -1916,7 +1755,7 @@ export function renderHeader() {
 
           </div>
 
-          <!-- Hidden Native File Inputs for Desktop (Placed INSIDE search container to prevent bubbling close) -->
+          <!-- Hidden Native File Inputs for Desktop -->
           <input type="file" id="d-dcbd-image-file-input" accept="image/*" class="hidden" />
           <input type="file" id="d-dcbd-image-camera-input" accept="image/*" capture="environment" class="hidden" />
         </div>
@@ -1938,7 +1777,7 @@ export function renderHeader() {
             <span id="nav-cart-badge" class="nav-badge-count">
               ${cartCount}
             </span>
-          </a>
+          </button>
 
           <!-- Favourite (Wishlist) Icon -->
           <a href="/favourite" class="nav-action-btn" title="পছন্দের তালিকা">
@@ -2091,26 +1930,6 @@ export function renderHeader() {
                 <span>📸</span> <span>ক্যামেরা</span>
               </button>
             </div>
-            <div class="flex flex-wrap gap-1 pt-1">
-              <button type="button" onclick="window.__dcbdSearchVisualTag('smartwatches', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
-                ⌚ স্মার্টওয়াচ
-              </button>
-              <button type="button" onclick="window.__dcbdSearchVisualTag('organic-health', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
-                🍯 অরগানিক
-              </button>
-              <button type="button" onclick="window.__dcbdSearchVisualTag('torch', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
-                🔦 লাইট
-              </button>
-              <button type="button" onclick="window.__dcbdSearchVisualTag('gas', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
-                🛡️ কিচেন ও গ্যাস
-              </button>
-              <button type="button" onclick="window.__dcbdSearchVisualTag('Healthcare', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
-                🩺 হেলথকেয়ার
-              </button>
-              <button type="button" onclick="window.__dcbdSearchVisualTag('Stationery', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
-                📚 স্টেশনারি
-              </button>
-            </div>
           </div>
 
           <div id="m-img-preview-area" class="hidden space-y-1.5">
@@ -2125,7 +1944,7 @@ export function renderHeader() {
 
           <div id="m-img-results-area" class="hidden space-y-1.5 border-t border-slate-800 pt-1.5">
             <div class="flex items-center justify-between text-[10px] font-bold text-slate-300">
-              <span>সার্চ রিপোর্ট ও মিল থাকা পণ্য:</span>
+              <span>মিলে যাওয়া প্রোডাক্ট ও ম্যাচিং হার:</span>
               <button type="button" onclick="window.__dcbdTriggerFilePick('file', true)" class="text-[9px] text-emerald-400 hover:underline cursor-pointer">
                 🔄 অন্য ছবি দিন
               </button>
@@ -2134,7 +1953,7 @@ export function renderHeader() {
           </div>
         </div>
 
-        <!-- Hidden Native File Inputs for Mobile (Placed INSIDE mobile search container) -->
+        <!-- Hidden Native File Inputs for Mobile -->
         <input type="file" id="m-dcbd-image-file-input" accept="image/*" class="hidden" />
         <input type="file" id="m-dcbd-image-camera-input" accept="image/*" capture="environment" class="hidden" />
       </div>
