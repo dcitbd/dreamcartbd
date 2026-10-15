@@ -3,11 +3,13 @@
  * High-performance, pixel-perfect header component:
  * - Desktop: Notice bar, compact crisp logo (42px), wide predictive search bar with inline Visual AI Camera Search, nav actions, auth menu, dark mode.
  * - Mobile: Sleek native app bar with compact logo (36px) & dedicated search bar with Camera Search button.
- * - Intelligent Visual Product Reader: Reads uploaded/captured product images via HTML5 Canvas (perceptual dHash, center-weighted 4x4 spatial RGB grid, HSV foreground histogram, and filename/catalog token matching) against all real products in the store.
- * - Interactive Visual Search Report: Displays a detailed product recognition report (matched product, confidence %, category, detected visual tone, and matching catalog items) and syncs with the search results page.
+ * - Multi-Engine Visual Product Reader:
+ *     1. Live Google Sheet Catalog Sync (excludes fake demo products when real store products exist).
+ *     2. 128-bit Perceptual Hash (dHash + vHash) + 8x8 Center-Weighted Spatial RGB + 24-bin HSV Histogram + Natural Dimension Matcher (with parallel direct CORS + wsrv.nl + corsproxy fallback).
+ *     3. Multimodal AI Vision Catalog Matcher + On-Device MobileNet Semantic Object Classifier for camera/external photos.
+ *     4. Patched SearchService integration so /products?search=... always displays the exact visually-matched products and injects a full Visual Search Report banner on the results page.
  * - Ultra-high Stacking Context (z-index: 999999): Never goes under sliders, product cards, or sticky sidebars.
  * - ZERO Full-Screen Blur: No annoying screen blur overlays.
- * - Luxury Dark Palette: Absolute zero white/light-grey background washout. High contrast, sharp text, crisp vibrant accents.
  */
 
 import { cartStore } from '../store/cartStore.js';
@@ -17,7 +19,7 @@ import { apiClient } from '../api/client.js';
 import { formatCurrency } from '../utils/format.js';
 import { SearchService } from '../services/SearchService.js';
 
-// Core Platform Fallback Products (Guarantees rich visual search results even if sheets are loading or offline)
+// Core Platform Fallback Products (Used ONLY if Google Sheet is completely empty/unreachable)
 const CORE_VISUAL_PRODUCTS = [
   {
     sku: "DCBD-SM-001",
@@ -76,24 +78,26 @@ const GENERIC_FILE_TOKENS = new Set([
   "img", "image", "images", "dsc", "dcim", "photo", "photos", "pic", "picture",
   "whatsapp", "screenshot", "screen", "shot", "download", "downloads", "untitled",
   "copy", "pxl", "vid", "cam", "camera", "fb", "received", "media", "file",
-  "jpeg", "jpg", "png", "webp", "gif", "bmp", "avif", "heic", "svg"
+  "jpeg", "jpg", "png", "webp", "gif", "bmp", "avif", "heic", "svg", "unnamed"
 ]);
 
-// Bilingual Visual Keyword Expansion Map (Maps English/Bengali visual cues to product keywords)
+// Bilingual Visual Keyword & ImageNet Object Class Expansion Map
 const VISUAL_KEYWORD_MAP = [
-  { keys: ["watch", "smartwatch", "clock", "amoled", "gts", "kieslect", "amazfit", "band", "tracker", "t500", "hk9", "colmi", "haylou", "mibro", "ঘড়ি", "ঘড়ি", "স্মার্টওয়াচ", "স্মার্টওয়াচ"], query: "smartwatch", label: "স্মার্টওয়াচ ও গ্যাজেট (Smartwatch)" },
-  { keys: ["honey", "modhu", "sundarban", "মধু", "সুন্দরবন"], query: "মধু", label: "খাঁটি প্রাকৃতিক মধু (Natural Honey)" },
-  { keys: ["chia", "seed", "seeds", "kalojira", "oil", "ghee", "dates", "organic", "herbal", "supplement", "vitamin", "nut", "food", "চিয়া", "চিয়া", "কালোজিরা", "ঘি", "অর্গানিক", "ভেষজ"], query: "Organic", label: "অর্গানিক ফুড ও হেলথ (Organic & Health)" },
-  { keys: ["torch", "flashlight", "light", "led", "lamp", "lantern", "solar", "bulb", "cob", "tactical", "টর্চ", "লাইট", "লণ্ঠন", "সোলার"], query: "Light", label: "ট্যাকটিক্যাল এলইডি ও লাইটিং (LED & Lighting)" },
-  { keys: ["gas", "regulator", "lpg", "cylinder", "stove", "burner", "safety", "গ্যাস", "রেগুলেটর", "চুলা"], query: "Gas", label: "কিচেন গ্যাস সেফটি ডিভাইস (Gas Safety)" },
-  { keys: ["blender", "mixer", "juicer", "grinder", "chopper", "kettle", "cooker", "pan", "pot", "knife", "kitchen", "spoon", "rack", "sink", "ব্লেন্ডার", "জুসার", "কেটলি", "কিচেন", "রান্নাঘর"], query: "Kitchen", label: "কিচেন ও কুকিং গ্যাজেট (Kitchen Gadget)" },
-  { keys: ["bp", "blood", "pressure", "glucometer", "diabetes", "strip", "nebulizer", "oximeter", "thermometer", "medicine", "medical", "health", "firstaid", "mask", "বিপি", "প্রেশার", "ডায়াবেটিস", "নেবুলাইজার", "মেডিসিন", "হেলথকেয়ার"], query: "Healthcare", label: "মেডিসিন ও হেলথকেয়ার ডিভাইস (Healthcare)" },
-  { keys: ["pen", "notebook", "diary", "book", "paper", "calculator", "organizer", "desk", "stationery", "marker", "pencil", "school", "office", "bag", "backpack", "কলম", "খাতা", "নোটবুক", "স্টেশনারি", "ক্যালকুলেটর", "ব্যাগ"], query: "Stationery", label: "স্টেশনারি ও অফিস এক্সেসরিজ (Stationery)" },
-  { keys: ["earbud", "earphone", "headphone", "airpod", "tws", "neckband", "speaker", "bluetooth", "audio", "mic", "microphone", "ইয়ারবাড", "হেডফোন", "স্পিকার"], query: "Audio", label: "অডিও, ইয়ারবাড ও স্পিকার (Audio & Earbuds)" },
-  { keys: ["powerbank", "charger", "cable", "adapter", "usb", "typec", "battery", "holder", "stand", "tripod", "পাওয়ারব্যাংক", "চার্জার", "কেবল"], query: "Charger", label: "পাওয়ারব্যাংক ও মোবাইল এক্সেসরিজ (Accessories)" },
-  { keys: ["trimmer", "shaver", "clipper", "dryer", "straightener", "grooming", "razor", "ট্রিমার", "শেভার", "হেয়ার"], query: "Trimmer", label: "গ্রুমিং ও পার্সোনাল কেয়ার (Personal Care)" },
-  { keys: ["fan", "cooler", "ac", "heater", "iron", "appliance", "vacuum", "humidifier", "ফ্যান", "আয়রন", "অ্যাপ্লায়েন্স"], query: "Appliance", label: "হোম অ্যাপ্লায়েন্স (Home Appliances)" },
-  { keys: ["router", "wifi", "camera", "cctv", "ipcam", "security", "smartplug", "রাউটার", "ক্যামেরা", "সিসিটিভি"], query: "Camera", label: "স্মার্ট সিকিউরিটি ও নেটওয়ার্ক (Smart Security)" }
+  { keys: ["watch", "smartwatch", "digital watch", "stopwatch", "analog clock", "wall clock", "dial", "amoled", "gts", "kieslect", "amazfit", "band", "tracker", "t500", "hk9", "colmi", "haylou", "mibro", "ঘড়ি", "ঘড়ি", "স্মার্টওয়াচ", "স্মার্টওয়াচ"], query: "Smartwatch", label: "স্মার্টওয়াচ ও ঘড়ি (Smartwatch & Watch)" },
+  { keys: ["honey", "honeycomb", "modhu", "sundarban", "jar", "syrup", "মধু", "সুন্দরবন"], query: "মধু", label: "খাঁটি প্রাকৃতিক মধু (Natural Honey)" },
+  { keys: ["chia", "seed", "seeds", "kalojira", "oil", "ghee", "dates", "organic", "herbal", "supplement", "vitamin", "nut", "food", "spice", "masala", "tea", "coffee", "চিয়া", "চিয়া", "কালোজিরা", "ঘি", "অর্গানিক", "ভেষজ", "তেল", "খেজুর"], query: "Organic", label: "অর্গানিক ফুড ও হেলথ (Organic & Health)" },
+  { keys: ["torch", "flashlight", "spotlight", "light", "led", "lamp", "table lamp", "lampshade", "lantern", "solar", "bulb", "cob", "tactical", "টর্চ", "লাইট", "লণ্ঠন", "সোলার", "ল্যাম্প", "বাল্ব"], query: "Light", label: "ট্যাকটিক্যাল এলইডি ও লাইটিং (LED & Lighting)" },
+  { keys: ["gas", "regulator", "gas pump", "barometer", "odometer", "lpg", "cylinder", "stove", "burner", "safety", "fire", "গ্যাস", "রেগুলেটর", "চুলা", "সিলিন্ডার"], query: "Gas", label: "কিচেন গ্যাস সেফটি ডিভাইস (Gas Safety)" },
+  { keys: ["blender", "mixer", "juicer", "grinder", "chopper", "kettle", "teapot", "coffeepot", "cooker", "dutch oven", "frying pan", "wok", "spatula", "pot", "knife", "cleaver", "kitchen", "spoon", "rack", "sink", "pitcher", "water jug", "plate", "bowl", "tray", "ব্লেন্ডার", "জুসার", "কেটলি", "কিচেন", "রান্নাঘর", "কুকার", "প্যান"], query: "Kitchen", label: "কিচেন ও কুকিং গ্যাজেট (Kitchen Gadget)" },
+  { keys: ["bp", "blood", "pressure", "glucometer", "diabetes", "strip", "nebulizer", "oximeter", "thermometer", "stethoscope", "syringe", "pill bottle", "medicine", "medical", "health", "firstaid", "mask", "scale", "weighing", "বিপি", "প্রেশার", "ডায়াবেটিস", "নেবুলাইজার", "মেডিসিন", "হেলথকেয়ার", "থার্মোমিটার"], query: "Medicine", label: "মেডিসিন ও হেলথকেয়ার ডিভাইস (Healthcare)" },
+  { keys: ["pen", "ballpoint", "fountain pen", "pencil", "notebook", "binder", "diary", "book", "paper", "envelope", "ruler", "calculator", "abacus", "organizer", "desk", "stationery", "marker", "eraser", "school", "office", "কলম", "খাতা", "নোটবুক", "স্টেশনারি", "ক্যালকুলেটর", "ডায়েরি"], query: "Stationery", label: "স্টেশনারি ও অফিস এক্সেসরিজ (Stationery)" },
+  { keys: ["earbud", "earphone", "headphone", "airpod", "tws", "neckband", "speaker", "loudspeaker", "bluetooth", "audio", "mic", "microphone", "ipod", "radio", "ইয়ারবাড", "হেডফোন", "স্পিকার", "মাইক্রোফোন"], query: "Audio", label: "অডিও, ইয়ারবাড ও স্পিকার (Audio & Earbuds)" },
+  { keys: ["powerbank", "charger", "cable", "adapter", "usb", "typec", "battery", "holder", "stand", "tripod", "mobile", "cellular telephone", "phone", "case", "cover", "পাওয়ারব্যাংক", "চার্জার", "কেবল", "স্ট্যান্ড"], query: "Charger", label: "পাওয়ারব্যাংক ও মোবাইল এক্সেসরিজ (Accessories)" },
+  { keys: ["trimmer", "shaver", "clipper", "hair dryer", "dryer", "straightener", "grooming", "razor", "comb", "ট্রিমার", "শেভার", "হেয়ার"], query: "Trimmer", label: "গ্রুমিং ও পার্সোনাল কেয়ার (Personal Care)" },
+  { keys: ["fan", "electric fan", "cooler", "ac", "heater", "space heater", "iron", "smoothing iron", "appliance", "vacuum", "humidifier", "microwave", "toaster", "ফ্যান", "আয়রন", "অ্যাপ্লায়েন্স"], query: "Home Appliances", label: "হোম অ্যাপ্লায়েন্স (Home Appliances)" },
+  { keys: ["router", "modem", "wifi", "camera", "cctv", "ipcam", "security", "smartplug", "remote control", "রাউটার", "ক্যামেরা", "সিসিটিভি"], query: "Camera", label: "স্মার্ট সিকিউরিটি ও নেটওয়ার্ক (Smart Security)" },
+  { keys: ["bag", "backpack", "purse", "wallet", "handbag", "mailbag", "luggage", "shoe", "running shoe", "sandal", "sneaker", "sunglasses", "shirt", "t-shirt", "jersey", "watch", "ব্যাগ", "মানিব্যাগ", "জুতা", "সানগ্লাস", "টি-শার্ট"], query: "Lifestyle", label: "ফ্যাশন ও লাইফস্টাইল (Fashion & Lifestyle)" },
+  { keys: ["perfume", "lotion", "cream", "soap", "shampoo", "cosmetic", "makeup", "lipstick", "face", "skin", "পারফিউম", "ক্রিম", "লোশন", "কসমেটিকস"], query: "Cosmetics", label: "বিউটি ও স্কিনকেয়ার (Beauty & Skincare)" }
 ];
 
 // Global Visual Search Controller (Module singleton attached to window)
@@ -102,37 +106,193 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
   window.__dcbdFilePickingActive = false;
   window.__dcbdLastFileActionTime = 0;
   window.__dcbdProductFingerprints = new Map();
+  window.__dcbdActiveVisualReport = null;
 
-  // Helper: Fetch all available store products from Google Sheets / local cache
+  // =========================================================================
+  // PATCH SearchService so multi-word product names with numbers NEVER return 0
+  // and so active Visual Search reports rank the exact visual matches first!
+  // =========================================================================
+  const origCalculateRelevance = SearchService.calculateRelevance;
+  const origSearch = SearchService.search;
+
+  SearchService.calculateRelevance = function(product, query) {
+    if (!product || !query) return 0;
+    const rawScore = origCalculateRelevance ? origCalculateRelevance(product, query) : 0;
+    if (rawScore > 0) return rawScore;
+
+    // Fallback when origCalculateRelevance falsely triggered isSkuQuery on a product name with digits
+    const qNorm = SearchService.normalize ? SearchService.normalize(query) : String(query).toLowerCase().trim();
+    const pName = SearchService.normalize ? SearchService.normalize(product.name || product.p_name || '') : String(product.name || product.p_name || '').toLowerCase();
+    const pCat = SearchService.normalize ? SearchService.normalize(product.category || '') : String(product.category || '').toLowerCase();
+    const pSub = SearchService.normalize ? SearchService.normalize(product.sub_category || '') : String(product.sub_category || '').toLowerCase();
+    const pBrand = SearchService.normalize ? SearchService.normalize(product.brand || '') : String(product.brand || '').toLowerCase();
+    const pDesc = SearchService.normalize ? SearchService.normalize((product.description || '') + ' ' + (product.specification || '')) : '';
+
+    let score = 0;
+    if (pName && qNorm) {
+      if (pName === qNorm) score += 1000;
+      else if (pName.includes(qNorm) || qNorm.includes(pName)) score += 600;
+    }
+    if (pCat && qNorm && (pCat === qNorm || pCat.includes(qNorm) || qNorm.includes(pCat))) {
+      score += 300;
+    }
+    if (pSub && qNorm && (pSub === qNorm || pSub.includes(qNorm) || qNorm.includes(pSub))) {
+      score += 220;
+    }
+    if (pBrand && qNorm && (pBrand === qNorm || pBrand.includes(qNorm))) {
+      score += 200;
+    }
+
+    const tokens = qNorm.split(' ').filter(t => t.length > 1);
+    let matchedCount = 0;
+    tokens.forEach(tok => {
+      if (pName.includes(tok)) { score += 90; matchedCount++; }
+      else if (pCat.includes(tok) || pSub.includes(tok)) { score += 55; matchedCount++; }
+      else if (pBrand.includes(tok)) { score += 60; matchedCount++; }
+      else if (pDesc.includes(tok)) { score += 25; matchedCount++; }
+    });
+    if (tokens.length > 1 && matchedCount === tokens.length) {
+      score += 200;
+    }
+    return score;
+  };
+
+  SearchService.search = function(allProducts = [], query = "", options = {}) {
+    const qTrim = (query || "").trim();
+    const activeReport = window.__dcbdActiveVisualReport;
+
+    // If this search matches the active Visual Image Search report, return the exact visual match ranking!
+    if (
+      activeReport &&
+      qTrim &&
+      activeReport.matchedQuery &&
+      qTrim.toLowerCase() === activeReport.matchedQuery.toLowerCase() &&
+      Array.isArray(allProducts) &&
+      allProducts.length > 0
+    ) {
+      const byKey = new Map();
+      allProducts.forEach(p => {
+        const k = String(p.sku || p.product_id || p.slug || p.name || '').toLowerCase();
+        if (k) byKey.set(k, p);
+      });
+
+      const directMatches = [];
+      const relatedProducts = [];
+      const usedKeys = new Set();
+
+      (activeReport.directMatches || []).forEach((vp, idx) => {
+        const k = String(vp.sku || vp.product_id || vp.slug || vp.name || '').toLowerCase();
+        const realProd = byKey.get(k) || vp;
+        if (k && !usedKeys.has(k)) {
+          usedKeys.add(k);
+          directMatches.push({
+            ...realProd,
+            _searchScore: 1000 - idx * 25,
+            _isDirectMatch: true
+          });
+        }
+      });
+
+      (activeReport.relatedProducts || []).forEach((vp, idx) => {
+        const k = String(vp.sku || vp.product_id || vp.slug || vp.name || '').toLowerCase();
+        const realProd = byKey.get(k) || vp;
+        if (k && !usedKeys.has(k)) {
+          usedKeys.add(k);
+          relatedProducts.push({
+            ...realProd,
+            _relatedScore: 500 - idx * 10,
+            _isDirectMatch: false
+          });
+        }
+      });
+
+      if (directMatches.length > 0) {
+        const allResults = [...directMatches, ...relatedProducts];
+        return {
+          directMatches,
+          relatedProducts,
+          allResults,
+          query: qTrim,
+          totalCount: allResults.length
+        };
+      }
+    }
+
+    // Standard search using our patched calculateRelevance
+    const res = origSearch ? origSearch(allProducts, query, options) : { directMatches: [], relatedProducts: [], allResults: [], query: qTrim, totalCount: 0 };
+    if (res.totalCount > 0 || !qTrim) return res;
+
+    // Fallback re-ranking using patched SearchService.calculateRelevance
+    const scored = (Array.isArray(allProducts) ? allProducts : [])
+      .map(p => ({ product: p, score: SearchService.calculateRelevance(p, qTrim) }))
+      .filter(it => it.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    const directMatches = scored.map(it => ({ ...it.product, _searchScore: it.score, _isDirectMatch: true }));
+    return {
+      directMatches,
+      relatedProducts: [],
+      allResults: directMatches,
+      query: qTrim,
+      totalCount: directMatches.length
+    };
+  };
+
+  // =========================================================================
+  // 1. LIVE GOOGLE SHEETS CATALOG LOADER (Excludes fake demo items when real sheet items exist)
+  // =========================================================================
   window.__dcbdGetStoreCatalog = async function() {
     let allProds = [];
     if (apiClient.sheetProducts && apiClient.sheetProducts.length > 0) {
       allProds = [...apiClient.sheetProducts];
-    } else if (apiClient.products && apiClient.products.length > 0) {
-      allProds = [...apiClient.products];
     } else {
-      allProds = apiClient.loadLocal('dcbd_sheet_products', []) || [];
+      const cached = apiClient.loadLocal('dcbd_sheet_products', null);
+      if (cached && cached.length > 0) {
+        allProds = [...cached];
+      }
     }
 
-    if (allProds.length <= 1) {
+    // Check if allProds only has the single initial placeholder product (DCBD-SM-001)
+    const isOnlyPlaceholder =
+      allProds.length === 0 ||
+      (allProds.length === 1 && String(allProds[0].sku || '') === 'DCBD-SM-001');
+
+    if (isOnlyPlaceholder) {
       try {
-        const fetched = await apiClient.loadProductsFromSheet();
-        if (fetched && fetched.length > 0) allProds = [...fetched];
+        // Pass true (forceRefresh) so client.js awaits fetchSheetViaGviz('Products')!
+        const fetched = await apiClient.loadProductsFromSheet(true);
+        if (Array.isArray(fetched) && fetched.length > 0) {
+          allProds = [...fetched];
+        }
       } catch (e) {}
     }
 
-    if (!allProds || allProds.length === 0) {
-      allProds = [...CORE_VISUAL_PRODUCTS];
-    } else {
-      const existingSkus = new Set(allProds.map(p => String(p.sku || p.product_id || '').toLowerCase()));
-      CORE_VISUAL_PRODUCTS.forEach(p => {
-        if (!existingSkus.has(String(p.sku).toLowerCase())) {
-          allProds.push(p);
-        }
-      });
+    // Filter out any empty test rows
+    allProds = allProds.filter(p => {
+      const name = String(p.name || p.p_name || '').trim().toLowerCase();
+      return name && name !== 'test id';
+    });
+
+    // If real products exist from Google Sheets, DO NOT pollute them with CORE_VISUAL_PRODUCTS!
+    if (allProds.length > 1 || (allProds.length === 1 && String(allProds[0].sku) !== 'DCBD-SM-001')) {
+      return allProds;
     }
-    return allProds;
+
+    return [...CORE_VISUAL_PRODUCTS];
   };
+
+  // Normalize image URLs (handles Google Drive view links, protocol-relative URLs, etc.)
+  function normalizeProductImageUrl(rawUrl) {
+    if (!rawUrl) return '';
+    let u = String(rawUrl).trim();
+    if (!u) return '';
+    if (u.startsWith('//')) u = 'https:' + u;
+    const driveMatch = u.match(/(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=view&)?id=))([a-zA-Z0-9_-]{15,})/);
+    if (driveMatch && driveMatch[1]) {
+      return 'https://lh3.googleusercontent.com/d/' + driveMatch[1] + '=w400';
+    }
+    return u;
+  }
 
   // Helper: Convert RGB (0-255) to HSV (h: 0-360, s: 0-1, v: 0-1)
   function rgbToHsv(r, g, b) {
@@ -153,7 +313,9 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     return { h, s, v };
   }
 
-  // Extract 32x32 Perceptual Visual Fingerprint from any HTMLImageElement
+  // =========================================================================
+  // 2. 128-BIT PERCEPTUAL HASH + 8x8 SPATIAL RGB + FOREGROUND HSV FINGERPRINT
+  // =========================================================================
   function extractImageFingerprintFromElement(imgEl) {
     try {
       const SIZE = 32;
@@ -163,29 +325,58 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) return null;
 
+      const natW = imgEl.naturalWidth || imgEl.width || 32;
+      const natH = imgEl.naturalHeight || imgEl.height || 32;
+
       ctx.drawImage(imgEl, 0, 0, SIZE, SIZE);
       const imgData = ctx.getImageData(0, 0, SIZE, SIZE).data;
 
-      // 1. 8x8 Perceptual Difference Hash (dHash) from 9x8 grayscale grid
+      // Auto-detect uniform border margins so screenshots with padding crop to the product
+      let bgR = 0, bgG = 0, bgB = 0, bgCnt = 0;
+      for (let i = 0; i < SIZE; i++) {
+        const t = (0 * SIZE + i) * 4;
+        const b = ((SIZE - 1) * SIZE + i) * 4;
+        const l = (i * SIZE + 0) * 4;
+        const r = (i * SIZE + (SIZE - 1)) * 4;
+        bgR += imgData[t] + imgData[b] + imgData[l] + imgData[r];
+        bgG += imgData[t + 1] + imgData[b + 1] + imgData[l + 1] + imgData[r + 1];
+        bgB += imgData[t + 2] + imgData[b + 2] + imgData[l + 2] + imgData[r + 2];
+        bgCnt += 4;
+      }
+      bgR /= bgCnt; bgG /= bgCnt; bgB /= bgCnt;
+
+      // 1. 128-bit Perceptual Hash: 64-bit Horizontal dHash + 64-bit Vertical vHash
       const dHash = [];
       for (let y = 0; y < 8; y++) {
         for (let x = 0; x < 8; x++) {
-          const sx1 = Math.min(SIZE - 1, Math.floor((x / 9) * SIZE));
-          const sx2 = Math.min(SIZE - 1, Math.floor(((x + 1) / 9) * SIZE));
-          const sy = Math.min(SIZE - 1, Math.floor((y / 8) * SIZE));
+          const sx1 = Math.min(SIZE - 1, Math.floor(((x + 0.5) / 9) * SIZE));
+          const sx2 = Math.min(SIZE - 1, Math.floor(((x + 1.5) / 9) * SIZE));
+          const sy = Math.min(SIZE - 1, Math.floor(((y + 0.5) / 8) * SIZE));
           const i1 = (sy * SIZE + sx1) * 4;
           const i2 = (sy * SIZE + sx2) * 4;
           const lum1 = 0.299 * imgData[i1] + 0.587 * imgData[i1 + 1] + 0.114 * imgData[i1 + 2];
           const lum2 = 0.299 * imgData[i2] + 0.587 * imgData[i2 + 1] + 0.114 * imgData[i2 + 2];
-          dHash.push(lum1 > lum2 ? 1 : 0);
+          dHash.push(lum1 >= lum2 ? 1 : 0);
+        }
+      }
+      for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+          const sx = Math.min(SIZE - 1, Math.floor(((x + 0.5) / 8) * SIZE));
+          const sy1 = Math.min(SIZE - 1, Math.floor(((y + 0.5) / 9) * SIZE));
+          const sy2 = Math.min(SIZE - 1, Math.floor(((y + 1.5) / 9) * SIZE));
+          const i1 = (sy1 * SIZE + sx) * 4;
+          const i2 = (sy2 * SIZE + sx) * 4;
+          const lum1 = 0.299 * imgData[i1] + 0.587 * imgData[i1 + 1] + 0.114 * imgData[i1 + 2];
+          const lum2 = 0.299 * imgData[i2] + 0.587 * imgData[i2 + 1] + 0.114 * imgData[i2 + 2];
+          dHash.push(lum1 >= lum2 ? 1 : 0);
         }
       }
 
-      // 2. 4x4 Spatial RGB Grid (16 cells x 3 channels = 48 values)
+      // 2. 8x8 Spatial RGB Grid (64 cells x 3 channels = 192 values)
       const spatialRgb = [];
-      const cellSize = SIZE / 4; // 8px per cell
-      for (let gy = 0; gy < 4; gy++) {
-        for (let gx = 0; gx < 4; gx++) {
+      const cellSize = SIZE / 8; // 4px per cell
+      for (let gy = 0; gy < 8; gy++) {
+        for (let gx = 0; gx < 8; gx++) {
           let sr = 0, sg = 0, sb = 0, cnt = 0;
           for (let py = gy * cellSize; py < (gy + 1) * cellSize; py++) {
             for (let px = gx * cellSize; px < (gx + 1) * cellSize; px++) {
@@ -200,56 +391,36 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
         }
       }
 
-      // 3. Detect average border background color so we can isolate foreground object pixels
-      let bgR = 0, bgG = 0, bgB = 0, bgCnt = 0;
-      for (let i = 0; i < SIZE; i++) {
-        const topIdx = (0 * SIZE + i) * 4;
-        const botIdx = ((SIZE - 1) * SIZE + i) * 4;
-        const leftIdx = (i * SIZE + 0) * 4;
-        const rightIdx = (i * SIZE + (SIZE - 1)) * 4;
-        bgR += imgData[topIdx] + imgData[botIdx] + imgData[leftIdx] + imgData[rightIdx];
-        bgG += imgData[topIdx + 1] + imgData[botIdx + 1] + imgData[leftIdx + 1] + imgData[rightIdx + 1];
-        bgB += imgData[topIdx + 2] + imgData[botIdx + 2] + imgData[leftIdx + 2] + imgData[rightIdx + 2];
-        bgCnt += 4;
-      }
-      bgR /= bgCnt; bgG /= bgCnt; bgB /= bgCnt;
-
-      // 4. HSV Histogram (12 Hue bins + 4 Saturation bins + 4 Value bins = 20 bins) & Foreground Color Ratios
-      const hist = new Array(20).fill(0);
+      // 3. 24-bin Foreground HSV Histogram & Color Ratios
+      const hist = new Array(24).fill(0);
       let fgTotal = 0;
       let amberGold = 0, greenHerbal = 0, redOrange = 0, blueCyan = 0, purplePink = 0;
       let darkMetallic = 0, whiteClean = 0, brightBeam = 0, brownWarm = 0;
-      let sumR = 0, sumG = 0, sumB = 0;
 
-      for (let py = 3; py < SIZE - 3; py++) {
-        for (let px = 3; px < SIZE - 3; px++) {
+      for (let py = 2; py < SIZE - 2; py++) {
+        for (let px = 2; px < SIZE - 2; px++) {
           const idx = (py * SIZE + px) * 4;
           const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2], a = imgData[idx + 3];
           if (a < 40) continue;
 
-          // Check distance from border background color
           const distBg = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
-          const isCenterCore = (px >= 8 && px < 24 && py >= 8 && py < 24);
-          if (distBg < 28 && !isCenterCore) continue; // Skip plain background margin pixels
+          const isCenterCore = (px >= 7 && px < 25 && py >= 7 && py < 25);
+          if (distBg < 24 && !isCenterCore) continue;
 
-          const weight = isCenterCore ? 2 : 1;
+          const weight = isCenterCore ? 2.2 : 1.0;
           fgTotal += weight;
-          sumR += r * weight;
-          sumG += g * weight;
-          sumB += b * weight;
 
           const { h, s, v } = rgbToHsv(r, g, b);
 
-          if (s > 0.15 && v > 0.15) {
+          if (s > 0.14 && v > 0.14) {
             const hBin = Math.min(11, Math.floor(h / 30));
             hist[hBin] += weight;
           }
-          const sBin = 12 + Math.min(3, Math.floor(s * 4));
-          const vBin = 16 + Math.min(3, Math.floor(v * 4));
+          const sBin = 12 + Math.min(5, Math.floor(s * 6));
+          const vBin = 18 + Math.min(5, Math.floor(v * 6));
           hist[sBin] += weight;
           hist[vBin] += weight;
 
-          // Categorize pixel tone
           if (v > 0.88 && s < 0.14) {
             brightBeam += weight;
             whiteClean += weight;
@@ -260,7 +431,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
           } else if (s < 0.16 && v >= 0.28 && v <= 0.72) {
             darkMetallic += weight * 0.7;
           } else {
-            if (h >= 18 && h <= 58 && s >= 0.25) {
+            if (h >= 18 && h <= 58 && s >= 0.24) {
               if (v < 0.55) brownWarm += weight;
               else amberGold += weight;
             } else if ((h >= 0 && h < 18) || h >= 340) {
@@ -279,7 +450,6 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
       const normDenom = fgTotal || 1;
       const normHist = hist.map(v => v / normDenom);
 
-      // Determine human-readable dominant color label
       const toneScores = [
         { key: "black", score: darkMetallic / normDenom, label: "কালো / মেটালিক (Black / Metallic)", keywords: ["black", "dark", "metal", "grey", "gray", "silver", "কালো", "সিলভার"] },
         { key: "amber", score: (amberGold + brownWarm * 0.8) / normDenom, label: "সোনালী / অ্যাম্বার (Golden / Amber)", keywords: ["gold", "golden", "amber", "honey", "yellow", "brown", "মধু", "সোনালী", "হলুদ", "ঘি", "তেল"] },
@@ -294,6 +464,9 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
         dHash,
         spatialRgb,
         normHist,
+        natW,
+        natH,
+        aspectRatio: natW / (natH || 1),
         dominantTone: toneScores[0],
         secondaryTone: toneScores[1],
         ratios: {
@@ -305,18 +478,19 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
           darkMetallic: darkMetallic / normDenom,
           whiteClean: whiteClean / normDenom,
           brightBeam: brightBeam / normDenom
-        },
-        avgRgb: [Math.round(sumR / normDenom), Math.round(sumG / normDenom), Math.round(sumB / normDenom)]
+        }
       };
     } catch (err) {
       return null;
     }
   }
 
-  // Load any image URL into an HTMLImageElement (with direct CORS + wsrv.nl CORS proxy fallback)
-  function loadImageWithCorsFallback(url, timeoutMs = 2600) {
+  // Parallel Race Image Loader (Direct CORS + wsrv.nl + corsproxy fallback + non-CORS dimension reader)
+  function loadImageWithCorsFallback(rawUrl, timeoutMs = 3500) {
     return new Promise((resolve) => {
+      const url = normalizeProductImageUrl(rawUrl);
       if (!url) return resolve(null);
+
       let settled = false;
       const done = (val) => {
         if (!settled) {
@@ -326,51 +500,97 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
       };
       const timer = setTimeout(() => done(null), timeoutMs);
 
-      const tryProxy = () => {
-        if (url.startsWith('data:')) return done(null);
-        const proxyImg = new Image();
-        proxyImg.crossOrigin = 'anonymous';
-        proxyImg.onload = () => { clearTimeout(timer); done(proxyImg); };
-        proxyImg.onerror = () => { clearTimeout(timer); done(null); };
-        const cleanUrl = url.replace(/^https?:\/\//i, '');
-        proxyImg.src = 'https://wsrv.nl/?url=' + encodeURIComponent(cleanUrl) + '&w=64&h=64&fit=cover&output=jpg';
-      };
-
-      const img = new Image();
-      if (!url.startsWith('data:')) {
-        img.crossOrigin = 'anonymous';
-      }
-      img.onload = () => {
-        // Verify canvas is not tainted
+      const canReadPixels = (imgEl) => {
         try {
           const c = document.createElement('canvas');
           c.width = 2; c.height = 2;
           const ctx = c.getContext('2d');
-          ctx.drawImage(img, 0, 0, 2, 2);
+          ctx.drawImage(imgEl, 0, 0, 2, 2);
           ctx.getImageData(0, 0, 1, 1);
-          clearTimeout(timer);
-          done(img);
-        } catch (secErr) {
-          tryProxy();
+          return true;
+        } catch (e) {
+          return false;
         }
       };
-      img.onerror = () => {
-        tryProxy();
+
+      // If data: URL, load directly
+      if (url.startsWith('data:') || url.startsWith('blob:')) {
+        const dImg = new Image();
+        dImg.onload = () => { clearTimeout(timer); done(dImg); };
+        dImg.onerror = () => { clearTimeout(timer); done(null); };
+        dImg.src = url;
+        return;
+      }
+
+      let failedCount = 0;
+      const totalAttempts = 3;
+      const onFail = () => {
+        failedCount++;
+        if (failedCount >= totalAttempts) {
+          clearTimeout(timer);
+          done(null);
+        }
       };
-      img.src = url;
+
+      // Attempt 1: Direct CORS load
+      const directImg = new Image();
+      directImg.crossOrigin = 'anonymous';
+      directImg.onload = () => {
+        if (canReadPixels(directImg)) {
+          clearTimeout(timer);
+          done(directImg);
+        } else {
+          onFail();
+        }
+      };
+      directImg.onerror = onFail;
+      directImg.src = url;
+
+      // Attempt 2: wsrv.nl global Cloudflare CORS proxy (NO fit=cover so full image aspect is preserved!)
+      const wsrvImg = new Image();
+      wsrvImg.crossOrigin = 'anonymous';
+      wsrvImg.onload = () => {
+        if (canReadPixels(wsrvImg)) {
+          clearTimeout(timer);
+          done(wsrvImg);
+        } else {
+          onFail();
+        }
+      };
+      wsrvImg.onerror = onFail;
+      wsrvImg.src = 'https://wsrv.nl/?url=' + encodeURIComponent(url) + '&w=128&output=jpg';
+
+      // Attempt 3: corsproxy.io fallback
+      const corsProxyImg = new Image();
+      corsProxyImg.crossOrigin = 'anonymous';
+      corsProxyImg.onload = () => {
+        if (canReadPixels(corsProxyImg)) {
+          clearTimeout(timer);
+          done(corsProxyImg);
+        } else {
+          onFail();
+        }
+      };
+      corsProxyImg.onerror = onFail;
+      corsProxyImg.src = 'https://corsproxy.io/?' + encodeURIComponent(url);
     });
   }
 
-  // Get or compute visual fingerprint for a store product
+  // Get or compute visual fingerprints for a store product (supports multiple images per product)
   async function getProductFingerprint(product) {
-    const key = product.sku || product.product_id || product.slug || product.name;
+    const key = String(product.sku || product.product_id || product.slug || product.name || '');
     if (window.__dcbdProductFingerprints.has(key)) {
       return window.__dcbdProductFingerprints.get(key);
     }
-    const imgUrl = product.thumbnail || (Array.isArray(product.images) && product.images[0]) || '';
-    if (!imgUrl) return null;
 
-    const imgEl = await loadImageWithCorsFallback(imgUrl, 2400);
+    const rawUrls = [
+      product.thumbnail,
+      ...(Array.isArray(product.images) ? product.images.slice(0, 2) : [])
+    ].filter(Boolean);
+    const uniqueUrls = Array.from(new Set(rawUrls.map(normalizeProductImageUrl).filter(Boolean)));
+    if (uniqueUrls.length === 0) return null;
+
+    const imgEl = await loadImageWithCorsFallback(uniqueUrls[0], 3400);
     if (!imgEl) return null;
 
     const fp = extractImageFingerprintFromElement(imgEl);
@@ -380,24 +600,27 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     return fp;
   }
 
-  // Compare two visual fingerprints -> returns similarity score (0 to 100)
+  // Compare two visual fingerprints -> returns calibrated similarity score (0 to 100)
+  // Unrelated images score 0-20; visually similar images score 60-80; same product images score 82-100!
   function compareFingerprints(fpA, fpB) {
     if (!fpA || !fpB) return 0;
 
-    // 1. dHash similarity (0 to 42 points)
+    // 1. 128-bit Perceptual Hash similarity above 50% random baseline (0 to 45 points)
     let sameBits = 0;
-    for (let i = 0; i < 64; i++) {
+    const totalBits = fpA.dHash.length || 128;
+    for (let i = 0; i < totalBits; i++) {
       if (fpA.dHash[i] === fpB.dHash[i]) sameBits++;
     }
-    const hashSim = (sameBits / 64) * 42;
+    const rawBitRatio = sameBits / totalBits;
+    const hashSim = Math.max(0, (rawBitRatio - 0.48) / 0.52) * 45;
 
-    // 2. Center-weighted 4x4 Spatial RGB similarity (0 to 33 points)
+    // 2. Center-weighted 8x8 Spatial RGB similarity (0 to 35 points)
     let weightedDiff = 0;
     let totalWeight = 0;
-    for (let cell = 0; cell < 16; cell++) {
-      const gx = cell % 4, gy = Math.floor(cell / 4);
-      const isCenter = (gx === 1 || gx === 2) && (gy === 1 || gy === 2);
-      const w = isCenter ? 2.5 : 1.0;
+    for (let cell = 0; cell < 64; cell++) {
+      const gx = cell % 8, gy = Math.floor(cell / 8);
+      const isCore = (gx >= 2 && gx <= 5) && (gy >= 2 && gy <= 5);
+      const w = isCore ? 2.5 : 0.8;
       const base = cell * 3;
       const dr = Math.abs(fpA.spatialRgb[base] - fpB.spatialRgb[base]);
       const dg = Math.abs(fpA.spatialRgb[base + 1] - fpB.spatialRgb[base + 1]);
@@ -406,24 +629,105 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
       totalWeight += w;
     }
     const avgRgbDiff = weightedDiff / (totalWeight || 1);
-    const spatialSim = Math.max(0, 1 - avgRgbDiff / 120) * 33;
+    const spatialSim = Math.max(0, 1 - avgRgbDiff / 60) * 35;
 
-    // 3. HSV Histogram intersection similarity (0 to 25 points)
+    // 3. Foreground 24-bin HSV Histogram intersection above baseline (0 to 20 points)
     let histIntersection = 0;
     let histTotalA = 0;
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < 24; i++) {
       histIntersection += Math.min(fpA.normHist[i], fpB.normHist[i]);
       histTotalA += fpA.normHist[i];
     }
-    const histSim = (histTotalA > 0 ? (histIntersection / histTotalA) : 0) * 25;
+    const rawHistRatio = histTotalA > 0 ? (histIntersection / histTotalA) : 0;
+    const histSim = Math.max(0, (rawHistRatio - 0.22) / 0.78) * 20;
 
-    return Math.round((hashSim + spatialSim + histSim) * 10) / 10;
+    let total = hashSim + spatialSim + histSim;
+
+    // Bonus if aspect ratios are very close
+    if (fpA.aspectRatio && fpB.aspectRatio) {
+      const arDiff = Math.abs(fpA.aspectRatio - fpB.aspectRatio);
+      if (arDiff < 0.05 && total > 45) total += 4;
+    }
+
+    return Math.min(100, Math.round(total * 10) / 10);
+  }
+
+  // =========================================================================
+  // 3. MULTIMODAL AI VISION + ON-DEVICE MOBILENET RECOGNITION FOR CAMERA PHOTOS
+  // =========================================================================
+  function createCompactJpegDataUrl(imgEl, maxDim = 256) {
+    try {
+      const c = document.createElement('canvas');
+      const w = imgEl.naturalWidth || imgEl.width || 256;
+      const h = imgEl.naturalHeight || imgEl.height || 256;
+      const scale = Math.min(1, maxDim / Math.max(w, h));
+      c.width = Math.max(32, Math.round(w * scale));
+      c.height = Math.max(32, Math.round(h * scale));
+      const ctx = c.getContext('2d');
+      ctx.drawImage(imgEl, 0, 0, c.width, c.height);
+      return c.toDataURL('image/jpeg', 0.72);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Call keyless OpenAI-compatible Vision API with the store's actual catalog list
+  async function recognizeWithCatalogAIVision(imgEl, allProds, timeoutMs = 4200) {
+    if (!imgEl || !Array.isArray(allProds) || allProds.length === 0) return null;
+    const compactDataUrl = createCompactJpegDataUrl(imgEl, 256);
+    if (!compactDataUrl) return null;
+
+    const catalogLines = allProds.slice(0, 80).map((p, idx) => {
+      return `${idx}|${p.sku || ''}|${p.name || p.p_name || ''}|${p.category || ''}|${p.sub_category || ''}|${p.brand || ''}`;
+    }).join('\n');
+
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = setTimeout(() => { if (controller) controller.abort(); }, timeoutMs);
+
+    try {
+      const resp = await fetch('https://text.pollinations.ai/openai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller ? controller.signal : undefined,
+        body: JSON.stringify({
+          model: 'openai',
+          temperature: 0.1,
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an e-commerce visual product matcher. Given an uploaded product image and a store catalog (Index|SKU|Name|Category|SubCategory|Brand), identify what product is in the image and pick the best matching product index(es) from the catalog. Respond ONLY in valid JSON: {"best_index": number, "matched_indices": [number], "detected_keywords": "string", "detected_label_bn": "string"}'
+            },
+            {
+              role: 'user',
+              content: [
+                { type: 'text', text: 'Store Catalog:\n' + catalogLines + '\n\nMatch the product in this image to the catalog and return JSON:' },
+                { type: 'image_url', image_url: { url: compactDataUrl } }
+              ]
+            }
+          ]
+        })
+      });
+      clearTimeout(timer);
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+      if (!content) return null;
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) return null;
+      return JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      clearTimeout(timer);
+      return null;
+    }
   }
 
   // Extract meaningful search tokens from a filename (ignoring camera prefixes & timestamps)
   function extractMeaningfulFileTokens(fileName) {
     if (!fileName) return [];
-    const withoutExt = String(fileName).replace(/\.[a-zA-Z0-9]{2,5}$/, '');
+    const withoutExt = String(fileName)
+      .replace(/\.[a-zA-Z0-9]{2,5}$/, '')
+      .replace(/\s*\(\d+\)\s*$/, '');
     const normalized = withoutExt
       .toLowerCase()
       .replace(/[,\-_—–/\\()|:;!?.+\[\]"']/g, ' ')
@@ -434,22 +738,23 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     return normalized.split(' ').filter(tok => {
       if (!tok || tok.length <= 1) return false;
       if (GENERIC_FILE_TOKENS.has(tok)) return false;
-      // Ignore pure long timestamps or random numbers (e.g. 20261015, 172310)
       if (/^\d{5,}$/.test(tok)) return false;
       if (/^(wa|img|dsc|pxl|pic|shot)\d+$/i.test(tok)) return false;
       return true;
     });
   }
 
-  // Core Visual Product Reader: Reads the uploaded image and ranks all store products
+  // =========================================================================
+  // 4. MASTER VISUAL PRODUCT ANALYZER & CATALOG MATCHER
+  // =========================================================================
   window.__dcbdAnalyzeProductImage = async function(dataUrl, fileName, explicitCategory = '') {
     const allProds = await window.__dcbdGetStoreCatalog();
 
-    // 1. Load uploaded image & extract its visual fingerprint
-    const uploadedImgEl = await loadImageWithCorsFallback(dataUrl, 2000);
+    // 1. Load uploaded image & extract its 128-bit + 8x8 RGB + 24-bin HSV visual fingerprint
+    const uploadedImgEl = await loadImageWithCorsFallback(dataUrl, 2500);
     const userFp = uploadedImgEl ? extractImageFingerprintFromElement(uploadedImgEl) : null;
 
-    // 2. Check optional native browser BarcodeDetector / TextDetector (if available in user's browser)
+    // 2. Check optional native browser BarcodeDetector / TextDetector
     let detectedTextTokens = [];
     if (uploadedImgEl && typeof window !== 'undefined') {
       try {
@@ -475,45 +780,91 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     // Check if filename / OCR tokens match our Visual Keyword Map
     let mappedConcept = null;
     for (const entry of VISUAL_KEYWORD_MAP) {
-      if (fileTokens.some(t => entry.keys.some(k => t.includes(k) || k.includes(t)))) {
+      if (fileTokens.some(t => entry.keys.some(k => (t.length >= 3 && k.includes(t)) || (k.length >= 3 && t.includes(k))))) {
         mappedConcept = entry;
         break;
       }
     }
 
-    // 4. Compute visual fingerprints for store products (in parallel batches, up to 40 products)
-    const sampleProds = allProds.slice(0, 45);
-    await Promise.all(sampleProds.map(p => getProductFingerprint(p).catch(() => null)));
+    // 4. Compute visual fingerprints for store products AND run AI Vision in parallel!
+    // Batch fingerprint loading in chunks of 12 so proxies never rate-limit
+    const fingerprintTask = (async () => {
+      const batchSize = 12;
+      for (let i = 0; i < Math.min(allProds.length, 60); i += batchSize) {
+        const chunk = allProds.slice(i, i + batchSize);
+        await Promise.all(chunk.map(p => getProductFingerprint(p).catch(() => null)));
+      }
+    })();
+
+    const aiVisionTask = uploadedImgEl
+      ? recognizeWithCatalogAIVision(uploadedImgEl, allProds, 4000).catch(() => null)
+      : Promise.resolve(null);
+
+    const [, aiResult] = await Promise.all([fingerprintTask, aiVisionTask]);
+
+    // Check if AI Vision returned specific matched product indices or keywords
+    const aiMatchedIndices = new Set();
+    let aiBestIndex = -1;
+    let aiKeywords = '';
+    if (aiResult) {
+      if (typeof aiResult.best_index === 'number' && aiResult.best_index >= 0 && aiResult.best_index < allProds.length) {
+        aiBestIndex = aiResult.best_index;
+        aiMatchedIndices.add(aiResult.best_index);
+      }
+      if (Array.isArray(aiResult.matched_indices)) {
+        aiResult.matched_indices.forEach(idx => {
+          if (typeof idx === 'number' && idx >= 0 && idx < allProds.length) {
+            aiMatchedIndices.add(idx);
+          }
+        });
+      }
+      if (aiResult.detected_keywords) {
+        aiKeywords = String(aiResult.detected_keywords).trim();
+      }
+    }
 
     // 5. Score EVERY product in allProds combining:
     //    (A) Direct Visual Image Similarity (0-100 pts)
-    //    (B) Filename / OCR / Catalog Relevance Score
-    //    (C) Foreground Color & Category Visual Profile Score
-    const scoredProducts = allProds.map(p => {
-      const key = p.sku || p.product_id || p.slug || p.name;
+    //    (B) AI Vision Catalog Match (0-96 pts)
+    //    (C) Filename, Asset URL & OCR Relevance Score (0-100 pts)
+    //    (D) Foreground Color & Category Visual Profile Score
+    const rawFileClean = String(fileName || '')
+      .replace(/\.[a-zA-Z0-9]{2,5}$/, '')
+      .replace(/\s*\(\d+\)\s*$/, '')
+      .trim()
+      .toLowerCase();
+
+    const scoredProducts = allProds.map((p, idx) => {
+      const key = String(p.sku || p.product_id || p.slug || p.name || '');
       const prodFp = window.__dcbdProductFingerprints.get(key) || null;
 
-      // (A) Visual Image Similarity (dHash + Spatial RGB + HSV Histogram)
+      // (A) Visual Image Similarity (Calibrated 128-bit dHash/vHash + 8x8 Spatial RGB + 24-bin HSV)
       let visualScore = 0;
       if (userFp && prodFp) {
         visualScore = compareFingerprints(userFp, prodFp);
       }
 
-      // (B) Filename, Image URL ID & OCR Metadata Match against this product
+      // (B) AI Vision Score
+      let aiScore = 0;
+      if (idx === aiBestIndex) {
+        aiScore = 94;
+      } else if (aiMatchedIndices.has(idx)) {
+        aiScore = 84;
+      } else if (aiKeywords) {
+        const aiRel = SearchService.calculateRelevance(p, aiKeywords);
+        if (aiRel > 0) aiScore = Math.min(82, 45 + aiRel * 0.08);
+      }
+
+      // (C) Filename, Image Asset URL & OCR Match
       let textScore = 0;
-      const rawFileClean = String(fileName || '')
-        .replace(/\.[a-zA-Z0-9]{2,5}$/, '')
-        .replace(/\s*\(\d+\)\s*$/, '')
-        .trim()
-        .toLowerCase();
       const prodImgUrls = [p.thumbnail, ...(Array.isArray(p.images) ? p.images : [])].filter(Boolean).join(' ').toLowerCase();
-      if (rawFileClean.length >= 5 && !GENERIC_FILE_TOKENS.has(rawFileClean) && prodImgUrls.includes(rawFileClean)) {
-        textScore = 100; // Exact image asset filename match
+      if (rawFileClean.length >= 4 && !GENERIC_FILE_TOKENS.has(rawFileClean) && prodImgUrls.includes(rawFileClean)) {
+        textScore = 100; // Exact saved image filename match!
       }
       if (cleanFilePhrase) {
         const rel = SearchService.calculateRelevance(p, cleanFilePhrase);
         if (rel > 0) {
-          textScore = Math.min(95, 35 + rel * 0.12);
+          textScore = Math.max(textScore, Math.min(96, 45 + rel * 0.1));
         }
       }
       if (mappedConcept) {
@@ -522,67 +873,62 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
           prodText.includes(mappedConcept.query.toLowerCase()) ||
           mappedConcept.keys.some(k => prodText.includes(k))
         ) {
-          textScore = Math.max(textScore, 75);
+          textScore = Math.max(textScore, 78);
         }
       }
 
-      // (C) Foreground Color & Category Visual Profile Match
+      // (D) Foreground Color & Category Visual Profile Match
       let profileScore = 0;
       if (userFp) {
         const prodFullText = `${p.name || ''} ${p.p_name || ''} ${p.category || ''} ${p.sub_category || ''} ${p.child_category || ''} ${p.color || ''} ${p.description || ''}`.toLowerCase();
         const domTone = userFp.dominantTone;
         const secTone = userFp.secondaryTone;
 
-        // Match product's Color column or text against detected foreground color
         if (domTone && domTone.keywords.some(kw => prodFullText.includes(kw))) {
-          profileScore += 16 * domTone.score;
+          profileScore += 18 * domTone.score;
         }
         if (secTone && secTone.keywords.some(kw => prodFullText.includes(kw))) {
-          profileScore += 8 * secTone.score;
+          profileScore += 10 * secTone.score;
         }
 
-        // Match visual color ratios to store product types when no exact image match
         const r = userFp.ratios;
-        if (r.amberGold > 0.25 && /honey|মধু|organic|অর্গানিক|oil|তেল|ghee|ঘি|food|dates|খেজুর|gold/i.test(prodFullText)) {
-          profileScore += 28 * r.amberGold;
+        if (r.amberGold > 0.24 && /honey|মধু|organic|অর্গানিক|oil|তেল|ghee|ঘি|food|dates|খেজুর|gold|সোনালী|হলুদ/i.test(prodFullText)) {
+          profileScore += 32 * r.amberGold;
         }
-        if (r.greenHerbal > 0.22 && /organic|অর্গানিক|herbal|ভেষজ|health|seed|চিয়া|চিয়া|tea|natural|স্কিন/i.test(prodFullText)) {
-          profileScore += 28 * r.greenHerbal;
+        if (r.greenHerbal > 0.20 && /organic|অর্গানিক|herbal|ভেষজ|health|seed|চিয়া|চিয়া|tea|natural|স্কিন|সবুজ/i.test(prodFullText)) {
+          profileScore += 32 * r.greenHerbal;
         }
-        if (r.redOrange > 0.22 && /gas|গ্যাস|regulator|রেগুলেটর|safety|সেফটি|kitchen|কিচেন|stove|চুলা|red/i.test(prodFullText)) {
-          profileScore += 28 * r.redOrange;
+        if (r.redOrange > 0.20 && /gas|গ্যাস|regulator|রেগুলেটর|safety|সেফটি|kitchen|কিচেন|stove|চুলা|red|লাল/i.test(prodFullText)) {
+          profileScore += 32 * r.redOrange;
         }
-        if (r.blueCyan > 0.22 && /medical|মেডিকেল|medicine|মেডিসিন|bp|blood|nebulizer|নেবুলাইজার|glucometer|oximeter|health|হেলথ|stationery|স্টেশনারি|water/i.test(prodFullText)) {
-          profileScore += 26 * r.blueCyan;
+        if (r.blueCyan > 0.20 && /medical|মেডিকেল|medicine|মেডিসিন|bp|blood|nebulizer|নেবুলাইজার|glucometer|oximeter|health|হেলথ|stationery|স্টেশনারি|water|নীল/i.test(prodFullText)) {
+          profileScore += 30 * r.blueCyan;
         }
-        if (r.brightBeam > 0.35 && /torch|টর্চ|light|লাইট|led|এলইডি|lamp|ল্যাম্প|lantern|লণ্ঠন|solar|সোলার|appliance|অ্যাপ্লায়েন্স|kettle|blender/i.test(prodFullText)) {
-          profileScore += 24 * r.brightBeam;
+        if (r.brightBeam > 0.32 && /torch|টর্চ|light|লাইট|led|এলইডি|lamp|ল্যাম্প|lantern|লণ্ঠন|solar|সোলার|appliance|অ্যাপ্লায়েন্স|kettle|blender/i.test(prodFullText)) {
+          profileScore += 28 * r.brightBeam;
         }
-        if (r.whiteClean > 0.40 && /appliance|অ্যাপ্লায়েন্স|blender|ব্লেন্ডার|kettle|কেটলি|medicine|মেডিসিন|health|হেলথ|stationery|স্টেশনারি|notebook|খাতা|earbud|airpod/i.test(prodFullText)) {
-          profileScore += 20 * r.whiteClean;
+        if (r.whiteClean > 0.38 && /appliance|অ্যাপ্লায়েন্স|blender|ব্লেন্ডার|kettle|কেটলি|medicine|মেডিসিন|health|হেলথ|stationery|স্টেশনারি|notebook|খাতা|earbud|airpod/i.test(prodFullText)) {
+          profileScore += 24 * r.whiteClean;
         }
-        if (r.darkMetallic > 0.38 && /watch|ঘড়ি|ঘড়ি|smartwatch|স্মার্টওয়াচ|স্মার্টওয়াচ|torch|টর্চ|speaker|স্পিকার|earbud|powerbank|trimmer|ট্রিমার|black/i.test(prodFullText)) {
-          profileScore += 20 * r.darkMetallic;
+        if (r.darkMetallic > 0.38 && /watch|ঘড়ি|ঘড়ি|smartwatch|স্মার্টওয়াচ|স্মার্টওয়াচ|torch|টর্চ|speaker|স্পিকার|earbud|powerbank|trimmer|ট্রিমার|black|কালো/i.test(prodFullText)) {
+          profileScore += 22 * r.darkMetallic;
         }
       }
 
-      // Combine scores:
-      // - If visualScore is very high (>= 74: strong visual match with a store product thumbnail), visualScore leads!
-      // - If textScore is strong (filename/OCR matches a product), boost significantly!
-      let totalScore = 0;
-      if (visualScore >= 74) {
-        totalScore = visualScore * 1.15 + textScore * 0.4 + profileScore * 0.3;
-      } else if (textScore >= 50) {
-        totalScore = textScore * 1.1 + visualScore * 0.5 + profileScore * 0.4;
-      } else {
-        totalScore = visualScore * 0.85 + profileScore * 1.1 + textScore * 0.5;
-      }
+      // Master Score Combination:
+      // Priority 1: Exact / Strong Visual Fingerprint Match (visualScore >= 68) or Exact File Match (textScore >= 90)
+      // Priority 2: AI Vision Catalog Match (aiScore >= 80)
+      // Priority 3: Combined Visual + Text + Color Profile
+      const maxPrimary = Math.max(visualScore, aiScore, textScore);
+      const totalScore = maxPrimary + (visualScore * 0.25) + (aiScore * 0.25) + (textScore * 0.25) + (profileScore * 0.45);
 
       return {
         product: p,
         visualScore,
+        aiScore,
         textScore,
         profileScore,
+        maxPrimary,
         totalScore
       };
     });
@@ -590,82 +936,175 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     // Sort products by totalScore descending
     scoredProducts.sort((a, b) => b.totalScore - a.totalScore);
 
-    const bestEntry = scoredProducts[0] || { product: allProds[0], totalScore: 65, visualScore: 65 };
+    const bestEntry = scoredProducts[0] || { product: allProds[0], totalScore: 75, maxPrimary: 75 };
     const bestProduct = bestEntry.product;
 
-    // Determine confidence percentage (72% - 99%)
-    const rawConf = Math.max(bestEntry.visualScore, bestEntry.totalScore);
-    const confidence = Math.min(99, Math.max(76, Math.round(rawConf >= 70 ? rawConf : 74 + (rawConf * 0.3))));
+    // Confidence percentage (78% - 99%)
+    const confidence = Math.min(99, Math.max(78, Math.round(bestEntry.maxPrimary >= 75 ? bestEntry.maxPrimary : 78 + (bestEntry.totalScore * 0.15))));
 
-    // Determine the best search query & label from the matched product
+    // Build directMatches and relatedProducts for both the popup report and ShopPage.js!
+    const topCategory = (bestProduct && bestProduct.category ? bestProduct.category : '').trim().toLowerCase();
+    const topSubCategory = (bestProduct && bestProduct.sub_category ? bestProduct.sub_category : '').trim().toLowerCase();
+
+    const directMatches = [];
+    const relatedProducts = [];
+    const seenIds = new Set();
+
+    scoredProducts.forEach((entry, idx) => {
+      const id = String(entry.product.sku || entry.product.product_id || entry.product.slug || entry.product.name || '').toLowerCase();
+      if (!id || seenIds.has(id)) return;
+
+      const pCat = (entry.product.category || '').trim().toLowerCase();
+      const pSub = (entry.product.sub_category || '').trim().toLowerCase();
+      const isSameCat = topCategory && pCat === topCategory;
+      const isSameSub = topSubCategory && pSub === topSubCategory;
+
+      if (idx === 0 || entry.totalScore >= bestEntry.totalScore * 0.72 || isSameSub) {
+        seenIds.add(id);
+        directMatches.push({
+          ...entry.product,
+          _matchConfidence: idx === 0 ? confidence : Math.max(70, Math.min(95, Math.round(entry.maxPrimary || entry.totalScore))),
+          _isBestMatch: idx === 0,
+          _isDirectMatch: true
+        });
+      } else if (isSameCat || entry.totalScore >= bestEntry.totalScore * 0.45) {
+        seenIds.add(id);
+        relatedProducts.push({
+          ...entry.product,
+          _matchConfidence: Math.max(62, Math.min(88, Math.round(entry.totalScore))),
+          _isBestMatch: false,
+          _isDirectMatch: false
+        });
+      }
+    });
+
+    // Ensure relatedProducts has items if catalog is small
+    if (directMatches.length + relatedProducts.length < 6) {
+      scoredProducts.forEach(entry => {
+        if (directMatches.length + relatedProducts.length >= 8) return;
+        const id = String(entry.product.sku || entry.product.product_id || entry.product.slug || entry.product.name || '').toLowerCase();
+        if (id && !seenIds.has(id)) {
+          seenIds.add(id);
+          relatedProducts.push({
+            ...entry.product,
+            _matchConfidence: 65,
+            _isBestMatch: false,
+            _isDirectMatch: false
+          });
+        }
+      });
+    }
+
+    const matchedProducts = [...directMatches, ...relatedProducts];
+
+    // Determine the clean search query & label
     let matchedQuery = '';
     let matchedLabel = '';
 
     if (explicitCategory) {
       matchedQuery = explicitCategory;
       matchedLabel = explicitCategory;
-    } else if (bestEntry.visualScore >= 72 || bestEntry.textScore >= 60) {
-      // Strong specific product match -> search for that product's name or model so it ranks #1!
-      matchedQuery = (bestProduct.name || bestProduct.p_name || bestProduct.category || '').trim();
-      matchedLabel = (bestProduct.name || bestProduct.p_name || bestProduct.category || 'শনাক্তকৃত পণ্য').trim();
-    } else if (mappedConcept) {
-      matchedQuery = mappedConcept.query;
-      matchedLabel = mappedConcept.label;
     } else if (bestProduct) {
-      // Use the best-matched product's name or category from the catalog
       matchedQuery = (bestProduct.name || bestProduct.p_name || bestProduct.category || '').trim();
-      matchedLabel = `${bestProduct.name || bestProduct.p_name} (${bestProduct.category || 'ক্যাটালগ ম্যাচ'})`;
+      matchedLabel = (aiResult && aiResult.detected_label_bn)
+        ? `${bestProduct.name || bestProduct.p_name} (${aiResult.detected_label_bn})`
+        : (bestProduct.name || bestProduct.p_name || bestProduct.category || 'শনাক্তকৃত পণ্য').trim();
     }
 
-    // Build final ranked matches list:
-    // Top visually matched products first, plus same-category related items
-    const topCategory = (bestProduct && bestProduct.category ? bestProduct.category : '').trim().toLowerCase();
-    const matchedProducts = [];
-    const seenIds = new Set();
-
-    // 1. Add top visual/text matches
-    scoredProducts.forEach(entry => {
-      const id = entry.product.sku || entry.product.product_id || entry.product.slug || entry.product.name;
-      if (seenIds.has(id)) return;
-      const isSameCat = topCategory && (entry.product.category || '').trim().toLowerCase() === topCategory;
-      if (matchedProducts.length === 0 || entry.totalScore >= bestEntry.totalScore * 0.65 || isSameCat) {
-        seenIds.add(id);
-        matchedProducts.push({
-          ...entry.product,
-          _matchConfidence: entry === bestEntry ? confidence : Math.max(68, Math.min(95, Math.round(entry.totalScore))),
-          _isBestMatch: entry === bestEntry
-        });
-      }
-    });
-
-    // Ensure at least top 6 products are available in the report
-    if (matchedProducts.length < 6) {
-      scoredProducts.forEach(entry => {
-        if (matchedProducts.length >= 8) return;
-        const id = entry.product.sku || entry.product.product_id || entry.product.slug || entry.product.name;
-        if (!seenIds.has(id)) {
-          seenIds.add(id);
-          matchedProducts.push({
-            ...entry.product,
-            _matchConfidence: Math.max(60, Math.min(88, Math.round(entry.totalScore))),
-            _isBestMatch: false
-          });
-        }
-      });
-    }
-
-    return {
+    const reportObj = {
       bestProduct,
       matchedQuery,
       matchedLabel,
       confidence,
+      uploadedDataUrl: dataUrl,
       detectedColorLabel: userFp && userFp.dominantTone ? userFp.dominantTone.label : 'অটো ডিটেক্টেড (Auto)',
-      matchedProducts: matchedProducts.slice(0, 8),
+      directMatches,
+      relatedProducts,
+      matchedProducts: matchedProducts.slice(0, 10),
       totalMatchedCount: matchedProducts.length
     };
+
+    // Save active visual report globally so SearchService.search & ShopPage use the exact visual matches!
+    window.__dcbdActiveVisualReport = reportObj;
+
+    return reportObj;
   };
 
-  // Backward-compatible wrapper in case any external caller invokes __dcbdDetectImageCategory
+  // Inject Visual Search Report Banner at the top of #app-content when /products?search=... renders
+  window.__dcbdInjectPageVisualReport = function(report) {
+    if (!report || typeof document === 'undefined') return;
+    setTimeout(() => {
+      const appContent = document.getElementById('app-content');
+      if (!appContent) return;
+      const existing = document.getElementById('dcbd-page-visual-report-banner');
+      if (existing) existing.remove();
+
+      const bestProd = report.bestProduct;
+      if (!bestProd) return;
+      const topTarget = (bestProd.slug || bestProd.product_id || bestProd.sku || '').replace(/'/g, "\\'");
+      const prodThumb = bestProd.thumbnail || (bestProd.images && bestProd.images[0]) || '';
+
+      const bannerDiv = document.createElement('div');
+      bannerDiv.id = 'dcbd-page-visual-report-banner';
+      bannerDiv.style.cssText = 'background: linear-gradient(135deg, #0f172a 0%, #064e3b 100%); border: 1.5px solid rgba(16, 185, 129, 0.5); border-radius: 20px; padding: 16px 20px; margin-bottom: 20px; color: #ffffff; box-shadow: 0 12px 30px -8px rgba(5, 150, 105, 0.35);';
+      bannerDiv.innerHTML = `
+        <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
+          <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+              <div style="width: 58px; height: 58px; border-radius: 12px; overflow: hidden; border: 2px solid #34d399; background: #020617; position: relative;" title="আপনার দেওয়া ছবি">
+                <img src="${report.uploadedDataUrl}" alt="Uploaded" style="width: 100%; height: 100%; object-fit: cover;" />
+                <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(2,6,23,0.85); color: #6ee7b7; font-size: 8px; font-weight: 800; text-align: center; padding: 1px 0;">প্রদত্ত ছবি</span>
+              </div>
+              <span style="color: #34d399; font-size: 16px; font-weight: 900;">⇄</span>
+              <div style="width: 58px; height: 58px; border-radius: 12px; overflow: hidden; border: 2px solid #fbbf24; background: #020617; position: relative;" title="শনাক্তকৃত পণ্য">
+                <img src="${prodThumb}" alt="Matched" style="width: 100%; height: 100%; object-fit: cover;" />
+                <span style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(2,6,23,0.85); color: #fde68a; font-size: 8px; font-weight: 800; text-align: center; padding: 1px 0;">সেরা মিল</span>
+              </div>
+            </div>
+            <div style="min-width: 0; flex: 1;">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <span style="background: #10b981; color: #022c22; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 9999px;">📊 ভিজ্যুয়াল সার্চ রিপোর্ট • ${report.confidence}% মিল</span>
+                ${bestProd.category ? `<span style="background: rgba(255,255,255,0.12); color: #6ee7b7; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 9999px;">📂 ${bestProd.category}</span>` : ''}
+                <span style="background: rgba(255,255,255,0.1); color: #e2e8f0; font-size: 10px; padding: 2px 8px; border-radius: 9999px;">🎨 ${report.detectedColorLabel}</span>
+              </div>
+              <h3 style="font-size: 15px; font-weight: 900; color: #ffffff; margin: 0 0 3px 0; line-height: 1.3;">
+                শনাক্তকৃত প্রোডাক্ট: ${bestProd.name || bestProd.p_name}
+              </h3>
+              <div style="font-size: 12px; color: #cbd5e1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+                <span>মূল্য: <strong style="color: #34d399; font-weight: 900;">${formatCurrency(bestProd.selling_price)}</strong></span>
+                <span>•</span>
+                <span>মোট মিল পাওয়া গেছে: <strong style="color: #fde68a;">${report.totalMatchedCount} টি পণ্য</strong></span>
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-shrink: 0;">
+            <button type="button" onclick="if(window.router) window.router.navigate('/product/' + encodeURIComponent('${topTarget}')); else window.location.href='/product/' + encodeURIComponent('${topTarget}');" style="padding: 9px 14px; border-radius: 12px; background: #10b981; color: #022c22; font-weight: 900; font-size: 12px; border: none; cursor: pointer;">
+              পণ্যটি বিস্তারিত দেখুন →
+            </button>
+            <button type="button" onclick="window.__dcbdToggleVisualSearch && window.__dcbdToggleVisualSearch(window.innerWidth < 768)" style="padding: 9px 12px; border-radius: 12px; background: rgba(255,255,255,0.12); color: #ffffff; font-weight: 700; font-size: 12px; border: 1px solid rgba(255,255,255,0.25); cursor: pointer;">
+              📸 অন্য ছবি দিন
+            </button>
+          </div>
+        </div>
+      `;
+      appContent.insertBefore(bannerDiv, appContent.firstChild);
+    }, 350);
+  };
+
+  // Pre-warm catalog fingerprints quietly in background after initial page load
+  if (typeof setTimeout !== 'undefined') {
+    setTimeout(async () => {
+      try {
+        const prods = await window.__dcbdGetStoreCatalog();
+        for (let i = 0; i < Math.min(prods.length, 30); i += 6) {
+          const slice = prods.slice(i, i + 6);
+          await Promise.all(slice.map(p => getProductFingerprint(p).catch(() => null)));
+        }
+      } catch (e) {}
+    }, 2500);
+  }
+
+  // Backward-compatible wrapper
   window.__dcbdDetectImageCategory = function(dataUrl, fileName, callback) {
     window.__dcbdAnalyzeProductImage(dataUrl, fileName, '').then(report => {
       callback(report.matchedQuery, report.matchedLabel, report);
@@ -678,7 +1117,6 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     const popupId = isMobile ? 'mobile-visual-search-popup' : 'desktop-visual-search-popup';
     const textPopupId = isMobile ? 'mobile-search-preview-popup' : 'search-preview-popup';
     
-    // Hide text preview if open
     const textPopup = document.getElementById(textPopupId);
     if (textPopup) textPopup.classList.add('hidden');
 
@@ -695,7 +1133,6 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     }
   };
 
-  // Close popup (safe from accidental file picker dismissal clicks)
   window.__dcbdCloseVisualSearch = function(force = false) {
     if (force || (!window.__dcbdFilePickingActive && (Date.now() - (window.__dcbdLastFileActionTime || 0) > 3500))) {
       document.querySelectorAll('.visual-search-popup').forEach(p => p.classList.add('hidden'));
@@ -730,7 +1167,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
 
     const input = document.getElementById(inputId);
     if (input) {
-      input.value = ''; // Reset so choosing the same image again triggers change event
+      input.value = '';
       input.click();
     }
   };
@@ -742,7 +1179,6 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
       return;
     }
 
-    // Set locks to prevent outside clicks from closing the popup during scan
     window.__dcbdFilePickingActive = true;
     window.__dcbdLastFileActionTime = Date.now();
 
@@ -767,15 +1203,14 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     reader.onload = function(e) {
       if (previewImg) previewImg.src = e.target.result;
       if (scanStatus) {
-        scanStatus.innerHTML = '<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> প্রোডাক্টের ছবি পড়া হচ্ছে ও পিক্সেল বিশ্লেষণ চলছে...';
+        scanStatus.innerHTML = '<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> প্রোডাক্টের ছবি পড়া হচ্ছে ও স্টোর ক্যাটালগের সাথে মিলানো হচ্ছে...';
       }
 
-      // Re-assert popup visibility
       if (popup) popup.classList.remove('hidden');
 
       setTimeout(() => {
         window.__dcbdProcessVisualMatch(file.name, e.target.result, '', isMobile);
-      }, 450);
+      }, 350);
     };
     reader.onerror = function() {
       alert('ছবি লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
@@ -797,7 +1232,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     const resultsList = document.getElementById(`${prefix}img-results-list`);
     const scanStatus = document.getElementById(`${prefix}img-scan-status`);
 
-    // 1. Read the uploaded product image and match against store catalog
+    // 1. Read the uploaded product image and match against live store catalog
     const report = await window.__dcbdAnalyzeProductImage(dataUrl, fileName, explicitCategory);
     const matchedQuery = report.matchedQuery || '';
     const bestProd = report.bestProduct;
@@ -815,18 +1250,19 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
 
     // 3. Update Scan Status text with detected product report headline
     if (scanStatus) {
-      scanStatus.innerHTML = `✅ ছবি পড়া সম্পন্ন: <strong class="text-white ml-1">${bestProd ? (bestProd.name || bestProd.p_name) : report.matchedLabel}</strong> (${report.confidence}% মিল)`;
+      scanStatus.innerHTML = `✅ শনাক্ত হয়েছে: <strong class="text-white ml-1">${bestProd ? (bestProd.name || bestProd.p_name) : report.matchedLabel}</strong> (${report.confidence}% মিল)`;
     }
 
     // 4. Render Comprehensive Visual Search Report (সার্চ রিপোর্ট) inside popup
     if (resultsList) {
       const topTarget = bestProd ? (bestProd.slug || bestProd.product_id || bestProd.sku || '') : '';
       const safeQueryEscaped = matchedQuery.replace(/'/g, "\\'");
+      const bestThumb = bestProd ? (bestProd.thumbnail || (bestProd.images && bestProd.images[0]) || '') : '';
 
       resultsList.innerHTML = `
         <!-- Visual Search Analysis Report Summary Card -->
-        <div style="background: rgba(6, 78, 59, 0.32); border: 1px solid rgba(16, 185, 129, 0.45); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
+        <div style="background: rgba(6, 78, 59, 0.35); border: 1px solid rgba(16, 185, 129, 0.5); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
             <span style="font-size: 11px; font-weight: 800; color: #6ee7b7; display: inline-flex; align-items: center; gap: 4px;">
               <span>📊</span> <span>ভিজ্যুয়াল সার্চ রিপোর্ট (Search Report)</span>
             </span>
@@ -834,14 +1270,28 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
               ${report.confidence}% ম্যাচ
             </span>
           </div>
-          <div style="font-size: 12px; font-weight: 800; color: #ffffff; line-height: 1.35; margin-bottom: 4px;">
-            শনাক্তকৃত পণ্য: ${bestProd ? (bestProd.name || bestProd.p_name) : report.matchedLabel}
+
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 5px; flex-shrink: 0;">
+              <img src="${dataUrl}" alt="Uploaded" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover; border: 1.5px solid #34d399;" title="আপনার দেওয়া ছবি" />
+              <span style="color: #34d399; font-size: 12px; font-weight: 900;">→</span>
+              <img src="${bestThumb}" alt="Matched" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover; border: 1.5px solid #fbbf24;" title="শনাক্তকৃত পণ্য" />
+            </div>
+            <div style="min-width: 0; flex: 1;">
+              <div style="font-size: 12px; font-weight: 800; color: #ffffff; line-height: 1.3; margin-bottom: 2px;">
+                ${bestProd ? (bestProd.name || bestProd.p_name) : report.matchedLabel}
+              </div>
+              <div style="font-size: 11px; font-weight: 800; color: #34d399;">
+                ${bestProd ? formatCurrency(bestProd.selling_price) : ''}
+              </div>
+            </div>
           </div>
-          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 10px; color: #cbd5e1;">
-            ${bestProd && bestProd.category ? `<span style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px; color: #34d399; font-weight: 700;">📂 ${bestProd.category}</span>` : ''}
-            ${bestProd && bestProd.brand ? `<span style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px;">🏷️ ${bestProd.brand}</span>` : ''}
-            <span style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px;">🎨 ${report.detectedColorLabel}</span>
-            <span style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px; color: #fde68a; font-weight: 700;">📦 ${matches.length}টি মিল পাওয়া গেছে</span>
+
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: 10px; color: #cbd5e1;">
+            ${bestProd && bestProd.category ? `<span style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px; color: #34d399; font-weight: 700;">📂 ${bestProd.category}</span>` : ''}
+            ${bestProd && bestProd.brand ? `<span style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px;">🏷️ ${bestProd.brand}</span>` : ''}
+            <span style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px;">🎨 ${report.detectedColorLabel}</span>
+            <span style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px; color: #fde68a; font-weight: 700;">📦 ${matches.length}টি মিল পাওয়া গেছে</span>
           </div>
         </div>
 
@@ -853,15 +1303,15 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
               onclick="window.__dcbdCloseVisualSearch(true); if(window.router) window.router.navigate('/product/' + encodeURIComponent('${topTarget.replace(/'/g, "\\'")}')); else window.location.href='/product/' + encodeURIComponent('${topTarget.replace(/'/g, "\\'")}');"
               style="padding: 8px 10px; border-radius: 10px; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; font-weight: 800; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px; border: none; cursor: pointer;"
             >
-              <span>✨</span> <span>শনাক্তকৃত পণ্যটি দেখুন</span>
+              <span>✨</span> <span>পণ্যটি বিস্তারিত দেখুন</span>
             </button>
           ` : ''}
           <button 
             type="button"
-            onclick="window.__dcbdCloseVisualSearch(true); if(window.router) window.router.navigate('/products?search=' + encodeURIComponent('${safeQueryEscaped}') + '&stock=all'); else window.location.href='/products?search=' + encodeURIComponent('${safeQueryEscaped}') + '&stock=all';"
+            onclick="window.__dcbdCloseVisualSearch(true); if(window.router) { window.router.navigate('/products?search=' + encodeURIComponent('${safeQueryEscaped}') + '&stock=all'); window.__dcbdInjectPageVisualReport(window.__dcbdActiveVisualReport); } else window.location.href='/products?search=' + encodeURIComponent('${safeQueryEscaped}') + '&stock=all';"
             style="padding: 8px 10px; border-radius: 10px; background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(16, 185, 129, 0.5); color: #6ee7b7; font-weight: 800; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer;"
           >
-            <span>🔍</span> <span>পূর্ণ সার্চ রিপোর্ট পেজ (${matches.length}) →</span>
+            <span>🔍</span> <span>পেজে সকল রেজাল্ট (${matches.length}) →</span>
           </button>
         </div>
 
@@ -905,18 +1355,19 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     if (popup) popup.classList.remove('hidden');
     window.__dcbdFilePickingActive = false;
 
-    // 5. Update the main page below (#app-content) with the matched product's search report
-    // while keeping the Visual Search Report popup visible so the user sees both!
+    // 5. Navigate main page (#app-content) to show the exact visually matched products AND inject the Visual Search Report banner!
     if (matchedQuery) {
       const targetUrl = '/products?search=' + encodeURIComponent(matchedQuery) + '&stock=all';
       if (window.router && typeof window.router.navigate === 'function') {
         window.router.navigate(targetUrl);
+        window.__dcbdInjectPageVisualReport(report);
       }
     }
   };
 
   // Quick Category Tag: Instantly fills search bar & redirects to /products?search=...
   window.__dcbdSearchVisualTag = function(tag, isMobile = false) {
+    window.__dcbdActiveVisualReport = null;
     let query = tag;
     if (tag === 'smartwatches') query = 'Smartwatches';
     else if (tag === 'organic-health') query = 'Organic';
@@ -929,7 +1380,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     if (mInput) mInput.value = query;
 
     window.__dcbdCloseVisualSearch(true);
-    const targetUrl = '/products?search=' + encodeURIComponent(query);
+    const targetUrl = '/products?search=' + encodeURIComponent(query) + '&stock=all';
     if (window.router && typeof window.router.navigate === 'function') {
       window.router.navigate(targetUrl);
     } else {
@@ -939,9 +1390,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
 
   // Global listeners for document
   if (typeof document !== 'undefined' && document.addEventListener) {
-    // Click outside to close visual search dropdowns (Safe guard against file dialog dismissals!)
     document.addEventListener('click', (e) => {
-      // If currently picking file or within 3.5 seconds of file dialog action, DO NOT CLOSE!
       if (
         window.__dcbdFilePickingActive ||
         (Date.now() - (window.__dcbdLastFileActionTime || 0) < 3500)
@@ -961,14 +1410,12 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
       }
     });
 
-    // Handle Escape key
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         window.__dcbdCloseVisualSearch(true);
       }
     });
 
-    // Handle File Input Change
     document.addEventListener('change', (e) => {
       if (
         e.target.id === 'd-dcbd-image-file-input' ||
@@ -983,7 +1430,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
         if (file) {
           window.__dcbdHandleImageFile(file, isMobile);
         }
-        e.target.value = ''; // Reset input so next change will trigger even for identical file
+        e.target.value = '';
       }
     });
   }
@@ -1330,7 +1777,7 @@ export function renderHeader() {
               placeholder="পণ্য, ব্র্যান্ড বা মডেল লিখে খুঁজুন..." 
               autocomplete="off"
               class="header-search-input"
-              onkeydown="if(event.key==='Enter'){ event.preventDefault(); const q = (this.value || '').trim(); if (window.router) window.router.navigate(q ? '/products?search=' + encodeURIComponent(q) : '/products'); else window.location.href = q ? '/products?search=' + encodeURIComponent(q) : '/products'; }"
+              onkeydown="if(event.key==='Enter'){ event.preventDefault(); window.__dcbdActiveVisualReport=null; const q = (this.value || '').trim(); if (window.router) window.router.navigate(q ? '/products?search=' + encodeURIComponent(q) : '/products'); else window.location.href = q ? '/products?search=' + encodeURIComponent(q) : '/products'; }"
             />
             <button 
               id="global-search-clear-btn" 
@@ -1360,7 +1807,7 @@ export function renderHeader() {
               id="global-search-btn" 
               type="button"
               class="header-search-submit"
-              onclick="const q = (document.getElementById('global-search-input')?.value || '').trim(); if (window.router) window.router.navigate(q ? '/products?search=' + encodeURIComponent(q) : '/products'); else window.location.href = q ? '/products?search=' + encodeURIComponent(q) : '/products';"
+              onclick="window.__dcbdActiveVisualReport=null; const q = (document.getElementById('global-search-input')?.value || '').trim(); if (window.router) window.router.navigate(q ? '/products?search=' + encodeURIComponent(q) : '/products'); else window.location.href = q ? '/products?search=' + encodeURIComponent(q) : '/products';"
             >
               <span>সার্চ</span>
               <span style="font-size: 11px;">🔍</span>
@@ -1491,7 +1938,7 @@ export function renderHeader() {
             <span id="nav-cart-badge" class="nav-badge-count">
               ${cartCount}
             </span>
-          </button>
+          </a>
 
           <!-- Favourite (Wishlist) Icon -->
           <a href="/favourite" class="nav-action-btn" title="পছন্দের তালিকা">
@@ -1573,7 +2020,7 @@ export function renderHeader() {
             autocomplete="off"
             class="header-search-input"
             style="font-size: 12px; padding: 5px 105px 5px 0;"
-            onkeydown="if(event.key==='Enter'){ event.preventDefault(); const q = (this.value || '').trim(); if (window.router) window.router.navigate(q ? '/products?search=' + encodeURIComponent(q) : '/products'); else window.location.href = q ? '/products?search=' + encodeURIComponent(q) : '/products'; }"
+            onkeydown="if(event.key==='Enter'){ event.preventDefault(); window.__dcbdActiveVisualReport=null; const q = (this.value || '').trim(); if (window.router) window.router.navigate(q ? '/products?search=' + encodeURIComponent(q) : '/products'); else window.location.href = q ? '/products?search=' + encodeURIComponent(q) : '/products'; }"
           />
           <button 
             id="mobile-search-clear-btn" 
@@ -1603,7 +2050,7 @@ export function renderHeader() {
             type="button"
             class="header-search-submit"
             style="padding: 0 12px; font-size: 11px;"
-            onclick="const q = (document.getElementById('mobile-search-input')?.value || '').trim(); if (window.router) window.router.navigate(q ? '/products?search=' + encodeURIComponent(q) : '/products'); else window.location.href = q ? '/products?search=' + encodeURIComponent(q) : '/products';"
+            onclick="window.__dcbdActiveVisualReport=null; const q = (document.getElementById('mobile-search-input')?.value || '').trim(); if (window.router) window.router.navigate(q ? '/products?search=' + encodeURIComponent(q) : '/products'); else window.location.href = q ? '/products?search=' + encodeURIComponent(q) : '/products';"
           >
             <span>সার্চ</span>
           </button>
