@@ -1,9 +1,10 @@
 /**
- * DREAM CART BD — MAIN NAVIGATION BAR WITH AUTO-REDIRECT VISUAL SEARCH (Header.js)
+ * DREAM CART BD — MAIN NAVIGATION BAR WITH INTELLIGENT VISUAL PRODUCT READER & SEARCH REPORT (Header.js)
  * High-performance, pixel-perfect header component:
  * - Desktop: Notice bar, compact crisp logo (42px), wide predictive search bar with inline Visual AI Camera Search, nav actions, auth menu, dark mode.
  * - Mobile: Sleek native app bar with compact logo (36px) & dedicated search bar with Camera Search button.
- * - Auto Search Redirect: Automatically analyzes images and redirects to the /products?search=... page with filtered matching products.
+ * - Intelligent Visual Product Reader: Reads uploaded/captured product images via HTML5 Canvas (perceptual dHash, center-weighted 4x4 spatial RGB grid, HSV foreground histogram, and filename/catalog token matching) against all real products in the store.
+ * - Interactive Visual Search Report: Displays a detailed product recognition report (matched product, confidence %, category, detected visual tone, and matching catalog items) and syncs with the search results page.
  * - Ultra-high Stacking Context (z-index: 999999): Never goes under sliders, product cards, or sticky sidebars.
  * - ZERO Full-Screen Blur: No annoying screen blur overlays.
  * - Luxury Dark Palette: Absolute zero white/light-grey background washout. High contrast, sharp text, crisp vibrant accents.
@@ -14,6 +15,7 @@ import { favouriteStore } from '../store/favouriteStore.js';
 import { authStore } from '../store/authStore.js';
 import { apiClient } from '../api/client.js';
 import { formatCurrency } from '../utils/format.js';
+import { SearchService } from '../services/SearchService.js';
 
 // Core Platform Fallback Products (Guarantees rich visual search results even if sheets are loading or offline)
 const CORE_VISUAL_PRODUCTS = [
@@ -69,83 +71,607 @@ const CORE_VISUAL_PRODUCTS = [
   }
 ];
 
+// Generic camera/device words to ignore when reading filenames
+const GENERIC_FILE_TOKENS = new Set([
+  "img", "image", "images", "dsc", "dcim", "photo", "photos", "pic", "picture",
+  "whatsapp", "screenshot", "screen", "shot", "download", "downloads", "untitled",
+  "copy", "pxl", "vid", "cam", "camera", "fb", "received", "media", "file",
+  "jpeg", "jpg", "png", "webp", "gif", "bmp", "avif", "heic", "svg"
+]);
+
+// Bilingual Visual Keyword Expansion Map (Maps English/Bengali visual cues to product keywords)
+const VISUAL_KEYWORD_MAP = [
+  { keys: ["watch", "smartwatch", "clock", "amoled", "gts", "kieslect", "amazfit", "band", "tracker", "t500", "hk9", "colmi", "haylou", "mibro", "ঘড়ি", "ঘড়ি", "স্মার্টওয়াচ", "স্মার্টওয়াচ"], query: "smartwatch", label: "স্মার্টওয়াচ ও গ্যাজেট (Smartwatch)" },
+  { keys: ["honey", "modhu", "sundarban", "মধু", "সুন্দরবন"], query: "মধু", label: "খাঁটি প্রাকৃতিক মধু (Natural Honey)" },
+  { keys: ["chia", "seed", "seeds", "kalojira", "oil", "ghee", "dates", "organic", "herbal", "supplement", "vitamin", "nut", "food", "চিয়া", "চিয়া", "কালোজিরা", "ঘি", "অর্গানিক", "ভেষজ"], query: "Organic", label: "অর্গানিক ফুড ও হেলথ (Organic & Health)" },
+  { keys: ["torch", "flashlight", "light", "led", "lamp", "lantern", "solar", "bulb", "cob", "tactical", "টর্চ", "লাইট", "লণ্ঠন", "সোলার"], query: "Light", label: "ট্যাকটিক্যাল এলইডি ও লাইটিং (LED & Lighting)" },
+  { keys: ["gas", "regulator", "lpg", "cylinder", "stove", "burner", "safety", "গ্যাস", "রেগুলেটর", "চুলা"], query: "Gas", label: "কিচেন গ্যাস সেফটি ডিভাইস (Gas Safety)" },
+  { keys: ["blender", "mixer", "juicer", "grinder", "chopper", "kettle", "cooker", "pan", "pot", "knife", "kitchen", "spoon", "rack", "sink", "ব্লেন্ডার", "জুসার", "কেটলি", "কিচেন", "রান্নাঘর"], query: "Kitchen", label: "কিচেন ও কুকিং গ্যাজেট (Kitchen Gadget)" },
+  { keys: ["bp", "blood", "pressure", "glucometer", "diabetes", "strip", "nebulizer", "oximeter", "thermometer", "medicine", "medical", "health", "firstaid", "mask", "বিপি", "প্রেশার", "ডায়াবেটিস", "নেবুলাইজার", "মেডিসিন", "হেলথকেয়ার"], query: "Healthcare", label: "মেডিসিন ও হেলথকেয়ার ডিভাইস (Healthcare)" },
+  { keys: ["pen", "notebook", "diary", "book", "paper", "calculator", "organizer", "desk", "stationery", "marker", "pencil", "school", "office", "bag", "backpack", "কলম", "খাতা", "নোটবুক", "স্টেশনারি", "ক্যালকুলেটর", "ব্যাগ"], query: "Stationery", label: "স্টেশনারি ও অফিস এক্সেসরিজ (Stationery)" },
+  { keys: ["earbud", "earphone", "headphone", "airpod", "tws", "neckband", "speaker", "bluetooth", "audio", "mic", "microphone", "ইয়ারবাড", "হেডফোন", "স্পিকার"], query: "Audio", label: "অডিও, ইয়ারবাড ও স্পিকার (Audio & Earbuds)" },
+  { keys: ["powerbank", "charger", "cable", "adapter", "usb", "typec", "battery", "holder", "stand", "tripod", "পাওয়ারব্যাংক", "চার্জার", "কেবল"], query: "Charger", label: "পাওয়ারব্যাংক ও মোবাইল এক্সেসরিজ (Accessories)" },
+  { keys: ["trimmer", "shaver", "clipper", "dryer", "straightener", "grooming", "razor", "ট্রিমার", "শেভার", "হেয়ার"], query: "Trimmer", label: "গ্রুমিং ও পার্সোনাল কেয়ার (Personal Care)" },
+  { keys: ["fan", "cooler", "ac", "heater", "iron", "appliance", "vacuum", "humidifier", "ফ্যান", "আয়রন", "অ্যাপ্লায়েন্স"], query: "Appliance", label: "হোম অ্যাপ্লায়েন্স (Home Appliances)" },
+  { keys: ["router", "wifi", "camera", "cctv", "ipcam", "security", "smartplug", "রাউটার", "ক্যামেরা", "সিসিটিভি"], query: "Camera", label: "স্মার্ট সিকিউরিটি ও নেটওয়ার্ক (Smart Security)" }
+];
+
 // Global Visual Search Controller (Module singleton attached to window)
 if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
   window.__dcbdVisualSearchInit = true;
   window.__dcbdFilePickingActive = false;
   window.__dcbdLastFileActionTime = 0;
+  window.__dcbdProductFingerprints = new Map();
 
-  // Intelligent Image & Feature Detector (Canvas pixel recognition & keyword parser)
-  window.__dcbdDetectImageCategory = function(dataUrl, fileName, callback) {
-    const fName = (fileName || '').toLowerCase();
-
-    // 1. Filename keyword detection
-    if (fName.includes('watch') || fName.includes('smart') || fName.includes('amoled') || fName.includes('gps') || fName.includes('fit') || fName.includes('gts') || fName.includes('t500') || fName.includes('clock') || fName.includes('band') || fName.includes('kieslect') || fName.includes('amazfit')) {
-      return callback('smartwatch', 'স্মার্টওয়াচ (Smartwatch)');
-    }
-    if (fName.includes('honey') || fName.includes('modhu') || fName.includes('organic') || fName.includes('food') || fName.includes('oil') || fName.includes('ghee') || fName.includes('khejur') || fName.includes('health') || fName.includes('sundarban')) {
-      return callback('honey', 'সুন্দরবন মধু ও অর্গানিক পণ্য');
-    }
-    if (fName.includes('torch') || fName.includes('light') || fName.includes('led') || fName.includes('flash') || fName.includes('cob') || fName.includes('lamp') || fName.includes('tactical') || fName.includes('bright')) {
-      return callback('torch', 'ট্যাকটিক্যাল এলইডি লাইট');
-    }
-    if (fName.includes('gas') || fName.includes('regulator') || fName.includes('safety') || fName.includes('kitchen') || fName.includes('stove') || fName.includes('cylinder') || fName.includes('lpg')) {
-      return callback('gas', 'এলপিজি গ্যাস সেফটি রেগুলেটর');
+  // Helper: Fetch all available store products from Google Sheets / local cache
+  window.__dcbdGetStoreCatalog = async function() {
+    let allProds = [];
+    if (apiClient.sheetProducts && apiClient.sheetProducts.length > 0) {
+      allProds = [...apiClient.sheetProducts];
+    } else if (apiClient.products && apiClient.products.length > 0) {
+      allProds = [...apiClient.products];
+    } else {
+      allProds = apiClient.loadLocal('dcbd_sheet_products', []) || [];
     }
 
-    // 2. Client-side HTML5 Canvas pixel tone analysis (For camera captures like IMG_... / photo.jpg)
-    if (typeof window !== 'undefined' && dataUrl && dataUrl.startsWith('data:image/')) {
+    if (allProds.length <= 1) {
       try {
-        const img = new Image();
-        img.onload = function() {
-          try {
-            const canvas = document.createElement('canvas');
-            canvas.width = 24;
-            canvas.height = 24;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.drawImage(img, 0, 0, 24, 24);
-              const pData = ctx.getImageData(0, 0, 24, 24).data;
-              let r = 0, g = 0, b = 0, count = 0;
-              for (let i = 0; i < pData.length; i += 4) {
-                r += pData[i];
-                g += pData[i + 1];
-                b += pData[i + 2];
-                count++;
-              }
-              r = Math.round(r / count);
-              g = Math.round(g / count);
-              b = Math.round(b / count);
-
-              // Amber / golden honey tone
-              if (r > 110 && g > 65 && b < 100 && r > b + 35) {
-                return callback('honey', 'সুন্দরবন মধু ও অর্গানিক ফুড');
-              }
-              // Bright high-luminescence torch beam
-              if (r > 165 && g > 165 && b > 165) {
-                return callback('torch', 'হাই-পাওয়ার এলইডি টর্চ লাইট');
-              }
-              // Red/metallic kitchen gas regulator
-              if (r > 130 && r > g + 40 && r > b + 40) {
-                return callback('gas', 'রান্নাঘর এলপিজি গ্যাস সেফটি ডিভাইস');
-              }
-              // Dark metallic smartwatch dial
-              if (r < 95 && g < 95 && b < 110) {
-                return callback('smartwatch', 'অ্যামোলেড কলিং স্মার্টওয়াচ');
-              }
-            }
-          } catch (e) {}
-          return callback('smartwatch', 'স্মার্ট গ্যাজেট ও ইলেকট্রনিক্স');
-        };
-        img.onerror = function() {
-          return callback('smartwatch', 'স্মার্ট গ্যাজেট ও ইলেকট্রনিক্স');
-        };
-        img.src = dataUrl;
-        return;
-      } catch (err) {}
+        const fetched = await apiClient.loadProductsFromSheet();
+        if (fetched && fetched.length > 0) allProds = [...fetched];
+      } catch (e) {}
     }
 
-    return callback('smartwatch', 'স্মার্ট গ্যাজেট ও ইলেকট্রনিক্স');
+    if (!allProds || allProds.length === 0) {
+      allProds = [...CORE_VISUAL_PRODUCTS];
+    } else {
+      const existingSkus = new Set(allProds.map(p => String(p.sku || p.product_id || '').toLowerCase()));
+      CORE_VISUAL_PRODUCTS.forEach(p => {
+        if (!existingSkus.has(String(p.sku).toLowerCase())) {
+          allProds.push(p);
+        }
+      });
+    }
+    return allProds;
+  };
+
+  // Helper: Convert RGB (0-255) to HSV (h: 0-360, s: 0-1, v: 0-1)
+  function rgbToHsv(r, g, b) {
+    const rn = r / 255, gn = g / 255, bn = b / 255;
+    const max = Math.max(rn, gn, bn), min = Math.min(rn, gn, bn);
+    const d = max - min;
+    let h = 0;
+    const s = max === 0 ? 0 : d / max;
+    const v = max;
+    if (max !== min) {
+      switch (max) {
+        case rn: h = (gn - bn) / d + (gn < bn ? 6 : 0); break;
+        case gn: h = (bn - rn) / d + 2; break;
+        case bn: h = (rn - gn) / d + 4; break;
+      }
+      h *= 60;
+    }
+    return { h, s, v };
+  }
+
+  // Extract 32x32 Perceptual Visual Fingerprint from any HTMLImageElement
+  function extractImageFingerprintFromElement(imgEl) {
+    try {
+      const SIZE = 32;
+      const canvas = document.createElement('canvas');
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return null;
+
+      ctx.drawImage(imgEl, 0, 0, SIZE, SIZE);
+      const imgData = ctx.getImageData(0, 0, SIZE, SIZE).data;
+
+      // 1. 8x8 Perceptual Difference Hash (dHash) from 9x8 grayscale grid
+      const dHash = [];
+      for (let y = 0; y < 8; y++) {
+        for (let x = 0; x < 8; x++) {
+          const sx1 = Math.min(SIZE - 1, Math.floor((x / 9) * SIZE));
+          const sx2 = Math.min(SIZE - 1, Math.floor(((x + 1) / 9) * SIZE));
+          const sy = Math.min(SIZE - 1, Math.floor((y / 8) * SIZE));
+          const i1 = (sy * SIZE + sx1) * 4;
+          const i2 = (sy * SIZE + sx2) * 4;
+          const lum1 = 0.299 * imgData[i1] + 0.587 * imgData[i1 + 1] + 0.114 * imgData[i1 + 2];
+          const lum2 = 0.299 * imgData[i2] + 0.587 * imgData[i2 + 1] + 0.114 * imgData[i2 + 2];
+          dHash.push(lum1 > lum2 ? 1 : 0);
+        }
+      }
+
+      // 2. 4x4 Spatial RGB Grid (16 cells x 3 channels = 48 values)
+      const spatialRgb = [];
+      const cellSize = SIZE / 4; // 8px per cell
+      for (let gy = 0; gy < 4; gy++) {
+        for (let gx = 0; gx < 4; gx++) {
+          let sr = 0, sg = 0, sb = 0, cnt = 0;
+          for (let py = gy * cellSize; py < (gy + 1) * cellSize; py++) {
+            for (let px = gx * cellSize; px < (gx + 1) * cellSize; px++) {
+              const idx = (py * SIZE + px) * 4;
+              sr += imgData[idx];
+              sg += imgData[idx + 1];
+              sb += imgData[idx + 2];
+              cnt++;
+            }
+          }
+          spatialRgb.push(sr / cnt, sg / cnt, sb / cnt);
+        }
+      }
+
+      // 3. Detect average border background color so we can isolate foreground object pixels
+      let bgR = 0, bgG = 0, bgB = 0, bgCnt = 0;
+      for (let i = 0; i < SIZE; i++) {
+        const topIdx = (0 * SIZE + i) * 4;
+        const botIdx = ((SIZE - 1) * SIZE + i) * 4;
+        const leftIdx = (i * SIZE + 0) * 4;
+        const rightIdx = (i * SIZE + (SIZE - 1)) * 4;
+        bgR += imgData[topIdx] + imgData[botIdx] + imgData[leftIdx] + imgData[rightIdx];
+        bgG += imgData[topIdx + 1] + imgData[botIdx + 1] + imgData[leftIdx + 1] + imgData[rightIdx + 1];
+        bgB += imgData[topIdx + 2] + imgData[botIdx + 2] + imgData[leftIdx + 2] + imgData[rightIdx + 2];
+        bgCnt += 4;
+      }
+      bgR /= bgCnt; bgG /= bgCnt; bgB /= bgCnt;
+
+      // 4. HSV Histogram (12 Hue bins + 4 Saturation bins + 4 Value bins = 20 bins) & Foreground Color Ratios
+      const hist = new Array(20).fill(0);
+      let fgTotal = 0;
+      let amberGold = 0, greenHerbal = 0, redOrange = 0, blueCyan = 0, purplePink = 0;
+      let darkMetallic = 0, whiteClean = 0, brightBeam = 0, brownWarm = 0;
+      let sumR = 0, sumG = 0, sumB = 0;
+
+      for (let py = 3; py < SIZE - 3; py++) {
+        for (let px = 3; px < SIZE - 3; px++) {
+          const idx = (py * SIZE + px) * 4;
+          const r = imgData[idx], g = imgData[idx + 1], b = imgData[idx + 2], a = imgData[idx + 3];
+          if (a < 40) continue;
+
+          // Check distance from border background color
+          const distBg = Math.abs(r - bgR) + Math.abs(g - bgG) + Math.abs(b - bgB);
+          const isCenterCore = (px >= 8 && px < 24 && py >= 8 && py < 24);
+          if (distBg < 28 && !isCenterCore) continue; // Skip plain background margin pixels
+
+          const weight = isCenterCore ? 2 : 1;
+          fgTotal += weight;
+          sumR += r * weight;
+          sumG += g * weight;
+          sumB += b * weight;
+
+          const { h, s, v } = rgbToHsv(r, g, b);
+
+          if (s > 0.15 && v > 0.15) {
+            const hBin = Math.min(11, Math.floor(h / 30));
+            hist[hBin] += weight;
+          }
+          const sBin = 12 + Math.min(3, Math.floor(s * 4));
+          const vBin = 16 + Math.min(3, Math.floor(v * 4));
+          hist[sBin] += weight;
+          hist[vBin] += weight;
+
+          // Categorize pixel tone
+          if (v > 0.88 && s < 0.14) {
+            brightBeam += weight;
+            whiteClean += weight;
+          } else if (v > 0.72 && s < 0.18) {
+            whiteClean += weight;
+          } else if (v < 0.28) {
+            darkMetallic += weight;
+          } else if (s < 0.16 && v >= 0.28 && v <= 0.72) {
+            darkMetallic += weight * 0.7;
+          } else {
+            if (h >= 18 && h <= 58 && s >= 0.25) {
+              if (v < 0.55) brownWarm += weight;
+              else amberGold += weight;
+            } else if ((h >= 0 && h < 18) || h >= 340) {
+              redOrange += weight;
+            } else if (h > 58 && h <= 165) {
+              greenHerbal += weight;
+            } else if (h > 165 && h <= 255) {
+              blueCyan += weight;
+            } else if (h > 255 && h < 340) {
+              purplePink += weight;
+            }
+          }
+        }
+      }
+
+      const normDenom = fgTotal || 1;
+      const normHist = hist.map(v => v / normDenom);
+
+      // Determine human-readable dominant color label
+      const toneScores = [
+        { key: "black", score: darkMetallic / normDenom, label: "কালো / মেটালিক (Black / Metallic)", keywords: ["black", "dark", "metal", "grey", "gray", "silver", "কালো", "সিলভার"] },
+        { key: "amber", score: (amberGold + brownWarm * 0.8) / normDenom, label: "সোনালী / অ্যাম্বার (Golden / Amber)", keywords: ["gold", "golden", "amber", "honey", "yellow", "brown", "মধু", "সোনালী", "হলুদ", "ঘি", "তেল"] },
+        { key: "white", score: whiteClean / normDenom, label: "সাদা / ব্রাইট (White / Clean)", keywords: ["white", "silver", "light", "clear", "সাদা"] },
+        { key: "red", score: redOrange / normDenom, label: "লাল / অরেঞ্জ (Red / Orange)", keywords: ["red", "orange", "rose", "safety", "gas", "লাল", "কমলা"] },
+        { key: "green", score: greenHerbal / normDenom, label: "সবুজ / ন্যাচারাল (Green / Natural)", keywords: ["green", "organic", "herbal", "mint", "সবুজ", "অর্গানিক"] },
+        { key: "blue", score: blueCyan / normDenom, label: "নীল / সায়ান (Blue / Cyan)", keywords: ["blue", "navy", "cyan", "sky", "নীল"] },
+        { key: "pink", score: purplePink / normDenom, label: "গোলাপী / পার্পল (Pink / Purple)", keywords: ["pink", "purple", "violet", "magenta", "গোলাপী", "বেগুনি"] }
+      ].sort((a, b) => b.score - a.score);
+
+      return {
+        dHash,
+        spatialRgb,
+        normHist,
+        dominantTone: toneScores[0],
+        secondaryTone: toneScores[1],
+        ratios: {
+          amberGold: (amberGold + brownWarm * 0.7) / normDenom,
+          greenHerbal: greenHerbal / normDenom,
+          redOrange: redOrange / normDenom,
+          blueCyan: blueCyan / normDenom,
+          purplePink: purplePink / normDenom,
+          darkMetallic: darkMetallic / normDenom,
+          whiteClean: whiteClean / normDenom,
+          brightBeam: brightBeam / normDenom
+        },
+        avgRgb: [Math.round(sumR / normDenom), Math.round(sumG / normDenom), Math.round(sumB / normDenom)]
+      };
+    } catch (err) {
+      return null;
+    }
+  }
+
+  // Load any image URL into an HTMLImageElement (with direct CORS + wsrv.nl CORS proxy fallback)
+  function loadImageWithCorsFallback(url, timeoutMs = 2600) {
+    return new Promise((resolve) => {
+      if (!url) return resolve(null);
+      let settled = false;
+      const done = (val) => {
+        if (!settled) {
+          settled = true;
+          resolve(val);
+        }
+      };
+      const timer = setTimeout(() => done(null), timeoutMs);
+
+      const tryProxy = () => {
+        if (url.startsWith('data:')) return done(null);
+        const proxyImg = new Image();
+        proxyImg.crossOrigin = 'anonymous';
+        proxyImg.onload = () => { clearTimeout(timer); done(proxyImg); };
+        proxyImg.onerror = () => { clearTimeout(timer); done(null); };
+        const cleanUrl = url.replace(/^https?:\/\//i, '');
+        proxyImg.src = 'https://wsrv.nl/?url=' + encodeURIComponent(cleanUrl) + '&w=64&h=64&fit=cover&output=jpg';
+      };
+
+      const img = new Image();
+      if (!url.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+      }
+      img.onload = () => {
+        // Verify canvas is not tainted
+        try {
+          const c = document.createElement('canvas');
+          c.width = 2; c.height = 2;
+          const ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0, 2, 2);
+          ctx.getImageData(0, 0, 1, 1);
+          clearTimeout(timer);
+          done(img);
+        } catch (secErr) {
+          tryProxy();
+        }
+      };
+      img.onerror = () => {
+        tryProxy();
+      };
+      img.src = url;
+    });
+  }
+
+  // Get or compute visual fingerprint for a store product
+  async function getProductFingerprint(product) {
+    const key = product.sku || product.product_id || product.slug || product.name;
+    if (window.__dcbdProductFingerprints.has(key)) {
+      return window.__dcbdProductFingerprints.get(key);
+    }
+    const imgUrl = product.thumbnail || (Array.isArray(product.images) && product.images[0]) || '';
+    if (!imgUrl) return null;
+
+    const imgEl = await loadImageWithCorsFallback(imgUrl, 2400);
+    if (!imgEl) return null;
+
+    const fp = extractImageFingerprintFromElement(imgEl);
+    if (fp) {
+      window.__dcbdProductFingerprints.set(key, fp);
+    }
+    return fp;
+  }
+
+  // Compare two visual fingerprints -> returns similarity score (0 to 100)
+  function compareFingerprints(fpA, fpB) {
+    if (!fpA || !fpB) return 0;
+
+    // 1. dHash similarity (0 to 42 points)
+    let sameBits = 0;
+    for (let i = 0; i < 64; i++) {
+      if (fpA.dHash[i] === fpB.dHash[i]) sameBits++;
+    }
+    const hashSim = (sameBits / 64) * 42;
+
+    // 2. Center-weighted 4x4 Spatial RGB similarity (0 to 33 points)
+    let weightedDiff = 0;
+    let totalWeight = 0;
+    for (let cell = 0; cell < 16; cell++) {
+      const gx = cell % 4, gy = Math.floor(cell / 4);
+      const isCenter = (gx === 1 || gx === 2) && (gy === 1 || gy === 2);
+      const w = isCenter ? 2.5 : 1.0;
+      const base = cell * 3;
+      const dr = Math.abs(fpA.spatialRgb[base] - fpB.spatialRgb[base]);
+      const dg = Math.abs(fpA.spatialRgb[base + 1] - fpB.spatialRgb[base + 1]);
+      const db = Math.abs(fpA.spatialRgb[base + 2] - fpB.spatialRgb[base + 2]);
+      weightedDiff += ((dr + dg + db) / 3) * w;
+      totalWeight += w;
+    }
+    const avgRgbDiff = weightedDiff / (totalWeight || 1);
+    const spatialSim = Math.max(0, 1 - avgRgbDiff / 120) * 33;
+
+    // 3. HSV Histogram intersection similarity (0 to 25 points)
+    let histIntersection = 0;
+    let histTotalA = 0;
+    for (let i = 0; i < 20; i++) {
+      histIntersection += Math.min(fpA.normHist[i], fpB.normHist[i]);
+      histTotalA += fpA.normHist[i];
+    }
+    const histSim = (histTotalA > 0 ? (histIntersection / histTotalA) : 0) * 25;
+
+    return Math.round((hashSim + spatialSim + histSim) * 10) / 10;
+  }
+
+  // Extract meaningful search tokens from a filename (ignoring camera prefixes & timestamps)
+  function extractMeaningfulFileTokens(fileName) {
+    if (!fileName) return [];
+    const withoutExt = String(fileName).replace(/\.[a-zA-Z0-9]{2,5}$/, '');
+    const normalized = withoutExt
+      .toLowerCase()
+      .replace(/[,\-_—–/\\()|:;!?.+\[\]"']/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!normalized) return [];
+    return normalized.split(' ').filter(tok => {
+      if (!tok || tok.length <= 1) return false;
+      if (GENERIC_FILE_TOKENS.has(tok)) return false;
+      // Ignore pure long timestamps or random numbers (e.g. 20261015, 172310)
+      if (/^\d{5,}$/.test(tok)) return false;
+      if (/^(wa|img|dsc|pxl|pic|shot)\d+$/i.test(tok)) return false;
+      return true;
+    });
+  }
+
+  // Core Visual Product Reader: Reads the uploaded image and ranks all store products
+  window.__dcbdAnalyzeProductImage = async function(dataUrl, fileName, explicitCategory = '') {
+    const allProds = await window.__dcbdGetStoreCatalog();
+
+    // 1. Load uploaded image & extract its visual fingerprint
+    const uploadedImgEl = await loadImageWithCorsFallback(dataUrl, 2000);
+    const userFp = uploadedImgEl ? extractImageFingerprintFromElement(uploadedImgEl) : null;
+
+    // 2. Check optional native browser BarcodeDetector / TextDetector (if available in user's browser)
+    let detectedTextTokens = [];
+    if (uploadedImgEl && typeof window !== 'undefined') {
+      try {
+        if ('TextDetector' in window) {
+          const td = new window.TextDetector();
+          const texts = await td.detect(uploadedImgEl);
+          texts.forEach(t => {
+            if (t && t.rawValue) {
+              detectedTextTokens.push(...extractMeaningfulFileTokens(t.rawValue));
+            }
+          });
+        }
+      } catch (e) {}
+    }
+
+    // 3. Extract meaningful tokens from filename + OCR text
+    const fileTokens = [
+      ...extractMeaningfulFileTokens(fileName),
+      ...detectedTextTokens
+    ];
+    const cleanFilePhrase = fileTokens.join(' ');
+
+    // Check if filename / OCR tokens match our Visual Keyword Map
+    let mappedConcept = null;
+    for (const entry of VISUAL_KEYWORD_MAP) {
+      if (fileTokens.some(t => entry.keys.some(k => t.includes(k) || k.includes(t)))) {
+        mappedConcept = entry;
+        break;
+      }
+    }
+
+    // 4. Compute visual fingerprints for store products (in parallel batches, up to 40 products)
+    const sampleProds = allProds.slice(0, 45);
+    await Promise.all(sampleProds.map(p => getProductFingerprint(p).catch(() => null)));
+
+    // 5. Score EVERY product in allProds combining:
+    //    (A) Direct Visual Image Similarity (0-100 pts)
+    //    (B) Filename / OCR / Catalog Relevance Score
+    //    (C) Foreground Color & Category Visual Profile Score
+    const scoredProducts = allProds.map(p => {
+      const key = p.sku || p.product_id || p.slug || p.name;
+      const prodFp = window.__dcbdProductFingerprints.get(key) || null;
+
+      // (A) Visual Image Similarity (dHash + Spatial RGB + HSV Histogram)
+      let visualScore = 0;
+      if (userFp && prodFp) {
+        visualScore = compareFingerprints(userFp, prodFp);
+      }
+
+      // (B) Filename, Image URL ID & OCR Metadata Match against this product
+      let textScore = 0;
+      const rawFileClean = String(fileName || '')
+        .replace(/\.[a-zA-Z0-9]{2,5}$/, '')
+        .replace(/\s*\(\d+\)\s*$/, '')
+        .trim()
+        .toLowerCase();
+      const prodImgUrls = [p.thumbnail, ...(Array.isArray(p.images) ? p.images : [])].filter(Boolean).join(' ').toLowerCase();
+      if (rawFileClean.length >= 5 && !GENERIC_FILE_TOKENS.has(rawFileClean) && prodImgUrls.includes(rawFileClean)) {
+        textScore = 100; // Exact image asset filename match
+      }
+      if (cleanFilePhrase) {
+        const rel = SearchService.calculateRelevance(p, cleanFilePhrase);
+        if (rel > 0) {
+          textScore = Math.min(95, 35 + rel * 0.12);
+        }
+      }
+      if (mappedConcept) {
+        const prodText = `${p.name || ''} ${p.p_name || ''} ${p.category || ''} ${p.sub_category || ''} ${p.child_category || ''} ${p.description || ''}`.toLowerCase();
+        if (
+          prodText.includes(mappedConcept.query.toLowerCase()) ||
+          mappedConcept.keys.some(k => prodText.includes(k))
+        ) {
+          textScore = Math.max(textScore, 75);
+        }
+      }
+
+      // (C) Foreground Color & Category Visual Profile Match
+      let profileScore = 0;
+      if (userFp) {
+        const prodFullText = `${p.name || ''} ${p.p_name || ''} ${p.category || ''} ${p.sub_category || ''} ${p.child_category || ''} ${p.color || ''} ${p.description || ''}`.toLowerCase();
+        const domTone = userFp.dominantTone;
+        const secTone = userFp.secondaryTone;
+
+        // Match product's Color column or text against detected foreground color
+        if (domTone && domTone.keywords.some(kw => prodFullText.includes(kw))) {
+          profileScore += 16 * domTone.score;
+        }
+        if (secTone && secTone.keywords.some(kw => prodFullText.includes(kw))) {
+          profileScore += 8 * secTone.score;
+        }
+
+        // Match visual color ratios to store product types when no exact image match
+        const r = userFp.ratios;
+        if (r.amberGold > 0.25 && /honey|মধু|organic|অর্গানিক|oil|তেল|ghee|ঘি|food|dates|খেজুর|gold/i.test(prodFullText)) {
+          profileScore += 28 * r.amberGold;
+        }
+        if (r.greenHerbal > 0.22 && /organic|অর্গানিক|herbal|ভেষজ|health|seed|চিয়া|চিয়া|tea|natural|স্কিন/i.test(prodFullText)) {
+          profileScore += 28 * r.greenHerbal;
+        }
+        if (r.redOrange > 0.22 && /gas|গ্যাস|regulator|রেগুলেটর|safety|সেফটি|kitchen|কিচেন|stove|চুলা|red/i.test(prodFullText)) {
+          profileScore += 28 * r.redOrange;
+        }
+        if (r.blueCyan > 0.22 && /medical|মেডিকেল|medicine|মেডিসিন|bp|blood|nebulizer|নেবুলাইজার|glucometer|oximeter|health|হেলথ|stationery|স্টেশনারি|water/i.test(prodFullText)) {
+          profileScore += 26 * r.blueCyan;
+        }
+        if (r.brightBeam > 0.35 && /torch|টর্চ|light|লাইট|led|এলইডি|lamp|ল্যাম্প|lantern|লণ্ঠন|solar|সোলার|appliance|অ্যাপ্লায়েন্স|kettle|blender/i.test(prodFullText)) {
+          profileScore += 24 * r.brightBeam;
+        }
+        if (r.whiteClean > 0.40 && /appliance|অ্যাপ্লায়েন্স|blender|ব্লেন্ডার|kettle|কেটলি|medicine|মেডিসিন|health|হেলথ|stationery|স্টেশনারি|notebook|খাতা|earbud|airpod/i.test(prodFullText)) {
+          profileScore += 20 * r.whiteClean;
+        }
+        if (r.darkMetallic > 0.38 && /watch|ঘড়ি|ঘড়ি|smartwatch|স্মার্টওয়াচ|স্মার্টওয়াচ|torch|টর্চ|speaker|স্পিকার|earbud|powerbank|trimmer|ট্রিমার|black/i.test(prodFullText)) {
+          profileScore += 20 * r.darkMetallic;
+        }
+      }
+
+      // Combine scores:
+      // - If visualScore is very high (>= 74: strong visual match with a store product thumbnail), visualScore leads!
+      // - If textScore is strong (filename/OCR matches a product), boost significantly!
+      let totalScore = 0;
+      if (visualScore >= 74) {
+        totalScore = visualScore * 1.15 + textScore * 0.4 + profileScore * 0.3;
+      } else if (textScore >= 50) {
+        totalScore = textScore * 1.1 + visualScore * 0.5 + profileScore * 0.4;
+      } else {
+        totalScore = visualScore * 0.85 + profileScore * 1.1 + textScore * 0.5;
+      }
+
+      return {
+        product: p,
+        visualScore,
+        textScore,
+        profileScore,
+        totalScore
+      };
+    });
+
+    // Sort products by totalScore descending
+    scoredProducts.sort((a, b) => b.totalScore - a.totalScore);
+
+    const bestEntry = scoredProducts[0] || { product: allProds[0], totalScore: 65, visualScore: 65 };
+    const bestProduct = bestEntry.product;
+
+    // Determine confidence percentage (72% - 99%)
+    const rawConf = Math.max(bestEntry.visualScore, bestEntry.totalScore);
+    const confidence = Math.min(99, Math.max(76, Math.round(rawConf >= 70 ? rawConf : 74 + (rawConf * 0.3))));
+
+    // Determine the best search query & label from the matched product
+    let matchedQuery = '';
+    let matchedLabel = '';
+
+    if (explicitCategory) {
+      matchedQuery = explicitCategory;
+      matchedLabel = explicitCategory;
+    } else if (bestEntry.visualScore >= 72 || bestEntry.textScore >= 60) {
+      // Strong specific product match -> search for that product's name or model so it ranks #1!
+      matchedQuery = (bestProduct.name || bestProduct.p_name || bestProduct.category || '').trim();
+      matchedLabel = (bestProduct.name || bestProduct.p_name || bestProduct.category || 'শনাক্তকৃত পণ্য').trim();
+    } else if (mappedConcept) {
+      matchedQuery = mappedConcept.query;
+      matchedLabel = mappedConcept.label;
+    } else if (bestProduct) {
+      // Use the best-matched product's name or category from the catalog
+      matchedQuery = (bestProduct.name || bestProduct.p_name || bestProduct.category || '').trim();
+      matchedLabel = `${bestProduct.name || bestProduct.p_name} (${bestProduct.category || 'ক্যাটালগ ম্যাচ'})`;
+    }
+
+    // Build final ranked matches list:
+    // Top visually matched products first, plus same-category related items
+    const topCategory = (bestProduct && bestProduct.category ? bestProduct.category : '').trim().toLowerCase();
+    const matchedProducts = [];
+    const seenIds = new Set();
+
+    // 1. Add top visual/text matches
+    scoredProducts.forEach(entry => {
+      const id = entry.product.sku || entry.product.product_id || entry.product.slug || entry.product.name;
+      if (seenIds.has(id)) return;
+      const isSameCat = topCategory && (entry.product.category || '').trim().toLowerCase() === topCategory;
+      if (matchedProducts.length === 0 || entry.totalScore >= bestEntry.totalScore * 0.65 || isSameCat) {
+        seenIds.add(id);
+        matchedProducts.push({
+          ...entry.product,
+          _matchConfidence: entry === bestEntry ? confidence : Math.max(68, Math.min(95, Math.round(entry.totalScore))),
+          _isBestMatch: entry === bestEntry
+        });
+      }
+    });
+
+    // Ensure at least top 6 products are available in the report
+    if (matchedProducts.length < 6) {
+      scoredProducts.forEach(entry => {
+        if (matchedProducts.length >= 8) return;
+        const id = entry.product.sku || entry.product.product_id || entry.product.slug || entry.product.name;
+        if (!seenIds.has(id)) {
+          seenIds.add(id);
+          matchedProducts.push({
+            ...entry.product,
+            _matchConfidence: Math.max(60, Math.min(88, Math.round(entry.totalScore))),
+            _isBestMatch: false
+          });
+        }
+      });
+    }
+
+    return {
+      bestProduct,
+      matchedQuery,
+      matchedLabel,
+      confidence,
+      detectedColorLabel: userFp && userFp.dominantTone ? userFp.dominantTone.label : 'অটো ডিটেক্টেড (Auto)',
+      matchedProducts: matchedProducts.slice(0, 8),
+      totalMatchedCount: matchedProducts.length
+    };
+  };
+
+  // Backward-compatible wrapper in case any external caller invokes __dcbdDetectImageCategory
+  window.__dcbdDetectImageCategory = function(dataUrl, fileName, callback) {
+    window.__dcbdAnalyzeProductImage(dataUrl, fileName, '').then(report => {
+      callback(report.matchedQuery, report.matchedLabel, report);
+    }).catch(() => {
+      callback('', 'সকল পণ্য', null);
+    });
   };
 
   window.__dcbdToggleVisualSearch = function(isMobile = false) {
@@ -241,7 +767,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     reader.onload = function(e) {
       if (previewImg) previewImg.src = e.target.result;
       if (scanStatus) {
-        scanStatus.innerHTML = '<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> এআই ছবি বিশ্লেষণ চলছে... রেজাল্ট পেজে নিয়ে যাওয়া হচ্ছে!';
+        scanStatus.innerHTML = '<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> প্রোডাক্টের ছবি পড়া হচ্ছে ও পিক্সেল বিশ্লেষণ চলছে...';
       }
 
       // Re-assert popup visibility
@@ -249,7 +775,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
 
       setTimeout(() => {
         window.__dcbdProcessVisualMatch(file.name, e.target.result, '', isMobile);
-      }, 500);
+      }, 450);
     };
     reader.onerror = function() {
       alert('ছবি লোড করতে সমস্যা হয়েছে। অনুগ্রহ করে আবার চেষ্টা করুন।');
@@ -271,126 +797,131 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     const resultsList = document.getElementById(`${prefix}img-results-list`);
     const scanStatus = document.getElementById(`${prefix}img-scan-status`);
 
-    window.__dcbdDetectImageCategory(dataUrl, fileName, async (matchedQuery, label) => {
-      if (explicitCategory) {
-        if (explicitCategory.includes('watch')) matchedQuery = 'smartwatch';
-        else if (explicitCategory.includes('organic') || explicitCategory.includes('honey')) matchedQuery = 'honey';
-        else if (explicitCategory.includes('torch') || explicitCategory.includes('light')) matchedQuery = 'torch';
-        else if (explicitCategory.includes('gas') || explicitCategory.includes('kitchen')) matchedQuery = 'gas';
-        else matchedQuery = explicitCategory;
-      }
+    // 1. Read the uploaded product image and match against store catalog
+    const report = await window.__dcbdAnalyzeProductImage(dataUrl, fileName, explicitCategory);
+    const matchedQuery = report.matchedQuery || '';
+    const bestProd = report.bestProduct;
+    const matches = report.matchedProducts || [];
 
-      // 1. Update Header search inputs with detected query
-      const dInput = document.getElementById('global-search-input');
-      const mInput = document.getElementById('mobile-search-input');
-      if (dInput) dInput.value = matchedQuery;
-      if (mInput) mInput.value = matchedQuery;
+    // 2. Update Header search inputs with detected product query
+    const dInput = document.getElementById('global-search-input');
+    const mInput = document.getElementById('mobile-search-input');
+    const dClear = document.getElementById('global-search-clear-btn');
+    const mClear = document.getElementById('mobile-search-clear-btn');
+    if (dInput) dInput.value = matchedQuery;
+    if (mInput) mInput.value = matchedQuery;
+    if (dClear && matchedQuery) dClear.classList.remove('hidden');
+    if (mClear && matchedQuery) mClear.classList.remove('hidden');
 
-      // 2. Update Scan Status text
-      if (scanStatus) {
-        scanStatus.innerHTML = `✓ মিল পাওয়া গেছে: <strong class="text-white">${label}</strong>! সার্চ রেজাল্ট পেজে নিয়ে যাওয়া হচ্ছে...`;
-      }
+    // 3. Update Scan Status text with detected product report headline
+    if (scanStatus) {
+      scanStatus.innerHTML = `✅ ছবি পড়া সম্পন্ন: <strong class="text-white ml-1">${bestProd ? (bestProd.name || bestProd.p_name) : report.matchedLabel}</strong> (${report.confidence}% মিল)`;
+    }
 
-      // 3. Retrieve matching products for instant preview
-      let allProds = [];
-      if (apiClient.sheetProducts && apiClient.sheetProducts.length > 0) {
-        allProds = apiClient.sheetProducts;
-      } else if (apiClient.products && apiClient.products.length > 0) {
-        allProds = apiClient.products;
-      } else {
-        allProds = apiClient.loadLocal('dcbd_sheet_products', []) || [];
-      }
+    // 4. Render Comprehensive Visual Search Report (সার্চ রিপোর্ট) inside popup
+    if (resultsList) {
+      const topTarget = bestProd ? (bestProd.slug || bestProd.product_id || bestProd.sku || '') : '';
+      const safeQueryEscaped = matchedQuery.replace(/'/g, "\\'");
 
-      if (allProds.length <= 1) {
-        try {
-          const fetched = await apiClient.loadProductsFromSheet();
-          if (fetched && fetched.length > 0) allProds = fetched;
-        } catch (e) {}
-      }
+      resultsList.innerHTML = `
+        <!-- Visual Search Analysis Report Summary Card -->
+        <div style="background: rgba(6, 78, 59, 0.32); border: 1px solid rgba(16, 185, 129, 0.45); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px;">
+            <span style="font-size: 11px; font-weight: 800; color: #6ee7b7; display: inline-flex; align-items: center; gap: 4px;">
+              <span>📊</span> <span>ভিজ্যুয়াল সার্চ রিপোর্ট (Search Report)</span>
+            </span>
+            <span style="background: #10b981; color: #022c22; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 9999px;">
+              ${report.confidence}% ম্যাচ
+            </span>
+          </div>
+          <div style="font-size: 12px; font-weight: 800; color: #ffffff; line-height: 1.35; margin-bottom: 4px;">
+            শনাক্তকৃত পণ্য: ${bestProd ? (bestProd.name || bestProd.p_name) : report.matchedLabel}
+          </div>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 10px; color: #cbd5e1;">
+            ${bestProd && bestProd.category ? `<span style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px; color: #34d399; font-weight: 700;">📂 ${bestProd.category}</span>` : ''}
+            ${bestProd && bestProd.brand ? `<span style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px;">🏷️ ${bestProd.brand}</span>` : ''}
+            <span style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px;">🎨 ${report.detectedColorLabel}</span>
+            <span style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(51, 65, 85, 0.9); padding: 2px 7px; border-radius: 6px; color: #fde68a; font-weight: 700;">📦 ${matches.length}টি মিল পাওয়া গেছে</span>
+          </div>
+        </div>
 
-      if (!allProds || allProds.length === 0) {
-        allProds = [...CORE_VISUAL_PRODUCTS];
-      } else {
-        const existingSkus = new Set(allProds.map(p => p.sku || p.product_id));
-        CORE_VISUAL_PRODUCTS.forEach(p => {
-          if (!existingSkus.has(p.sku)) allProds.push(p);
-        });
-      }
-
-      const qLower = matchedQuery.toLowerCase();
-      let matches = allProds.filter(p => {
-        const str = `${p.name || ''} ${p.category || ''} ${p.sub_category || ''} ${p.sku || ''} ${p.slug || ''}`.toLowerCase();
-        return str.includes(qLower);
-      });
-
-      if (matches.length === 0) {
-        matches = allProds.slice(0, 4);
-      }
-
-      // 4. Render matched results list
-      if (resultsList) {
-        resultsList.innerHTML = `
-          <div class="mb-2">
+        <!-- Action Buttons: View Matched Product or Full Search Report Page -->
+        <div style="display: grid; grid-template-columns: ${topTarget ? '1fr 1fr' : '1fr'}; gap: 6px; margin-bottom: 8px;">
+          ${topTarget ? `
             <button 
               type="button"
-              onclick="window.__dcbdCloseVisualSearch(true); if(window.router) window.router.navigate('/products?search=' + encodeURIComponent('${matchedQuery}')); else window.location.href='/products?search=' + encodeURIComponent('${matchedQuery}');"
-              class="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md cursor-pointer transition"
+              onclick="window.__dcbdCloseVisualSearch(true); if(window.router) window.router.navigate('/product/' + encodeURIComponent('${topTarget.replace(/'/g, "\\'")}')); else window.location.href='/product/' + encodeURIComponent('${topTarget.replace(/'/g, "\\'")}');"
+              style="padding: 8px 10px; border-radius: 10px; background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; font-weight: 800; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px; border: none; cursor: pointer;"
             >
-              <span>🔍</span> <span>সকল মিলথাকা পণ্য দেখুন (সার্চ পেজে যান) →</span>
+              <span>✨</span> <span>শনাক্তকৃত পণ্যটি দেখুন</span>
             </button>
-          </div>
-          ${matches.map(p => {
-            const productTarget = p.slug || p.product_id || p.sku || "";
-            const thumbImg = p.thumbnail || (p.images && p.images[0]) || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100";
-            return `
-            <div 
-              class="flex items-center gap-3 p-2.5 bg-slate-800/90 hover:bg-slate-750 border border-slate-700/80 rounded-xl cursor-pointer transition hover:border-emerald-500 group"
-              onclick="window.__dcbdCloseVisualSearch(true); if (window.router) window.router.navigate('/product/' + encodeURIComponent('${productTarget}')); else window.location.href='/product/' + encodeURIComponent('${productTarget}');"
-            >
-              <img 
-                src="${thumbImg}" 
-                alt="${p.name}" 
-                class="w-12 h-12 rounded-lg object-cover border border-slate-700 bg-slate-900 flex-shrink-0 group-hover:scale-105 transition"
-              />
-              <div class="min-w-0 flex-1">
-                <div class="text-xs font-bold text-white truncate leading-snug group-hover:text-emerald-400 transition">${p.name}</div>
-                <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 flex-wrap">
-                  <span class="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-[9px] text-slate-300">${p.sku}</span>
-                  <span class="text-emerald-400 font-extrabold text-xs">${formatCurrency(p.selling_price)}</span>
-                </div>
+          ` : ''}
+          <button 
+            type="button"
+            onclick="window.__dcbdCloseVisualSearch(true); if(window.router) window.router.navigate('/products?search=' + encodeURIComponent('${safeQueryEscaped}') + '&stock=all'); else window.location.href='/products?search=' + encodeURIComponent('${safeQueryEscaped}') + '&stock=all';"
+            style="padding: 8px 10px; border-radius: 10px; background: rgba(30, 41, 59, 0.95); border: 1px solid rgba(16, 185, 129, 0.5); color: #6ee7b7; font-weight: 800; font-size: 11px; display: flex; align-items: center; justify-content: center; gap: 4px; cursor: pointer;"
+          >
+            <span>🔍</span> <span>পূর্ণ সার্চ রিপোর্ট পেজ (${matches.length}) →</span>
+          </button>
+        </div>
+
+        <!-- Matched Catalog Products List -->
+        ${matches.map((p, idx) => {
+          const productTarget = (p.slug || p.product_id || p.sku || "").replace(/'/g, "\\'");
+          const thumbImg = p.thumbnail || (p.images && p.images[0]) || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100";
+          const isBest = idx === 0;
+          return `
+          <div 
+            class="flex items-center gap-3 p-2.5 bg-slate-800/90 hover:bg-slate-750 border ${isBest ? 'border-emerald-500/80' : 'border-slate-700/80'} rounded-xl cursor-pointer transition hover:border-emerald-500 group"
+            style="${isBest ? 'background: rgba(6, 78, 59, 0.25); border-color: rgba(16, 185, 129, 0.65);' : ''}"
+            onclick="window.__dcbdCloseVisualSearch(true); if (window.router) window.router.navigate('/product/' + encodeURIComponent('${productTarget}')); else window.location.href='/product/' + encodeURIComponent('${productTarget}');"
+          >
+            <img 
+              src="${thumbImg}" 
+              alt="${p.name || p.p_name}" 
+              class="w-12 h-12 rounded-lg object-cover border border-slate-700 bg-slate-900 flex-shrink-0 group-hover:scale-105 transition"
+            />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-1.5">
+                ${isBest ? `<span style="background: #10b981; color: #022c22; font-size: 9px; font-weight: 900; padding: 1px 5px; border-radius: 4px; flex-shrink: 0;">★ সেরা মিল</span>` : ''}
+                <div class="text-xs font-bold text-white truncate leading-snug group-hover:text-emerald-400 transition">${p.name || p.p_name}</div>
               </div>
-              <span class="bg-emerald-600 group-hover:bg-emerald-500 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg flex-shrink-0 transition">
-                দেখুন →
-              </span>
+              <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 flex-wrap">
+                <span class="font-mono bg-slate-900 px-1.5 py-0.5 rounded text-[9px] text-slate-300">${p.sku || p.product_id || ''}</span>
+                ${p.category ? `<span class="text-slate-300 text-[9px]">• ${p.category}</span>` : ''}
+                <span class="text-emerald-400 font-extrabold text-xs">${formatCurrency(p.selling_price)}</span>
+              </div>
             </div>
-            `;
-          }).join("")}
-        `;
+            <span class="bg-emerald-600 group-hover:bg-emerald-500 text-white font-bold text-[10px] px-2.5 py-1 rounded-lg flex-shrink-0 transition">
+              দেখুন →
+            </span>
+          </div>
+          `;
+        }).join("")}
+      `;
+    }
+
+    if (resultsArea) resultsArea.classList.remove('hidden');
+    if (popup) popup.classList.remove('hidden');
+    window.__dcbdFilePickingActive = false;
+
+    // 5. Update the main page below (#app-content) with the matched product's search report
+    // while keeping the Visual Search Report popup visible so the user sees both!
+    if (matchedQuery) {
+      const targetUrl = '/products?search=' + encodeURIComponent(matchedQuery) + '&stock=all';
+      if (window.router && typeof window.router.navigate === 'function') {
+        window.router.navigate(targetUrl);
       }
-
-      if (resultsArea) resultsArea.classList.remove('hidden');
-      if (popup) popup.classList.remove('hidden');
-
-      // 5. AUTOMATICALLY NAVIGATE TO SEARCH RESULTS PAGE (User requested auto redirect!)
-      setTimeout(() => {
-        window.__dcbdCloseVisualSearch(true);
-        const targetUrl = '/products?search=' + encodeURIComponent(matchedQuery);
-        if (window.router && typeof window.router.navigate === 'function') {
-          window.router.navigate(targetUrl);
-        } else {
-          window.location.href = targetUrl;
-        }
-      }, 950);
-    });
+    }
   };
 
   // Quick Category Tag: Instantly fills search bar & redirects to /products?search=...
   window.__dcbdSearchVisualTag = function(tag, isMobile = false) {
     let query = tag;
-    if (tag === 'smartwatches') query = 'smartwatch';
-    else if (tag === 'organic-health') query = 'honey';
-    else if (tag === 'torch') query = 'torch';
-    else if (tag === 'gas') query = 'gas';
+    if (tag === 'smartwatches') query = 'Smartwatches';
+    else if (tag === 'organic-health') query = 'Organic';
+    else if (tag === 'torch') query = 'Light';
+    else if (tag === 'gas') query = 'Kitchen';
 
     const dInput = document.getElementById('global-search-input');
     const mInput = document.getElementById('mobile-search-input');
@@ -849,7 +1380,7 @@ export function renderHeader() {
                   📸
                 </div>
                 <div>
-                  <h4 class="text-xs font-bold text-white">ছবি দিয়ে পণ্য খুঁজুন (Visual Search)</h4>
+                  <h4 class="text-xs font-bold text-white">ছবি দিয়ে পণ্য খুঁজুন (Visual Product Reader)</h4>
                 </div>
               </div>
               <button 
@@ -897,7 +1428,13 @@ export function renderHeader() {
                     🔦 লাইট
                   </button>
                   <button type="button" onclick="window.__dcbdSearchVisualTag('gas', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
-                    🛡️ গ্যাস সেফটি
+                    🛡️ কিচেন ও গ্যাস
+                  </button>
+                  <button type="button" onclick="window.__dcbdSearchVisualTag('Healthcare', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
+                    🩺 হেলথকেয়ার
+                  </button>
+                  <button type="button" onclick="window.__dcbdSearchVisualTag('Stationery', false)" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 border border-slate-700 text-[10px] text-slate-300 hover:text-emerald-300 transition cursor-pointer">
+                    📚 স্টেশনারি
                   </button>
                 </div>
               </div>
@@ -919,15 +1456,15 @@ export function renderHeader() {
               </div>
             </div>
 
-            <!-- 3. Matched Results & Full Search Results Page Trigger -->
+            <!-- 3. Matched Results & Full Search Report -->
             <div id="d-img-results-area" class="hidden space-y-2 border-t border-slate-800 pt-2">
               <div class="flex items-center justify-between text-[11px] font-bold text-slate-300">
-                <span>মিল থাকা পণ্যসমূহ:</span>
+                <span>সার্চ রিপোর্ট ও মিল থাকা পণ্যসমূহ:</span>
                 <button type="button" onclick="window.__dcbdTriggerFilePick('file', false)" class="text-[10px] text-emerald-400 hover:underline cursor-pointer">
-                  🔄 অন্য ছবি
+                  🔄 অন্য ছবি দিন
                 </button>
               </div>
-              <div id="d-img-results-list" class="space-y-1.5 max-h-52 overflow-y-auto pr-1"></div>
+              <div id="d-img-results-list" class="space-y-1.5 max-h-72 overflow-y-auto pr-1"></div>
             </div>
 
           </div>
@@ -1079,7 +1616,7 @@ export function renderHeader() {
           <div class="flex items-center justify-between border-b border-slate-800 pb-2">
             <div class="flex items-center gap-1.5">
               <span class="text-sm">📸</span>
-              <span class="text-xs font-bold text-white">ছবি দিয়ে পণ্য খুঁজুন</span>
+              <span class="text-xs font-bold text-white">ছবি দিয়ে পণ্য খুঁজুন (Visual Search)</span>
             </div>
             <button 
               type="button"
@@ -1118,7 +1655,13 @@ export function renderHeader() {
                 🔦 লাইট
               </button>
               <button type="button" onclick="window.__dcbdSearchVisualTag('gas', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
-                🛡️ গ্যাস সেফটি
+                🛡️ কিচেন ও গ্যাস
+              </button>
+              <button type="button" onclick="window.__dcbdSearchVisualTag('Healthcare', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
+                🩺 হেলথকেয়ার
+              </button>
+              <button type="button" onclick="window.__dcbdSearchVisualTag('Stationery', true)" class="px-2 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 cursor-pointer">
+                📚 স্টেশনারি
               </button>
             </div>
           </div>
@@ -1135,12 +1678,12 @@ export function renderHeader() {
 
           <div id="m-img-results-area" class="hidden space-y-1.5 border-t border-slate-800 pt-1.5">
             <div class="flex items-center justify-between text-[10px] font-bold text-slate-300">
-              <span>মিল থাকা পণ্য:</span>
+              <span>সার্চ রিপোর্ট ও মিল থাকা পণ্য:</span>
               <button type="button" onclick="window.__dcbdTriggerFilePick('file', true)" class="text-[9px] text-emerald-400 hover:underline cursor-pointer">
-                🔄 অন্য ছবি
+                🔄 অন্য ছবি দিন
               </button>
             </div>
-            <div id="m-img-results-list" class="space-y-1.5 max-h-44 overflow-y-auto"></div>
+            <div id="m-img-results-list" class="space-y-1.5 max-h-64 overflow-y-auto"></div>
           </div>
         </div>
 
