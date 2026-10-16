@@ -1674,7 +1674,6 @@ function renderAuthView(view = 'login') {
                   oninput="const p=document.getElementById('auth-photo-preview'); if(p) p.src = this.value || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160';"
                 />
               </div>
-              <span class="text-[10px] text-slate-400 mt-0.5">ছবি ফাইল সিলেক্ট করলে বা লিঙ্ক বসালে সাথে সাথে প্রিভিউ দেখা যাবে</span>
             </div>
 
             <!-- Column C = Name (Required) -->
@@ -1749,7 +1748,6 @@ function renderAuthView(view = 'login') {
                   class="dc-textarea-field"
                 ></textarea>
               </div>
-              <span class="text-[10px] text-slate-400 mt-0.5">ক্যাশ অন ডেলিভারিতে পার্সেল পৌঁছানোর সঠিক ঠিকানা লিখুন</span>
             </div>
 
             <!-- Column G = User_ID (Autofill in real-time from phone number) -->
@@ -1771,7 +1769,6 @@ function renderAuthView(view = 'login') {
                   class="dc-input-field font-mono font-bold bg-slate-100 dark:bg-slate-800/80 text-blue-700 dark:text-blue-300 cursor-not-allowed select-none" 
                 />
               </div>
-              <span class="text-[10px] text-slate-400 mt-0.5">উপরে মোবাইল নম্বর লিখলেই এখানে স্বয়ংক্রিয়ভাবে বসে যাবে</span>
             </div>
 
             <!-- Column H = Password (Suggest-Strong + Strength Percentage Meter) -->
