@@ -105,6 +105,10 @@ if (typeof window !== 'undefined' && !window.__dcbdCustomerPortalInit) {
       cInput.value = pwd;
       cInput.type = 'text';
     }
+    document.querySelectorAll('.btn-toggle-auth-pass').forEach(btn => {
+      btn.innerHTML = '🙈';
+      btn.title = 'পাসওয়ার্ড লুকান';
+    });
     window.checkPasswordStrength(pwd);
   };
 
@@ -200,16 +204,6 @@ if (typeof window !== 'undefined' && !window.__dcbdCustomerPortalInit) {
     // Strong password suggest button
     if (e.target && (e.target.id === 'btn-suggest-strong-pass' || e.target.closest('#btn-suggest-strong-pass'))) {
       window.suggestStrongPassword();
-    }
-
-    // Toggle password visibility
-    const toggleBtn = e.target && e.target.closest ? e.target.closest('.btn-toggle-auth-pass') : null;
-    if (toggleBtn) {
-      const targetId = toggleBtn.getAttribute('data-target');
-      const targetInput = document.getElementById(targetId);
-      if (targetInput) {
-        targetInput.type = targetInput.type === 'password' ? 'text' : 'password';
-      }
     }
   });
 }
@@ -1394,6 +1388,31 @@ function renderAuthView(view = 'login') {
         color: #f8fafc;
       }
 
+      .dc-country-select {
+        height: 42px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #0f172a;
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 0 0.5rem;
+        outline: none;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+      }
+
+      .dark .dc-country-select {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #f8fafc;
+      }
+
+      .dc-country-select:focus {
+        border-color: #10b981;
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+      }
+
       .dc-input-field:focus {
         border-color: #10b981;
         box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
@@ -1648,22 +1667,45 @@ function renderAuthView(view = 'login') {
               </div>
             </div>
 
-            <!-- Column D = Mobile (Required, 11 digits) -->
+            <!-- Column D = Mobile (Required, with Country Code selector, Bangladesh default) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
                 <span>মোবাইল নম্বর</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
-              <div class="dc-input-container">
-                <span class="dc-input-icon">📞</span>
-                <input 
-                  type="tel" 
-                  id="auth-phone" 
-                  required 
-                  pattern="[0-9]{11}" 
-                  placeholder="017XXXXXXXX (১১ ডিজিট)" 
-                  class="dc-input-field font-mono" 
-                />
+              <div class="flex items-center gap-2">
+                <!-- Country Code Selector (Default: Bangladesh +880) -->
+                <div class="relative flex-shrink-0">
+                  <select 
+                    id="auth-country-code" 
+                    class="dc-country-select"
+                    title="কান্ট্রি কোড নির্বাচন করুন"
+                  >
+                    <option value="+880" selected>🇧🇩 +880 (বাংলাদেশ)</option>
+                    <option value="+91">🇮🇳 +91 (ভারত)</option>
+                    <option value="+966">🇸🇦 +966 (সৌদি আরব)</option>
+                    <option value="+971">🇦🇪 +971 (সংযুক্ত আরব আমিরাত)</option>
+                    <option value="+974">🇶🇦 +974 (কাতার)</option>
+                    <option value="+965">🇰🇼 +965 (কুয়েত)</option>
+                    <option value="+968">🇴🇲 +968 (ওমান)</option>
+                    <option value="+60">🇲🇾 +60 (মালয়েশিয়া)</option>
+                    <option value="+65">🇸🇬 +65 (সিঙ্গাপুর)</option>
+                    <option value="+44">🇬🇧 +44 (যুক্তরাজ্য)</option>
+                    <option value="+1">🇺🇸 +1 (যুক্তরাষ্ট্র)</option>
+                  </select>
+                </div>
+                <!-- Mobile Number Input -->
+                <div class="dc-input-container flex-1 min-w-0">
+                  <span class="dc-input-icon">📞</span>
+                  <input 
+                    type="tel" 
+                    id="auth-phone" 
+                    required 
+                    pattern="[0-9]{11}" 
+                    placeholder="017XXXXXXXX (১১ ডিজিট)" 
+                    class="dc-input-field font-mono" 
+                  />
+                </div>
               </div>
             </div>
 
@@ -1798,21 +1840,37 @@ function renderAuthView(view = 'login') {
           ` : `
             <!-- ================= LOGIN FIELDS ================= -->
 
-            <!-- Mobile / Email / Identifier -->
+            <!-- Mobile / Email / Identifier with Country Code Selector -->
             <div class="dc-field-group">
               <label class="dc-field-label">
                 <span>মোবাইল নম্বর অথবা ইমেইল</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
-              <div class="dc-input-container">
-                <span class="dc-input-icon">📞</span>
-                <input 
-                  type="text" 
-                  id="auth-phone" 
-                  required 
-                  placeholder="017XXXXXXXX বা user@gmail.com" 
-                  class="dc-input-field" 
-                />
+              <div class="flex items-center gap-2">
+                <div class="relative flex-shrink-0">
+                  <select 
+                    id="login-country-code" 
+                    class="dc-country-select"
+                    title="কান্ট্রি কোড"
+                  >
+                    <option value="+880" selected>🇧🇩 +880</option>
+                    <option value="+91">🇮🇳 +91</option>
+                    <option value="+966">🇸🇦 +966</option>
+                    <option value="+971">🇦🇪 +971</option>
+                    <option value="+44">🇬🇧 +44</option>
+                    <option value="+1">🇺🇸 +1</option>
+                  </select>
+                </div>
+                <div class="dc-input-container flex-1 min-w-0">
+                  <span class="dc-input-icon">📞</span>
+                  <input 
+                    type="text" 
+                    id="auth-phone" 
+                    required 
+                    placeholder="017XXXXXXXX বা user@gmail.com" 
+                    class="dc-input-field" 
+                  />
+                </div>
               </div>
             </div>
 
