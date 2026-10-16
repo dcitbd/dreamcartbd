@@ -1,6 +1,10 @@
 /**
  * DREAM CART BD — ULTRA-FAST WHOLESALER PORTAL & DYNAMIC B2B DASHBOARD (WholesalePortal.js)
  * High-Performance Architecture (Zero-Lag, Instant Render, Zero Conflict):
+ * - Strict Wholesaler MOQ (Minimum Order Quantity) & Wholesale Price Enforcement:
+ *     1. Wholesalers CANNOT order less than the Minimum Order Quantity (MOQ) anywhere (Catalogue, Product Details, Cart, Checkout Order Form, or Direct Wholesale Order Form).
+ *     2. Wholesale Price (হোলসেল দাম) is automatically selected & calculated for Wholesalers across all order forms and cart calculations.
+ *     3. Minimum Order Quantity (MOQ) is automatically added whenever a Wholesaler clicks "অর্ডার করুন" or "কার্টে যোগ করুন" or selects a product.
  * - Luxury Dynamic Wholesaler Login & Registration UI with 9 Sequential Fields:
  *     1. Shop_ID (Auto-generated unique Wholesale ID)
  *     2. Shop_logo (Live preview + URL input + Compressed device file upload)
@@ -12,16 +16,7 @@
  *     8. User_ID (Real-time auto-fill from Mobile number)
  *     9. Password (1-Click Strong Password Generator + Show/Hide Toggle + Real-time 0%–100% Strength Meter)
  * - Instantaneous (< 5ms) Dashboard & Auth rendering via synchronous memory + localStorage cache
- * - Non-blocking background sync with Google Sheets & Apps Script (never freezes on 15s JSONP timeouts)
- * - 8 Interactive Wholesale Dashboard Modules:
- *     1. ওভারভিউ (Overview: KPIs, Quick Actions, Recent Bulk Orders)
- *     2. পাইকারি ক্যাটালগ ও MOQ (On-demand lazy-rendered catalogue with live search, category filter, MOQ & bulk cart)
- *     3. বাল্ক অর্ডার ও ইনভয়েস (Bulk Orders with live search, status filter pills, voucher & live track)
- *     4. বাল্ক প্রফিট ক্যালকুলেটর (Interactive Wholesale Profit & MOQ Calculator + 1-click Bulk Cart)
- *     5. লাইভ চালান ট্র্যাকিং (Interactive Order ID Lookup & 4-Step Progress Tracker)
- *     6. পাইকারি কার্ট তালিকা (Live Cart Items, Subtotal & Checkout)
- *     7. পাইকারি নীতিমালা (Wholesale B2B Rules & Support)
- *     8. শপ প্রোফাইল ও সেটিংস (Update all 9 Wholesaler fields + Interactive Profile Edit Modal)
+ * - Non-blocking background sync with Google Sheets & Apps Script
  * - Strictly scoped selectors & capture-phase form handling — zero conflict with any other file or system
  */
 
@@ -91,8 +86,114 @@ function getFastOrders() {
   return [];
 }
 
+// ============================================================================
+// WHOLESALE PRICE & MINIMUM ORDER QUANTITY (MOQ) RESOLVERS
+// ============================================================================
+function findMasterProduct(prodOrId) {
+  const products = getFastProducts();
+  if (!prodOrId) return null;
+  if (typeof prodOrId === 'object') {
+    const id = String(prodOrId.product_id || prodOrId.sku || prodOrId.slug || '').trim().toLowerCase();
+    if (!id) return prodOrId;
+    const found = products.find(p =>
+      String(p.product_id || '').trim().toLowerCase() === id ||
+      String(p.sku || '').trim().toLowerCase() === id ||
+      String(p.slug || '').trim().toLowerCase() === id
+    );
+    return found ? { ...found, ...prodOrId } : prodOrId;
+  }
+  const target = String(prodOrId).trim().toLowerCase();
+  return products.find(p =>
+    String(p.product_id || '').trim().toLowerCase() === target ||
+    String(p.sku || '').trim().toLowerCase() === target ||
+    String(p.slug || '').trim().toLowerCase() === target
+  ) || null;
+}
+
+export function getWholesaleMOQ(prodOrId) {
+  const master = findMasterProduct(prodOrId);
+  const obj = typeof prodOrId === 'object' && prodOrId ? prodOrId : {};
+  const candidates = [
+    obj.min_order_qty,
+    obj.min_order_q,
+    obj.moq,
+    master?.min_order_qty,
+    master?.min_order_q,
+    master?.moq
+  ];
+  for (const c of candidates) {
+    const num = Number(c);
+    if (!isNaN(num) && num > 1) return Math.round(num);
+  }
+  return 5; // Default minimum order quantity for wholesale if sheet cell was 1 or empty
+}
+
+export function getWholesaleUnitPrice(prodOrId) {
+  const master = findMasterProduct(prodOrId);
+  const obj = typeof prodOrId === 'object' && prodOrId ? prodOrId : {};
+
+  const retailCandidates = [
+    master?.selling_price,
+    obj.selling_price,
+    master?.original_price,
+    obj.original_price,
+    obj.price
+  ];
+  let retail = 0;
+  for (const r of retailCandidates) {
+    const n = Number(r);
+    if (!isNaN(n) && n > 0) {
+      retail = n;
+      break;
+    }
+  }
+
+  const whsCandidates = [
+    obj.wholesale_price,
+    master?.wholesale_price
+  ];
+  for (const w of whsCandidates) {
+    const n = Number(w);
+    if (!isNaN(n) && n > 0) {
+      if (retail > 0 && n >= retail) {
+        return Math.round(retail * 0.85);
+      }
+      return Math.round(n);
+    }
+  }
+
+  return retail > 0 ? Math.round(retail * 0.85) : 0;
+}
+
+function showWholesaleNotice(title, message, type = 'warning') {
+  if (typeof window !== 'undefined' && window.toast && typeof window.toast.show === 'function') {
+    window.toast.show({
+      type: type,
+      title: title,
+      message: message,
+      duration: 3200
+    });
+  }
+}
+
+// Normalize all loaded products so ProductCard, ProductDetailPage, and CartStore all see consistent MOQ & Wholesale Price
+function normalizeCatalogWholesaleFields(list) {
+  if (!Array.isArray(list)) return;
+  list.forEach(p => {
+    if (!p || typeof p !== 'object') return;
+    const moq = getWholesaleMOQ(p);
+    const whs = getWholesaleUnitPrice(p);
+    p.min_order_qty = moq;
+    p.min_order_q = moq;
+    if (whs > 0) p.wholesale_price = whs;
+  });
+}
+
 // Non-blocking background sync (runs once per session)
 function triggerWholesaleBackgroundSync() {
+  const currentProds = getFastProducts();
+  normalizeCatalogWholesaleFields(currentProds);
+
   if (WHOLESALE_MEM_CACHE.bgSynced) return;
   WHOLESALE_MEM_CACHE.bgSynced = true;
 
@@ -104,6 +205,7 @@ function triggerWholesaleBackgroundSync() {
       let updated = false;
       if (prodRes.status === 'fulfilled' && prodRes.value?.data?.items?.length) {
         WHOLESALE_MEM_CACHE.products = prodRes.value.data.items;
+        normalizeCatalogWholesaleFields(WHOLESALE_MEM_CACHE.products);
         updated = true;
       }
       if (orderRes.status === 'fulfilled' && orderRes.value?.data?.items?.length) {
@@ -191,9 +293,399 @@ function extractOrderQuantity(o) {
   return 10;
 }
 
-// Module-Level Event Listeners & Dynamic Logic (Registered Once)
+// ============================================================================
+// GLOBAL WHOLESALER MOQ & WHOLESALE PRICE ENFORCEMENT ENGINE
+// Works across Product Cards, Product Detail Page, Cart Drawer, Cart Page,
+// Checkout Order Form (/checkout), and Wholesaler Portal!
+// ============================================================================
 if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
   window.__dcbdWholesalePortalInit = true;
+
+  normalizeCatalogWholesaleFields(getFastProducts());
+
+  // A. Enforce Wholesale Pricing & MOQ on all items currently in cartStore
+  window.enforceWholesaleCartRules = function(silent = true) {
+    if (!authStore.isWholesaler()) return false;
+    if (!Array.isArray(cartStore.items) || cartStore.items.length === 0) return false;
+
+    let changed = false;
+    cartStore.items.forEach(item => {
+      const moq = getWholesaleMOQ(item);
+      const whsPrice = getWholesaleUnitPrice(item);
+
+      if (Number(item.min_order_qty) !== moq) {
+        item.min_order_qty = moq;
+        changed = true;
+      }
+      if (whsPrice > 0 && Number(item.price) !== whsPrice) {
+        item.price = whsPrice;
+        item.wholesale_price = whsPrice;
+        changed = true;
+      }
+      if (Number(item.quantity || 0) < moq) {
+        item.quantity = moq;
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      try {
+        localStorage.setItem("dcbd_cart", JSON.stringify(cartStore.items));
+      } catch (e) {}
+      if (!silent) {
+        cartStore.notify();
+      }
+    }
+    return changed;
+  };
+
+  // B. Patch cartStore.getProductPriceForCurrentRole so Wholesalers ALWAYS get Wholesale Price
+  const origGetPriceForRole = cartStore.getProductPriceForCurrentRole?.bind(cartStore);
+  cartStore.getProductPriceForCurrentRole = function(product) {
+    if (authStore.isWholesaler()) {
+      const whs = getWholesaleUnitPrice(product);
+      if (whs > 0) return whs;
+    }
+    return origGetPriceForRole ? origGetPriceForRole(product) : Number(product?.selling_price || product?.price || 0);
+  };
+
+  // C. Patch cartStore.addItem so Wholesalers ALWAYS get MOQ auto-added & Wholesale Price calculated
+  cartStore.addItem = function(product, quantity = 1, options = {}) {
+    if (!product) return;
+    const isWhs = authStore.isWholesaler();
+    const minQty = isWhs ? getWholesaleMOQ(product) : Number(product.min_order_qty || product.min_order_q || 1);
+    const reqQty = Number(quantity) || 1;
+    const enforcedQty = isWhs ? Math.max(minQty, reqQty) : Math.max(1, reqQty);
+    const price = this.getProductPriceForCurrentRole(product);
+
+    const pId = product.product_id || product.sku || "";
+    const color = options.color || "";
+    const size = options.size || "";
+
+    const existingIndex = this.items.findIndex(
+      it => String(it.product_id) === String(pId) && (it.color || "") === color && (it.size || "") === size
+    );
+
+    if (existingIndex > -1) {
+      if (isWhs) {
+        // If user clicked a quick 1-qty Order/Cart button and item already exists, ensure at least minQty or add enforcedQty
+        const currentQty = Number(this.items[existingIndex].quantity) || 0;
+        const nextQty = reqQty <= 1 && currentQty < minQty ? minQty : Math.max(minQty, currentQty + enforcedQty);
+        this.items[existingIndex].quantity = nextQty;
+        this.items[existingIndex].price = price;
+        this.items[existingIndex].wholesale_price = price;
+        this.items[existingIndex].min_order_qty = minQty;
+      } else {
+        this.items[existingIndex].quantity += enforcedQty;
+        this.items[existingIndex].price = price;
+      }
+    } else {
+      this.items.push({
+        product_id: pId,
+        sku: product.sku || pId,
+        name: product.name || product.p_name || "পণ্য",
+        slug: product.slug || pId,
+        price: price,
+        selling_price: Number(product.selling_price || product.price || price),
+        original_price: Number(product.original_price || product.regular_price || product.selling_price || price),
+        wholesale_price: isWhs ? price : getWholesaleUnitPrice(product),
+        reseller_price: product.reseller_price || price,
+        min_order_qty: minQty,
+        thumbnail: product.thumbnail || (product.images && product.images[0]) || "",
+        stock: product.stock !== undefined ? Number(product.stock) : 50,
+        color: color,
+        size: size,
+        quantity: enforcedQty
+      });
+    }
+
+    this.saveToStorage();
+
+    if (isWhs && reqQty < minQty) {
+      showWholesaleNotice(
+        "সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ) যুক্ত হয়েছে",
+        `হোলসেল দরে (${formatCurrency(price)}/পিস) সর্বনিম্ন ${minQty} পিস অটোমেটিক যুক্ত করা হয়েছে।`,
+        "info"
+      );
+    }
+  };
+
+  // D. Patch cartStore.updateQuantity so Wholesalers CANNOT reduce below MOQ
+  cartStore.updateQuantity = function(productId, qty, options = {}) {
+    const color = options.color || "";
+    const size = options.size || "";
+    const idx = this.items.findIndex(
+      it => String(it.product_id) === String(productId) && (it.color || "") === color && (it.size || "") === size
+    );
+    if (idx === -1) return;
+
+    const item = this.items[idx];
+    const isWhs = authStore.isWholesaler();
+
+    if (isWhs) {
+      const minQty = getWholesaleMOQ(item);
+      item.min_order_qty = minQty;
+      item.price = getWholesaleUnitPrice(item);
+
+      if (qty < minQty) {
+        item.quantity = minQty;
+        this.saveToStorage();
+        showWholesaleNotice(
+          "সর্বনিম্ন অর্ডার সীমা (MOQ)",
+          `"${item.name}"-এর ক্ষেত্রে হোলসেলারদের জন্য সর্বনিম্ন অর্ডার পরিমাণ ${minQty} পিস। এর কম অর্ডার করা যাবে না!`,
+          "error"
+        );
+        return;
+      }
+      item.quantity = qty;
+      this.saveToStorage();
+      return;
+    }
+
+    if (qty <= 0) {
+      this.items.splice(idx, 1);
+    } else {
+      item.quantity = qty;
+    }
+    this.saveToStorage();
+  };
+
+  // Run enforcement whenever auth state changes (e.g., Wholesaler logs in)
+  authStore.subscribe(() => {
+    if (authStore.isWholesaler()) {
+      const changed = window.enforceWholesaleCartRules(true);
+      if (changed) cartStore.notify();
+    }
+  });
+
+  // Run immediately on boot if already logged in as Wholesaler
+  if (authStore.isWholesaler()) {
+    window.enforceWholesaleCartRules(true);
+  }
+
+  // E. Enhance Checkout Page (/checkout) & Product Detail Page (/product/...) DOM for Wholesalers
+  window.enhanceWholesaleOrderFormsDOM = function() {
+    if (!authStore.isWholesaler()) return;
+
+    // 1. Enforce cart items first
+    window.enforceWholesaleCartRules(true);
+
+    // 2. If on Product Detail Page (#product-qty-input exists):
+    const pdQtyInput = document.getElementById('product-qty-input');
+    if (pdQtyInput && !pdQtyInput.hasAttribute('data-whs-moq-bound')) {
+      const detailBtn = document.getElementById('btn-detail-order-now') || document.getElementById('btn-detail-add-cart') || document.getElementById('btn-detail-preorder');
+      const pId = detailBtn ? detailBtn.getAttribute('data-product-id') : '';
+      const minQty = getWholesaleMOQ(pId);
+
+      pdQtyInput.setAttribute('data-whs-moq-bound', 'true');
+      pdQtyInput.setAttribute('data-whs-min', String(minQty));
+      pdQtyInput.min = String(minQty);
+      if (Number(pdQtyInput.value || 0) < minQty) {
+        pdQtyInput.value = String(minQty);
+      }
+
+      // Override inline onclick on the minus/plus buttons around #product-qty-input
+      const qtyBox = pdQtyInput.closest('.pd-qty-box');
+      if (qtyBox) {
+        const btns = qtyBox.querySelectorAll('button');
+        if (btns[0]) {
+          btns[0].removeAttribute('onclick');
+          btns[0].onclick = function(ev) {
+            ev.preventDefault();
+            const cur = Number(pdQtyInput.value) || minQty;
+            if (cur <= minQty) {
+              pdQtyInput.value = String(minQty);
+              showWholesaleNotice(
+                "সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ)",
+                `পাইকারি দরে অর্ডারের জন্য সর্বনিম্ন ${minQty} পিস নিতে হবে।`,
+                "error"
+              );
+            } else {
+              pdQtyInput.value = String(cur - 1);
+            }
+          };
+        }
+        if (btns[1]) {
+          btns[1].removeAttribute('onclick');
+          btns[1].onclick = function(ev) {
+            ev.preventDefault();
+            const cur = Math.max(minQty, Number(pdQtyInput.value) || minQty);
+            pdQtyInput.value = String(cur + 1);
+          };
+        }
+      }
+    }
+
+    // 3. If on Checkout Order Form (#checkout-form exists):
+    const checkoutForm = document.getElementById('checkout-form');
+    if (checkoutForm) {
+      // Pre-fill Wholesaler info if empty
+      const user = authStore.user || {};
+      const nameInp = document.getElementById('checkout-name');
+      const phoneInp = document.getElementById('checkout-phone');
+      const addrInp = document.getElementById('checkout-address');
+      if (nameInp && !nameInp.value.trim()) nameInp.value = user.shop_name || user.name || '';
+      if (phoneInp && !phoneInp.value.trim()) phoneInp.value = user.mobile || user.phone || '';
+      if (addrInp && !addrInp.value.trim()) addrInp.value = user.address || '';
+
+      // Inject Wholesaler Active Pricing & MOQ Banner at top of Checkout Form
+      if (!document.getElementById('whs-checkout-mode-banner')) {
+        const banner = document.createElement('div');
+        banner.id = 'whs-checkout-mode-banner';
+        banner.className = 'lg:col-span-12 p-4 rounded-2xl bg-amber-50 dark:bg-slate-800 border-2 border-amber-400 dark:border-amber-500/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs';
+        banner.innerHTML = `
+          <div class="flex items-center gap-3">
+            <span class="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 font-black text-lg flex items-center justify-center flex-shrink-0">📦</span>
+            <div>
+              <div class="font-black text-slate-900 dark:text-white text-sm flex items-center gap-2 flex-wrap">
+                <span>হোলসেলার পাইকারি অর্ডার ফর্ম সক্রিয়</span>
+                <span class="px-2 py-0.5 rounded-full bg-amber-500 text-slate-950 text-[10px] font-black">Wholesale Rate Active</span>
+              </div>
+              <p class="text-slate-600 dark:text-slate-300 text-[11px] mt-0.5">
+                আপনার জন্য প্রতিটি পণ্যের <strong>হোলসেল দাম (Wholesale Price)</strong> এবং <strong>সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ)</strong> স্বয়ংক্রিয়ভাবে যুক্ত ও ক্যালকুলেট করা হয়েছে।
+              </p>
+            </div>
+          </div>
+          <a href="/wholesaler/dashboard" class="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-600 text-amber-700 dark:text-amber-400 font-bold text-xs flex-shrink-0">
+            ← হোলসেলার ড্যাশবোর্ড
+          </a>
+        `;
+        checkoutForm.insertBefore(banner, checkoutForm.firstChild);
+      }
+
+      // Render interactive MOQ quantity steppers & wholesale rate badges inside Checkout Order Summary
+      let itemListContainer = document.getElementById('whs-checkout-items-list');
+      if (!itemListContainer) {
+        const origList = checkoutForm.querySelector('.divide-y.max-h-60');
+        if (origList) {
+          origList.id = 'whs-checkout-items-list';
+          itemListContainer = origList;
+        }
+      }
+
+      if (itemListContainer) {
+        itemListContainer.innerHTML = cartStore.items.map(it => {
+          const moq = getWholesaleMOQ(it);
+          const whsPrice = getWholesaleUnitPrice(it);
+          const retailPrice = Number(it.selling_price || it.original_price || Math.round(whsPrice / 0.85));
+          const qty = Math.max(moq, Number(it.quantity) || moq);
+          const isAtMin = qty <= moq;
+          const safeId = String(it.product_id || it.sku || '').replace(/'/g, "\\'");
+          const safeColor = String(it.color || '').replace(/'/g, "\\'");
+          const safeSize = String(it.size || '').replace(/'/g, "\\'");
+
+          return `
+            <div class="py-3 flex items-center justify-between gap-3 text-xs">
+              <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <img src="${it.thumbnail || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100'}" class="w-11 h-11 rounded-xl object-cover border border-amber-300 dark:border-slate-700 flex-shrink-0 bg-white" />
+                <div class="min-w-0 flex-1">
+                  <div class="font-bold text-slate-900 dark:text-white truncate">${it.name}</div>
+                  <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+                    <span class="text-[10px] font-black text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.5 rounded">
+                      হোলসেল দর: ${formatCurrency(whsPrice)}
+                    </span>
+                    ${retailPrice > whsPrice ? `<span class="text-[10px] text-slate-400 line-through">${formatCurrency(retailPrice)}</span>` : ''}
+                    <span class="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded">
+                      MOQ: ${moq} পিস
+                    </span>
+                  </div>
+                  <div class="flex items-center gap-2 mt-1.5">
+                    <div class="inline-flex items-center rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 overflow-hidden">
+                      <button 
+                        type="button" 
+                        onclick="window.adjustWholesaleCheckoutQty('${safeId}', -1, '${safeColor}', '${safeSize}')"
+                        class="w-6 h-6 flex items-center justify-center font-black text-xs ${isAtMin ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer'}"
+                        title="${isAtMin ? `সর্বনিম্ন ${moq} পিস আবশ্যক` : 'পরিমাণ কমান'}"
+                      >−</button>
+                      <span class="px-2 font-mono font-black text-xs text-slate-900 dark:text-white">${qty} পিস</span>
+                      <button 
+                        type="button" 
+                        onclick="window.adjustWholesaleCheckoutQty('${safeId}', 1, '${safeColor}', '${safeSize}')"
+                        class="w-6 h-6 flex items-center justify-center font-black text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                        title="পরিমাণ বাড়ান"
+                      >+</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <div class="font-black text-amber-600 dark:text-amber-400 text-sm font-mono">
+                  ${formatCurrency(whsPrice * qty)}
+                </div>
+                <div class="text-[10px] text-slate-400">${qty} × ${formatCurrency(whsPrice)}</div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      // Sync Subtotal, Delivery, Discount, Grand Total & Confirm Button text on Checkout Form
+      const subEl = document.getElementById('summary-subtotal');
+      const delEl = document.getElementById('summary-delivery-charge');
+      const discRow = document.getElementById('summary-online-discount-row');
+      const discAmt = document.getElementById('summary-online-discount-amount');
+      const grandEl = document.getElementById('summary-grand-total');
+      const btnText = document.getElementById('btn-confirm-order-text');
+
+      const subtotal = cartStore.getSubtotal();
+      const isFree = cartStore.isFreeDelivery();
+      const delFee = cartStore.getDeliveryCharge();
+      const onlineDisc = cartStore.getOnlinePaymentDiscount();
+      const grandTotal = cartStore.getGrandTotal();
+
+      if (subEl) subEl.textContent = formatCurrency(subtotal);
+      if (delEl) delEl.innerHTML = isFree ? '<span class="text-emerald-600 dark:text-emerald-400 font-bold">ফ্রি (৳০)</span>' : formatCurrency(delFee);
+      if (discRow && discAmt) {
+        if (onlineDisc > 0) {
+          discRow.classList.remove('hidden');
+          discAmt.textContent = '-' + formatCurrency(onlineDisc);
+        } else {
+          discRow.classList.add('hidden');
+        }
+      }
+      if (grandEl) grandEl.textContent = formatCurrency(grandTotal);
+      if (btnText) btnText.textContent = `পাইকারি অর্ডার নিশ্চিত করুন (${formatCurrency(grandTotal)})`;
+    }
+  };
+
+  window.adjustWholesaleCheckoutQty = function(productId, delta, color = '', size = '') {
+    const item = cartStore.items.find(
+      it => String(it.product_id) === String(productId) && (it.color || '') === color && (it.size || '') === size
+    );
+    if (!item) return;
+    const minQty = getWholesaleMOQ(item);
+    const nextQty = Number(item.quantity || minQty) + Number(delta);
+    if (nextQty < minQty) {
+      showWholesaleNotice(
+        "সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ)",
+        `"${item.name}"-এর ক্ষেত্রে সর্বনিম্ন ${minQty} পিসের কম অর্ডার করা যাবে না!`,
+        "error"
+      );
+      return;
+    }
+    cartStore.updateQuantity(productId, nextQty, { color, size });
+    window.enhanceWholesaleOrderFormsDOM();
+  };
+
+  // Watch #app-content for route renders so ProductDetailPage, CartPage & CheckoutPage get enhanced immediately
+  const observeAppContent = () => {
+    const appContent = document.getElementById('app-content');
+    if (!appContent || appContent.hasAttribute('data-whs-observed')) return;
+    appContent.setAttribute('data-whs-observed', 'true');
+    const obs = new MutationObserver(() => {
+      if (authStore.isWholesaler()) {
+        window.enhanceWholesaleOrderFormsDOM();
+      }
+    });
+    obs.observe(appContent, { childList: true });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', observeAppContent);
+  } else {
+    observeAppContent();
+  }
+  setTimeout(observeAppContent, 300);
 
   // 1. Real-Time Password Strength Meter (0% to 100%)
   window.checkWholesalePasswordStrength = function(pass) {
@@ -267,12 +759,14 @@ if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
     window.checkWholesalePasswordStrength(pwd);
   };
 
-  // 3. On-Demand Wholesale Catalogue Renderer (Fast & Lazy-Loaded)
+  // 3. On-Demand Wholesale Catalogue Renderer with Per-Card MOQ Stepper & Wholesale Price Calculation
   window.renderWholesaleCatalogDOM = function() {
     const grid = document.getElementById('whs-catalog-grid');
     if (!grid) return;
 
     const products = getFastProducts();
+    normalizeCatalogWholesaleFields(products);
+
     const q = String(document.getElementById('whs-catalog-search')?.value || '').toLowerCase().trim();
     const cat = String(document.getElementById('whs-catalog-cat')?.value || 'all').toLowerCase().trim();
 
@@ -296,30 +790,66 @@ if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
     } else {
       grid.innerHTML = visibleItems.map(p => {
         const retail = Number(p.selling_price || 1000);
-        const wholesaleRate = Number(p.wholesale_price || Math.round(retail * 0.82));
-        const moq = Math.max(2, Number(p.min_order_q || p.min_order_qty || 5));
+        const wholesaleRate = getWholesaleUnitPrice(p);
+        const moq = getWholesaleMOQ(p);
         const unitSave = Math.max(30, retail - wholesaleRate);
-        const safeSku = String(p.sku || p.product_id || '').replace(/'/g, "\\'");
+        const rawSku = String(p.sku || p.product_id || '');
+        const safeSku = rawSku.replace(/'/g, "\\'");
+        const domId = rawSku.replace(/[^a-zA-Z0-9_-]/g, '_');
 
         return `
           <div class="dc-whs-catalog-wrap">
             ${renderProductCard(p)}
             <div class="dc-whs-moq-bar">
-              <div>
-                <div class="text-[11px] font-bold text-slate-700 dark:text-slate-200">
-                  পাইকারি দর: <strong class="text-amber-600 dark:text-amber-400 font-black">${formatCurrency(wholesaleRate)}</strong>
-                  <span class="text-emerald-600 font-black ml-1">(লাভ: +${formatCurrency(unitSave)}/পিস)</span>
+              <div class="w-full space-y-2">
+                <div class="flex items-center justify-between gap-1">
+                  <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                    হোলসেল দর: <strong class="text-amber-600 dark:text-amber-400 font-black">${formatCurrency(wholesaleRate)}</strong>
+                  </span>
+                  <span class="text-[10px] font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded">
+                    লাভ: +${formatCurrency(unitSave)}/পিস
+                  </span>
                 </div>
-                <div class="text-[10px] text-slate-500 font-bold">সর্বনিম্ন অর্ডার (MOQ): <span class="text-slate-900 dark:text-white">${moq} পিস</span></div>
+
+                <div class="flex items-center justify-between gap-1 text-[10px] text-slate-600 dark:text-slate-300 font-bold">
+                  <span>সর্বনিম্ন অর্ডার (MOQ): <strong class="text-slate-900 dark:text-white">${moq} পিস</strong></span>
+                  <span>মোট: <strong id="whs-card-tot-${domId}" class="text-amber-600 dark:text-amber-400 font-black">${formatCurrency(wholesaleRate * moq)}</strong></span>
+                </div>
+
+                <div class="flex items-center justify-between gap-1.5 pt-0.5">
+                  <div class="inline-flex items-center rounded-lg border border-amber-300 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden">
+                    <button 
+                      type="button" 
+                      class="w-6 h-6 flex items-center justify-center font-black text-xs text-slate-700 dark:text-slate-200 hover:bg-amber-100 cursor-pointer"
+                      onclick="window.stepWholesaleCardQty('${domId}', -1, ${moq}, ${wholesaleRate})"
+                      title="পরিমাণ কমান (সর্বনিম্ন ${moq} পিস)"
+                    >−</button>
+                    <input 
+                      type="number" 
+                      id="whs-card-qty-${domId}" 
+                      value="${moq}" 
+                      min="${moq}" 
+                      class="w-10 h-6 text-center font-mono font-black text-[11px] bg-transparent border-none outline-none text-slate-900 dark:text-white"
+                      oninput="window.onWholesaleCardQtyInput('${domId}', ${moq}, ${wholesaleRate})"
+                      onchange="window.onWholesaleCardQtyInput('${domId}', ${moq}, ${wholesaleRate}, true)"
+                    />
+                    <button 
+                      type="button" 
+                      class="w-6 h-6 flex items-center justify-center font-black text-xs text-slate-700 dark:text-slate-200 hover:bg-amber-100 cursor-pointer"
+                      onclick="window.stepWholesaleCardQty('${domId}', 1, ${moq}, ${wholesaleRate})"
+                      title="পরিমাণ বাড়ান"
+                    >+</button>
+                  </div>
+
+                  <button 
+                    type="button" 
+                    class="flex-1 py-1.5 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[10px] cursor-pointer transition text-center"
+                    onclick="window.orderWholesaleCardNow('${safeSku}', '${domId}', ${moq})"
+                  >
+                    ⚡ অর্ডার ফর্মে যান
+                  </button>
+                </div>
               </div>
-              <button 
-                type="button" 
-                class="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-[10px] cursor-pointer transition"
-                onclick="window.addWholesaleMoqToCart('${safeSku}', ${moq})"
-                title="${moq} পিস কার্টে যোগ করুন"
-              >
-                +${moq} পিস অর্ডার
-              </button>
             </div>
           </div>
         `;
@@ -345,6 +875,51 @@ if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
     WHOLESALE_MEM_CACHE.catalogRendered = true;
   };
 
+  window.stepWholesaleCardQty = function(domId, delta, moq, unitRate) {
+    const inp = document.getElementById('whs-card-qty-' + domId);
+    const tot = document.getElementById('whs-card-tot-' + domId);
+    if (!inp) return;
+    let cur = Number(inp.value) || moq;
+    let next = cur + Number(delta);
+    if (next < moq) {
+      next = moq;
+      showWholesaleNotice(
+        "সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ)",
+        `এই পণ্যের সর্বনিম্ন পাইকারি অর্ডার কোয়ান্টিটি ${moq} পিস। এর কম অর্ডার করা যাবে না!`,
+        "error"
+      );
+    }
+    inp.value = String(next);
+    if (tot) tot.textContent = formatCurrency(next * unitRate);
+  };
+
+  window.onWholesaleCardQtyInput = function(domId, moq, unitRate, clampNow = false) {
+    const inp = document.getElementById('whs-card-qty-' + domId);
+    const tot = document.getElementById('whs-card-tot-' + domId);
+    if (!inp) return;
+    let val = Number(inp.value);
+    if (isNaN(val) || val < moq) {
+      if (clampNow) {
+        inp.value = String(moq);
+        showWholesaleNotice(
+          "সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ)",
+          `সর্বনিম্ন ${moq} পিস স্বয়ংক্রিয়ভাবে সেট করা হয়েছে।`,
+          "warning"
+        );
+      }
+      val = moq;
+    }
+    if (tot) tot.textContent = formatCurrency(val * unitRate);
+  };
+
+  window.orderWholesaleCardNow = function(sku, domId, moq) {
+    const inp = document.getElementById('whs-card-qty-' + domId);
+    const rawQty = Number(inp ? inp.value : moq);
+    const finalQty = Math.max(moq, isNaN(rawQty) ? moq : rawQty);
+    if (inp) inp.value = String(finalQty);
+    window.addWholesaleMoqToCart(sku, finalQty, true);
+  };
+
   window.loadMoreWholesaleCatalog = function() {
     WHOLESALE_MEM_CACHE.catalogLimit += 24;
     window.renderWholesaleCatalogDOM();
@@ -355,18 +930,38 @@ if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
     window.renderWholesaleCatalogDOM();
   };
 
-  // 4. Add MOQ Quantity Directly to Cart
-  window.addWholesaleMoqToCart = function(sku, moqQty) {
+  // 4. Add MOQ Quantity Directly to Cart at Wholesale Price
+  window.addWholesaleMoqToCart = function(sku, requestedQty, goToCheckout = false) {
     const products = getFastProducts();
     const found = products.find(p => String(p.sku || p.product_id) === String(sku));
     if (!found) return;
-    const wholesaleRate = Number(found.wholesale_price || Math.round(Number(found.selling_price || 1000) * 0.82));
+
+    const moq = getWholesaleMOQ(found);
+    const wholesaleRate = getWholesaleUnitPrice(found);
+    const finalQty = Math.max(moq, Number(requestedQty) || moq);
+
     cartStore.addItem({
       ...found,
       price: wholesaleRate,
-      selling_price: wholesaleRate
-    }, Number(moqQty || 5));
-    alert(`"${found.name || found.p_name}" (${moqQty} পিস — পাইকারি দরে) কার্টে যুক্ত হয়েছে!`);
+      selling_price: Number(found.selling_price || wholesaleRate),
+      wholesale_price: wholesaleRate,
+      min_order_qty: moq
+    }, finalQty);
+
+    if (goToCheckout) {
+      if (window.router && typeof window.router.navigate === 'function') {
+        window.router.navigate('/checkout');
+      } else {
+        window.location.href = '/checkout';
+      }
+      return;
+    }
+
+    showWholesaleNotice(
+      "পাইকারি কার্টে যুক্ত হয়েছে",
+      `"${found.name || found.p_name}" (${finalQty} পিস × ${formatCurrency(wholesaleRate)}) পাইকারি দরে কার্টে যুক্ত হয়েছে!`,
+      "success"
+    );
   };
 
   // 5. Instant Wholesale Tab Switching (0ms)
@@ -415,8 +1010,47 @@ if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
     });
   };
 
-  // 7. Interactive Bulk Profit & MOQ Calculator
-  window.recalcWholesaleQuote = function() {
+  // 7. Interactive Wholesale Direct Order Form & Calculator (Auto MOQ + Locked Wholesale Rate)
+  window.onWholesaleProductSelectChange = function() {
+    const sel = document.getElementById('whs-calc-product');
+    const qtyInput = document.getElementById('whs-calc-qty');
+    if (!sel || !qtyInput) return;
+
+    const products = getFastProducts();
+    const p = products[Number(sel.value) || 0] || products[0];
+    if (!p) return;
+
+    const moq = getWholesaleMOQ(p);
+    qtyInput.min = String(moq);
+    qtyInput.value = String(moq); // Auto-add MOQ whenever a product is selected!
+    window.recalcWholesaleQuote(true);
+  };
+
+  window.stepWholesaleOrderFormQty = function(delta) {
+    const sel = document.getElementById('whs-calc-product');
+    const qtyInput = document.getElementById('whs-calc-qty');
+    if (!sel || !qtyInput) return;
+
+    const products = getFastProducts();
+    const p = products[Number(sel.value) || 0] || products[0];
+    const moq = getWholesaleMOQ(p);
+
+    const cur = Number(qtyInput.value) || moq;
+    const next = cur + Number(delta);
+    if (next < moq) {
+      qtyInput.value = String(moq);
+      showWholesaleNotice(
+        "সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ)",
+        `হোলসেলার হিসেবে এই পণ্যের সর্বনিম্ন অর্ডার কোয়ান্টিটি (${moq} পিস)-এর কম অর্ডার করা যাবে না!`,
+        "error"
+      );
+    } else {
+      qtyInput.value = String(next);
+    }
+    window.recalcWholesaleQuote(true);
+  };
+
+  window.recalcWholesaleQuote = function(enforceClamp = false) {
     const sel = document.getElementById('whs-calc-product');
     const qtyInput = document.getElementById('whs-calc-qty');
     if (!sel || !qtyInput) return;
@@ -426,34 +1060,164 @@ if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
     if (!p) return;
 
     const retail = Number(p.selling_price || 1000);
-    const wholesale = Number(p.wholesale_price || Math.round(retail * 0.82));
-    const moq = Math.max(2, Number(p.min_order_q || p.min_order_qty || 5));
-    let qty = Math.max(1, Number(qtyInput.value || moq));
+    const wholesale = getWholesaleUnitPrice(p);
+    const moq = getWholesaleMOQ(p);
 
+    qtyInput.min = String(moq);
+    let rawQty = Number(qtyInput.value);
+    const warnEl = document.getElementById('whs-calc-moq-warning');
+
+    if (isNaN(rawQty) || rawQty < moq) {
+      if (warnEl) {
+        warnEl.textContent = `⚠️ সর্বনিম্ন অর্ডার কোয়ান্টিটি ${moq} পিস। এর কম অর্ডার করা যাবে না (স্বয়ংক্রিয়ভাবে ${moq} পিস ধরা হয়েছে)।`;
+        warnEl.classList.remove('hidden');
+      }
+      if (enforceClamp) {
+        qtyInput.value = String(moq);
+      }
+      rawQty = moq;
+    } else {
+      if (warnEl) warnEl.classList.add('hidden');
+    }
+
+    const qty = Math.max(moq, rawQty);
     const totalRetail = retail * qty;
     const totalWholesale = wholesale * qty;
     const netProfit = Math.max(0, totalRetail - totalWholesale);
 
+    const zoneSel = document.getElementById('whs-order-zone');
+    const zone = zoneSel ? zoneSel.value : 'dhaka';
+    const isFreeDel = zone === 'pickup' || totalWholesale >= 2000;
+    const delFee = isFreeDel ? 0 : (zone === 'cumilla' ? 70 : (zone === 'outside' ? 120 : 90));
+    const grandTotal = totalWholesale + delFee;
+
     const elMoq = document.getElementById('whs-calc-moq-lbl');
+    const elRetail = document.getElementById('whs-calc-retail-rate');
     const elUnit = document.getElementById('whs-calc-unit-rate');
     const elTotal = document.getElementById('whs-calc-total-cost');
     const elProfit = document.getElementById('whs-calc-net-profit');
+    const elGrand = document.getElementById('whs-order-grand-total');
 
     if (elMoq) elMoq.textContent = `${moq} পিস`;
+    if (elRetail) elRetail.textContent = formatCurrency(retail);
     if (elUnit) elUnit.textContent = formatCurrency(wholesale);
     if (elTotal) elTotal.textContent = formatCurrency(totalWholesale);
     if (elProfit) elProfit.textContent = '+' + formatCurrency(netProfit);
+    if (elGrand) elGrand.textContent = formatCurrency(grandTotal);
   };
 
-  window.addCalculatorQuoteToCart = function() {
+  window.addCalculatorQuoteToCart = function(goToCheckout = false) {
     const sel = document.getElementById('whs-calc-product');
     const qtyInput = document.getElementById('whs-calc-qty');
     const products = getFastProducts();
     const p = products[Number(sel?.value) || 0] || products[0];
     if (!p) return;
-    const moq = Math.max(2, Number(p.min_order_q || p.min_order_qty || 5));
-    const qty = Math.max(moq, Number(qtyInput?.value || moq));
-    window.addWholesaleMoqToCart(p.sku || p.product_id, qty);
+
+    const moq = getWholesaleMOQ(p);
+    let qty = Number(qtyInput?.value || moq);
+    if (isNaN(qty) || qty < moq) {
+      qty = moq;
+      if (qtyInput) qtyInput.value = String(moq);
+    }
+    window.addWholesaleMoqToCart(p.sku || p.product_id, qty, goToCheckout);
+  };
+
+  // Direct Wholesale Order Form Submission inside WholesalePortal
+  window.submitDirectWholesaleOrder = async function(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+
+    const sel = document.getElementById('whs-calc-product');
+    const qtyInput = document.getElementById('whs-calc-qty');
+    const products = getFastProducts();
+    const p = products[Number(sel?.value) || 0] || products[0];
+    if (!p) return;
+
+    const moq = getWholesaleMOQ(p);
+    const wholesaleRate = getWholesaleUnitPrice(p);
+    let qty = Number(qtyInput?.value || moq);
+
+    if (isNaN(qty) || qty < moq) {
+      qty = moq;
+      if (qtyInput) qtyInput.value = String(moq);
+      showWholesaleNotice(
+        "সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ)",
+        `সর্বনিম্ন অর্ডার কোয়ান্টিটি ${moq} পিস অটোমেটিক যুক্ত করা হয়েছে।`,
+        "warning"
+      );
+    }
+
+    const user = authStore.user || {};
+    const name = document.getElementById('whs-order-name')?.value.trim() || user.shop_name || user.name || 'পাইকারি ক্রেতা';
+    const phone = document.getElementById('whs-order-phone')?.value.trim() || user.mobile || user.phone || '';
+    const address = document.getElementById('whs-order-address')?.value.trim() || user.address || '';
+    const paymentMethod = document.getElementById('whs-order-payment')?.value || 'COD';
+    const note = document.getElementById('whs-order-note')?.value.trim() || '';
+
+    if (!name || !phone || !address) {
+      alert('অনুগ্রহ করে নাম, মোবাইল নম্বর এবং ডেলিভারি ঠিকানা পূরণ করুন।');
+      return;
+    }
+
+    const subtotal = wholesaleRate * qty;
+    const zone = document.getElementById('whs-order-zone')?.value || 'dhaka';
+    const isFreeDel = zone === 'pickup' || subtotal >= 2000;
+    const delFee = isFreeDel ? 0 : (zone === 'cumilla' ? 70 : (zone === 'outside' ? 120 : 90));
+    const grandTotal = subtotal + delFee;
+
+    const orderPayload = {
+      customer_name: `${name} (${user.shop_name || 'Wholesaler'})`,
+      phone: phone,
+      address: address,
+      customer_note: `[WHOLESALE MOQ: ${moq}] ${note}`.trim(),
+      account_type: 'Wholesaler',
+      items: [
+        {
+          product_id: p.product_id || p.sku,
+          sku: p.sku || p.product_id,
+          name: p.name || p.p_name,
+          price: wholesaleRate,
+          wholesale_price: wholesaleRate,
+          min_order_qty: moq,
+          quantity: qty,
+          thumbnail: p.thumbnail || ''
+        }
+      ],
+      products: `${p.name || p.p_name} (${qty} পিস × ৳${wholesaleRate})`,
+      quantity: qty,
+      total_amount: grandTotal,
+      delivery_fee: delFee,
+      payment_method: paymentMethod,
+      payment_status: paymentMethod === 'COD' ? 'COD' : 'Paid',
+      order_status: 'Order Placed'
+    };
+
+    const btn = document.getElementById('btn-whs-direct-order-submit');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'পাইকারি অর্ডার প্রসেস হচ্ছে...';
+    }
+
+    try {
+      const res = await apiClient.request("orders/create", orderPayload);
+      const orderId = res?.data?.order_id || res?.data?.orderId || ('ORD-WHS-' + Math.floor(100000 + Math.random() * 900000));
+      if (WHOLESALE_MEM_CACHE.orders) {
+        WHOLESALE_MEM_CACHE.orders.unshift({ ...orderPayload, order_id: orderId, date: new Date().toISOString().slice(0, 10) });
+      }
+      showWholesaleNotice(
+        "পাইকারি অর্ডার সফল!",
+        `অর্ডার #${orderId} (${qty} পিস — হোলসেল দর: ${formatCurrency(wholesaleRate)}) সফলভাবে গৃহীত হয়েছে।`,
+        "success"
+      );
+      if (window.router && typeof window.router.navigate === 'function') {
+        window.router.navigate('/order-success?orderId=' + encodeURIComponent(orderId));
+      }
+    } catch (err) {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '✓ হোলসেল দরে অর্ডার কনফার্ম করুন';
+      }
+    }
   };
 
   // 8. Live Shipment Tracking
@@ -616,6 +1380,7 @@ if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
         window.history.pushState({}, '', '/wholesaler/dashboard');
       }
       authStore.setUser({ ...loginProfile, account_type: 'WHOLESALER' }, 'TOKEN-WHOLE-' + Date.now(), 'WHOLESALER');
+      window.enforceWholesaleCartRules(true);
 
       setTimeout(() => {
         try {
@@ -688,6 +1453,7 @@ if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
       window.history.pushState({}, '', '/wholesaler/dashboard');
     }
     authStore.setUser(payload, 'TOKEN-WHOLE-' + Date.now(), 'WHOLESALER');
+    window.enforceWholesaleCartRules(true);
 
     setTimeout(() => {
       try {
@@ -696,20 +1462,40 @@ if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
     }, 10);
   };
 
-  // Capture-Phase Form Submit Listener (Strictly scoped to #wholesale-auth-form)
+  // Capture-Phase Form Submit Listener (Strictly scoped to #wholesale-auth-form and #checkout-form MOQ guard)
   document.addEventListener('submit', function(e) {
     if (e.target && e.target.id === 'wholesale-auth-form') {
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
       window.handleWholesaleAuth(e);
+      return;
+    }
+
+    // Before Checkout Form submits for a Wholesaler, enforce MOQ & Wholesale Price on every cart item
+    if (e.target && e.target.id === 'checkout-form' && authStore.isWholesaler()) {
+      window.enforceWholesaleCartRules(true);
     }
   }, true);
 
-  // Scoped Real-Time Input Delegation
+  // Scoped Real-Time Input Delegation (Including Product Detail #product-qty-input MOQ enforcement)
   document.addEventListener('input', function(e) {
     const id = e.target && e.target.id;
     if (!id) return;
+
+    if (id === 'product-qty-input' && authStore.isWholesaler()) {
+      const minQty = Number(e.target.getAttribute('data-whs-min') || e.target.min || 5);
+      const val = Number(e.target.value);
+      if (!isNaN(val) && val > 0 && val < minQty) {
+        e.target.value = String(minQty);
+        showWholesaleNotice(
+          "সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ)",
+          `পাইকারি অর্ডারে সর্বনিম্ন ${minQty} পিসের কম দেওয়া যাবে না!`,
+          "error"
+        );
+      }
+      return;
+    }
 
     if (id === 'w-phone') {
       const uid = document.getElementById('w-user-id');
@@ -731,10 +1517,24 @@ if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
     }
   });
 
-  // Scoped Change Listener for Compressed Logo Upload
+  // Scoped Change Listener for Compressed Logo Upload & Product Qty Input Blur/Change
   document.addEventListener('change', function(e) {
     const id = e.target && e.target.id;
     if (!id) return;
+
+    if (id === 'product-qty-input' && authStore.isWholesaler()) {
+      const minQty = Number(e.target.getAttribute('data-whs-min') || e.target.min || 5);
+      const val = Number(e.target.value);
+      if (isNaN(val) || val < minQty) {
+        e.target.value = String(minQty);
+        showWholesaleNotice(
+          "সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ)",
+          `সর্বনিম্ন অর্ডার পরিমাণ ${minQty} পিস স্বয়ংক্রিয়ভাবে সেট করা হয়েছে।`,
+          "warning"
+        );
+      }
+      return;
+    }
 
     const handleUpload = (fileInput, textInputId, previewImgId) => {
       const file = fileInput.files && fileInput.files[0];
@@ -837,9 +1637,11 @@ export async function renderWholesalePortal(params = {}) {
 
   WHOLESALE_MEM_CACHE.catalogRendered = false;
   triggerWholesaleBackgroundSync();
+  window.enforceWholesaleCartRules(true);
 
   const user = authStore.user || {};
   const products = getFastProducts();
+  normalizeCatalogWholesaleFields(products);
   const allOrders = getFastOrders();
 
   const userPhone = String(user.mobile || user.phone || '').trim();
@@ -880,9 +1682,11 @@ export async function renderWholesalePortal(params = {}) {
   const initial = (shopName || ownerName || 'W').charAt(0).toUpperCase();
 
   const firstProd = products[0] || { selling_price: 18500, wholesale_price: 16200, min_order_q: 5 };
-  const initMoq = Math.max(2, Number(firstProd.min_order_q || firstProd.min_order_qty || 5));
-  const initWhsRate = Number(firstProd.wholesale_price || Math.round(Number(firstProd.selling_price || 1000) * 0.82));
+  const initMoq = getWholesaleMOQ(firstProd);
+  const initWhsRate = getWholesaleUnitPrice(firstProd);
   const initRetailRate = Number(firstProd.selling_price || 1000);
+  const initSubtotal = initWhsRate * initMoq;
+  const initGrandTotal = initSubtotal + (initSubtotal >= 2000 ? 0 : 90);
 
   return `
     <style id="dc-wholesale-dashboard-styles">
@@ -1150,7 +1954,7 @@ export async function renderWholesalePortal(params = {}) {
         align-items: center;
         justify-content: space-between;
         gap: 0.5rem;
-        padding: 0.55rem 0.75rem;
+        padding: 0.65rem 0.75rem;
         background: #fffbeb;
         border-top: 1px solid #fde68a;
         font-size: 0.7rem;
@@ -1250,14 +2054,14 @@ export async function renderWholesalePortal(params = {}) {
               <span class="dc-whs-badge-cnt">${products.length}</span>
             </button>
 
+            <button type="button" class="dc-whs-nav-item" data-whs-tab="wtab-calculator">
+              <span class="flex items-center gap-2"><span>⚡</span> পাইকারি অর্ডার ফর্ম</span>
+              <span class="text-[10px] text-emerald-600 font-bold">MOQ অটো</span>
+            </button>
+
             <button type="button" class="dc-whs-nav-item" data-whs-tab="wtab-orders">
               <span class="flex items-center gap-2"><span>📋</span> বাল্ক অর্ডার ও ইনভয়েস</span>
               <span class="dc-whs-badge-cnt">${totalOrders}</span>
-            </button>
-
-            <button type="button" class="dc-whs-nav-item" data-whs-tab="wtab-calculator">
-              <span class="flex items-center gap-2"><span>🧮</span> বাল্ক প্রফিট ক্যালকুলেটর</span>
-              <span class="text-[10px] text-emerald-600 font-bold">নতুন</span>
             </button>
 
             <button type="button" class="dc-whs-nav-item" data-whs-tab="wtab-track">
@@ -1331,21 +2135,21 @@ export async function renderWholesalePortal(params = {}) {
                   <span>🏷️</span>
                 </div>
                 <div class="text-2xl font-black text-indigo-600 mt-2">১৫–২৫%</div>
-                <div class="text-[10px] text-indigo-600 font-bold mt-1">খুচরা মূল্যের ওপর</div>
+                <div class="text-[10px] text-indigo-600 font-bold mt-1">হোলসেল মূল্য স্বয়ংক্রিয় সক্রিয়</div>
               </div>
             </div>
 
             <div class="bg-gradient-to-r from-amber-900 via-slate-900 to-slate-950 rounded-2xl p-5 sm:p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md">
               <div class="space-y-1">
                 <h3 class="text-base sm:text-lg font-black">সরাসরি ইমপোর্টার ও কারখানা দরে বাল্ক পণ্য সংগ্রহ করুন!</h3>
-                <p class="text-xs text-amber-200">ন্যূনতম অর্ডার কোয়ান্টিটি (MOQ) পূরণ করলেই পাচ্ছেন বিশেষ হোলসেল ডিসকাউন্ট ও দ্রুত ট্রান্সপোর্ট ডেলিভারি।</p>
+                <p class="text-xs text-amber-200">আপনার অ্যাকাউন্টে হোলসেল দাম ও সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ) স্বয়ংক্রিয়ভাবে সেট করা আছে।</p>
               </div>
               <div class="flex flex-wrap items-center gap-2">
                 <button type="button" data-whs-tab="wtab-catalog" class="btn-primary py-2.5 px-5 font-bold text-xs bg-amber-400 text-slate-950 rounded-xl cursor-pointer">
                   📦 পাইকারি ক্যাটালগ →
                 </button>
                 <button type="button" data-whs-tab="wtab-calculator" class="btn-secondary py-2.5 px-4 font-bold text-xs rounded-xl cursor-pointer">
-                  🧮 প্রফিট ক্যালকুলেটর
+                  ⚡ পাইকারি অর্ডার ফর্ম
                 </button>
               </div>
             </div>
@@ -1438,7 +2242,7 @@ export async function renderWholesalePortal(params = {}) {
                   <h3 class="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
                     <span>📦</span> হোলসেল রেট ক্যাটালগ ও MOQ (${products.length} টি পণ্য)
                   </h3>
-                  <p class="text-xs text-slate-500">পাইকারি মূল্যে অর্ডারের জন্য প্রতিটি পণ্যের নির্ধারিত সর্বনিম্ন অর্ডার পরিমাণ (MOQ) বজায় রাখুন।</p>
+                  <p class="text-xs text-slate-500">প্রতিটি পণ্যে হোলসেল দাম সিলেক্ট করা আছে এবং সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ) অটো যুক্ত হবে।</p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-2">
@@ -1558,59 +2362,166 @@ export async function renderWholesalePortal(params = {}) {
             </div>
           </div>
 
-          <!-- ================= TAB 4: BULK PROFIT & MOQ CALCULATOR ================= -->
+          <!-- ================= TAB 4: DIRECT WHOLESALE ORDER FORM & MOQ CALCULATOR ================= -->
           <div id="wtab-calculator" class="wholesale-tab-content hidden space-y-4">
-            <div class="dc-whs-panel max-w-2xl mx-auto space-y-5 text-xs">
-              <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
-                <h3 class="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>🧮</span> পাইকারি বাল্ক প্রফিট ও কোটেশন ক্যালকুলেটর
-                </h3>
-                <p class="text-xs text-slate-500">পণ্য ও পরিমাণ নির্বাচন করে তাৎক্ষণিক পাইকারি দর, মোট খরচ এবং আপনার খুচরা বিক্রয় মুনাফা হিসাব করুন।</p>
+            <div class="dc-whs-panel max-w-3xl mx-auto space-y-5 text-xs">
+              <div class="border-b border-slate-100 dark:border-slate-800 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>⚡</span> সরাসরি পাইকারি অর্ডার ফর্ম ও প্রফিট ক্যালকুলেটর
+                  </h3>
+                  <p class="text-xs text-slate-500">পণ্য নির্বাচন করলেই হোলসেল দাম সিলেক্ট হবে এবং সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ) অটো যুক্ত হবে।</p>
+                </div>
+                <span class="px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-black text-[11px] border border-amber-300 self-start sm:self-center">
+                  ✓ Wholesale Price Active
+                </span>
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পণ্য নির্বাচন করুন</label>
-                  <select id="whs-calc-product" class="form-control text-xs w-full py-2.5 px-3 rounded-xl font-bold" onchange="window.recalcWholesaleQuote()">
-                    ${products.map((p, idx) => `<option value="${idx}">${p.name || p.p_name} (MOQ: ${p.min_order_q || 5} পিস)</option>`).join("")}
-                  </select>
+              <form onsubmit="window.submitDirectWholesaleOrder(event);" class="space-y-4">
+                
+                <!-- Product Selection & Locked MOQ Stepper -->
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end">
+                  <div class="sm:col-span-7">
+                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পাইকারি পণ্য নির্বাচন করুন *</label>
+                    <select 
+                      id="whs-calc-product" 
+                      class="form-control text-xs w-full py-2.5 px-3 rounded-xl font-bold" 
+                      onchange="window.onWholesaleProductSelectChange()"
+                    >
+                      ${products.map((p, idx) => {
+                        const m = getWholesaleMOQ(p);
+                        const w = getWholesaleUnitPrice(p);
+                        return `<option value="${idx}">${p.name || p.p_name} — হোলসেল দর: ${formatCurrency(w)} (সর্বনিম্ন MOQ: ${m} পিস)</option>`;
+                      }).join("")}
+                    </select>
+                  </div>
+
+                  <div class="sm:col-span-5">
+                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      অর্ডার পরিমাণ (সর্বনিম্ন MOQ অটো যুক্ত) *
+                    </label>
+                    <div class="flex items-center rounded-xl border-2 border-amber-400 dark:border-amber-500/70 bg-white dark:bg-slate-800 overflow-hidden h-[40px]">
+                      <button 
+                        type="button" 
+                        class="w-11 h-full flex items-center justify-center font-black text-base text-slate-700 dark:text-slate-200 hover:bg-amber-100 dark:hover:bg-slate-700 cursor-pointer"
+                        onclick="window.stepWholesaleOrderFormQty(-1)"
+                        title="পরিমাণ কমান (সর্বনিম্ন MOQ এর নিচে নামবে না)"
+                      >−</button>
+                      <input 
+                        type="number" 
+                        id="whs-calc-qty" 
+                        min="${initMoq}" 
+                        value="${initMoq}" 
+                        required
+                        class="flex-1 h-full text-center font-mono font-black text-sm bg-transparent border-none outline-none text-slate-900 dark:text-white"
+                        oninput="window.recalcWholesaleQuote(false)"
+                        onchange="window.recalcWholesaleQuote(true)"
+                      />
+                      <button 
+                        type="button" 
+                        class="w-11 h-full flex items-center justify-center font-black text-base text-slate-700 dark:text-slate-200 hover:bg-amber-100 dark:hover:bg-slate-700 cursor-pointer"
+                        onclick="window.stepWholesaleOrderFormQty(1)"
+                        title="পরিমাণ বাড়ান"
+                      >+</button>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">অর্ডার পরিমাণ (পিস)</label>
-                  <input 
-                    type="number" 
-                    id="whs-calc-qty" 
-                    min="2" 
-                    value="${initMoq}" 
-                    class="form-control text-xs w-full py-2.5 px-3 rounded-xl font-mono font-bold"
-                    oninput="window.recalcWholesaleQuote()"
-                  />
-                </div>
-              </div>
+                <!-- MOQ Warning Alert (If user tries to type < MOQ) -->
+                <div id="whs-calc-moq-warning" class="hidden p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 font-bold text-xs"></div>
 
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-amber-50/70 dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-slate-700">
-                <div>
-                  <div class="text-[10px] text-slate-500">সর্বনিম্ন অর্ডার (MOQ)</div>
-                  <div id="whs-calc-moq-lbl" class="text-sm font-black text-slate-900 dark:text-white mt-0.5">${initMoq} পিস</div>
+                <!-- Live Wholesale Price & Profit Breakdown Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-amber-50/80 dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-slate-700">
+                  <div>
+                    <div class="text-[10px] text-slate-500 font-bold">সর্বনিম্ন অর্ডার (MOQ)</div>
+                    <div id="whs-calc-moq-lbl" class="text-sm font-black text-slate-900 dark:text-white mt-0.5">${initMoq} পিস</div>
+                    <div class="text-[10px] text-amber-600 font-bold">অটো যুক্ত</div>
+                  </div>
+                  <div>
+                    <div class="text-[10px] text-slate-500 font-bold">নির্বাচিত হোলসেল দর</div>
+                    <div class="flex items-baseline gap-1.5 mt-0.5">
+                      <span id="whs-calc-unit-rate" class="text-sm font-black text-amber-600">${formatCurrency(initWhsRate)}</span>
+                      <span id="whs-calc-retail-rate" class="text-[10px] text-slate-400 line-through">${formatCurrency(initRetailRate)}</span>
+                    </div>
+                    <div class="text-[10px] text-emerald-600 font-bold">পাইকারি রেট সিলেক্টেড</div>
+                  </div>
+                  <div>
+                    <div class="text-[10px] text-slate-500 font-bold">মোট পাইকারি মূল্য</div>
+                    <div id="whs-calc-total-cost" class="text-sm font-black text-slate-900 dark:text-white mt-0.5">${formatCurrency(initSubtotal)}</div>
+                    <div class="text-[10px] text-slate-400">হোলসেল দরে ক্যালকুলেটেড</div>
+                  </div>
+                  <div>
+                    <div class="text-[10px] text-slate-500 font-bold">আপনার খুচরা বিক্রয় লাভ</div>
+                    <div id="whs-calc-net-profit" class="text-sm font-black text-emerald-600 mt-0.5">+${formatCurrency(Math.max(0, (initRetailRate - initWhsRate) * initMoq))}</div>
+                    <div class="text-[10px] text-emerald-600 font-bold">নিট মুনাফা</div>
+                  </div>
                 </div>
-                <div>
-                  <div class="text-[10px] text-slate-500">পাইকারি ইউনিট দর</div>
-                  <div id="whs-calc-unit-rate" class="text-sm font-black text-amber-600 mt-0.5">${formatCurrency(initWhsRate)}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-slate-500">মোট পাইকারি বিল</div>
-                  <div id="whs-calc-total-cost" class="text-sm font-black text-slate-900 dark:text-white mt-0.5">${formatCurrency(initWhsRate * initMoq)}</div>
-                </div>
-                <div>
-                  <div class="text-[10px] text-slate-500">সম্ভাব্য খুচরা লাভ</div>
-                  <div id="whs-calc-net-profit" class="text-sm font-black text-emerald-600 mt-0.5">+${formatCurrency(Math.max(0, (initRetailRate - initWhsRate) * initMoq))}</div>
-                </div>
-              </div>
 
-              <button type="button" onclick="window.addCalculatorQuoteToCart()" class="btn-primary w-full py-3 font-bold rounded-xl cursor-pointer">
-                🛒 এই কোটেশনটি পাইকারি কার্টে যুক্ত করুন →
-              </button>
+                <!-- Shipping & Payment Fields for Direct Wholesale Order -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div>
+                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">প্রতিষ্ঠান / ক্রেতার নাম *</label>
+                    <input type="text" id="whs-order-name" value="${shopName}" required class="form-control text-xs w-full py-2.5 px-3 rounded-xl font-bold" />
+                  </div>
+                  <div>
+                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">মোবাইল নম্বর *</label>
+                    <input type="tel" id="whs-order-phone" value="${user.mobile || user.phone || ''}" required class="form-control text-xs w-full py-2.5 px-3 rounded-xl font-mono font-bold" />
+                  </div>
+                  <div>
+                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">ডেলিভারি এরিয়া</label>
+                    <select id="whs-order-zone" class="form-control text-xs w-full py-2.5 px-3 rounded-xl font-bold" onchange="window.recalcWholesaleQuote(true)">
+                      <option value="dhaka">ঢাকা সিটি (৳৯০ / ৳২,০০০+ ফ্রি)</option>
+                      <option value="cumilla">কুমিল্লা হাব (৳৭০ / ৳২,০০০+ ফ্রি)</option>
+                      <option value="outside">ঢাকার বাইরে ট্রান্সপোর্ট/কুরিয়ার (৳১২০ / ৳২,০০০+ ফ্রি)</option>
+                      <option value="pickup">সরাসরি অফিস পিকআপ (ফ্রি ৳০)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পেমেন্ট পদ্ধতি</label>
+                    <select id="whs-order-payment" class="form-control text-xs w-full py-2.5 px-3 rounded-xl font-bold">
+                      <option value="COD">💵 ক্যাশ অন ডেলিভারি / কন্ডিশন বুকিং</option>
+                      <option value="BKASH_PERSONAL">🌸 বিকাশ পেমেন্ট (৫% ছাড়)</option>
+                      <option value="NAGAD_PERSONAL">🔥 নগদ পেমেন্ট (৫% ছাড়)</option>
+                      <option value="BANK">🏦 ব্যাংক ট্রান্সফার (৫% ছাড়)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">সম্পূর্ণ ডেলিভারি ঠিকানা *</label>
+                    <input type="text" id="whs-order-address" value="${user.address || ''}" required placeholder="মার্কেট, রোড, থানা, জেলা..." class="form-control text-xs w-full py-2.5 px-3 rounded-xl" />
+                  </div>
+                  <div>
+                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">কালার / সাইজ বা ট্রান্সপোর্ট নোট (ঐচ্ছিক)</label>
+                    <input type="text" id="whs-order-note" placeholder="যেমন: সুন্দরবন কুরিয়ার / কালো কালার..." class="form-control text-xs w-full py-2.5 px-3 rounded-xl" />
+                  </div>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-slate-900 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <div class="text-[11px] text-amber-300 font-bold">সর্বমোট প্রদেয় পাইকারি বিল (হোলসেল দরে):</div>
+                    <div id="whs-order-grand-total" class="text-xl font-black text-amber-400 font-mono">${formatCurrency(initGrandTotal)}</div>
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <button 
+                      type="button" 
+                      onclick="window.addCalculatorQuoteToCart(false)" 
+                      class="btn-secondary py-2.5 px-4 font-bold rounded-xl cursor-pointer text-xs"
+                    >
+                      🛒 কার্টে যোগ করুন
+                    </button>
+                    <button 
+                      type="submit" 
+                      id="btn-whs-direct-order-submit"
+                      class="btn-primary py-2.5 px-5 font-black rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer text-xs"
+                    >
+                      ✓ হোলসেল দরে অর্ডার কনফার্ম করুন →
+                    </button>
+                  </div>
+                </div>
+
+              </form>
             </div>
           </div>
 
@@ -1674,13 +2585,16 @@ export async function renderWholesalePortal(params = {}) {
             </div>
           </div>
 
-          <!-- ================= TAB 6: WHOLESALE CART ================= -->
+          <!-- ================= TAB 6: WHOLESALE CART (MOQ Locked & Wholesale Price Calculated) ================= -->
           <div id="wtab-cart" class="wholesale-tab-content hidden space-y-4">
             <div class="dc-whs-panel space-y-4">
               <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <h3 class="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>🛒</span> পাইকারি কার্ট তালিকা (${cartItems.length} টি আইটেম)
-                </h3>
+                <div>
+                  <h3 class="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>🛒</span> পাইকারি কার্ট তালিকা (${cartItems.length} টি আইটেম)
+                  </h3>
+                  <p class="text-xs text-slate-500">সকল পণ্যে হোলসেল দাম ও সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ) স্বয়ংক্রিয়ভাবে প্রযোজ্য।</p>
+                </div>
                 <button type="button" data-whs-tab="wtab-catalog" class="text-xs text-amber-600 font-bold cursor-pointer">
                   + ক্যাটালগ থেকে আরও যোগ করুন
                 </button>
@@ -1696,25 +2610,57 @@ export async function renderWholesalePortal(params = {}) {
                 </div>
               ` : `
                 <div class="space-y-3">
-                  ${cartItems.map(it => `
-                    <div class="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs gap-3">
-                      <div class="flex items-center gap-3" style="min-width: 0;">
-                        <img src="${it.thumbnail || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'}" loading="lazy" class="w-14 h-14 rounded-xl object-cover border border-slate-200" style="flex-shrink: 0;" />
-                        <div style="min-width: 0;">
-                          <h4 class="font-bold text-slate-900 dark:text-white truncate">${it.name}</h4>
-                          <div class="text-[11px] text-slate-500 mt-0.5">ইউনিট দর: ${formatCurrency(it.price || 0)} | পরিমাণ: ${it.quantity} পিস</div>
+                  ${cartItems.map(it => {
+                    const moq = getWholesaleMOQ(it);
+                    const whsPrice = getWholesaleUnitPrice(it);
+                    const qty = Math.max(moq, Number(it.quantity) || moq);
+                    const isMin = qty <= moq;
+                    return `
+                      <div class="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs gap-3">
+                        <div class="flex items-center gap-3" style="min-width: 0;">
+                          <img src="${it.thumbnail || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'}" loading="lazy" class="w-14 h-14 rounded-xl object-cover border border-slate-200" style="flex-shrink: 0;" />
+                          <div style="min-width: 0;">
+                            <h4 class="font-bold text-slate-900 dark:text-white truncate">${it.name}</h4>
+                            <div class="text-[11px] text-slate-500 mt-0.5 flex flex-wrap items-center gap-2">
+                              <span>হোলসেল দর: <strong class="text-amber-600 font-black">${formatCurrency(whsPrice)}</strong></span>
+                              <span>•</span>
+                              <span class="text-emerald-600 font-bold">সর্বনিম্ন MOQ: ${moq} পিস</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="flex items-center justify-between sm:justify-end gap-3" style="flex-shrink: 0;">
+                          <div class="inline-flex items-center rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 overflow-hidden">
+                            <button 
+                              type="button"
+                              class="btn-cart-minus w-7 h-7 flex items-center justify-center font-black ${isMin ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}"
+                              data-product-id="${it.product_id}"
+                              data-color="${it.color || ''}"
+                              data-size="${it.size || ''}"
+                              title="${isMin ? `সর্বনিম্ন ${moq} পিসের কম করা যাবে না` : 'পরিমাণ কমান'}"
+                            >−</button>
+                            <span class="px-2.5 font-mono font-black text-xs">${qty} পিস</span>
+                            <button 
+                              type="button"
+                              class="btn-cart-plus w-7 h-7 flex items-center justify-center font-black cursor-pointer"
+                              data-product-id="${it.product_id}"
+                              data-color="${it.color || ''}"
+                              data-size="${it.size || ''}"
+                              title="পরিমাণ বাড়ান"
+                            >+</button>
+                          </div>
+
+                          <div class="text-right">
+                            <div class="font-black text-slate-900 dark:text-white text-sm">${formatCurrency(whsPrice * qty)}</div>
+                            <a href="/checkout" class="btn-primary text-xs py-1 px-2.5 rounded-lg inline-block mt-1 font-bold">অর্ডার ফর্ম →</a>
+                          </div>
                         </div>
                       </div>
-                      <div class="text-right" style="flex-shrink: 0;">
-                        <div class="font-black text-slate-900 dark:text-white text-sm">${formatCurrency(Number(it.price || 0) * Number(it.quantity || 1))}</div>
-                        <a href="/checkout" class="btn-primary text-xs py-1.5 px-3 rounded-lg inline-block mt-1 font-bold">চেকআউট →</a>
-                      </div>
-                    </div>
-                  `).join("")}
+                    `;
+                  }).join("")}
 
                   <div class="p-4 bg-amber-50 dark:bg-slate-800 rounded-2xl border border-amber-200 dark:border-slate-700 flex items-center justify-between">
                     <div>
-                      <div class="text-xs text-slate-500">মোট পাইকারি বিল</div>
+                      <div class="text-xs text-slate-500">মোট পাইকারি বিল (হোলসেল দরে)</div>
                       <div class="text-lg font-black text-amber-700 dark:text-amber-400">${formatCurrency(cartSubtotal)}</div>
                     </div>
                     <div class="flex items-center gap-2">
@@ -1733,9 +2679,9 @@ export async function renderWholesalePortal(params = {}) {
               <h3 class="text-base font-black text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">
                 📜 পাইকারি ক্রয়ের নীতিমালা ও নির্দেশিকা
               </h3>
-              <p>১. <strong>সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ):</strong> হোলসেলার হিসেবে পণ্য ক্রয়ের ক্ষেত্রে প্রতিটি আইটেমের নির্ধারিত ন্যূনতম পরিমাণ (যেমন: ৫, ৮, ১০ বা ১২ পিস) পূরণ করতে হবে।</p>
-              <p>২. <strong>মাস্টার কার্টন ও ট্রান্সপোর্ট সুবিধা:</strong> সকল পাইকারি অর্ডার মাস্টার কার্টন প্যাকিংয়ে সরাসরি কুমিল্লা হাব থেকে সুন্দরবন কুরিয়ার, এসএ পরিবহন বা স্টেডফাস্টের মাধ্যমে সারা দেশে পাঠানো হয়।</p>
-              <p>৩. <strong>পেমেন্ট শর্তাবলী:</strong> বাল্ক অর্ডারের ক্ষেত্রে ন্যূনতম ২০% বুকিং মানি অগ্রিম প্রদেয়, অবশিষ্ট অর্থ কন্ডিশনে পরিশোধ করা যাবে।</p>
+              <p>১. <strong>সর্বনিম্ন অর্ডার কোয়ান্টিটি (MOQ):</strong> হোলসেলার হিসেবে পণ্য ক্রয়ের ক্ষেত্রে প্রতিটি আইটেমের নির্ধারিত ন্যূনতম পরিমাণ (যেমন: ৫, ৮, ১০ বা ১২ পিস) পূরণ করতে হবে। এর কম অর্ডার সিস্টেমে গ্রহণ করা হয় না।</p>
+              <p>২. <strong>হোলসেল মূল্য ক্যালকুলেশন:</strong> হোলসেলার অ্যাকাউন্টে লগইন থাকা অবস্থায় সকল অর্ডার ফর্ম ও চেকআউটে স্বয়ংক্রিয়ভাবে পাইকারি দর (Wholesale Price) সিলেক্ট ও ক্যালকুলেট হবে।</p>
+              <p>৩. <strong>মাস্টার কার্টন ও ট্রান্সপোর্ট সুবিধা:</strong> সকল পাইকারি অর্ডার মাস্টার কার্টন প্যাকিংয়ে সরাসরি কুমিল্লা হাব থেকে সুন্দরবন কুরিয়ার, এসএ পরিবহন বা স্টেডফাস্টের মাধ্যমে সারা দেশে পাঠানো হয়।</p>
               <p>৪. <strong>হটলাইন সাপোর্ট:</strong> যেকোনো পাইকারি কোটেশনের জন্য যোগাযোগ করুন: <strong>01581703822 (WhatsApp)</strong>।</p>
             </div>
           </div>
