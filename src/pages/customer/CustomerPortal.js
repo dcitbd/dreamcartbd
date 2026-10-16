@@ -1157,7 +1157,7 @@ export async function renderCustomerPortal(params = {}) {
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div>
                   <h3 class="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>📦</span> আমার অর্ডারসমূহ (Order History & Invoices)
+                    <span>📦</span> আমার অর্ডারসমূহ
                   </h3>
                   <p class="text-xs text-slate-500">আপনার সমস্ত অতীত ও চলমান অর্ডারের বিস্তারিত তথ্য ও ক্যাশ অন ডেলিভারি স্ট্যাটাস।</p>
                 </div>
