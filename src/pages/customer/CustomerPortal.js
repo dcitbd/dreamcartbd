@@ -27,6 +27,193 @@ import { apiClient } from '../../api/client.js';
 import { formatCurrency } from '../../utils/format.js';
 import { renderProductCard } from '../../components/ProductCard.js';
 
+// Global Event Listeners & Logic (Registered once at module scope to guarantee SPA execution)
+if (typeof window !== 'undefined' && !window.__dcbdCustomerPortalInit) {
+  window.__dcbdCustomerPortalInit = true;
+
+  // Real-time Password Strength Calculator (0% to 100%)
+  window.checkPasswordStrength = function(pass) {
+    const val = String(pass || '').trim();
+    const bar = document.getElementById('pwd-strength-bar');
+    const lbl = document.getElementById('pwd-strength-label');
+    if (!bar || !lbl) return;
+
+    let percent = 0;
+    let label = '০%';
+    let color = '#94a3b8';
+
+    if (val.length === 0) {
+      percent = 0;
+      label = '০%';
+      color = '#94a3b8';
+    } else {
+      if (val.length >= 4) percent += 20;
+      if (val.length >= 8) percent += 20;
+      if (/[a-z]/.test(val) && /[A-Z]/.test(val)) percent += 20;
+      if (/[0-9]/.test(val)) percent += 20;
+      if (/[^a-zA-Z0-9]/.test(val)) percent += 20;
+
+      if (percent <= 20) {
+        label = `${percent}% (খুব দুর্বল)`;
+        color = '#ef4444';
+      } else if (percent <= 40) {
+        label = `${percent}% (দুর্বল)`;
+        color = '#f97316';
+      } else if (percent <= 60) {
+        label = `${percent}% (মাঝারি)`;
+        color = '#eab308';
+      } else if (percent <= 80) {
+        label = `${percent}% (শক্তিশালী)`;
+        color = '#10b981';
+      } else {
+        label = '১০০% (খুব শক্তিশালী)';
+        color = '#059669';
+      }
+    }
+
+    bar.style.width = percent + '%';
+    bar.style.backgroundColor = color;
+    lbl.textContent = label;
+    lbl.style.color = color;
+  };
+
+  // Suggest Strong Password Generator (10 Characters with upper, lower, digits, symbols)
+  window.suggestStrongPassword = function() {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghijkmnopqrstuvwxyz';
+    const digits = '23456789';
+    const symbols = '@#$%&*';
+    const all = upper + lower + digits + symbols;
+
+    let pwd = '';
+    pwd += upper.charAt(Math.floor(Math.random() * upper.length));
+    pwd += lower.charAt(Math.floor(Math.random() * lower.length));
+    pwd += digits.charAt(Math.floor(Math.random() * digits.length));
+    pwd += symbols.charAt(Math.floor(Math.random() * symbols.length));
+    for (let i = 4; i < 10; i++) {
+      pwd += all.charAt(Math.floor(Math.random() * all.length));
+    }
+    pwd = pwd.split('').sort(() => 0.5 - Math.random()).join('');
+
+    const pInput = document.getElementById('auth-pass');
+    const cInput = document.getElementById('auth-confirm-pass');
+    if (pInput) {
+      pInput.value = pwd;
+      pInput.type = 'text';
+    }
+    if (cInput) {
+      cInput.value = pwd;
+      cInput.type = 'text';
+    }
+    window.checkPasswordStrength(pwd);
+  };
+
+  // Dashboard tab switching
+  window.switchCustomerTab = function(tabId, btn) {
+    document.querySelectorAll('.customer-tab-content').forEach(el => el.classList.add('hidden'));
+    const target = document.getElementById(tabId);
+    if (target) target.classList.remove('hidden');
+
+    document.querySelectorAll('.dc-nav-item').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  window.filterCustomerOrders = function(q) {
+    const query = (q || '').toLowerCase().trim();
+    document.querySelectorAll('.customer-order-item').forEach(item => {
+      const sText = item.getAttribute('data-search') || '';
+      item.style.display = sText.includes(query) ? '' : 'none';
+    });
+  };
+
+  window.filterCustomerOrderStatus = function(status, btn) {
+    document.querySelectorAll('.dc-filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+
+    document.querySelectorAll('.customer-order-item').forEach(item => {
+      const iStatus = item.getAttribute('data-status') || '';
+      if (status === 'all') {
+        item.style.display = '';
+      } else if (status === 'pending') {
+        item.style.display = ['pending', 'order placed', 'processing', 'packing'].includes(iStatus) ? '' : 'none';
+      } else if (status === 'delivered') {
+        item.style.display = ['delivered', 'completed'].includes(iStatus) ? '' : 'none';
+      } else if (status === 'cancelled') {
+        item.style.display = ['cancelled', 'returned'].includes(iStatus) ? '' : 'none';
+      }
+    });
+  };
+
+  window.executeDashboardTrack = function() {
+    const q = (document.getElementById('dashboard-track-input')?.value || '').trim();
+    if (!q) {
+      alert('অনুগ্রহ করে অর্ডার আইডি প্রদান করুন!');
+      return;
+    }
+    const trackDisp = document.getElementById('track-disp-id');
+    if (trackDisp) trackDisp.textContent = q.toUpperCase();
+    const resultBox = document.getElementById('dashboard-track-result');
+    if (resultBox) resultBox.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Document-level event delegation (guarantees real-time response in SPA)
+  document.addEventListener('input', function(e) {
+    if (!e.target) return;
+    if (e.target.id === 'auth-pass') {
+      window.checkPasswordStrength(e.target.value);
+    }
+    if (e.target.id === 'auth-phone') {
+      const uid = document.getElementById('auth-user-id');
+      if (uid) uid.value = e.target.value.trim();
+    }
+    if (e.target.id === 'auth-photo') {
+      const prev = document.getElementById('auth-photo-preview');
+      if (prev) {
+        prev.src = e.target.value.trim() || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160';
+      }
+    }
+  });
+
+  document.addEventListener('change', function(e) {
+    if (e.target && e.target.id === 'auth-photo-file-input') {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const dataUrl = evt.target.result;
+          const photoInput = document.getElementById('auth-photo');
+          const preview = document.getElementById('auth-photo-preview');
+          if (photoInput) {
+            photoInput.value = dataUrl;
+          }
+          if (preview) {
+            preview.src = dataUrl;
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    // Strong password suggest button
+    if (e.target && (e.target.id === 'btn-suggest-strong-pass' || e.target.closest('#btn-suggest-strong-pass'))) {
+      window.suggestStrongPassword();
+    }
+
+    // Toggle password visibility
+    const toggleBtn = e.target && e.target.closest ? e.target.closest('.btn-toggle-auth-pass') : null;
+    if (toggleBtn) {
+      const targetId = toggleBtn.getAttribute('data-target');
+      const targetInput = document.getElementById(targetId);
+      if (targetInput) {
+        targetInput.type = targetInput.type === 'password' ? 'text' : 'password';
+      }
+    }
+  });
+}
+
 export async function renderCustomerPortal(params = {}) {
   const isAuth = authStore.isAuthenticated();
   const user = authStore.user || {};
@@ -66,7 +253,6 @@ export async function renderCustomerPortal(params = {}) {
       const oMail = String(o.mail || o.email || o.customer_mail || "").trim().toLowerCase();
       return (userPhone && oPhone.includes(userPhone)) || (userMail && oMail === userMail);
     });
-    // Fallback if sheet has no specific orders for this user, check local storage
     if (orders.length === 0 && apiClient.sheetOrders) {
       orders = (apiClient.sheetOrders || []).filter(o => {
         const oPhone = String(o.phone || "").trim();
@@ -74,7 +260,6 @@ export async function renderCustomerPortal(params = {}) {
       });
     }
   } else if (!isAuth) {
-    // Guest mode: check if any orders were placed in current browser session
     try {
       const localSaved = JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
       if (Array.isArray(localSaved) && localSaved.length > 0) {
@@ -108,9 +293,6 @@ export async function renderCustomerPortal(params = {}) {
 
   return `
     <style id="dc-customer-portal-styles">
-      /* ==========================================================================
-         DREAM CART BD — LUXURY CUSTOMER DASHBOARD & PORTAL STYLING
-         ========================================================================== */
       .dc-cust-dashboard {
         display: flex;
         flex-direction: column;
@@ -121,7 +303,6 @@ export async function renderCustomerPortal(params = {}) {
         box-sizing: border-box;
       }
 
-      /* Responsive Layout: Sidebar + Main Content */
       .dc-cust-grid {
         display: grid;
         grid-template-columns: 280px 1fr;
@@ -137,7 +318,6 @@ export async function renderCustomerPortal(params = {}) {
         }
       }
 
-      /* Sidebar Card Surface */
       .dc-cust-sidebar {
         background: #ffffff;
         border: 1px solid rgba(226, 232, 240, 0.95);
@@ -164,7 +344,6 @@ export async function renderCustomerPortal(params = {}) {
         }
       }
 
-      /* Sidebar Profile Badge */
       .dc-sidebar-profile {
         display: flex;
         align-items: center;
@@ -268,7 +447,6 @@ export async function renderCustomerPortal(params = {}) {
         color: #ffffff;
       }
 
-      /* KPI Cards Grid */
       .dc-kpi-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -305,7 +483,6 @@ export async function renderCustomerPortal(params = {}) {
         box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08);
       }
 
-      /* Content Panels */
       .dc-panel {
         background: #ffffff;
         border: 1px solid rgba(226, 232, 240, 0.95);
@@ -328,7 +505,6 @@ export async function renderCustomerPortal(params = {}) {
         }
       }
 
-      /* Order Filter Buttons */
       .dc-filter-btn {
         padding: 0.375rem 0.875rem;
         border-radius: 10px;
@@ -353,7 +529,6 @@ export async function renderCustomerPortal(params = {}) {
         border-color: #10b981;
       }
 
-      /* Order Card Item */
       .dc-order-card {
         background: #f8fafc;
         border: 1px solid rgba(226, 232, 240, 0.9);
@@ -403,10 +578,7 @@ export async function renderCustomerPortal(params = {}) {
           </div>
         </div>
 
-        <!-- Quick Top Action Buttons: Visit Shop, Edit Profile, Login/Logout -->
         <div class="flex flex-wrap items-center gap-2.5 self-stretch sm:self-end md:self-center justify-end">
-          
-          <!-- PROMINENT VISIT SHOP BUTTON -->
           <a 
             href="/products" 
             class="btn-primary py-2.5 px-4 sm:px-5 text-xs font-bold rounded-xl shadow-glow flex items-center gap-2 transition"
@@ -471,9 +643,6 @@ export async function renderCustomerPortal(params = {}) {
       <!-- MAIN LAYOUT: SIDEBAR + CONTENT TABS -->
       <div class="dc-cust-grid">
         
-        <!-- ==========================================================================
-             LEFT SIDEBAR NAVIGATION
-             ========================================================================== -->
         <aside class="dc-cust-sidebar">
           
           <div class="dc-sidebar-profile">
@@ -490,9 +659,7 @@ export async function renderCustomerPortal(params = {}) {
             </div>
           </div>
 
-          <!-- Navigation Links -->
           <nav class="dc-nav-list" aria-label="Customer Navigation">
-            
             <button class="dc-nav-item active" onclick="switchCustomerTab('tab-overview', this)">
               <span class="flex items-center gap-2"><span>📊</span> ওভারভিউ</span>
               <span class="text-[10px] text-emerald-600">●</span>
@@ -518,7 +685,6 @@ export async function renderCustomerPortal(params = {}) {
               <span class="dc-badge-count" id="badge-fav-count">${favItems.length}</span>
             </button>
 
-            <!-- SIDEBAR VISIT SHOP BUTTON -->
             <a href="/products" class="dc-nav-item text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950 font-extrabold">
               <span class="flex items-center gap-2"><span>🛍️</span> শপ ভিজিট করুন</span>
               <span class="text-xs">→</span>
@@ -527,10 +693,8 @@ export async function renderCustomerPortal(params = {}) {
             <button class="dc-nav-item" onclick="switchCustomerTab('tab-settings', this)">
               <span class="flex items-center gap-2"><span>⚙️</span> সেটিংস ও প্রোফাইল</span>
             </button>
-
           </nav>
 
-          <!-- Support Hotline Box -->
           <div class="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200/80 dark:border-slate-700/60 text-[11px] space-y-1.5">
             <div class="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
               <span>💬</span> কাস্টমার সাপোর্ট
@@ -545,17 +709,12 @@ export async function renderCustomerPortal(params = {}) {
 
         </aside>
 
-        <!-- ==========================================================================
-             RIGHT MAIN CONTENT AREA
-             ========================================================================== -->
         <main class="space-y-6 min-w-0">
           
-          <!-- TAB 1: OVERVIEW (Default Dashboard View) -->
+          <!-- TAB 1: OVERVIEW -->
           <div id="tab-overview" class="customer-tab-content space-y-6">
             
-            <!-- KPI STATS CARDS -->
             <div class="dc-kpi-grid">
-              
               <div class="dc-kpi-card">
                 <div class="flex items-center justify-between text-slate-400 text-xs">
                   <span>মোট অর্ডার</span>
@@ -600,10 +759,8 @@ export async function renderCustomerPortal(params = {}) {
                 <div class="text-2xl font-black text-rose-500 mt-2">${favItems.length} টি</div>
                 <div class="text-[10px] text-rose-500 font-bold mt-1">উইশলিস্টে সংরক্ষিত</div>
               </div>
-
             </div>
 
-            <!-- QUICK SHORTCUT BANNER -->
             <div class="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 rounded-2xl p-5 sm:p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-md">
               <div class="space-y-1">
                 <h3 class="text-base sm:text-lg font-black">আমাদের বিশাল কালেকশন থেকে এখনই অর্ডার করুন!</h3>
@@ -614,7 +771,6 @@ export async function renderCustomerPortal(params = {}) {
               </a>
             </div>
 
-            <!-- RECENT ORDERS SUMMARY -->
             <div class="dc-panel space-y-4">
               <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                 <h3 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -670,7 +826,6 @@ export async function renderCustomerPortal(params = {}) {
               `}
             </div>
 
-            <!-- FAVOURITES PREVIEW ON OVERVIEW -->
             ${favItems.length > 0 ? `
               <div class="dc-panel space-y-4">
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -690,7 +845,7 @@ export async function renderCustomerPortal(params = {}) {
 
           </div>
 
-          <!-- TAB 2: FULL DETAILS ORDER LIST WITH LIVE SEARCH & FILTERS -->
+          <!-- TAB 2: FULL DETAILS ORDER LIST -->
           <div id="tab-orders" class="customer-tab-content hidden space-y-4">
             
             <div class="dc-panel space-y-4">
@@ -703,7 +858,6 @@ export async function renderCustomerPortal(params = {}) {
                   <p class="text-xs text-slate-500">আপনার সমস্ত অতীত ও চলমান অর্ডারের বিস্তারিত তথ্য ও ক্যাশ অন ডেলিভারি স্ট্যাটাস।</p>
                 </div>
 
-                <!-- Instant Order Search Bar -->
                 <div class="relative w-full md:w-72">
                   <input 
                     type="text" 
@@ -716,7 +870,6 @@ export async function renderCustomerPortal(params = {}) {
                 </div>
               </div>
 
-              <!-- Status Filter Buttons -->
               <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
                 <button class="dc-filter-btn active" data-status="all" onclick="window.filterCustomerOrderStatus('all', this)">সবগুলো (${orders.length})</button>
                 <button class="dc-filter-btn" data-status="pending" onclick="window.filterCustomerOrderStatus('pending', this)">পেন্ডিং (${pendingOrders})</button>
@@ -724,7 +877,6 @@ export async function renderCustomerPortal(params = {}) {
                 <button class="dc-filter-btn" data-status="cancelled" onclick="window.filterCustomerOrderStatus('cancelled', this)">বাতিল (${cancelledOrders})</button>
               </div>
 
-              <!-- Orders List / Empty State -->
               ${orders.length === 0 ? `
                 <div class="py-14 text-center space-y-3">
                   <div class="text-4xl">📦</div>
@@ -813,7 +965,6 @@ export async function renderCustomerPortal(params = {}) {
                 <p class="text-xs text-slate-500">আপনার অর্ডার আইডি প্রদান করে পার্সেলের তাৎক্ষণিক লাইভ অবস্থান দেখুন।</p>
               </div>
 
-              <!-- Track Form -->
               <div class="flex flex-col sm:flex-row gap-2 max-w-lg">
                 <input 
                   type="text" 
@@ -831,9 +982,7 @@ export async function renderCustomerPortal(params = {}) {
                 </button>
               </div>
 
-              <!-- Graphical Tracker Display -->
               <div id="dashboard-track-result" class="p-5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 space-y-4">
-                
                 <div class="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-700/80 pb-3">
                   <div>
                     <span class="text-[10px] text-slate-400 font-bold uppercase">অর্ডার আইডি</span>
@@ -846,7 +995,6 @@ export async function renderCustomerPortal(params = {}) {
                   </span>
                 </div>
 
-                <!-- 4 Step Progress Bar -->
                 <div class="grid grid-cols-4 gap-2 pt-2 text-center text-xs">
                   <div class="space-y-1">
                     <div class="w-8 h-8 rounded-full bg-emerald-500 text-white font-bold mx-auto flex items-center justify-center shadow-xs">✓</div>
@@ -869,7 +1017,6 @@ export async function renderCustomerPortal(params = {}) {
                     <div class="text-[9px] text-slate-400">প্রত্যাশিত ২-৩ দিন</div>
                   </div>
                 </div>
-
               </div>
 
             </div>
@@ -943,7 +1090,7 @@ export async function renderCustomerPortal(params = {}) {
 
           </div>
 
-          <!-- TAB 5: FAVOURITES / WISHLIST -->
+          <!-- TAB 5: FAVOURITES -->
           <div id="tab-fav" class="customer-tab-content hidden space-y-4">
             
             <div class="dc-panel space-y-4">
@@ -974,7 +1121,7 @@ export async function renderCustomerPortal(params = {}) {
 
           </div>
 
-          <!-- TAB 6: SETTINGS & PREFERENCES -->
+          <!-- TAB 6: SETTINGS -->
           <div id="tab-settings" class="customer-tab-content hidden space-y-4">
             
             <div class="dc-panel max-w-xl mx-auto space-y-4 text-xs">
@@ -1014,9 +1161,7 @@ export async function renderCustomerPortal(params = {}) {
 
     </div>
 
-    <!-- ==========================================================================
-         EDIT PROFILE MODAL (100% Wired to main.js event listeners)
-         ========================================================================== -->
+    <!-- EDIT PROFILE MODAL -->
     <div id="customer-profile-edit-modal" class="modal-backdrop">
       <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl space-y-4 text-xs">
         <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
@@ -1041,70 +1186,17 @@ export async function renderCustomerPortal(params = {}) {
         </form>
       </div>
     </div>
-
-    <!-- SCRIPT LOGIC FOR DASHBOARD TABS, FILTERS & TRACKING -->
-    <script>
-      window.switchCustomerTab = function(tabId, btn) {
-        document.querySelectorAll('.customer-tab-content').forEach(el => el.classList.add('hidden'));
-        const target = document.getElementById(tabId);
-        if (target) target.classList.remove('hidden');
-
-        document.querySelectorAll('.dc-nav-item').forEach(b => b.classList.remove('active'));
-        if (btn) btn.classList.add('active');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      };
-
-      window.filterCustomerOrders = function(q) {
-        const query = (q || '').toLowerCase().trim();
-        document.querySelectorAll('.customer-order-item').forEach(item => {
-          const sText = item.getAttribute('data-search') || '';
-          item.style.display = sText.includes(query) ? '' : 'none';
-        });
-      };
-
-      window.filterCustomerOrderStatus = function(status, btn) {
-        document.querySelectorAll('.dc-filter-btn').forEach(b => b.classList.remove('active'));
-        if (btn) btn.classList.add('active');
-
-        document.querySelectorAll('.customer-order-item').forEach(item => {
-          const iStatus = item.getAttribute('data-status') || '';
-          if (status === 'all') {
-            item.style.display = '';
-          } else if (status === 'pending') {
-            item.style.display = ['pending', 'order placed', 'processing', 'packing'].includes(iStatus) ? '' : 'none';
-          } else if (status === 'delivered') {
-            item.style.display = ['delivered', 'completed'].includes(iStatus) ? '' : 'none';
-          } else if (status === 'cancelled') {
-            item.style.display = ['cancelled', 'returned'].includes(iStatus) ? '' : 'none';
-          }
-        });
-      };
-
-      window.executeDashboardTrack = function() {
-        const q = (document.getElementById('dashboard-track-input').value || '').trim();
-        if (!q) {
-          alert('অনুগ্রহ করে অর্ডার আইডি প্রদান করুন!');
-          return;
-        }
-        document.getElementById('track-disp-id').textContent = q.toUpperCase();
-        document.getElementById('dashboard-track-result').scrollIntoView({ behavior: 'smooth' });
-      };
-    </script>
   `;
 }
 
 function renderAuthView(view = 'login') {
   const isRegister = view === 'register';
 
-  // Auto-generate Unique Customer ID (Column A) with timestamp & random token
-  const generatedCustomerId = 'CUST-' + Date.now().toString().slice(-4) + Math.floor(100 + Math.random() * 900);
+  // Auto-generate Unique Customer ID (Column A)
+  const generatedCustomerId = 'CUST-' + Math.floor(100000 + Math.random() * 900000);
 
   return `
     <style id="dc-customer-auth-styles">
-      /* ==========================================================================
-         DREAM CART BD — LUXURY CUSTOMER AUTHENTICATION SUITE
-         Extensive custom CSS for high-converting, modern, responsive authentication.
-         ========================================================================== */
       .dc-auth-wrapper {
         min-height: calc(100vh - 180px);
         display: flex;
@@ -1116,7 +1208,6 @@ function renderAuthView(view = 'login') {
         overflow: hidden;
       }
 
-      /* Ambient Radial Glow Meshes */
       .dc-auth-glow-1 {
         position: absolute;
         top: -80px;
@@ -1142,19 +1233,17 @@ function renderAuthView(view = 'login') {
         z-index: 0;
       }
 
-      /* Main Auth Card */
       .dc-auth-card {
         position: relative;
         z-index: 10;
         width: 100%;
-        max-width: 540px;
+        max-width: 500px;
         background: #ffffff;
         border: 1px solid rgba(226, 232, 240, 0.95);
         border-radius: 28px;
         padding: 2.25rem 2rem;
         box-shadow: 0 20px 45px -10px rgba(5, 150, 105, 0.1), 0 10px 25px -5px rgba(0, 0, 0, 0.03);
         box-sizing: border-box;
-        transition: all 0.3s ease;
       }
 
       .dark .dc-auth-card {
@@ -1170,10 +1259,9 @@ function renderAuthView(view = 'login') {
         }
       }
 
-      /* Brand Avatar & Ring */
       .dc-brand-ring {
-        width: 64px;
-        height: 64px;
+        width: 60px;
+        height: 60px;
         border-radius: 20px;
         background: #ffffff;
         border: 2px solid #10b981;
@@ -1181,7 +1269,7 @@ function renderAuthView(view = 'login') {
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.22);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.2);
         margin: 0 auto;
         position: relative;
       }
@@ -1204,14 +1292,13 @@ function renderAuthView(view = 'login') {
         animation: pulse 2s infinite;
       }
 
-      /* Segmented Nav Pill Tabs */
       .dc-auth-tabs {
         display: flex;
         background: #f1f5f9;
-        padding: 5px;
-        border-radius: 18px;
+        padding: 4px;
+        border-radius: 16px;
         border: 1px solid #e2e8f0;
-        margin-bottom: 1.75rem;
+        margin-bottom: 1.5rem;
         gap: 4px;
       }
 
@@ -1226,13 +1313,13 @@ function renderAuthView(view = 'login') {
         align-items: center;
         justify-content: center;
         gap: 0.5rem;
-        padding: 0.6875rem 1rem;
+        padding: 0.625rem 1rem;
         font-size: 0.8125rem;
         font-weight: 700;
-        border-radius: 14px;
+        border-radius: 12px;
         color: #64748b;
         text-decoration: none;
-        transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.2s ease;
         cursor: pointer;
         border: none;
         background: transparent;
@@ -1249,22 +1336,11 @@ function renderAuthView(view = 'login') {
         font-weight: 800;
       }
 
-      .dc-auth-tab-btn:not(.active):hover {
-        color: #059669;
-        background: rgba(255, 255, 255, 0.8);
-      }
-
-      .dark .dc-auth-tab-btn:not(.active):hover {
-        color: #34d399;
-        background: rgba(255, 255, 255, 0.05);
-      }
-
-      /* Form Field Groups */
       .dc-field-group {
         display: flex;
         flex-direction: column;
         gap: 0.375rem;
-        margin-bottom: 1.125rem;
+        margin-bottom: 1rem;
         text-align: left;
       }
 
@@ -1275,7 +1351,6 @@ function renderAuthView(view = 'login') {
         font-size: 0.75rem;
         font-weight: 700;
         color: #334155;
-        letter-spacing: 0.02em;
       }
 
       .dark .dc-field-label {
@@ -1309,7 +1384,7 @@ function renderAuthView(view = 'login') {
         border: 1.5px solid #e2e8f0;
         border-radius: 14px;
         outline: none;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.2s ease;
         box-sizing: border-box;
       }
 
@@ -1321,8 +1396,7 @@ function renderAuthView(view = 'login') {
 
       .dc-input-field:focus {
         border-color: #10b981;
-        background: #ffffff;
-        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16);
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
       }
 
       .dark .dc-input-field:focus {
@@ -1342,7 +1416,7 @@ function renderAuthView(view = 'login') {
         border-radius: 14px;
         outline: none;
         resize: vertical;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.2s ease;
         box-sizing: border-box;
       }
 
@@ -1354,8 +1428,7 @@ function renderAuthView(view = 'login') {
 
       .dc-textarea-field:focus {
         border-color: #10b981;
-        background: #ffffff;
-        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16);
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
       }
 
       .dark .dc-textarea-field:focus {
@@ -1364,7 +1437,6 @@ function renderAuthView(view = 'login') {
         box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
       }
 
-      /* Password Eye Toggle */
       .dc-pass-toggle {
         position: absolute;
         right: 0.75rem;
@@ -1380,27 +1452,18 @@ function renderAuthView(view = 'login') {
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all 0.15s ease;
       }
 
       .dc-pass-toggle:hover {
         color: #059669;
-        background: #f1f5f9;
       }
 
-      .dark .dc-pass-toggle:hover {
-        color: #34d399;
-        background: #334155;
-      }
-
-      /* Password Strength Bar & Indicators */
       .dc-strength-track {
-        height: 6px;
+        height: 5px;
         width: 100%;
         background: #e2e8f0;
         border-radius: 9999px;
         overflow: hidden;
-        margin-top: 6px;
       }
 
       .dark .dc-strength-track {
@@ -1411,110 +1474,37 @@ function renderAuthView(view = 'login') {
         height: 100%;
         width: 0%;
         border-radius: 9999px;
-        transition: width 0.3s ease, background-color 0.3s ease;
+        transition: width 0.25s ease, background-color 0.25s ease;
       }
 
-      /* Submit Button */
       .dc-auth-submit-btn {
         width: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 0.625rem;
-        padding: 0.875rem 1.5rem;
+        padding: 0.85rem 1.5rem;
         font-size: 0.9375rem;
         font-weight: 800;
         color: #ffffff;
         background: linear-gradient(135deg, #059669 0%, #10b981 50%, #047857 100%);
         border: none;
         border-radius: 16px;
-        box-shadow: 0 8px 24px rgba(5, 150, 105, 0.35);
+        box-shadow: 0 8px 24px rgba(5, 150, 105, 0.3);
         cursor: pointer;
-        transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.2s ease;
         margin-top: 0.5rem;
       }
 
       .dc-auth-submit-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 12px 30px rgba(5, 150, 105, 0.45);
-        filter: brightness(1.04);
-      }
-
-      .dc-auth-submit-btn:active {
-        transform: translateY(0);
-        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.3);
+        box-shadow: 0 12px 28px rgba(5, 150, 105, 0.4);
       }
 
       .dc-auth-submit-btn:disabled {
         opacity: 0.75;
         cursor: not-allowed;
         transform: none;
-      }
-
-      /* Avatar Selector Chips */
-      .dc-avatar-chip {
-        width: 38px;
-        height: 38px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.25rem;
-        background: #f8fafc;
-        border: 2px solid #e2e8f0;
-        cursor: pointer;
-        transition: all 0.15s ease;
-      }
-
-      .dark .dc-avatar-chip {
-        background: #1e293b;
-        border-color: #334155;
-      }
-
-      .dc-avatar-chip.active, .dc-avatar-chip:hover {
-        border-color: #10b981;
-        background: #ecfdf5;
-        transform: scale(1.08);
-      }
-
-      .dark .dc-avatar-chip.active, .dark .dc-avatar-chip:hover {
-        background: rgba(16, 185, 129, 0.15);
-        border-color: #10b981;
-      }
-
-      /* Perks Grid */
-      .dc-perks-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.75rem;
-        margin-top: 1.5rem;
-      }
-
-      @media (max-width: 480px) {
-        .dc-perks-grid {
-          grid-template-columns: 1fr;
-        }
-      }
-
-      .dc-perk-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.625rem;
-        padding: 0.75rem;
-        background: #f8fafc;
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        border-radius: 14px;
-        font-size: 0.75rem;
-      }
-
-      .dark .dc-perk-item {
-        background: rgba(30, 41, 59, 0.5);
-        border-color: rgba(255, 255, 255, 0.06);
-      }
-
-      .dc-perk-icon {
-        font-size: 1.15rem;
-        flex-shrink: 0;
       }
     </style>
 
@@ -1528,7 +1518,7 @@ function renderAuthView(view = 'login') {
       <div class="dc-auth-card">
         
         <!-- Header Branding & Logo -->
-        <div class="text-center space-y-2.5 mb-6">
+        <div class="text-center space-y-2 mb-5">
           <div class="dc-brand-ring">
             <span class="dc-pulse-dot"></span>
             <img 
@@ -1540,20 +1530,9 @@ function renderAuthView(view = 'login') {
           </div>
 
           <div>
-            <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-              ${isRegister ? 'নতুন কাস্টমার অ্যাকাউন্ট' : 'কাস্টমার লগইন'}
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+              ${isRegister ? 'নতুন অ্যাকাউন্ট তৈরি করুন' : 'কাস্টমার লগইন'}
             </h1>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              ${isRegister 
-                ? 'সহজে অর্ডার ট্র্যাকিং ও বিশেষ অফার পেতে নতুন অ্যাকাউন্ট তৈরি করুন' 
-                : 'আপনার মোবাইল নম্বর অথবা ইমেইল ও পাসওয়ার্ড দিয়ে লগইন করুন'}
-            </p>
-          </div>
-
-          <!-- Verified Security Badge -->
-          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-            <span>🔒</span>
-            <span>১০০% নিরাপদ ও সুরক্ষিত কাস্টমার অ্যাকাউন্ট</span>
           </div>
         </div>
 
@@ -1576,7 +1555,7 @@ function renderAuthView(view = 'login') {
         </div>
 
         <!-- Dynamic Inline Error Alert Box -->
-        <div id="auth-error-alert" class="hidden mb-4 p-3.5 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-xl text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2.5">
+        <div id="auth-error-alert" class="hidden mb-4 p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-xl text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
           <span class="text-base flex-shrink-0">⚠️</span>
           <div id="auth-error-msg" class="flex-1 font-semibold leading-relaxed"></div>
         </div>
@@ -1589,12 +1568,10 @@ function renderAuthView(view = 'login') {
 
             <!-- Column A = Customer_ID (auto fillup, unique) -->
             <div class="dc-field-group">
-              <div class="flex items-center justify-between mb-0.5">
-                <label class="dc-field-label !mb-0 font-bold">
-                  <span>কাস্টমার আইডি (Customer_ID)</span>
-                </label>
-                <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">স্বয়ংক্রিয় তৈরি (Auto Fillup)</span>
-              </div>
+              <label class="dc-field-label">
+                <span>কাস্টমার আইডি</span>
+                <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">অটো ফিলআপ</span>
+              </label>
               <div class="dc-input-container">
                 <span class="dc-input-icon">🏷️</span>
                 <input 
@@ -1603,75 +1580,52 @@ function renderAuthView(view = 'login') {
                   name="customer_id"
                   value="${generatedCustomerId}" 
                   readonly 
-                  class="dc-input-field font-mono font-bold bg-slate-100 dark:bg-slate-800/80 text-emerald-700 dark:text-emerald-400 cursor-not-allowed select-none" 
+                  class="dc-input-field font-mono font-bold bg-slate-50 dark:bg-slate-800/60 text-emerald-600 dark:text-emerald-400 cursor-not-allowed select-none" 
                 />
               </div>
             </div>
 
-            <!-- Column B = Profile_photo (Upload / URL Link with Live Preview - REQUIRED) -->
+            <!-- Column B = Profile_photo (File Upload / Link with Live Preview - REQUIRED) -->
             <div class="dc-field-group">
-              <div class="flex items-center justify-between mb-0.5">
-                <label class="dc-field-label !mb-0 font-bold">
-                  <span>প্রোফাইল ছবি (Profile_photo)</span>
-                  <span class="text-rose-500 font-bold">*</span>
-                </label>
-                <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">ছবি নির্বাচন আবশ্যক</span>
-              </div>
-
-              <!-- Live Photo Preview & Upload Card -->
-              <div class="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl mb-2 flex flex-col sm:flex-row items-center gap-3.5">
-                <div class="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-md bg-white dark:bg-slate-900 flex-shrink-0 flex items-center justify-center">
+              <label class="dc-field-label">
+                <span>প্রোফাইল ছবি</span>
+                <span class="text-rose-500 font-bold">*</span>
+              </label>
+              <div class="flex items-center gap-2">
+                <div class="relative w-11 h-11 rounded-xl overflow-hidden border-2 border-emerald-500 bg-slate-100 dark:bg-slate-800 flex-shrink-0 shadow-xs">
                   <img 
                     id="auth-photo-preview" 
                     src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160" 
-                    alt="Profile Preview" 
+                    alt="Profile" 
                     class="w-full h-full object-cover"
                     onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';"
                   />
-                  <span class="absolute bottom-0 inset-x-0 bg-slate-900/80 text-[8px] text-emerald-300 text-center font-bold py-0.5">প্রিভিউ</span>
                 </div>
-
-                <div class="flex-1 w-full space-y-1.5">
-                  <div class="flex items-center gap-2">
-                    <button 
-                      type="button" 
-                      class="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition"
-                      onclick="document.getElementById('auth-photo-file-input').click();"
-                    >
-                      <span>📁</span> <span>ডিভাইস থেকে ছবি আপলোড</span>
-                    </button>
-                    <input 
-                      type="file" 
-                      id="auth-photo-file-input" 
-                      accept="image/*" 
-                      class="hidden" 
-                      onchange="if(this.files && this.files[0]){ const r=new FileReader(); r.onload=e=>{ const url=e.target.result; const inp=document.getElementById('auth-photo'); if(inp){ inp.value=url; inp.dispatchEvent(new Event('input')); } const p=document.getElementById('auth-photo-preview'); if(p) p.src=url; }; r.readAsDataURL(this.files[0]); }"
-                    />
-                  </div>
-
-                  <!-- Quick Avatar Selection presets -->
-                  <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
-                    <span class="text-[10px] text-slate-400 font-semibold mr-0.5">বা প্রিসেট:</span>
-                    <button type="button" class="avatar-preset-btn dc-avatar-chip active !w-7 !h-7 !text-xs !rounded-lg" data-avatar-url="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160" title="পুরুষ ১">👨‍💼</button>
-                    <button type="button" class="avatar-preset-btn dc-avatar-chip !w-7 !h-7 !text-xs !rounded-lg" data-avatar-url="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=160" title="মহিলা ১">👩‍💼</button>
-                    <button type="button" class="avatar-preset-btn dc-avatar-chip !w-7 !h-7 !text-xs !rounded-lg" data-avatar-url="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=160" title="অ্যাভাটার ৩">🧑</button>
-                    <button type="button" class="avatar-preset-btn dc-avatar-chip !w-7 !h-7 !text-xs !rounded-lg" data-avatar-url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=160" title="অ্যাভাটার ৪">🧔</button>
-                    <button type="button" class="avatar-preset-btn dc-avatar-chip !w-7 !h-7 !text-xs !rounded-lg" data-avatar-url="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160" title="অ্যাভাটার ৫">🧕</button>
-                  </div>
+                <div class="dc-input-container flex-1 min-w-0">
+                  <span class="dc-input-icon">🔗</span>
+                  <input 
+                    type="url" 
+                    id="auth-photo" 
+                    required
+                    value="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160"
+                    placeholder="ছবির লিঙ্ক দিন বা আপলোড করুন" 
+                    class="dc-input-field text-xs" 
+                  />
                 </div>
-              </div>
-
-              <!-- Direct Image URL / Base64 string input (Required) -->
-              <div class="dc-input-container">
-                <span class="dc-input-icon">🖼️</span>
+                <button 
+                  type="button" 
+                  class="py-2.5 px-3 text-xs font-bold rounded-xl flex-shrink-0 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-slate-700 dark:text-slate-200 flex items-center gap-1 cursor-pointer transition"
+                  onclick="document.getElementById('auth-photo-file-input').click();"
+                  title="ডিভাইস থেকে ছবি আপলোড করুন"
+                >
+                  <span>📁</span>
+                  <span class="hidden sm:inline">আপলোড</span>
+                </button>
                 <input 
-                  type="url" 
-                  id="auth-photo" 
-                  required
-                  value="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160"
-                  placeholder="ছবির সরাসরি লিঙ্ক (অথবা উপরের বাটনে ছবি আপলোড করুন)" 
-                  class="dc-input-field text-xs" 
-                  oninput="const p=document.getElementById('auth-photo-preview'); if(p) p.src = this.value || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160';"
+                  type="file" 
+                  id="auth-photo-file-input" 
+                  accept="image/*" 
+                  class="hidden" 
                 />
               </div>
             </div>
@@ -1679,7 +1633,7 @@ function renderAuthView(view = 'login') {
             <!-- Column C = Name (Required) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>পূর্ণ নাম (Name)</span>
+                <span>পূর্ণ নাম</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1697,7 +1651,7 @@ function renderAuthView(view = 'login') {
             <!-- Column D = Mobile (Required, 11 digits) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>মোবাইল নম্বর (Mobile)</span>
+                <span>মোবাইল নম্বর</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1709,16 +1663,14 @@ function renderAuthView(view = 'login') {
                   pattern="[0-9]{11}" 
                   placeholder="017XXXXXXXX (১১ ডিজিট)" 
                   class="dc-input-field font-mono" 
-                  oninput="const uid=document.getElementById('auth-user-id'); if(uid) uid.value = this.value.trim();"
                 />
               </div>
-              <span class="text-[10px] text-slate-400 mt-0.5">অর্ডারের আপডেট ও লগইনের জন্য ব্যবহৃত হবে</span>
             </div>
 
-            <!-- Column E = Mail (Email) -->
+            <!-- Column E = Mail (Email, Optional) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>ইমেইল ঠিকানা (Mail)</span>
+                <span>ইমেইল ঠিকানা</span>
                 <span class="text-slate-400 text-[10px]">(ঐচ্ছিক)</span>
               </label>
               <div class="dc-input-container">
@@ -1735,7 +1687,7 @@ function renderAuthView(view = 'login') {
             <!-- Column F = Address (Delivery Address, Required) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>ডেলিভারি ঠিকানা (Address)</span>
+                <span>ডেলিভারি ঠিকানা</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1744,7 +1696,7 @@ function renderAuthView(view = 'login') {
                   id="auth-addr" 
                   required 
                   rows="2" 
-                  placeholder="বাসা/হোল্ডিং নং, রোড, এলাকা/গ্রাম, থানা, জেলা..." 
+                  placeholder="বাসা/হোল্ডিং নং, রোড, থানা, জেলা..." 
                   class="dc-textarea-field"
                 ></textarea>
               </div>
@@ -1752,12 +1704,10 @@ function renderAuthView(view = 'login') {
 
             <!-- Column G = User_ID (Autofill in real-time from phone number) -->
             <div class="dc-field-group">
-              <div class="flex items-center justify-between mb-0.5">
-                <label class="dc-field-label !mb-0 font-bold">
-                  <span>ইউজার আইডি (User_ID)</span>
-                </label>
-                <span class="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-full">মোবাইল নম্বর থেকে পূরণ (Autofill)</span>
-              </div>
+              <label class="dc-field-label">
+                <span>ইউজার আইডি</span>
+                <span class="text-[10px] text-blue-600 dark:text-blue-400 font-bold">মোবাইল থেকে অটো ফিল</span>
+              </label>
               <div class="dc-input-container">
                 <span class="dc-input-icon">🆔</span>
                 <input 
@@ -1765,8 +1715,8 @@ function renderAuthView(view = 'login') {
                   id="auth-user-id" 
                   name="user_id"
                   readonly 
-                  placeholder="মোবাইল নম্বর লিখলে স্বয়ংক্রিয় ইউজার আইডি হবে" 
-                  class="dc-input-field font-mono font-bold bg-slate-100 dark:bg-slate-800/80 text-blue-700 dark:text-blue-300 cursor-not-allowed select-none" 
+                  placeholder="মোবাইল নম্বর লিখলে স্বয়ংক্রিয় বসবে" 
+                  class="dc-input-field font-mono font-bold bg-slate-50 dark:bg-slate-800/60 text-blue-600 dark:text-blue-400 cursor-not-allowed select-none" 
                 />
               </div>
             </div>
@@ -1775,15 +1725,14 @@ function renderAuthView(view = 'login') {
             <div class="dc-field-group">
               <div class="flex items-center justify-between mb-0.5">
                 <label class="dc-field-label !mb-0 font-bold">
-                  <span>পাসওয়ার্ড (Password)</span>
+                  <span>পাসওয়ার্ড</span>
                   <span class="text-rose-500 font-bold">*</span>
                 </label>
-                <!-- Strong Password Suggestion Trigger Button -->
                 <button 
                   type="button" 
-                  class="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full flex items-center gap-1 transition"
-                  onclick="window.suggestStrongPassword && window.suggestStrongPassword()"
-                  title="ক্লিক করলেই একটি সুরক্ষিত স্ট্রং পাসওয়ার্ড তৈরি হবে"
+                  id="btn-suggest-strong-pass"
+                  class="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  title="স্ট্রং পাসওয়ার্ড তৈরি করুন"
                 >
                   <span>💡</span> <span>স্ট্রং পাসওয়ার্ড সাজেস্ট</span>
                 </button>
@@ -1798,24 +1747,20 @@ function renderAuthView(view = 'login') {
                   minlength="4"
                   placeholder="কমপক্ষে ৪ অক্ষরের পাসওয়ার্ড" 
                   class="dc-input-field" 
-                  oninput="window.checkPasswordStrength && window.checkPasswordStrength(this.value);"
                 />
                 <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-pass" title="পাসওয়ার্ড দেখুন">
                   👁️
                 </button>
               </div>
 
-              <!-- Suggested Password Notification Tip -->
-              <div id="pwd-suggest-tip" class="hidden text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 p-2 rounded-xl mt-1.5"></div>
-
-              <!-- Real-Time Password Strength Meter & Percentage Bar -->
+              <!-- Sleek Real-Time Password Strength Meter -->
               <div class="mt-1.5 space-y-1">
                 <div class="flex items-center justify-between text-[11px]">
-                  <span class="text-slate-400">পাসওয়ার্ডের শক্তি (Strength):</span>
-                  <span id="pwd-strength-label" class="font-extrabold text-slate-500">০% (অপ্রবেশিত)</span>
+                  <span class="text-slate-400">শক্তি:</span>
+                  <span id="pwd-strength-label" class="font-extrabold text-slate-400">০%</span>
                 </div>
                 <div class="dc-strength-track">
-                  <div id="pwd-strength-bar" class="dc-strength-fill"></div>
+                  <div id="pwd-strength-bar" class="dc-strength-fill" style="width: 0%; background-color: #94a3b8;"></div>
                 </div>
               </div>
             </div>
@@ -1823,7 +1768,7 @@ function renderAuthView(view = 'login') {
             <!-- Password Confirmation -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>পাসওয়ার্ড নিশ্চিত করুন (Confirm Password)</span>
+                <span>পাসওয়ার্ড নিশ্চিত করুন</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1846,7 +1791,7 @@ function renderAuthView(view = 'login') {
             <div class="flex items-center gap-2 mb-3 text-xs text-slate-600 dark:text-slate-400">
               <input type="checkbox" id="auth-terms" checked required class="rounded text-emerald-600" />
               <label for="auth-terms" class="cursor-pointer">
-                আমি Dream Cart BD-এর <a href="/terms" class="text-emerald-600 font-bold underline">শর্তাবলী</a> ও <a href="/privacy" class="text-emerald-600 font-bold underline">গোপনীয়তা নীতি</a> মেনে নিচ্ছি।
+                আমি Dream Cart BD-এর <a href="/terms" class="text-emerald-600 font-bold underline">শর্তাবলী</a> মেনে নিচ্ছি।
               </label>
             </div>
 
@@ -1869,7 +1814,6 @@ function renderAuthView(view = 'login') {
                   class="dc-input-field" 
                 />
               </div>
-              <span class="text-[10px] text-slate-400 mt-0.5">নিবন্ধনের সময় ব্যবহৃত মোবাইল নম্বর বা ইমেইল দিন</span>
             </div>
 
             <!-- Password -->
@@ -1912,13 +1856,13 @@ function renderAuthView(view = 'login') {
 
           <!-- SUBMIT CTA BUTTON -->
           <button type="submit" class="dc-auth-submit-btn">
-            <span>${isRegister ? 'নতুন অ্যাকাউন্ট তৈরি করুন' : 'লগইন করুন'}</span>
+            <span>${isRegister ? 'অ্যাকাউন্ট তৈরি করুন' : 'লগইন করুন'}</span>
             <span>→</span>
           </button>
 
           <!-- Security note -->
           <p class="text-[11px] text-center text-slate-400 dark:text-slate-500 mt-2.5">
-            🔒 আপনার সকল ব্যক্তিগত তথ্য সম্পূর্ণ গোপন ও নিরাপদ থাকবে।
+            🔒 আপনার সকল তথ্য সম্পূর্ণ গোপন ও নিরাপদ থাকবে।
           </p>
 
         </form>
@@ -1942,41 +1886,6 @@ function renderAuthView(view = 'login') {
           `}
         </div>
 
-        <!-- 4-Item Customer Benefits & Trust Perks Grid -->
-        <div class="dc-perks-grid">
-          <div class="dc-perk-item">
-            <span class="dc-perk-icon">🚚</span>
-            <div>
-              <div class="font-bold text-slate-800 dark:text-slate-200">ক্যাশ অন ডেলিভারি</div>
-              <div class="text-slate-500 text-[10px]">সারা বাংলাদেশে হোম ডেলিভারি সুবিধা</div>
-            </div>
-          </div>
-
-          <div class="dc-perk-item">
-            <span class="dc-perk-icon">🛡️</span>
-            <div>
-              <div class="font-bold text-slate-800 dark:text-slate-200">১০০% আসল পণ্য</div>
-              <div class="text-slate-500 text-[10px]">জেনুইন কোয়ালিটি ও অফিসিয়াল ওয়ারেন্টি</div>
-            </div>
-          </div>
-
-          <div class="dc-perk-item">
-            <span class="dc-perk-icon">📦</span>
-            <div>
-              <div class="font-bold text-slate-800 dark:text-slate-200">লাইভ ট্র্যাকিং</div>
-              <div class="text-slate-500 text-[10px]">তাৎক্ষণিক অর্ডার অবস্থান দেখার সুবিধা</div>
-            </div>
-          </div>
-
-          <div class="dc-perk-item">
-            <span class="dc-perk-icon">💬</span>
-            <div>
-              <div class="font-bold text-slate-800 dark:text-slate-200">২৪/৭ কাস্টমার কেয়ার</div>
-              <div class="text-slate-500 text-[10px]">হোয়াটসঅ্যাপ: 01581703822</div>
-            </div>
-          </div>
-        </div>
-
         <!-- Helpful Navigation Shortcuts -->
         <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs mt-4">
           <a href="/products" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1">
@@ -1994,102 +1903,6 @@ function renderAuthView(view = 'login') {
       </div>
 
     </div>
-
-    <!-- SCRIPT LOGIC FOR REAL-TIME PASSWORD STRENGTH & SUGGESTION -->
-    <script>
-      // 1. Password Strength Calculation & Percentage Display
-      window.checkPasswordStrength = function(pass) {
-        const val = pass || '';
-        let score = 0;
-        if (!val) {
-          score = 0;
-        } else {
-          if (val.length >= 4) score += 20;
-          if (val.length >= 8) score += 20;
-          if (/[a-z]/.test(val) && /[A-Z]/.test(val)) score += 25;
-          if (/[0-9]/.test(val)) score += 20;
-          if (/[^a-zA-Z0-9]/.test(val)) score += 15;
-        }
-
-        const bar = document.getElementById('pwd-strength-bar');
-        const lbl = document.getElementById('pwd-strength-label');
-        if (!bar || !lbl) return;
-
-        bar.style.width = score + '%';
-        if (score === 0) {
-          bar.style.backgroundColor = '#94a3b8';
-          lbl.innerHTML = '০% (অপ্রবেশিত)';
-          lbl.className = 'font-extrabold text-slate-400';
-        } else if (score < 40) {
-          bar.style.backgroundColor = '#ef4444';
-          lbl.innerHTML = score + '% (দুর্বল)';
-          lbl.className = 'font-extrabold text-rose-500';
-        } else if (score < 75) {
-          bar.style.backgroundColor = '#f59e0b';
-          lbl.innerHTML = score + '% (মাঝারি)';
-          lbl.className = 'font-extrabold text-amber-500';
-        } else {
-          bar.style.backgroundColor = '#10b981';
-          lbl.innerHTML = score + '% (খুব শক্তিশালী)';
-          lbl.className = 'font-extrabold text-emerald-600 dark:text-emerald-400';
-        }
-      };
-
-      // 2. Suggest Strong Password Generator (10 Chars with Letters, Digits, Symbols)
-      window.suggestStrongPassword = function() {
-        const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-        const lower = 'abcdefghijkmnopqrstuvwxyz';
-        const digits = '23456789';
-        const symbols = '!@#$%&*';
-        const allChars = upper + lower + digits + symbols;
-
-        let pwd = '';
-        pwd += upper.charAt(Math.floor(Math.random() * upper.length));
-        pwd += lower.charAt(Math.floor(Math.random() * lower.length));
-        pwd += digits.charAt(Math.floor(Math.random() * digits.length));
-        pwd += symbols.charAt(Math.floor(Math.random() * symbols.length));
-        for (let i = 4; i < 10; i++) {
-          pwd += allChars.charAt(Math.floor(Math.random() * allChars.length));
-        }
-        // Shuffle password characters
-        pwd = pwd.split('').sort(() => 0.5 - Math.random()).join('');
-
-        const pInput = document.getElementById('auth-pass');
-        const cInput = document.getElementById('auth-confirm-pass');
-        if (pInput) {
-          pInput.value = pwd;
-          pInput.type = 'text';
-          window.checkPasswordStrength(pwd);
-        }
-        if (cInput) {
-          cInput.value = pwd;
-          cInput.type = 'text';
-        }
-
-        const tip = document.getElementById('pwd-suggest-tip');
-        if (tip) {
-          tip.innerHTML = '✨ সাজেস্টেড পাসওয়ার্ড: <strong class="font-mono text-emerald-600 dark:text-emerald-400 select-all tracking-wider">' + pwd + '</strong> (পাসওয়ার্ডটি মনে রাখুন)';
-          tip.classList.remove('hidden');
-        }
-      };
-
-      // 3. Avatar Preset Chip Listener
-      document.addEventListener('click', function(e) {
-        const btn = e.target.closest ? e.target.closest('.avatar-preset-btn') : null;
-        if (btn) {
-          const url = btn.getAttribute('data-avatar-url');
-          const photoInput = document.getElementById('auth-photo');
-          const preview = document.getElementById('auth-photo-preview');
-          if (photoInput) {
-            photoInput.value = url;
-            photoInput.dispatchEvent(new Event('input'));
-          }
-          if (preview) preview.src = url;
-          document.querySelectorAll('.avatar-preset-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-        }
-      });
-    </script>
   `;
 }
 
