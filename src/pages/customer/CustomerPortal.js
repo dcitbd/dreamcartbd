@@ -500,45 +500,130 @@ export async function renderCustomerPortal(params = {}) {
       }
 
       .dc-filter-btn {
-        padding: 0.375rem 0.875rem;
-        border-radius: 10px;
+        padding: 0.4rem 0.95rem;
+        border-radius: 12px;
         font-size: 0.75rem;
         font-weight: 700;
-        background: #f1f5f9;
+        background: #ffffff;
         color: #475569;
-        border: 1px solid #e2e8f0;
-        transition: all 0.15s ease;
+        border: 1.5px solid #e2e8f0;
+        transition: all 0.18s ease;
         cursor: pointer;
       }
 
       .dark .dc-filter-btn {
         background: #1e293b;
         color: #cbd5e1;
-        border-color: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.1);
       }
 
-      .dc-filter-btn.active, .dc-filter-btn:hover {
-        background: #10b981;
+      .dc-filter-btn:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: #0f172a;
+      }
+
+      .dark .dc-filter-btn:hover {
+        background: #334155;
         color: #ffffff;
-        border-color: #10b981;
       }
 
+      .dc-filter-btn.active {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+        color: #ffffff !important;
+        border-color: #059669 !important;
+        font-weight: 800 !important;
+        box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3) !important;
+      }
+
+      /* Coordinated Luxury Order Cards & Buttons */
       .dc-order-card {
         background: #f8fafc;
-        border: 1px solid rgba(226, 232, 240, 0.9);
-        border-radius: 16px;
-        padding: 1rem 1.25rem;
-        transition: all 0.2s ease;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 1.15rem 1.25rem;
+        box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.04);
+        transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
       .dark .dc-order-card {
-        background: rgba(30, 41, 59, 0.4);
+        background: rgba(30, 41, 59, 0.6);
         border-color: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 2px 12px -2px rgba(0, 0, 0, 0.35);
       }
 
       .dc-order-card:hover {
         border-color: #10b981;
-        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.1);
+        box-shadow: 0 8px 24px -4px rgba(16, 185, 129, 0.16);
+        transform: translateY(-1.5px);
+      }
+
+      .dc-btn-invoice {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        padding: 0.55rem 1rem;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #065f46;
+        background: #ffffff;
+        border: 1.5px solid #10b981;
+        border-radius: 12px;
+        text-decoration: none;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      }
+
+      .dark .dc-btn-invoice {
+        background: #0f172a;
+        color: #34d399;
+        border-color: #10b981;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .dc-btn-invoice:hover {
+        background: #ecfdf5;
+        color: #047857;
+        border-color: #059669;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+      }
+
+      .dark .dc-btn-invoice:hover {
+        background: rgba(16, 185, 129, 0.2);
+        color: #6ee7b7;
+      }
+
+      .dc-btn-track {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.4rem;
+        padding: 0.55rem 1.05rem;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #ffffff !important;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: 1.5px solid #059669;
+        border-radius: 12px;
+        text-decoration: none;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.28);
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+      }
+
+      .dark .dc-btn-track {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border-color: rgba(52, 211, 153, 0.5);
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+      }
+
+      .dc-btn-track:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(5, 150, 105, 0.4);
       }
     </style>
 
@@ -787,35 +872,94 @@ export async function renderCustomerPortal(params = {}) {
                 </div>
               ` : `
                 <div class="space-y-3">
-                  ${orders.slice(0, 3).map(o => `
-                    <div class="dc-order-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                      <div>
+                  ${orders.slice(0, 3).map(o => {
+                    const st = String(o.order_status || 'Pending').toLowerCase();
+                    let stBadge = 'badge-warning';
+                    if (['delivered', 'completed'].includes(st)) stBadge = 'badge-success';
+                    if (['cancelled', 'returned'].includes(st)) stBadge = 'badge-danger';
+                    if (['processing', 'in transit', 'shipping'].includes(st)) stBadge = 'badge-info';
+
+                    let orderQty = o.quantity || o.total_quantity || o.item_count || 0;
+                    if (!orderQty && Array.isArray(o.items) && o.items.length > 0) {
+                      orderQty = o.items.reduce((sum, it) => sum + Number(it.quantity || 1), 0);
+                    }
+                    if (!orderQty && typeof o.products === 'string') {
+                      const qtyMatches = o.products.match(/\\((\\d+)\\)/g);
+                      if (qtyMatches) {
+                        orderQty = qtyMatches.reduce((sum, m) => sum + Number(m.replace(/\\D/g, '') || 1), 0);
+                      }
+                    }
+                    if (!orderQty) orderQty = 1;
+
+                    return `
+                    <div class="dc-order-card customer-order-item" data-status="${st}">
+                      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 dark:border-slate-800 pb-2.5 mb-3">
+                        <div class="flex items-center gap-2.5 flex-wrap">
+                          <span class="font-mono font-black text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                            #${o.order_id}
+                          </span>
+                          <span class="text-xs text-slate-500 font-medium flex items-center gap-1">
+                            <span>📅</span> ${o.date || 'আজকের অর্ডার'}
+                          </span>
+                        </div>
                         <div class="flex items-center gap-2 flex-wrap">
-                          <span class="font-mono font-bold text-emerald-700 dark:text-emerald-400">${o.order_id}</span>
-                          <span class="text-slate-400">•</span>
-                          <span class="text-slate-500">${o.date || 'তারিখ অপ্রাপ্য'}</span>
-                          <span class="badge ${String(o.order_status).toLowerCase() === 'delivered' ? 'badge-success' : 'badge-warning'} text-[10px]">
+                          <span class="badge ${o.payment_status === 'Paid' ? 'badge-success' : 'badge-warning'} text-[10px] font-bold">
+                            ${o.payment_status === 'Paid' ? '✓ পরিশোধিত (Paid)' : (o.payment_method || 'ক্যাশ অন ডেলিভারি')}
+                          </span>
+                          <span class="badge ${stBadge} text-[10px] font-extrabold uppercase">
                             ${o.order_status || 'Pending'}
                           </span>
                         </div>
-                        <div class="text-slate-700 dark:text-slate-300 font-medium mt-1 truncate max-w-md">
-                          ${o.products || 'পণ্যসমূহ'}
-                        </div>
-                        <div class="font-bold text-slate-900 dark:text-white mt-0.5">
-                          মোট: ${formatCurrency(o.total_amount || 0)}
-                        </div>
                       </div>
 
-                      <div class="flex items-center gap-2 self-end sm:self-center">
-                        <a href="/order-success?orderId=${o.order_id}" class="btn-secondary py-1.5 px-3 text-[11px] font-bold rounded-lg">
-                          ইনভয়েস 🖨️
-                        </a>
-                        <a href="/track?orderId=${o.order_id}" class="btn-primary py-1.5 px-3 text-[11px] font-bold rounded-lg">
-                          ট্র্যাক 🚚
-                        </a>
+                      <div class="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center text-xs">
+                        <div class="sm:col-span-5 min-w-0 space-y-1">
+                          <div class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            <span>🛍️</span> <span>প্রোডাক্ট এর নাম</span>
+                          </div>
+                          <div class="font-bold text-slate-900 dark:text-white text-sm line-clamp-2 leading-snug" title="${o.products || 'পণ্যসমূহ'}">
+                            ${o.products || 'পণ্যসমূহ'}
+                          </div>
+                          <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 pt-0.5">
+                            <span>📍</span> <span class="truncate">${o.address || 'বাংলাদেশ'}</span>
+                          </div>
+                        </div>
+
+                        <div class="sm:col-span-2 sm:text-center space-y-1">
+                          <div class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center sm:justify-center gap-1">
+                            <span>🔢</span> <span>অর্ডার কোয়ান্টিটি</span>
+                          </div>
+                          <div class="inline-flex sm:flex items-center justify-start sm:justify-center">
+                            <span class="font-mono font-black text-xs sm:text-sm text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
+                              ${orderQty} টি
+                            </span>
+                          </div>
+                        </div>
+
+                        <div class="sm:col-span-2 space-y-1">
+                          <div class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                            <span>💰</span> <span>মোট দাম</span>
+                          </div>
+                          <div class="text-base font-black text-emerald-600 dark:text-emerald-400 leading-tight">
+                            ${formatCurrency(o.total_amount || 0)}
+                          </div>
+                          <div class="text-[10px] text-slate-400 font-medium">
+                            ${o.delivery_fee ? `ডেলিভারি: ${formatCurrency(o.delivery_fee)}` : 'ডেলিভারি অন্তর্ভুক্ত'}
+                          </div>
+                        </div>
+
+                        <div class="sm:col-span-3 flex sm:flex-col gap-2 justify-end sm:items-end pt-1 sm:pt-0">
+                          <a href="/order-success?orderId=${o.order_id}" class="dc-btn-invoice w-full sm:w-auto text-center" title="ইনভয়েস বা ভাউচার প্রিন্ট করুন">
+                            <span>🖨️</span> <span>ভাউচার / ইনভয়েস</span>
+                          </a>
+                          <a href="/track?orderId=${o.order_id}" class="dc-btn-track w-full sm:w-auto text-center" title="অর্ডার লাইভ ট্র্যাক করুন">
+                            <span>🚚</span> <span>লাইভ ট্র্যাক</span>
+                          </a>
+                        </div>
                       </div>
                     </div>
-                  `).join("")}
+                  `;
+                  }).join("")}
                 </div>
               `}
             </div>
@@ -846,8 +990,8 @@ export async function renderCustomerPortal(params = {}) {
               
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div>
-                  <h3 class="text-base font-black text-slate-900 dark:text-white">
-                    আমার সকল অর্ডার (Order History & Invoices)
+                  <h3 class="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>📦</span> আমার অর্ডারসমূহ (Order History & Invoices)
                   </h3>
                   <p class="text-xs text-slate-500">আপনার সমস্ত অতীত ও চলমান অর্ডারের বিস্তারিত তথ্য ও ক্যাশ অন ডেলিভারি স্ট্যাটাস।</p>
                 </div>
@@ -886,55 +1030,100 @@ export async function renderCustomerPortal(params = {}) {
                   </div>
                 </div>
               ` : `
-                <div class="space-y-3" id="customer-orders-container">
+                <div class="space-y-3.5" id="customer-orders-container">
                   ${orders.map(o => {
                     const st = String(o.order_status || 'Pending').toLowerCase();
                     let stBadge = 'badge-warning';
                     if (['delivered', 'completed'].includes(st)) stBadge = 'badge-success';
                     if (['cancelled', 'returned'].includes(st)) stBadge = 'badge-danger';
-                    if (['processing', 'in transit'].includes(st)) stBadge = 'badge-info';
+                    if (['processing', 'in transit', 'shipping'].includes(st)) stBadge = 'badge-info';
+
+                    let orderQty = o.quantity || o.total_quantity || o.item_count || 0;
+                    if (!orderQty && Array.isArray(o.items) && o.items.length > 0) {
+                      orderQty = o.items.reduce((sum, it) => sum + Number(it.quantity || 1), 0);
+                    }
+                    if (!orderQty && typeof o.products === 'string') {
+                      const qtyMatches = o.products.match(/\\((\\d+)\\)/g);
+                      if (qtyMatches) {
+                        orderQty = qtyMatches.reduce((sum, m) => sum + Number(m.replace(/\\D/g, '') || 1), 0);
+                      }
+                    }
+                    if (!orderQty) orderQty = 1;
 
                     return `
                       <div class="dc-order-card customer-order-item" data-status="${st}" data-search="${(o.order_id + ' ' + (o.products || '') + ' ' + (o.phone || '')).toLowerCase()}">
                         
-                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/70 dark:border-slate-700/60 pb-2.5 mb-2.5">
-                          <div class="flex items-center gap-3 flex-wrap">
-                            <span class="font-mono font-bold text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                        <!-- Order Card Header -->
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 dark:border-slate-800 pb-2.5 mb-3">
+                          <div class="flex items-center gap-2.5 flex-wrap">
+                            <span class="font-mono font-black text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
                               #${o.order_id}
                             </span>
-                            <span class="text-xs text-slate-500 font-medium">📅 ${o.date || 'আজকের অর্ডার'}</span>
-                          </div>
-                          <div class="flex items-center gap-2">
-                            <span class="badge ${o.payment_status === 'Paid' ? 'badge-success' : 'badge-warning'} text-[10px]">
-                              ${o.payment_status === 'Paid' ? 'পরিশোধিত (Paid)' : (o.payment_method || 'ক্যাশ অন ডেলিভারি')}
+                            <span class="text-xs text-slate-500 font-medium flex items-center gap-1">
+                              <span>📅</span> ${o.date || 'আজকের অর্ডার'}
                             </span>
-                            <span class="badge ${stBadge} text-[10px] font-bold">
+                          </div>
+                          <div class="flex items-center gap-2 flex-wrap">
+                            <span class="badge ${o.payment_status === 'Paid' ? 'badge-success' : 'badge-warning'} text-[10px] font-bold">
+                              ${o.payment_status === 'Paid' ? '✓ পরিশোধিত (Paid)' : (o.payment_method || 'ক্যাশ অন ডেলিভারি')}
+                            </span>
+                            <span class="badge ${stBadge} text-[10px] font-extrabold uppercase">
                               ${o.order_status || 'Pending'}
                             </span>
                           </div>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center text-xs">
-                          <div class="sm:col-span-6">
-                            <div class="text-[11px] text-slate-400 font-bold uppercase">পণ্য বিবরণ</div>
-                            <div class="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">${o.products || 'পণ্যসমূহ'}</div>
-                            <div class="text-[11px] text-slate-400 mt-1">📍 ঠিকানা: ${o.address || 'বাংলাদেশ'}</div>
+                        <!-- Order Card Body Grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center text-xs">
+                          
+                          <!-- Product Name & Address -->
+                          <div class="sm:col-span-5 min-w-0 space-y-1">
+                            <div class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                              <span>🛍️</span> <span>প্রোডাক্ট এর নাম</span>
+                            </div>
+                            <div class="font-bold text-slate-900 dark:text-white text-sm line-clamp-2 leading-snug" title="${o.products || 'পণ্যসমূহ'}">
+                              ${o.products || 'পণ্যসমূহ'}
+                            </div>
+                            <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 pt-0.5">
+                              <span>📍</span> <span class="truncate">${o.address || 'বাংলাদেশ'}</span>
+                            </div>
                           </div>
 
-                          <div class="sm:col-span-3">
-                            <div class="text-[11px] text-slate-400 font-bold uppercase">মোট প্রদেয়</div>
-                            <div class="text-base font-black text-slate-900 dark:text-white mt-0.5">${formatCurrency(o.total_amount || 0)}</div>
-                            <div class="text-[10px] text-slate-400">${o.delivery_fee ? `ডেলিভারি ফি: ${formatCurrency(o.delivery_fee)}` : 'ডেলিভারি অন্তর্ভুক্ত'}</div>
+                          <!-- Order Quantity -->
+                          <div class="sm:col-span-2 sm:text-center space-y-1">
+                            <div class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center sm:justify-center gap-1">
+                              <span>🔢</span> <span>অর্ডার কোয়ান্টিটি</span>
+                            </div>
+                            <div class="inline-flex sm:flex items-center justify-start sm:justify-center">
+                              <span class="font-mono font-black text-xs sm:text-sm text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-2xs">
+                                ${orderQty} টি
+                              </span>
+                            </div>
                           </div>
 
-                          <div class="sm:col-span-3 flex sm:flex-col gap-2 justify-end sm:items-end">
-                            <a href="/order-success?orderId=${o.order_id}" class="btn-primary py-1.5 px-3 text-[11px] font-bold rounded-lg text-center w-full sm:w-auto">
-                              ভাউচার 🖨️
+                          <!-- Total Price -->
+                          <div class="sm:col-span-2 space-y-1">
+                            <div class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                              <span>💰</span> <span>মোট দাম</span>
+                            </div>
+                            <div class="text-base font-black text-emerald-600 dark:text-emerald-400 leading-tight">
+                              ${formatCurrency(o.total_amount || 0)}
+                            </div>
+                            <div class="text-[10px] text-slate-400 font-medium">
+                              ${o.delivery_fee ? `ডেলিভারি: ${formatCurrency(o.delivery_fee)}` : 'ডেলিভারি অন্তর্ভুক্ত'}
+                            </div>
+                          </div>
+
+                          <!-- Coordinated Action Buttons -->
+                          <div class="sm:col-span-3 flex sm:flex-col gap-2 justify-end sm:items-end pt-1 sm:pt-0">
+                            <a href="/order-success?orderId=${o.order_id}" class="dc-btn-invoice w-full sm:w-auto text-center" title="ইনভয়েস বা ভাউচার প্রিন্ট করুন">
+                              <span>🖨️</span> <span>ভাউচার / ইনভয়েস</span>
                             </a>
-                            <a href="/track?orderId=${o.order_id}" class="btn-secondary py-1.5 px-3 text-[11px] font-bold rounded-lg text-center w-full sm:w-auto bg-slate-100 dark:bg-slate-800">
-                              ট্র্যাক 🚚
+                            <a href="/track?orderId=${o.order_id}" class="dc-btn-track w-full sm:w-auto text-center" title="অর্ডার লাইভ ট্র্যাক করুন">
+                              <span>🚚</span> <span>লাইভ ট্র্যাক</span>
                             </a>
                           </div>
+
                         </div>
 
                       </div>
