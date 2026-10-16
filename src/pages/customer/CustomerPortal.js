@@ -8,6 +8,15 @@
  * - Full-detail Order History with live search & multi-status filtering
  * - Interactive Order Tracking system with step-by-step progress
  * - Dynamic Profile Edit modal & Auth views (100% compatible with main.js event listeners)
+ * - Strict Sequential Registration Form:
+ *     Column A = Customer_ID (auto fillup, unique)
+ *     Column B = Profile_photo (File upload / URL link with live preview, Required)
+ *     Column C = Name (Required)
+ *     Column D = Mobile (Required, 11 digits)
+ *     Column E = Mail (Email)
+ *     Column F = Address (Delivery address, Required)
+ *     Column G = User_ID (Autofill in real-time from mobile number)
+ *     Column H = Password (Suggest-strong password + live percentage strength meter)
  * - Zero divide/conflict with existing stores and routing
  */
 
@@ -1087,6 +1096,9 @@ export async function renderCustomerPortal(params = {}) {
 function renderAuthView(view = 'login') {
   const isRegister = view === 'register';
 
+  // Auto-generate Unique Customer ID (Column A) with timestamp & random token
+  const generatedCustomerId = 'CUST-' + Date.now().toString().slice(-4) + Math.floor(100 + Math.random() * 900);
+
   return `
     <style id="dc-customer-auth-styles">
       /* ==========================================================================
@@ -1135,7 +1147,7 @@ function renderAuthView(view = 'login') {
         position: relative;
         z-index: 10;
         width: 100%;
-        max-width: 530px;
+        max-width: 540px;
         background: #ffffff;
         border: 1px solid rgba(226, 232, 240, 0.95);
         border-radius: 28px;
@@ -1381,6 +1393,27 @@ function renderAuthView(view = 'login') {
         background: #334155;
       }
 
+      /* Password Strength Bar & Indicators */
+      .dc-strength-track {
+        height: 6px;
+        width: 100%;
+        background: #e2e8f0;
+        border-radius: 9999px;
+        overflow: hidden;
+        margin-top: 6px;
+      }
+
+      .dark .dc-strength-track {
+        background: #334155;
+      }
+
+      .dc-strength-fill {
+        height: 100%;
+        width: 0%;
+        border-radius: 9999px;
+        transition: width 0.3s ease, background-color 0.3s ease;
+      }
+
       /* Submit Button */
       .dc-auth-submit-btn {
         width: 100%;
@@ -1483,26 +1516,6 @@ function renderAuthView(view = 'login') {
         font-size: 1.15rem;
         flex-shrink: 0;
       }
-
-      /* Status Banner */
-      .dc-sheet-status-box {
-        display: flex;
-        align-items: center;
-        gap: 0.625rem;
-        padding: 0.75rem 1rem;
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(13, 148, 136, 0.04) 100%);
-        border: 1px solid rgba(16, 185, 129, 0.25);
-        border-radius: 16px;
-        font-size: 0.75rem;
-        color: #065f46;
-        margin-top: 1.25rem;
-      }
-
-      .dark .dc-sheet-status-box {
-        background: rgba(16, 185, 129, 0.1);
-        border-color: rgba(16, 185, 129, 0.3);
-        color: #6ee7b7;
-      }
     </style>
 
     <div class="dc-auth-wrapper">
@@ -1572,12 +1585,102 @@ function renderAuthView(view = 'login') {
         <form id="customer-auth-form" data-auth-mode="${isRegister ? 'register' : 'login'}">
           
           ${isRegister ? `
-            <!-- ================= REGISTER FIELDS ================= -->
+            <!-- ================= REGISTER FIELDS (COLUMNS A TO H) ================= -->
 
-            <!-- Full Name -->
+            <!-- Column A = Customer_ID (auto fillup, unique) -->
+            <div class="dc-field-group">
+              <div class="flex items-center justify-between mb-0.5">
+                <label class="dc-field-label !mb-0 font-bold">
+                  <span>কাস্টমার আইডি (Customer_ID)</span>
+                </label>
+                <span class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">স্বয়ংক্রিয় তৈরি (Auto Fillup)</span>
+              </div>
+              <div class="dc-input-container">
+                <span class="dc-input-icon">🏷️</span>
+                <input 
+                  type="text" 
+                  id="auth-customer-id" 
+                  name="customer_id"
+                  value="${generatedCustomerId}" 
+                  readonly 
+                  class="dc-input-field font-mono font-bold bg-slate-100 dark:bg-slate-800/80 text-emerald-700 dark:text-emerald-400 cursor-not-allowed select-none" 
+                />
+              </div>
+            </div>
+
+            <!-- Column B = Profile_photo (Upload / URL Link with Live Preview - REQUIRED) -->
+            <div class="dc-field-group">
+              <div class="flex items-center justify-between mb-0.5">
+                <label class="dc-field-label !mb-0 font-bold">
+                  <span>প্রোফাইল ছবি (Profile_photo)</span>
+                  <span class="text-rose-500 font-bold">*</span>
+                </label>
+                <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">ছবি নির্বাচন আবশ্যক</span>
+              </div>
+
+              <!-- Live Photo Preview & Upload Card -->
+              <div class="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl mb-2 flex flex-col sm:flex-row items-center gap-3.5">
+                <div class="relative w-16 h-16 rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-md bg-white dark:bg-slate-900 flex-shrink-0 flex items-center justify-center">
+                  <img 
+                    id="auth-photo-preview" 
+                    src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160" 
+                    alt="Profile Preview" 
+                    class="w-full h-full object-cover"
+                    onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';"
+                  />
+                  <span class="absolute bottom-0 inset-x-0 bg-slate-900/80 text-[8px] text-emerald-300 text-center font-bold py-0.5">প্রিভিউ</span>
+                </div>
+
+                <div class="flex-1 w-full space-y-1.5">
+                  <div class="flex items-center gap-2">
+                    <button 
+                      type="button" 
+                      class="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition"
+                      onclick="document.getElementById('auth-photo-file-input').click();"
+                    >
+                      <span>📁</span> <span>ডিভাইস থেকে ছবি আপলোড</span>
+                    </button>
+                    <input 
+                      type="file" 
+                      id="auth-photo-file-input" 
+                      accept="image/*" 
+                      class="hidden" 
+                      onchange="if(this.files && this.files[0]){ const r=new FileReader(); r.onload=e=>{ const url=e.target.result; const inp=document.getElementById('auth-photo'); if(inp){ inp.value=url; inp.dispatchEvent(new Event('input')); } const p=document.getElementById('auth-photo-preview'); if(p) p.src=url; }; r.readAsDataURL(this.files[0]); }"
+                    />
+                  </div>
+
+                  <!-- Quick Avatar Selection presets -->
+                  <div class="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span class="text-[10px] text-slate-400 font-semibold mr-0.5">বা প্রিসেট:</span>
+                    <button type="button" class="avatar-preset-btn dc-avatar-chip active !w-7 !h-7 !text-xs !rounded-lg" data-avatar-url="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160" title="পুরুষ ১">👨‍💼</button>
+                    <button type="button" class="avatar-preset-btn dc-avatar-chip !w-7 !h-7 !text-xs !rounded-lg" data-avatar-url="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=160" title="মহিলা ১">👩‍💼</button>
+                    <button type="button" class="avatar-preset-btn dc-avatar-chip !w-7 !h-7 !text-xs !rounded-lg" data-avatar-url="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=160" title="অ্যাভাটার ৩">🧑</button>
+                    <button type="button" class="avatar-preset-btn dc-avatar-chip !w-7 !h-7 !text-xs !rounded-lg" data-avatar-url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=160" title="অ্যাভাটার ৪">🧔</button>
+                    <button type="button" class="avatar-preset-btn dc-avatar-chip !w-7 !h-7 !text-xs !rounded-lg" data-avatar-url="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=160" title="অ্যাভাটার ৫">🧕</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Direct Image URL / Base64 string input (Required) -->
+              <div class="dc-input-container">
+                <span class="dc-input-icon">🖼️</span>
+                <input 
+                  type="url" 
+                  id="auth-photo" 
+                  required
+                  value="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160"
+                  placeholder="ছবির সরাসরি লিঙ্ক (অথবা উপরের বাটনে ছবি আপলোড করুন)" 
+                  class="dc-input-field text-xs" 
+                  oninput="const p=document.getElementById('auth-photo-preview'); if(p) p.src = this.value || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160';"
+                />
+              </div>
+              <span class="text-[10px] text-slate-400 mt-0.5">ছবি ফাইল সিলেক্ট করলে বা লিঙ্ক বসালে সাথে সাথে প্রিভিউ দেখা যাবে</span>
+            </div>
+
+            <!-- Column C = Name (Required) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>আপনার পূর্ণ নাম</span>
+                <span>পূর্ণ নাম (Name)</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1592,10 +1695,10 @@ function renderAuthView(view = 'login') {
               </div>
             </div>
 
-            <!-- Mobile Number -->
+            <!-- Column D = Mobile (Required, 11 digits) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>মোবাইল নম্বর</span>
+                <span>মোবাইল নম্বর (Mobile)</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1607,15 +1710,16 @@ function renderAuthView(view = 'login') {
                   pattern="[0-9]{11}" 
                   placeholder="017XXXXXXXX (১১ ডিজিট)" 
                   class="dc-input-field font-mono" 
+                  oninput="const uid=document.getElementById('auth-user-id'); if(uid) uid.value = this.value.trim();"
                 />
               </div>
               <span class="text-[10px] text-slate-400 mt-0.5">অর্ডারের আপডেট ও লগইনের জন্য ব্যবহৃত হবে</span>
             </div>
 
-            <!-- Email Address -->
+            <!-- Column E = Mail (Email) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>ইমেইল ঠিকানা</span>
+                <span>ইমেইল ঠিকানা (Mail)</span>
                 <span class="text-slate-400 text-[10px]">(ঐচ্ছিক)</span>
               </label>
               <div class="dc-input-container">
@@ -1629,10 +1733,10 @@ function renderAuthView(view = 'login') {
               </div>
             </div>
 
-            <!-- Delivery Address -->
+            <!-- Column F = Address (Delivery Address, Required) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>ডেলিভারি ও পূর্ণ ঠিকানা</span>
+                <span>ডেলিভারি ঠিকানা (Address)</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1648,40 +1752,46 @@ function renderAuthView(view = 'login') {
               <span class="text-[10px] text-slate-400 mt-0.5">ক্যাশ অন ডেলিভারিতে পার্সেল পৌঁছানোর সঠিক ঠিকানা লিখুন</span>
             </div>
 
-            <!-- Profile Photo Selection -->
+            <!-- Column G = User_ID (Autofill in real-time from phone number) -->
             <div class="dc-field-group">
-              <label class="dc-field-label">
-                <span>প্রোফাইল ছবি</span>
-                <span class="text-slate-400 text-[10px]">(ঐচ্ছিক)</span>
-              </label>
-              
-              <!-- Quick Avatar Selector -->
-              <div class="flex items-center gap-2 mb-1.5 flex-wrap">
-                <button type="button" class="avatar-preset-btn dc-avatar-chip active" data-avatar-url="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120" title="পুরুষ অ্যাভাটার ১">👨‍💼</button>
-                <button type="button" class="avatar-preset-btn dc-avatar-chip" data-avatar-url="https://images.unsplash.com/photo-1580489944761-15a19d654956?w=120" title="মহিলা অ্যাভাটার ১">👩‍💼</button>
-                <button type="button" class="avatar-preset-btn dc-avatar-chip" data-avatar-url="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=120" title="অ্যাভাটার ৩">🧑</button>
-                <button type="button" class="avatar-preset-btn dc-avatar-chip" data-avatar-url="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120" title="অ্যাভাটার ৪">🧔</button>
-                <button type="button" class="avatar-preset-btn dc-avatar-chip" data-avatar-url="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120" title="অ্যাভাটার ৫">🧕</button>
+              <div class="flex items-center justify-between mb-0.5">
+                <label class="dc-field-label !mb-0 font-bold">
+                  <span>ইউজার আইডি (User_ID)</span>
+                </label>
+                <span class="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 px-2 py-0.5 rounded-full">মোবাইল নম্বর থেকে পূরণ (Autofill)</span>
               </div>
-
               <div class="dc-input-container">
-                <span class="dc-input-icon">🖼️</span>
+                <span class="dc-input-icon">🆔</span>
                 <input 
-                  type="url" 
-                  id="auth-photo" 
-                  value="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=120"
-                  placeholder="ছবির সরাসরি লিঙ্ক (ঐচ্ছিক)" 
-                  class="dc-input-field text-xs" 
+                  type="text" 
+                  id="auth-user-id" 
+                  name="user_id"
+                  readonly 
+                  placeholder="মোবাইল নম্বর লিখলে স্বয়ংক্রিয় ইউজার আইডি হবে" 
+                  class="dc-input-field font-mono font-bold bg-slate-100 dark:bg-slate-800/80 text-blue-700 dark:text-blue-300 cursor-not-allowed select-none" 
                 />
               </div>
+              <span class="text-[10px] text-slate-400 mt-0.5">উপরে মোবাইল নম্বর লিখলেই এখানে স্বয়ংক্রিয়ভাবে বসে যাবে</span>
             </div>
 
-            <!-- Password -->
+            <!-- Column H = Password (Suggest-Strong + Strength Percentage Meter) -->
             <div class="dc-field-group">
-              <label class="dc-field-label">
-                <span>পাসওয়ার্ড</span>
-                <span class="text-rose-500 font-bold">*</span>
-              </label>
+              <div class="flex items-center justify-between mb-0.5">
+                <label class="dc-field-label !mb-0 font-bold">
+                  <span>পাসওয়ার্ড (Password)</span>
+                  <span class="text-rose-500 font-bold">*</span>
+                </label>
+                <!-- Strong Password Suggestion Trigger Button -->
+                <button 
+                  type="button" 
+                  class="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full flex items-center gap-1 transition"
+                  onclick="window.suggestStrongPassword && window.suggestStrongPassword()"
+                  title="ক্লিক করলেই একটি সুরক্ষিত স্ট্রং পাসওয়ার্ড তৈরি হবে"
+                >
+                  <span>💡</span> <span>স্ট্রং পাসওয়ার্ড সাজেস্ট</span>
+                </button>
+              </div>
+
               <div class="dc-input-container">
                 <span class="dc-input-icon">🔑</span>
                 <input 
@@ -1691,17 +1801,32 @@ function renderAuthView(view = 'login') {
                   minlength="4"
                   placeholder="কমপক্ষে ৪ অক্ষরের পাসওয়ার্ড" 
                   class="dc-input-field" 
+                  oninput="window.checkPasswordStrength && window.checkPasswordStrength(this.value);"
                 />
                 <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-pass" title="পাসওয়ার্ড দেখুন">
                   👁️
                 </button>
+              </div>
+
+              <!-- Suggested Password Notification Tip -->
+              <div id="pwd-suggest-tip" class="hidden text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 p-2 rounded-xl mt-1.5"></div>
+
+              <!-- Real-Time Password Strength Meter & Percentage Bar -->
+              <div class="mt-1.5 space-y-1">
+                <div class="flex items-center justify-between text-[11px]">
+                  <span class="text-slate-400">পাসওয়ার্ডের শক্তি (Strength):</span>
+                  <span id="pwd-strength-label" class="font-extrabold text-slate-500">০% (অপ্রবেশিত)</span>
+                </div>
+                <div class="dc-strength-track">
+                  <div id="pwd-strength-bar" class="dc-strength-fill"></div>
+                </div>
               </div>
             </div>
 
             <!-- Password Confirmation -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>পাসওয়ার্ড নিশ্চিত করুন</span>
+                <span>পাসওয়ার্ড নিশ্চিত করুন (Confirm Password)</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1872,6 +1997,102 @@ function renderAuthView(view = 'login') {
       </div>
 
     </div>
+
+    <!-- SCRIPT LOGIC FOR REAL-TIME PASSWORD STRENGTH & SUGGESTION -->
+    <script>
+      // 1. Password Strength Calculation & Percentage Display
+      window.checkPasswordStrength = function(pass) {
+        const val = pass || '';
+        let score = 0;
+        if (!val) {
+          score = 0;
+        } else {
+          if (val.length >= 4) score += 20;
+          if (val.length >= 8) score += 20;
+          if (/[a-z]/.test(val) && /[A-Z]/.test(val)) score += 25;
+          if (/[0-9]/.test(val)) score += 20;
+          if (/[^a-zA-Z0-9]/.test(val)) score += 15;
+        }
+
+        const bar = document.getElementById('pwd-strength-bar');
+        const lbl = document.getElementById('pwd-strength-label');
+        if (!bar || !lbl) return;
+
+        bar.style.width = score + '%';
+        if (score === 0) {
+          bar.style.backgroundColor = '#94a3b8';
+          lbl.innerHTML = '০% (অপ্রবেশিত)';
+          lbl.className = 'font-extrabold text-slate-400';
+        } else if (score < 40) {
+          bar.style.backgroundColor = '#ef4444';
+          lbl.innerHTML = score + '% (দুর্বল)';
+          lbl.className = 'font-extrabold text-rose-500';
+        } else if (score < 75) {
+          bar.style.backgroundColor = '#f59e0b';
+          lbl.innerHTML = score + '% (মাঝারি)';
+          lbl.className = 'font-extrabold text-amber-500';
+        } else {
+          bar.style.backgroundColor = '#10b981';
+          lbl.innerHTML = score + '% (খুব শক্তিশালী)';
+          lbl.className = 'font-extrabold text-emerald-600 dark:text-emerald-400';
+        }
+      };
+
+      // 2. Suggest Strong Password Generator (10 Chars with Letters, Digits, Symbols)
+      window.suggestStrongPassword = function() {
+        const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+        const lower = 'abcdefghijkmnopqrstuvwxyz';
+        const digits = '23456789';
+        const symbols = '!@#$%&*';
+        const allChars = upper + lower + digits + symbols;
+
+        let pwd = '';
+        pwd += upper.charAt(Math.floor(Math.random() * upper.length));
+        pwd += lower.charAt(Math.floor(Math.random() * lower.length));
+        pwd += digits.charAt(Math.floor(Math.random() * digits.length));
+        pwd += symbols.charAt(Math.floor(Math.random() * symbols.length));
+        for (let i = 4; i < 10; i++) {
+          pwd += allChars.charAt(Math.floor(Math.random() * allChars.length));
+        }
+        // Shuffle password characters
+        pwd = pwd.split('').sort(() => 0.5 - Math.random()).join('');
+
+        const pInput = document.getElementById('auth-pass');
+        const cInput = document.getElementById('auth-confirm-pass');
+        if (pInput) {
+          pInput.value = pwd;
+          pInput.type = 'text';
+          window.checkPasswordStrength(pwd);
+        }
+        if (cInput) {
+          cInput.value = pwd;
+          cInput.type = 'text';
+        }
+
+        const tip = document.getElementById('pwd-suggest-tip');
+        if (tip) {
+          tip.innerHTML = '✨ সাজেস্টেড পাসওয়ার্ড: <strong class="font-mono text-emerald-600 dark:text-emerald-400 select-all tracking-wider">' + pwd + '</strong> (পাসওয়ার্ডটি মনে রাখুন)';
+          tip.classList.remove('hidden');
+        }
+      };
+
+      // 3. Avatar Preset Chip Listener
+      document.addEventListener('click', function(e) {
+        const btn = e.target.closest ? e.target.closest('.avatar-preset-btn') : null;
+        if (btn) {
+          const url = btn.getAttribute('data-avatar-url');
+          const photoInput = document.getElementById('auth-photo');
+          const preview = document.getElementById('auth-photo-preview');
+          if (photoInput) {
+            photoInput.value = url;
+            photoInput.dispatchEvent(new Event('input'));
+          }
+          if (preview) preview.src = url;
+          document.querySelectorAll('.avatar-preset-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        }
+      });
+    </script>
   `;
 }
 
