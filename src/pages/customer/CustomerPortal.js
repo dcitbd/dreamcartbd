@@ -1528,19 +1528,19 @@ function renderAuthView(view = 'login') {
 
           <div>
             <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-              ${isRegister ? 'কাস্টমার নতুন নিবন্ধন' : 'কাস্টমার লগইন পোর্টাল'}
+              ${isRegister ? 'নতুন কাস্টমার অ্যাকাউন্ট' : 'কাস্টমার লগইন'}
             </h1>
             <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
               ${isRegister 
-                ? 'নিবন্ধন সম্পন্ন করলেই আপনার তথ্য সরাসরি গুগল শিটে জমা হবে' 
-                : 'শুধুমাত্র অফিসিয়াল Customers তালিকায় থাকা তথ্য অনুযায়ী প্রবেশ'}
+                ? 'সহজে অর্ডার ট্র্যাকিং ও বিশেষ অফার পেতে নতুন অ্যাকাউন্ট তৈরি করুন' 
+                : 'আপনার মোবাইল নম্বর অথবা ইমেইল ও পাসওয়ার্ড দিয়ে লগইন করুন'}
             </p>
           </div>
 
           <!-- Verified Security Badge -->
           <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
             <span>🔒</span>
-            <span>256-Bit SSL সুরক্ষিত • গুগল শিট লাইভ গেটওয়ে</span>
+            <span>১০০% নিরাপদ ও সুরক্ষিত কাস্টমার অ্যাকাউন্ট</span>
           </div>
         </div>
 
@@ -1572,18 +1572,12 @@ function renderAuthView(view = 'login') {
         <form id="customer-auth-form" data-auth-mode="${isRegister ? 'register' : 'login'}">
           
           ${isRegister ? `
-            <!-- ================= REGISTER FIELDS (COLUMNS A TO M) ================= -->
-            
-            <!-- Column A & G (USER_ID preview) -->
-            <div class="p-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl mb-3 flex items-center justify-between text-[11px]">
-              <span class="font-bold text-slate-500">🏷️ কাস্টমার আইডি (User_ID):</span>
-              <span class="font-mono font-black text-emerald-600 dark:text-emerald-400 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">স্বয়ংক্রিয় তৈরি হবে (CUST-******)</span>
-            </div>
+            <!-- ================= REGISTER FIELDS ================= -->
 
-            <!-- Column C (Name) -->
+            <!-- Full Name -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>পূর্ণ নাম (Name)</span>
+                <span>আপনার পূর্ণ নাম</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1598,10 +1592,10 @@ function renderAuthView(view = 'login') {
               </div>
             </div>
 
-            <!-- Column D (Mobile) -->
+            <!-- Mobile Number -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>মোবাইল নম্বর (Mobile)</span>
+                <span>মোবাইল নম্বর</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1615,13 +1609,13 @@ function renderAuthView(view = 'login') {
                   class="dc-input-field font-mono" 
                 />
               </div>
-              <span class="text-[10px] text-slate-400 mt-0.5">অর্ডারের আপডেট ও লগইন এর জন্য ব্যবহৃত হবে (কলাম D)</span>
+              <span class="text-[10px] text-slate-400 mt-0.5">অর্ডারের আপডেট ও লগইনের জন্য ব্যবহৃত হবে</span>
             </div>
 
-            <!-- Column E (Mail) -->
+            <!-- Email Address -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>ইমেইল ঠিকানা (Mail)</span>
+                <span>ইমেইল ঠিকানা</span>
                 <span class="text-slate-400 text-[10px]">(ঐচ্ছিক)</span>
               </label>
               <div class="dc-input-container">
@@ -1635,10 +1629,10 @@ function renderAuthView(view = 'login') {
               </div>
             </div>
 
-            <!-- Column F (Address) -->
+            <!-- Delivery Address -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>ডেলিভারি ও পূর্ণ ঠিকানা (Address)</span>
+                <span>ডেলিভারি ও পূর্ণ ঠিকানা</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1651,13 +1645,13 @@ function renderAuthView(view = 'login') {
                   class="dc-textarea-field"
                 ></textarea>
               </div>
-              <span class="text-[10px] text-slate-400 mt-0.5">ক্যাশ অন ডেলিভারিতে পার্সেল পৌঁছানোর সঠিক ঠিকানা (কলাম F)</span>
+              <span class="text-[10px] text-slate-400 mt-0.5">ক্যাশ অন ডেলিভারিতে পার্সেল পৌঁছানোর সঠিক ঠিকানা লিখুন</span>
             </div>
 
-            <!-- Column B (Profile_photo selection) -->
+            <!-- Profile Photo Selection -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>প্রোফাইল ছবি (Profile_photo)</span>
+                <span>প্রোফাইল ছবি</span>
                 <span class="text-slate-400 text-[10px]">(ঐচ্ছিক)</span>
               </label>
               
@@ -1682,10 +1676,10 @@ function renderAuthView(view = 'login') {
               </div>
             </div>
 
-            <!-- Column H (Password) -->
+            <!-- Password -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>পাসওয়ার্ড (Password)</span>
+                <span>পাসওয়ার্ড</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1707,7 +1701,7 @@ function renderAuthView(view = 'login') {
             <!-- Password Confirmation -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>পাসওয়ার্ড নিশ্চিতকরণ (Confirm Password)</span>
+                <span>পাসওয়ার্ড নিশ্চিত করুন</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1724,11 +1718,6 @@ function renderAuthView(view = 'login') {
                   👁️
                 </button>
               </div>
-            </div>
-
-            <!-- Column I-M Information Badge -->
-            <div class="p-2.5 bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl mb-3 text-[10px] text-emerald-800 dark:text-emerald-300">
-              ✓ ডিফল্ট স্ট্যাটাস: <strong>Active</strong> | অর্ডার রেট: <strong>100%</strong> (কলাম I থেকে M হিসেবে শিটে সেভ হবে)
             </div>
 
             <!-- Terms agreement -->
@@ -1758,13 +1747,13 @@ function renderAuthView(view = 'login') {
                   class="dc-input-field" 
                 />
               </div>
-              <span class="text-[10px] text-slate-400 mt-0.5">Customers শিটে সংরক্ষিত মোবাইল নম্বর বা ইমেইল প্রদান করুন</span>
+              <span class="text-[10px] text-slate-400 mt-0.5">নিবন্ধনের সময় ব্যবহৃত মোবাইল নম্বর বা ইমেইল দিন</span>
             </div>
 
             <!-- Password -->
             <div class="dc-field-group">
               <label class="dc-field-label">
-                <span>পাসওয়ার্ড (Password)</span>
+                <span>পাসওয়ার্ড</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
@@ -1801,13 +1790,13 @@ function renderAuthView(view = 'login') {
 
           <!-- SUBMIT CTA BUTTON -->
           <button type="submit" class="dc-auth-submit-btn">
-            <span>${isRegister ? 'অ্যাকাউন্ট তৈরি ও ডেসবোর্ডে প্রবেশ করুন' : 'লগইন করুন ও ডেসবোর্ডে প্রবেশ করুন'}</span>
+            <span>${isRegister ? 'নতুন অ্যাকাউন্ট তৈরি করুন' : 'লগইন করুন'}</span>
             <span>→</span>
           </button>
 
           <!-- Security note -->
           <p class="text-[11px] text-center text-slate-400 dark:text-slate-500 mt-2.5">
-            🔒 শুধুমাত্র অনুমোদিত <strong>Customers</strong> তালিকা অনুযায়ী সুরক্ষিত যাচাইকরণ সম্পন্ন হবে।
+            🔒 আপনার সকল ব্যক্তিগত তথ্য সম্পূর্ণ গোপন ও নিরাপদ থাকবে।
           </p>
 
         </form>
@@ -1829,15 +1818,6 @@ function renderAuthView(view = 'login') {
               </a>
             </p>
           `}
-        </div>
-
-        <!-- Live Google Sheets Database Sync Badge -->
-        <div class="dc-sheet-status-box">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping flex-shrink-0"></span>
-          <div>
-            <strong>🟢 Google Spreadsheet "Customers" লাইভ সিঙ্ক</strong>
-            <div class="text-[10px] opacity-80 mt-0.5">কলাম A (USER_ID) থেকে M (Order_Success_Rate) রিয়েল-টাইমে আপডেট হয়।</div>
-          </div>
         </div>
 
         <!-- 4-Item Customer Benefits & Trust Perks Grid -->
