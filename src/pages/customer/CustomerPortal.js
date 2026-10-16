@@ -161,6 +161,58 @@ if (typeof window !== 'undefined' && !window.__dcbdCustomerPortalInit) {
     if (resultBox) resultBox.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Customer Profile Update Function (Name, Photo, Mail, Address)
+  window.updateCustomerProfile = function(e, source) {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+
+    const isModal = source === 'modal';
+    const nameEl = document.getElementById(isModal ? 'edit-c-name' : 'settings-c-name') || document.getElementById('edit-c-name');
+    const photoEl = document.getElementById(isModal ? 'edit-c-photo' : 'settings-c-photo') || document.getElementById('edit-c-photo');
+    const mailEl = document.getElementById(isModal ? 'edit-c-mail' : 'settings-c-mail') || document.getElementById('edit-c-mail');
+    const addrEl = document.getElementById(isModal ? 'edit-c-addr' : 'settings-c-addr') || document.getElementById('edit-c-addr');
+
+    const name = (nameEl?.value || '').trim() || authStore.user?.name || '';
+    const photo = (photoEl?.value || '').trim() || authStore.user?.profile_photo || authStore.user?.photo || '';
+    const mail = (mailEl?.value || '').trim();
+    const addr = (addrEl?.value || '').trim();
+
+    const updated = {
+      ...(authStore.user || {}),
+      name: name,
+      profile_photo: photo,
+      photo: photo,
+      Profile_photo: photo,
+      mail: mail,
+      email: mail,
+      address: addr
+    };
+
+    authStore.setUser(updated, authStore.token, 'CUSTOMER');
+
+    // Sync to Apps Script / backend in background
+    try {
+      apiClient.request('customers/update', {
+        user_id: updated.user_id,
+        phone: updated.phone || updated.mobile,
+        name: updated.name,
+        profile_photo: photo,
+        mail: updated.mail,
+        address: updated.address
+      });
+    } catch (err) {}
+
+    const modal = document.getElementById('customer-profile-edit-modal');
+    if (modal) modal.classList.remove('active');
+
+    alert('আপনার প্রোফাইল তথ্য সফলভাবে সংরক্ষিত ও আপডেট হয়েছে!');
+    if (window.router && typeof window.router.resolve === 'function') {
+      window.router.resolve();
+    } else {
+      window.location.reload();
+    }
+  };
+
   // Document-level event delegation (guarantees real-time response in SPA)
   document.addEventListener('input', function(e) {
     if (!e.target) return;
@@ -177,10 +229,23 @@ if (typeof window !== 'undefined' && !window.__dcbdCustomerPortalInit) {
         prev.src = e.target.value.trim() || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160';
       }
     }
+    if (e.target.id === 'edit-c-photo') {
+      const prev = document.getElementById('edit-c-photo-preview');
+      if (prev) {
+        prev.src = e.target.value.trim() || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160';
+      }
+    }
+    if (e.target.id === 'settings-c-photo') {
+      const prev = document.getElementById('settings-c-photo-preview');
+      if (prev) {
+        prev.src = e.target.value.trim() || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160';
+      }
+    }
   });
 
   document.addEventListener('change', function(e) {
-    if (e.target && e.target.id === 'auth-photo-file-input') {
+    if (!e.target) return;
+    if (e.target.id === 'auth-photo-file-input') {
       const file = e.target.files && e.target.files[0];
       if (file) {
         const reader = new FileReader();
@@ -188,12 +253,36 @@ if (typeof window !== 'undefined' && !window.__dcbdCustomerPortalInit) {
           const dataUrl = evt.target.result;
           const photoInput = document.getElementById('auth-photo');
           const preview = document.getElementById('auth-photo-preview');
-          if (photoInput) {
-            photoInput.value = dataUrl;
-          }
-          if (preview) {
-            preview.src = dataUrl;
-          }
+          if (photoInput) photoInput.value = dataUrl;
+          if (preview) preview.src = dataUrl;
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+    if (e.target.id === 'edit-c-photo-file-input') {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const dataUrl = evt.target.result;
+          const photoInput = document.getElementById('edit-c-photo');
+          const preview = document.getElementById('edit-c-photo-preview');
+          if (photoInput) photoInput.value = dataUrl;
+          if (preview) preview.src = dataUrl;
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+    if (e.target.id === 'settings-c-photo-file-input') {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          const dataUrl = evt.target.result;
+          const photoInput = document.getElementById('settings-c-photo');
+          const preview = document.getElementById('settings-c-photo-preview');
+          if (photoInput) photoInput.value = dataUrl;
+          if (preview) preview.src = dataUrl;
         };
         reader.readAsDataURL(file);
       }
@@ -206,6 +295,87 @@ if (typeof window !== 'undefined' && !window.__dcbdCustomerPortalInit) {
       window.suggestStrongPassword();
     }
   });
+}
+
+// Helper to extract product name from any order structure (Google Sheet / Local Store / Checkout)
+function extractOrderProductName(o) {
+  if (!o) return 'অর্ডারকৃত পণ্য';
+  if (Array.isArray(o.items) && o.items.length > 0) {
+    const names = o.items.map(it => {
+      if (typeof it === 'string') return it;
+      const n = it.name || it.product_name || it.product || it.title || it.p_name || '';
+      const v = (it.color || it.size) ? ` [${[(it.color || ''), (it.size || '')].filter(Boolean).join(' ')}]` : '';
+      const q = it.quantity && Number(it.quantity) > 1 ? ` (${it.quantity} টি)` : '';
+      return `${n}${v}${q}`.trim();
+    }).filter(Boolean);
+    if (names.length > 0) return names.join(', ');
+  }
+  const candidates = [
+    o.products, o.Products, o.product_name, o.productName, o.Product_Name,
+    o.items_name, o.itemsName, o.item_name, o.itemName, o.product, o.Product,
+    o.items, o.Items, o.col_6, o.col_7, o.name, o.p_name, o.title, o.description
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim()) {
+      const trimmed = c.trim();
+      if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const list = parsed.map(it => {
+              if (typeof it === 'string') return it;
+              const n = it.name || it.product_name || it.product || it.title || it.p_name || '';
+              const q = it.quantity && Number(it.quantity) > 1 ? ` (${it.quantity} টি)` : '';
+              return `${n}${q}`.trim();
+            }).filter(Boolean);
+            if (list.length > 0) return list.join(', ');
+          } else if (parsed && typeof parsed === 'object') {
+            const n = parsed.name || parsed.product_name || parsed.title;
+            if (n) return n;
+          }
+        } catch (e) {}
+      }
+      return trimmed;
+    }
+  }
+  for (const [k, v] of Object.entries(o)) {
+    const lk = k.toLowerCase();
+    if ((lk.includes('product') || lk.includes('item')) && !lk.includes('id') && !lk.includes('status') && !lk.includes('price')) {
+      if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+  }
+  return o.customer_name ? `${o.customer_name} এর অর্ডারকৃত পণ্য` : 'অর্ডারকৃত পণ্য';
+}
+
+function extractOrderQuantity(o) {
+  if (!o) return 1;
+  const numCandidates = [o.quantity, o.Quantity, o.total_quantity, o.totalQuantity, o.col_9, o.item_count, o.itemCount];
+  for (const c of numCandidates) {
+    if (c !== undefined && c !== null && !isNaN(Number(c)) && Number(c) > 0) return Number(c);
+  }
+  if (Array.isArray(o.items) && o.items.length > 0) {
+    const sum = o.items.reduce((acc, it) => acc + (Number(it.quantity) || 1), 0);
+    if (sum > 0) return sum;
+  }
+  const jsonCandidates = [o.items, o.products, o.col_6];
+  for (const cand of jsonCandidates) {
+    if (typeof cand === 'string' && cand.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(cand);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const sum = parsed.reduce((acc, it) => acc + (Number(it.quantity) || 1), 0);
+          if (sum > 0) return sum;
+        }
+      } catch (e) {}
+    }
+  }
+  const textToScan = String(o.products || o.col_6 || '');
+  const qtyMatches = textToScan.match(/\((\d+)\)/g) || textToScan.match(/x\s*(\d+)/gi);
+  if (qtyMatches) {
+    const sum = qtyMatches.reduce((acc, m) => acc + Number(m.replace(/\D/g, '') || 1), 0);
+    if (sum > 0) return sum;
+  }
+  return 1;
 }
 
 export async function renderCustomerPortal(params = {}) {
@@ -284,6 +454,7 @@ export async function renderCustomerPortal(params = {}) {
   const cartSubtotal = cartStore.getSubtotal ? cartStore.getSubtotal() : cartItems.reduce((acc, i) => acc + (Number(i.price || 0) * Number(i.quantity || 1)), 0);
 
   const initial = (user.name || (isAuth ? "U" : "G")).charAt(0).toUpperCase();
+  const userPhoto = user.profile_photo || user.photo || user.Profile_photo || '';
 
   return `
     <style id="dc-customer-portal-styles">
@@ -633,8 +804,10 @@ export async function renderCustomerPortal(params = {}) {
       <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/95 dark:border-slate-800 p-5 sm:p-7 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
         
         <div class="flex items-center gap-4 min-w-0">
-          <div class="dc-avatar flex-shrink-0">
-            ${initial}
+          <div class="dc-avatar flex-shrink-0 overflow-hidden relative border border-emerald-500/40">
+            ${userPhoto ? `
+              <img src="${userPhoto}" alt="${user.name || 'User'}" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentElement.innerHTML='${initial}';" />
+            ` : initial}
           </div>
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
@@ -725,8 +898,10 @@ export async function renderCustomerPortal(params = {}) {
         <aside class="dc-cust-sidebar">
           
           <div class="dc-sidebar-profile">
-            <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold flex items-center justify-center text-base">
-              👤
+            <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold flex items-center justify-center text-base overflow-hidden flex-shrink-0 border border-emerald-300/40">
+              ${userPhoto ? `
+                <img src="${userPhoto}" alt="${user.name || 'User'}" class="w-full h-full object-cover" onerror="this.onerror=null; this.parentElement.innerHTML='👤';" />
+              ` : `👤`}
             </div>
             <div class="min-w-0">
               <div class="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
@@ -879,17 +1054,8 @@ export async function renderCustomerPortal(params = {}) {
                     if (['cancelled', 'returned'].includes(st)) stBadge = 'badge-danger';
                     if (['processing', 'in transit', 'shipping'].includes(st)) stBadge = 'badge-info';
 
-                    let orderQty = o.quantity || o.total_quantity || o.item_count || 0;
-                    if (!orderQty && Array.isArray(o.items) && o.items.length > 0) {
-                      orderQty = o.items.reduce((sum, it) => sum + Number(it.quantity || 1), 0);
-                    }
-                    if (!orderQty && typeof o.products === 'string') {
-                      const qtyMatches = o.products.match(/\\((\\d+)\\)/g);
-                      if (qtyMatches) {
-                        orderQty = qtyMatches.reduce((sum, m) => sum + Number(m.replace(/\\D/g, '') || 1), 0);
-                      }
-                    }
-                    if (!orderQty) orderQty = 1;
+                    const productName = extractOrderProductName(o);
+                    const orderQty = extractOrderQuantity(o);
 
                     return `
                     <div class="dc-order-card customer-order-item" data-status="${st}">
@@ -917,8 +1083,8 @@ export async function renderCustomerPortal(params = {}) {
                           <div class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1">
                             <span>🛍️</span> <span>প্রোডাক্ট এর নাম</span>
                           </div>
-                          <div class="font-bold text-slate-900 dark:text-white text-sm line-clamp-2 leading-snug" title="${o.products || 'পণ্যসমূহ'}">
-                            ${o.products || 'পণ্যসমূহ'}
+                          <div class="font-bold text-slate-900 dark:text-white text-sm line-clamp-2 leading-snug" title="${productName}">
+                            ${productName}
                           </div>
                           <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 pt-0.5">
                             <span>📍</span> <span class="truncate">${o.address || 'বাংলাদেশ'}</span>
@@ -1038,20 +1204,11 @@ export async function renderCustomerPortal(params = {}) {
                     if (['cancelled', 'returned'].includes(st)) stBadge = 'badge-danger';
                     if (['processing', 'in transit', 'shipping'].includes(st)) stBadge = 'badge-info';
 
-                    let orderQty = o.quantity || o.total_quantity || o.item_count || 0;
-                    if (!orderQty && Array.isArray(o.items) && o.items.length > 0) {
-                      orderQty = o.items.reduce((sum, it) => sum + Number(it.quantity || 1), 0);
-                    }
-                    if (!orderQty && typeof o.products === 'string') {
-                      const qtyMatches = o.products.match(/\\((\\d+)\\)/g);
-                      if (qtyMatches) {
-                        orderQty = qtyMatches.reduce((sum, m) => sum + Number(m.replace(/\\D/g, '') || 1), 0);
-                      }
-                    }
-                    if (!orderQty) orderQty = 1;
+                    const productName = extractOrderProductName(o);
+                    const orderQty = extractOrderQuantity(o);
 
                     return `
-                      <div class="dc-order-card customer-order-item" data-status="${st}" data-search="${(o.order_id + ' ' + (o.products || '') + ' ' + (o.phone || '')).toLowerCase()}">
+                      <div class="dc-order-card customer-order-item" data-status="${st}" data-search="${(o.order_id + ' ' + productName + ' ' + (o.phone || '')).toLowerCase()}">
                         
                         <!-- Order Card Header -->
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-100 dark:border-slate-800 pb-2.5 mb-3">
@@ -1081,8 +1238,8 @@ export async function renderCustomerPortal(params = {}) {
                             <div class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1">
                               <span>🛍️</span> <span>প্রোডাক্ট এর নাম</span>
                             </div>
-                            <div class="font-bold text-slate-900 dark:text-white text-sm line-clamp-2 leading-snug" title="${o.products || 'পণ্যসমূহ'}">
-                              ${o.products || 'পণ্যসমূহ'}
+                            <div class="font-bold text-slate-900 dark:text-white text-sm line-clamp-2 leading-snug" title="${productName}">
+                              ${productName}
                             </div>
                             <div class="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 pt-0.5">
                               <span>📍</span> <span class="truncate">${o.address || 'বাংলাদেশ'}</span>
@@ -1310,27 +1467,73 @@ export async function renderCustomerPortal(params = {}) {
             <div class="dc-panel max-w-xl mx-auto space-y-4 text-xs">
               <div class="border-b border-slate-100 dark:border-slate-800 pb-3">
                 <h3 class="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                  <span>⚙️</span> অ্যাকাউন্ট সেটিংস ও ডেলিভারি তথ্য
+                  <span>⚙️</span> অ্যাকাউন্ট সেটিংস ও প্রোফাইল তথ্য
                 </h3>
-                <p class="text-xs text-slate-500">আপনার ডিফল্ট ডেলিভারি ঠিকানা ও প্রোফাইল প্রেফারেন্স হালনাগাদ করুন।</p>
+                <p class="text-xs text-slate-500">আপনার নাম, প্রোফাইল ছবি, ইমেইল এবং ডিফল্ট ডেলিভারি ঠিকানা হালনাগাদ করুন।</p>
               </div>
 
-              <form onsubmit="event.preventDefault(); alert('আপনার সেটিংস সফলভাবে সংরক্ষিত হয়েছে!');" class="space-y-3.5">
+              <form id="settings-profile-form" onsubmit="window.updateCustomerProfile(event, 'settings');" class="space-y-4">
+                <!-- Profile Photo with Live Preview & Upload -->
                 <div>
-                  <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পূর্ণ নাম</label>
-                  <input type="text" value="${user.name || ''}" class="form-control text-xs w-full py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800" />
+                  <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">প্রোফাইল ছবি</label>
+                  <div class="flex items-center gap-3">
+                    <div class="w-16 h-16 rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-sm flex-shrink-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                      <img 
+                        id="settings-c-photo-preview" 
+                        src="${userPhoto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160'}" 
+                        alt="Profile Preview" 
+                        class="w-full h-full object-cover"
+                        onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160';"
+                      />
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <input 
+                        type="url" 
+                        id="settings-c-photo" 
+                        value="${userPhoto}" 
+                        placeholder="ছবির লিংক দিন বা আপলোড করুন" 
+                        class="form-control text-xs w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" 
+                      />
+                    </div>
+                    <button 
+                      type="button" 
+                      class="btn-secondary py-2 px-3 text-xs font-bold rounded-xl flex items-center gap-1 cursor-pointer flex-shrink-0"
+                      onclick="document.getElementById('settings-c-photo-file-input').click();"
+                      title="ডিভাইস থেকে ছবি নির্বাচন করুন"
+                    >
+                      <span>📁</span> <span>আপলোড</span>
+                    </button>
+                    <input type="file" id="settings-c-photo-file-input" accept="image/*" class="hidden" />
+                  </div>
                 </div>
+
+                <!-- Name -->
+                <div>
+                  <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পূর্ণ নাম *</label>
+                  <input type="text" id="settings-c-name" value="${user.name || ''}" class="form-control text-xs w-full py-2.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800" required placeholder="আপনার নাম" />
+                </div>
+
+                <!-- Email -->
+                <div>
+                  <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">ইমেইল ঠিকানা</label>
+                  <input type="email" id="settings-c-mail" value="${user.mail || user.email || ''}" class="form-control text-xs w-full py-2.5 px-3 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800" placeholder="name@example.com" />
+                </div>
+
+                <!-- Phone (readonly info) -->
                 <div>
                   <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">মোবাইল নম্বর (প্রধান)</label>
-                  <input type="tel" value="${user.mobile || user.phone || ''}" class="form-control text-xs w-full py-2 px-3 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800 font-mono" />
+                  <input type="tel" value="${user.mobile || user.phone || ''}" readonly class="form-control text-xs w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 font-mono text-slate-500 cursor-not-allowed select-none" />
                 </div>
+
+                <!-- Address -->
                 <div>
                   <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">ডিফল্ট ডেলিভারি ঠিকানা</label>
-                  <textarea rows="3" class="form-control text-xs w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800" placeholder="বাসা/হোল্ডিং নং, রোড, থানা, জেলা...">${user.address || ''}</textarea>
+                  <textarea id="settings-c-addr" rows="3" class="form-control text-xs w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 dark:bg-slate-800" placeholder="বাসা/হোল্ডিং নং, রোড, থানা, জেলা...">${user.address || ''}</textarea>
                 </div>
+
                 <div class="pt-2">
                   <button type="submit" class="btn-primary py-2.5 px-6 font-bold text-xs rounded-xl shadow-xs">
-                    সংরক্ষণ করুন ✓
+                    তথ্য সংরক্ষণ করুন ✓
                   </button>
                 </div>
               </form>
@@ -1348,24 +1551,60 @@ export async function renderCustomerPortal(params = {}) {
     <div id="customer-profile-edit-modal" class="modal-backdrop">
       <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full border border-slate-200 dark:border-slate-700 shadow-2xl space-y-4 text-xs">
         <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <h3 class="text-base font-bold text-slate-900 dark:text-white">প্রোফাইল সম্পাদনা করুন</h3>
+          <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <span>👤</span> প্রোফাইল সম্পাদনা করুন
+          </h3>
           <button type="button" class="text-slate-400 hover:text-slate-600 font-bold" onclick="document.getElementById('customer-profile-edit-modal').classList.remove('active');">✕</button>
         </div>
         
-        <form id="customer-profile-edit-form" class="space-y-3">
+        <form id="customer-profile-edit-form" onsubmit="window.updateCustomerProfile(event, 'modal');" class="space-y-3.5">
+          <!-- Profile Photo with Live Preview & Upload -->
+          <div>
+            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">প্রোফাইল ছবি</label>
+            <div class="flex items-center gap-3">
+              <div class="w-16 h-16 rounded-2xl overflow-hidden border-2 border-emerald-500 shadow-sm flex-shrink-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                <img 
+                  id="edit-c-photo-preview" 
+                  src="${userPhoto || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160'}" 
+                  alt="Profile" 
+                  class="w-full h-full object-cover"
+                  onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160';"
+                />
+              </div>
+              <div class="flex-1 min-w-0">
+                <input 
+                  type="url" 
+                  id="edit-c-photo" 
+                  value="${userPhoto}" 
+                  placeholder="ছবির লিংক দিন বা আপলোড করুন" 
+                  class="form-control text-xs w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" 
+                />
+              </div>
+              <button 
+                type="button" 
+                class="btn-secondary py-2 px-3 text-xs font-bold rounded-xl flex items-center gap-1 cursor-pointer flex-shrink-0"
+                onclick="document.getElementById('edit-c-photo-file-input').click();"
+                title="ডিভাইস থেকে ছবি আপলোড করুন"
+              >
+                <span>📁</span> <span>আপলোড</span>
+              </button>
+              <input type="file" id="edit-c-photo-file-input" accept="image/*" class="hidden" />
+            </div>
+          </div>
+
           <div>
             <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পূর্ণ নাম *</label>
-            <input type="text" id="edit-c-name" value="${user.name || ''}" class="form-control text-xs w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" required />
+            <input type="text" id="edit-c-name" value="${user.name || ''}" class="form-control text-xs w-full py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" required placeholder="আপনার নাম" />
           </div>
           <div>
             <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">ইমেইল</label>
-            <input type="email" id="edit-c-mail" value="${user.mail || user.email || ''}" class="form-control text-xs w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" />
+            <input type="email" id="edit-c-mail" value="${user.mail || user.email || ''}" class="form-control text-xs w-full py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" placeholder="name@example.com" />
           </div>
           <div>
             <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">ঠিকানা</label>
-            <textarea id="edit-c-addr" rows="2" class="form-control text-xs w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800">${user.address || ''}</textarea>
+            <textarea id="edit-c-addr" rows="2" class="form-control text-xs w-full p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800" placeholder="বাসা/হোল্ডিং নং, রোড, থানা, জেলা...">${user.address || ''}</textarea>
           </div>
-          <button type="submit" class="btn-primary w-full py-2.5 font-bold rounded-xl mt-2">আপডেট সম্পন্ন করুন</button>
+          <button type="submit" class="btn-primary w-full py-2.5 font-bold rounded-xl mt-2 shadow-md">তথ্য আপডেট সম্পন্ন করুন ✓</button>
         </form>
       </div>
     </div>
