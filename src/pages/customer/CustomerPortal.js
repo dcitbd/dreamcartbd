@@ -161,6 +161,23 @@ if (typeof window !== 'undefined' && !window.__dcbdCustomerPortalInit) {
     if (resultBox) resultBox.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Customer Logout Function -> Navigates directly to Home page
+  window.customerLogout = function(e) {
+    if (e) {
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    }
+    authStore.logout();
+    if (typeof window !== 'undefined') {
+      if (window.router && typeof window.router.navigate === 'function') {
+        window.router.navigate('/');
+      } else {
+        window.location.href = '/';
+      }
+    }
+  };
+
   // Customer Profile Update Function (Name, Photo, Mail, Address)
   window.updateCustomerProfile = function(e, source) {
     if (e && e.preventDefault) e.preventDefault();
@@ -294,6 +311,9 @@ if (typeof window !== 'undefined' && !window.__dcbdCustomerPortalInit) {
     if (e.target && (e.target.id === 'btn-suggest-strong-pass' || e.target.closest('#btn-suggest-strong-pass'))) {
       window.suggestStrongPassword();
     }
+    if (e.target && (e.target.id === 'btn-customer-logout' || e.target.closest('#btn-customer-logout') || e.target.classList?.contains('btn-logout'))) {
+      window.customerLogout(e);
+    }
   });
 }
 
@@ -395,6 +415,23 @@ export async function renderCustomerPortal(params = {}) {
   // If user explicitly navigated to /customer/login or /customer/register and is not logged in:
   if (!isAuth && (currentView === 'login' || currentView === 'register')) {
     return renderAuthView(currentView);
+  }
+
+  // If user is NOT authenticated on dashboard (e.g. after logout or guest visit), redirect directly to Home Page
+  if (!isAuth) {
+    if (typeof window !== 'undefined') {
+      if (window.router && typeof window.router.navigate === 'function') {
+        setTimeout(() => window.router.navigate('/'), 10);
+      } else {
+        window.location.href = '/';
+      }
+    }
+    return `
+      <div class="py-24 text-center space-y-3">
+        <div class="inline-block animate-spin text-3xl text-emerald-500">⚡</div>
+        <div class="text-sm font-bold text-slate-700 dark:text-slate-300">হোম পেজে নিয়ে যাওয়া হচ্ছে...</div>
+      </div>
+    `;
   }
 
   // Fetch orders from Sheets / local client
@@ -849,7 +886,8 @@ export async function renderCustomerPortal(params = {}) {
             </button>
             <button 
               id="btn-customer-logout" 
-              class="btn-secondary btn-logout py-2.5 px-3.5 text-xs font-semibold rounded-xl text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+              class="btn-secondary btn-logout py-2.5 px-3.5 text-xs font-semibold rounded-xl text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition cursor-pointer"
+              onclick="window.customerLogout(event);"
             >
               লগআউট ✕
             </button>
@@ -1157,7 +1195,7 @@ export async function renderCustomerPortal(params = {}) {
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div>
                   <h3 class="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>📦</span> আমার অর্ডারসমূহ
+                    <span>📦</span> আমার অর্ডারসমূহ (Order History & Invoices)
                   </h3>
                   <p class="text-xs text-slate-500">আপনার সমস্ত অতীত ও চলমান অর্ডারের বিস্তারিত তথ্য ও ক্যাশ অন ডেলিভারি স্ট্যাটাস।</p>
                 </div>
