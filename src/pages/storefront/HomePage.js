@@ -1417,6 +1417,12 @@ export async function renderHomePage() {
         }
       }
 
+      .dc-brands-view-all-wrap {
+        display: flex;
+        justify-content: center;
+        margin-top: 1.5rem;
+      }
+
       /* Partner Opportunity Banner */
       .dc-partner-banner {
         background: linear-gradient(135deg, #064e3b 0%, #0f766e 50%, #0f172a 100%);
@@ -1736,12 +1742,12 @@ export async function renderHomePage() {
               </div>
             </div>
             <a href="/brands" class="dc-section-link-btn">
-              সব ব্র্যান্ড দেখুন <span>→</span>
+              সকল ব্র্যান্ড দেখুন (${brands.length}) <span>→</span>
             </a>
           </div>
 
           <div class="dc-brands-grid">
-            ${brands.map(b => `
+            ${brands.slice(0, 12).map(b => `
               <a 
                 href="/products?brand=${encodeURIComponent(b.brand_name)}" 
                 class="group dc-brand-card"
@@ -1761,6 +1767,14 @@ export async function renderHomePage() {
               </a>
             `).join("")}
           </div>
+
+          ${brands.length > 12 ? `
+            <div class="dc-brands-view-all-wrap">
+              <a href="/brands" class="dc-section-link-btn" style="padding: 0.625rem 1.5rem; font-size: 0.875rem;">
+                সকল ব্র্যান্ড দেখুন (${brands.length}টি) <span>→</span>
+              </a>
+            </div>
+          ` : ''}
         </section>
       ` : ''}
 
