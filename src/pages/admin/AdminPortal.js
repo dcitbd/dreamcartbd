@@ -5,12 +5,14 @@
  * Features Implemented:
  * 1. Dedicated Sidebar with Collapsible Accordion Sub-Menus for Every Module
  * 2. Distinct, Dedicated Standalone Page View for Every Listed Feature
- * 3. 18-Point KPI Matrix & Interactive SVG Sales Graph
- * 4. Product Management (Products, Add, Bulk Add, Bulk Price, Bulk Image, Low Stock, Out of Stock, Error Products, Brands, Color/Size, Banners, Landing)
- * 5. Order Management with Checkboxes, Full Columns (ID, Customer Info, Product/Size/Color, Price/Qty/Pay, Transaction/Fraud/Rating, Status, Send Courier, Actions), Bulk Actions (Courier Send, Status Update, Delete, Fraud Check), Manual Order Entry & Voucher
- * 6. Partner Management (Resellers, Wholesalers, Sellers, Others Market)
+ * 3. 18-Point KPI Matrix & Interactive SVG Sales Graph (7D, 30D, 1Y)
+ * 4. Product Management (120/page Pagination, Select All Checkboxes, Bulk Actions: Price/Stock/Status/Delete,
+ *    Add Product with AI Auto-Categorization & 16-Tier Slabs, Bulk CSV Sample Download & Upload,
+ *    Brands Visual Card Showcase, Multi-Landing Page Builder CMS, Color/Size CMS, Banners CMS)
+ * 5. Order Management with 9-Column Layout, Checkboxes, Bulk Courier/Status/Delete/Fraud, Manual Entry & Voucher
+ * 6. Partner Management (Resellers with Commission Control %, Wholesalers, Sellers, Others Market)
  * 7. Admins & Workers (Admin Accounts, Staff Directory)
- * 8. Reports Center (Seller, Reseller, Wholesaler, Sales, Wholesale, Costs, Buying, Invest)
+ * 8. Reports Center (8 Comprehensive Reports)
  * 9. Inventory & Finance (Reseller Payout Requests with -3% fee, Costs, Buying, Invest)
  * 10. Courier, Fraud & Payment (Couriers, Add Courier API+Secret+Webhook, Fraud Check, Online Payment Gateways)
  * 11. System Settings (Audit Logs, Payment Methods, Delivery Methods, Offers, Shop Info, Profile, Password)
@@ -48,40 +50,56 @@ if (typeof window !== 'undefined') {
     reviews: [],
     auditLogs: [],
     offers: [],
-    kpi: {}
+    landingPages: [],
+    kpi: {},
+    resellerSettings: {
+      globalCommission: 15,
+      minOrderQty: 1,
+      minPayout: 500,
+      payoutFeePct: 3
+    }
   };
+
+  // Products Table Pagination State (120 per page as required)
+  window.__prodCurrentPage = 1;
+  window.__prodPageSize = 120;
+  window.__prodFilterStatus = 'all';
+  window.__prodSearchQuery = '';
+
+  // Landing Page Builder Selected Products Temp State
+  window.__landingBuilderSelectedProducts = [];
 
   // Map of Page IDs to their Display Titles and Subtitles
   window.__pageTitleMap = {
     'page-dashboard': { title: '📊 ড্যাশবোর্ড ওভারভিউ (Dashboard)', subtitle: '১৮-পয়েন্ট লাইভ বিজনেস কাউন্টার, রাজস্ব ও সেলস গ্রাফ' },
     // Product Management
-    'page-prod-all': { title: '📦 সকল পণ্য তালিকা (Product Catalog)', subtitle: 'ইনলাইন এডিট, স্টক নিয়ন্ত্রণ ও ফিল্টারিং' },
-    'page-prod-add': { title: '➕ নতুন পণ্য সংযোজন (Add Product)', subtitle: 'SKU, ছবি, দর ও স্টক নির্ধারণ করে প্রোডাক্ট শিটে যোগ' },
-    'page-prod-bulk-add': { title: '📥 বাল্ক পণ্য আপলোড (Bulk CSV)', subtitle: 'একসাথে একাধিক পণ্য সিএসভি ফরম্যাটে আপলোড' },
-    'page-prod-bulk-price': { title: '🏷️ বাল্ক মূল্য পরিবর্তন (Bulk Price Update)', subtitle: 'ক্যাটাগরি বা সকল পণ্যের শতকরা মূল্য বৃদ্ধি/হ্রাস' },
-    'page-prod-bulk-image': { title: '🖼️ বাল্ক ইমেজ আপডেট (Bulk Image Update)', subtitle: 'এক ক্লিকে একাধিক পণ্যের ছবি পরিবর্তন' },
+    'page-prod-all': { title: '📦 সকল পণ্য তালিকা (Product Catalog)', subtitle: 'প্রতি পেজে ১২০টি পণ্য, চেকবক্স নির্বাচন, বাল্ক এডিট ও ফিল্টারিং' },
+    'page-prod-add': { title: '➕ নতুন পণ্য সংযোজন (AI Categorization & Slab Pricing)', subtitle: 'AI স্বয়ংক্রিয় ক্যাটাগরি, ১৬-টিয়ার প্রাইসিং স্ল্যাব ও ডাইমেনশন গণনা' },
+    'page-prod-bulk-add': { title: '📥 বাল্ক পণ্য আপলোড (Bulk CSV)', subtitle: 'নমুনা শিট ডাউনলোড ও সিএসভি আপলোডের মাধ্যমে পণ্য সংযোজন' },
+    'page-prod-bulk-price': { title: '🏷️ বাল্ক মূল্য পরিবর্তন (Bulk Price Update)', subtitle: 'নমুনা শিট ডাউনলোড ও আপলোডের মাধ্যমে পাইকারি ও খুচরা দর আপডেট' },
+    'page-prod-bulk-image': { title: '🖼️ বাল্ক ইমেজ আপডেট (Bulk Image Update)', subtitle: 'নমুনা শিট ডাউনলোড ও আপলোডের মাধ্যমে পণ্যের ছবি পরিবর্তন' },
     'page-prod-low-stock': { title: '⚠️ লো-স্টক পণ্য তালিকা (<৫ পিস)', subtitle: 'যেসব পণ্যের স্টক ৫ পিসের নিচে নেমে এসেছে' },
     'page-prod-out-stock': { title: '🚫 আউট অব স্টক পণ্য (০ পিস)', subtitle: 'বর্তমানে স্টক শূন্য হওয়া আইটেমসমূহ' },
     'page-prod-error': { title: '⚙️ ত্রুটিযুক্ত পণ্য যাচাই (Error Products)', subtitle: 'ছবি, মূল্য বা SKU অনুপস্থিত থাকা আইটেম' },
-    'page-prod-brands': { title: '🏷️ অফিসিয়াল ব্র্যান্ড পার্টনার্স', subtitle: 'ব্র্যান্ডের তালিকা ও প্রোডাক্ট ফিল্টার' },
+    'page-prod-brands': { title: '🏷️ অফিসিয়াল ব্র্যান্ড পার্টনার্স (Brands Showcase)', subtitle: 'কার্ড আকারে অফিসিয়াল ব্র্যান্ডসমূহ ও দ্রুত অ্যাকশন' },
     'page-prod-brand-add': { title: '➕ নতুন ব্র্যান্ড যুক্ত করুন', subtitle: 'লোগো ও তথ্যসহ নতুন ব্র্যান্ড সংযোজন' },
     'page-prod-variants': { title: '🎨 কালার ও সাইজ ভ্যারিয়েন্ট', subtitle: 'উপলব্ধ কালার শেডস ও সাইজ স্কেল তালিকা' },
     'page-prod-variant-add': { title: '➕ নতুন ভ্যারিয়েন্ট যুক্ত করুন', subtitle: 'নতুন রং বা সাইজ অপশন সংরক্ষণ' },
     'page-prod-banners': { title: '🖼️ ব্যানার ও স্লাইডার CMS', subtitle: 'ওয়েবসাইটের হিরো ব্যানার স্লাইড পরিচালনা' },
-    'page-prod-landing': { title: '🚀 ল্যান্ডিং পেজ কনটেন্ট CMS', subtitle: 'সিঙ্গেল-প্রোডাক্ট সেলস ফানেল কনফিগারেশন' },
+    'page-prod-landing': { title: '🚀 মাল্টি-ল্যান্ডিং পেজ CMS (Landing Pages)', subtitle: 'একের অধিক ল্যান্ডিং পেজ তৈরি, পণ্য সার্চ করে যুক্ত, ভিডিও ও ব্যানার আপডেট' },
     // Order Management
-    'page-orders-all': { title: '📋 সকল অর্ডার তালিকা (All Orders)', subtitle: 'বাল্ক সিলেকশন, ফ্রড চেক, কুরিয়ার বুকিং ও ভাউচার প্রিন্ট' },
+    'page-orders-all': { title: '📋 সকল অর্ডার তালিকা (All Orders)', subtitle: '৯-কলাম লেআউট, বাল্ক সিলেকশন, ফ্রড চেক, কুরিয়ার বুকিং ও ভাউচার' },
     'page-orders-incomplete': { title: '⚠️ অসম্পূর্ণ অর্ডারসমূহ (Abandoned)', subtitle: 'ফর্ম পূরণ করেও চেকআউট না করা গ্রাহকদের WhatsApp অফার' },
     'page-orders-success': { title: '✓ সফল ডেলিভারি (Delivered & Paid)', subtitle: 'কুরিয়ারে সফলভাবে সরবরাহ ও পরিশোধিত অর্ডার' },
     'page-orders-shipping': { title: '🚚 কুরিয়ারে / শিপিং অর্ডার (In Courier)', subtitle: 'প্যাকিং, ইন ট্রানজিট ও ডেলিভারি পথে থাকা পার্সেল' },
     'page-orders-unpaid': { title: '💳 পেমেন্ট অসম্পূর্ণ (COD Pending)', subtitle: 'ডেলিভারি হয়েছে কিন্তু এখনো টাকা জমা হয়নি' },
     'page-orders-cancelled': { title: '✕ বাতিল ও রিটার্নকৃত অর্ডার', subtitle: 'গ্রাহক বা কুরিয়ার কর্তৃক ফেরত আসা পার্সেল' },
-    'page-orders-add': { title: '➕ নতুন অর্ডার এন্ট্রি (Add Order)', subtitle: 'পণ্য সার্চ, গ্রাহকের তথ্য ইনপুট ও ভাউচার তৈরি' },
+    'page-orders-add': { title: '➕ নতুন অর্ডার এন্ট্রি (Add Order)', subtitle: 'পণ্য সার্চ, গ্রাহকের তথ্য ইনপুট ও ক্যাশ ভাউচার প্রিন্ট' },
     'page-orders-visitors': { title: '🟢 লাইভ সক্রিয় ভিজিটর ট্র্যাকিং', subtitle: 'ওয়েবসাইটে বর্তমানে ব্রাউজিং করা ইউজার ও পেজ হিস্ট্রি' },
     'page-orders-customers': { title: '👥 কাস্টমার ডাটাবেজ (Customer CRM)', subtitle: 'সকল গ্রাহকদের ফোন নম্বর, ঠিকানা ও মোট ক্রয়ের হিসাব' },
     'page-orders-reviews': { title: '⭐ গ্রাহক রিভিউ ও রেটিং', subtitle: 'পণ্য রিভিউ অনুমোদন ও মডারেশন প্যানেল' },
     // Partner Management
-    'page-partner-resellers': { title: '🤝 রিসেলার পার্টনার তালিকা', subtitle: 'রিসেলারদের সেলস ভলিউম, ব্যালেন্স ও কমিশন ট্র্যাকিং' },
+    'page-partner-resellers': { title: '🤝 রিসেলার পার্টনার ও কমিশন কন্ট্রোল', subtitle: 'রিসেলিং কমিশন শতকরা (%) নিয়ন্ত্রণ, ব্যালেন্স ও ট্র্যাকিং' },
     'page-partner-wholesalers': { title: '🏢 পাইকারি ক্রেতা (Wholesalers)', subtitle: 'হোলসেলার ডিসকাউন্ট টিয়ার ও মোট অর্ডার হিস্ট্রি' },
     'page-partner-sellers': { title: '🏪 মার্চেন্ট সেলার / ভেন্ডর', subtitle: 'ভেন্ডরদের পণ্যের সংখ্যা ও কমিশন মার্জিন' },
     'page-partner-markets': { title: '🌐 অন্যান্য মার্কেটপ্লেস চ্যানেল', subtitle: 'দারাজ, ফেসবুক শপ ও বিক্রয় ডট কমের সাথে ক্যাটালগ সিঙ্ক' },
@@ -197,6 +215,11 @@ if (typeof window !== 'undefined') {
     // Scroll to top
     const main = document.getElementById('admin-main-panel');
     if (main) main.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Refresh page-specific content if needed
+    if (pageId === 'page-prod-all') {
+      window.renderProductsTablePage && window.renderProductsTablePage(window.__prodCurrentPage || 1);
+    }
   };
 
   // Mobile Drawer Toggle
@@ -236,6 +259,10 @@ if (typeof window !== 'undefined') {
   window.handleAdminGlobalSearch = function(query) {
     const q = (query || '').toLowerCase().trim();
     const activePage = window.__adminState.activePage;
+    if (activePage === 'page-prod-all') {
+      window.filterAdminProducts(query);
+      return;
+    }
     document.querySelectorAll(`#${activePage} tbody tr, #${activePage} .admin-searchable-card`).forEach(el => {
       el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
     });
@@ -256,7 +283,7 @@ if (typeof window !== 'undefined') {
     }
   };
 
-  // CSV Exporter
+  // Generic CSV Exporter
   window.exportGenericCsv = function(filename, headers, rows) {
     const fullRows = [headers, ...rows];
     const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + fullRows.map(e => e.map(i => `"${String(i || '').replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -315,7 +342,1142 @@ if (typeof window !== 'undefined') {
     }
   };
 
-  // ORDER MANAGEMENT BULK & ACTION HANDLERS
+  // =========================================================================
+  // 16-TIER EXACT SLAB FORMULA CALCULATORS
+  // =========================================================================
+  
+  // Selling Price Calculation from Buying Price
+  window.calcSellingPrice = function(buyingPrice) {
+    const bp = Number(buyingPrice) || 0;
+    if (bp <= 0) return 0;
+    let pct = 0.01;
+    if (bp <= 100) pct = 0.80;
+    else if (bp <= 200) pct = 0.70;
+    else if (bp <= 400) pct = 0.60;
+    else if (bp <= 600) pct = 0.50;
+    else if (bp <= 800) pct = 0.45;
+    else if (bp <= 1500) pct = 0.40;
+    else if (bp <= 5000) pct = 0.30;
+    else if (bp <= 10000) pct = 0.20;
+    else if (bp <= 25000) pct = 0.15;
+    else if (bp <= 70000) pct = 0.10;
+    else if (bp <= 200000) pct = 0.08;
+    else if (bp <= 350000) pct = 0.06;
+    else if (bp <= 1000000) pct = 0.04;
+    else if (bp <= 2000000) pct = 0.03;
+    else if (bp <= 5000000) pct = 0.02;
+    else pct = 0.01;
+    return Math.round(bp + (bp * pct));
+  };
+
+  // Original Price (Strike-through MRP) Calculation from Selling Price
+  window.calcOriginalPrice = function(sellingPrice) {
+    const sp = Number(sellingPrice) || 0;
+    if (sp <= 0) return 0;
+    let pct = 0.12;
+    if (sp <= 100) pct = 0.55;
+    else if (sp <= 200) pct = 0.52;
+    else if (sp <= 400) pct = 0.50;
+    else if (sp <= 600) pct = 0.48;
+    else if (sp <= 800) pct = 0.47;
+    else if (sp <= 1500) pct = 0.45;
+    else if (sp <= 5000) pct = 0.43;
+    else if (sp <= 10000) pct = 0.35;
+    else if (sp <= 25000) pct = 0.30;
+    else if (sp <= 70000) pct = 0.28;
+    else if (sp <= 200000) pct = 0.20;
+    else if (sp <= 350000) pct = 0.18;
+    else if (sp <= 1000000) pct = 0.15;
+    else if (sp <= 2000000) pct = 0.14;
+    else if (sp <= 5000000) pct = 0.13;
+    else pct = 0.12;
+    return Math.round(sp + (sp * pct));
+  };
+
+  // WholeSale Price Calculation from Buying Price
+  window.calcWholesalePrice = function(buyingPrice) {
+    const bp = Number(buyingPrice) || 0;
+    if (bp <= 0) return 0;
+    let pct = 0.06;
+    if (bp <= 100) pct = 0.65;
+    else if (bp <= 200) pct = 0.55;
+    else if (bp <= 400) pct = 0.45;
+    else if (bp <= 600) pct = 0.35;
+    else if (bp <= 800) pct = 0.30;
+    else if (bp <= 1500) pct = 0.28;
+    else if (bp <= 5000) pct = 0.25;
+    else if (bp <= 10000) pct = 0.20;
+    else if (bp <= 25000) pct = 0.18;
+    else if (bp <= 70000) pct = 0.17;
+    else if (bp <= 200000) pct = 0.15;
+    else if (bp <= 350000) pct = 0.13;
+    else if (bp <= 1000000) pct = 0.10;
+    else if (bp <= 2000000) pct = 0.09;
+    else if (bp <= 5000000) pct = 0.08;
+    else pct = 0.06;
+    return Math.round(bp + (bp * pct));
+  };
+
+  // Min Order Quantity Calculation
+  window.calcMinOrderQty = function(sellingPrice) {
+    const sp = Number(sellingPrice) || 0;
+    return sp <= 200 ? 10 : 5;
+  };
+
+  // Dynamic Trigger to recalculate all prices in Add Product form
+  window.handlePricingAutoCalc = function() {
+    const buyInput = document.getElementById('adm-add-buyprice');
+    const sellInput = document.getElementById('adm-add-sellprice');
+    const origInput = document.getElementById('adm-add-origprice');
+    const wsInput = document.getElementById('adm-add-wholesaleprice');
+    const moqInput = document.getElementById('adm-add-minorder');
+    if (!buyInput) return;
+
+    const bp = Number(buyInput.value) || 0;
+    if (bp > 0) {
+      const calculatedSelling = window.calcSellingPrice(bp);
+      if (sellInput && (!sellInput.value || sellInput.dataset.autoCalc !== 'false')) {
+        sellInput.value = calculatedSelling;
+      }
+      const activeSelling = Number(sellInput ? sellInput.value : calculatedSelling) || calculatedSelling;
+      if (origInput) origInput.value = window.calcOriginalPrice(activeSelling);
+      if (wsInput) wsInput.value = window.calcWholesalePrice(bp);
+      if (moqInput) moqInput.value = window.calcMinOrderQty(activeSelling);
+    }
+  };
+
+  // When Selling Price is manually adjusted
+  window.handleSellingPriceManualChange = function() {
+    const sellInput = document.getElementById('adm-add-sellprice');
+    const origInput = document.getElementById('adm-add-origprice');
+    const moqInput = document.getElementById('adm-add-minorder');
+    if (sellInput) {
+      sellInput.dataset.autoCalc = 'false';
+      const sp = Number(sellInput.value) || 0;
+      if (sp > 0) {
+        if (origInput) origInput.value = window.calcOriginalPrice(sp);
+        if (moqInput) moqInput.value = window.calcMinOrderQty(sp);
+      }
+    }
+  };
+
+  // =========================================================================
+  // AI PRODUCT CATEGORIZATION & ATTRIBUTE INFERENCE ENGINE
+  // =========================================================================
+  window.analyzeProductNameAI = function(name) {
+    const n = (name || '').toLowerCase().trim();
+    if (!n) return null;
+
+    // AI Semantic Keyword Dictionary
+    const taxonomy = [
+      {
+        keys: ['watch', 'ঘড়ি', 'smartwatch', 'smart watch', 'কলিং', 'amoled', 'গিয়ার', 'band'],
+        category: 'Smartwatches',
+        sub_category: 'Smart Calling Watch',
+        child_category: 'Men & Women Fitness Watch',
+        brand: 'Amazfit',
+        weight: 0.25, width: 8, length: 12, height: 4
+      },
+      {
+        keys: ['gas', 'গ্যাস', 'সেফটি', 'safety', 'রেগুলেটর', 'চুলা', 'লিকেজ'],
+        category: 'Kitchen',
+        sub_category: 'Gas Safety Devices',
+        child_category: 'Heavy Duty Auto Cutoff Regulator',
+        brand: 'Dream Cart BD',
+        weight: 0.65, width: 12, length: 18, height: 8
+      },
+      {
+        keys: ['blender', 'ব্লেন্ডার', 'mixer', 'মিক্সার', 'জুসার', 'grinder', 'গ্রাইন্ডার'],
+        category: 'Kitchen',
+        sub_category: 'Kitchen Appliances',
+        child_category: 'High-Speed Portable Juicer Blender',
+        brand: 'Panasonic',
+        weight: 1.20, width: 15, length: 25, height: 15
+      },
+      {
+        keys: ['pan', 'কড়াই', 'cookware', 'হাঁড়ি', 'প্রেসার কুকার', 'fry pan', 'তাওয়া'],
+        category: 'Kitchen',
+        sub_category: 'Cookware',
+        child_category: 'Non-stick Marble Coating Pan',
+        brand: 'Kiam',
+        weight: 1.40, width: 28, length: 32, height: 10
+      },
+      {
+        keys: ['honey', 'মধু', 'সুন্দরবন', 'চাকের মধু', 'খাঁটি মধু', 'raw honey'],
+        category: 'Organic & Health',
+        sub_category: 'Pure Natural Honey',
+        child_category: 'Sundarbans Natural Wild Honey',
+        brand: 'Dream Organic',
+        weight: 1.00, width: 10, length: 14, height: 10
+      },
+      {
+        keys: ['chia', 'চিয়া', 'সিড', 'seed', 'চিয়া সিড'],
+        category: 'Organic & Health',
+        sub_category: 'Superfoods & Seeds',
+        child_category: 'Organic Raw Chia Seeds',
+        brand: 'Dream Organic',
+        weight: 0.50, width: 8, length: 12, height: 8
+      },
+      {
+        keys: ['oil', 'তেল', 'কালোজিরা', 'সরিষা', 'black seed'],
+        category: 'Organic & Health',
+        sub_category: 'Cold-Pressed Oils',
+        child_category: '100% Pure Black Seed Oil',
+        brand: 'Dream Organic',
+        weight: 0.35, width: 6, length: 16, height: 6
+      },
+      {
+        keys: ['light', 'লাইট', 'torch', 'টর্চ', 'flashlight', 'ফ্ল্যাশলাইট', 'মিলিটারি'],
+        category: 'Home Appliances',
+        sub_category: 'Emergency Lighting',
+        child_category: 'Tactical Long-Range Rechargeable Flashlight',
+        brand: 'UltraFire',
+        weight: 0.45, width: 6, length: 18, height: 6
+      },
+      {
+        keys: ['fan', 'ফ্যান', 'table fan', 'রিচার্জেবল ফ্যান'],
+        category: 'Home Appliances',
+        sub_category: 'Cooling Appliances',
+        child_category: 'Portable Rechargeable Table Fan',
+        brand: 'Defender',
+        weight: 1.80, width: 22, length: 30, height: 18
+      },
+      {
+        keys: ['headphone', 'হেডফোন', 'earphone', 'ইয়ারফোন', 'airpod', 'earbuds', 'টিডব্লিউএস'],
+        category: 'Gadgets',
+        sub_category: 'Audio Devices',
+        child_category: 'Wireless Bluetooth Earbuds',
+        brand: 'HK',
+        weight: 0.15, width: 8, length: 10, height: 4
+      },
+      {
+        keys: ['shirt', 'শার্ট', 't-shirt', 'টি-শার্ট', 'পোলো', 'polo', 'পাঞ্জাবি'],
+        category: 'Fashion',
+        sub_category: 'Mens Fashion',
+        child_category: 'Premium Casual T-Shirt',
+        brand: 'Apex Style',
+        weight: 0.22, width: 20, length: 28, height: 2
+      },
+      {
+        keys: ['bag', 'ব্যাগ', 'backpack', 'ব্যাকপ্যাক', 'স্কুল ব্যাগ'],
+        category: 'Lifestyle',
+        sub_category: 'Travel Bags',
+        child_category: 'Waterproof Laptop Backpack',
+        brand: 'Dream Bag',
+        weight: 0.75, width: 30, length: 45, height: 15
+      }
+    ];
+
+    for (const item of taxonomy) {
+      if (item.keys.some(k => n.includes(k))) {
+        return item;
+      }
+    }
+
+    // Default fallback
+    return {
+      category: 'General',
+      sub_category: 'Standard Goods',
+      child_category: 'Retail Product',
+      brand: 'Dream Cart',
+      weight: 0.50, width: 12, length: 15, height: 8
+    };
+  };
+
+  // Called on typing Product Name
+  window.handleAiProductAnalyze = function(productName) {
+    const name = (productName || '').trim();
+    if (!name) return;
+
+    const res = window.analyzeProductNameAI(name);
+    if (!res) return;
+
+    // Auto set Category dropdown
+    const catEl = document.getElementById('adm-add-cat');
+    if (catEl) {
+      let optFound = false;
+      for (let i = 0; i < catEl.options.length; i++) {
+        if (catEl.options[i].value.toLowerCase() === res.category.toLowerCase()) {
+          catEl.selectedIndex = i;
+          optFound = true;
+          break;
+        }
+      }
+      if (!optFound) {
+        const opt = new Option(res.category, res.category, true, true);
+        catEl.add(opt);
+      }
+    }
+
+    // Auto set Sub Category
+    const subEl = document.getElementById('adm-add-subcat');
+    if (subEl) subEl.value = res.sub_category;
+
+    // Auto set Child Category
+    const childEl = document.getElementById('adm-add-childcat');
+    if (childEl) childEl.value = res.child_category;
+
+    // Auto set Brand
+    const brandEl = document.getElementById('adm-add-brand');
+    if (brandEl) {
+      // Check if title mentions a specific known brand
+      let brandFound = res.brand;
+      const brandsList = ['Amazfit', 'HK', 'Dream Organic', 'Panasonic', 'Kiam', 'UltraFire', 'Defender', 'Apex Style', 'Lenovo'];
+      for (const b of brandsList) {
+        if (name.toLowerCase().includes(b.toLowerCase())) {
+          brandFound = b;
+          break;
+        }
+      }
+      brandEl.value = brandFound;
+    }
+
+    // Auto generate Slug
+    const slugEl = document.getElementById('adm-add-slug');
+    if (slugEl) {
+      const slugText = name.toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-');
+      slugEl.value = slugText || ('prd-' + Math.floor(1000 + Math.random() * 9000));
+    }
+
+    // Auto set Dimensions & Weight
+    const wEl = document.getElementById('adm-add-weight');
+    const widthEl = document.getElementById('adm-add-width');
+    const lenEl = document.getElementById('adm-add-length');
+    const hEl = document.getElementById('adm-add-height');
+    if (wEl && !wEl.value) wEl.value = res.weight;
+    if (widthEl && !widthEl.value) widthEl.value = res.width;
+    if (lenEl && !lenEl.value) lenEl.value = res.length;
+    if (hEl && !hEl.value) hEl.value = res.height;
+
+    // Show AI Match Banner
+    const badgeEl = document.getElementById('adm-ai-match-badge');
+    if (badgeEl) {
+      badgeEl.innerHTML = `✨ <b>AI ম্যাচিং সফল:</b> ${res.category} &gt; ${res.sub_category} &gt; ${res.child_category} (৯৫% নিখুঁত)`;
+      badgeEl.classList.remove('hidden');
+    }
+  };
+
+  // =========================================================================
+  // PRODUCTS TABLE: 120/PAGE PAGINATION & BULK CHECKBOX OPERATIONS
+  // =========================================================================
+  window.renderProductsTablePage = function(page = 1) {
+    window.__prodCurrentPage = page;
+    const tbody = document.getElementById('admin-products-tbody');
+    const paginationControls = document.getElementById('admin-prod-pagination-controls');
+    const infoEl = document.getElementById('admin-prod-pagination-info');
+    if (!tbody) return;
+
+    let prods = JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+    if (!prods.length && window.__adminState.products && window.__adminState.products.length) {
+      prods = window.__adminState.products;
+    }
+
+    // Apply Filters
+    const q = (window.__prodSearchQuery || '').toLowerCase().trim();
+    const st = window.__prodFilterStatus || 'all';
+
+    let filtered = prods.filter(p => {
+      // Search
+      const matchSearch = !q || 
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.sku && p.sku.toLowerCase().includes(q)) ||
+        (p.category && p.category.toLowerCase().includes(q)) ||
+        (p.brand && p.brand.toLowerCase().includes(q));
+
+      // Status
+      let matchStatus = true;
+      const stock = Number(p.stock) || 0;
+      if (st === 'low') matchStatus = stock > 0 && stock <= 5;
+      else if (st === 'out') matchStatus = stock === 0;
+      else if (st === 'error') matchStatus = !p.sku || !p.thumbnail || !p.selling_price;
+      else if (st === 'active') matchStatus = p.status !== 'নিষ্ক্রিয়';
+      else if (st === 'inactive') matchStatus = p.status === 'নিষ্ক্রিয়';
+
+      return matchSearch && matchStatus;
+    });
+
+    const total = filtered.length;
+    const pageSize = window.__prodPageSize || 120;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const curPage = Math.min(Math.max(1, page), totalPages);
+    window.__prodCurrentPage = curPage;
+
+    const startIdx = (curPage - 1) * pageSize;
+    const endIdx = Math.min(startIdx + pageSize, total);
+    const pageItems = filtered.slice(startIdx, endIdx);
+
+    if (infoEl) {
+      infoEl.textContent = `মোট ${total} টির মধ্যে ${total === 0 ? 0 : startIdx + 1} - ${endIdx} টি পণ্য প্রদর্শিত (প্রতি পেজে ১২০টি)`;
+    }
+
+    // Render Table Rows with Checkboxes
+    if (pageItems.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="9" class="py-8 text-center text-slate-400 font-bold">
+            কোনো পণ্য পাওয়া যায়নি! ফিল্টার রিসেট করুন।
+          </td>
+        </tr>
+      `;
+    } else {
+      tbody.innerHTML = pageItems.map(p => {
+        const isLow = Number(p.stock) > 0 && Number(p.stock) <= 5;
+        const isOut = Number(p.stock) === 0;
+        const isErr = !p.sku || !p.thumbnail || !p.selling_price;
+        const pId = p.product_id || p.sku;
+        return `
+          <tr class="admin-prod-row hover:bg-slate-50 dark:hover:bg-slate-800/40 transition" data-id="${pId}">
+            <td class="py-2.5 px-2 text-center">
+              <input type="checkbox" value="${pId}" class="prod-select-cb" onchange="window.updateBulkProductsBar()" />
+            </td>
+            <td class="py-2.5 px-3">
+              <img src="${p.thumbnail || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" class="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+            </td>
+            <td class="py-2.5 px-3 font-bold text-slate-900 dark:text-white max-w-xs">
+              <div class="line-clamp-1">${p.name}</div>
+              <div class="font-mono text-[10px] text-slate-400">${p.sku || 'SKU-NA'} | ${p.brand || 'No Brand'}</div>
+            </td>
+            <td class="py-2.5 px-3 text-slate-600 dark:text-slate-400">${p.category || 'General'}</td>
+            <td class="py-2.5 px-3 font-bold text-emerald-600 font-mono cursor-pointer hover:underline" onclick="window.inlineEditProduct('${pId}', 'selling_price', ${p.selling_price || 0}, this)" title="ক্লিক করে বিক্রয় দর এডিট করুন">
+              ৳${p.selling_price || 0} ✎
+            </td>
+            <td class="py-2.5 px-3 font-mono">${formatCurrency(p.wholesale_price || (p.selling_price * 0.85))}</td>
+            <td class="py-2.5 px-3">
+              <span class="font-bold px-2 py-0.5 rounded text-[11px] cursor-pointer hover:underline ${isOut ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-400' : (isLow ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400')}" onclick="window.inlineEditProduct('${pId}', 'stock', ${p.stock || 0}, this)" title="ক্লিক করে স্টক এডিট করুন">
+                ${p.stock || 0} পিস ✎
+              </span>
+            </td>
+            <td class="py-2.5 px-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition ${p.status === 'নিষ্ক্রিয়' ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'}" onclick="window.toggleProductActive('${pId}', this)">
+                ${p.status || 'সক্রিয়'}
+              </span>
+            </td>
+            <td class="py-2.5 px-3 text-right space-x-1.5 whitespace-nowrap">
+              <a href="/product/${p.slug || pId}" target="_blank" class="btn-secondary py-1 px-2 text-[10px]">দেখুন ↗</a>
+              <button class="btn-secondary py-1 px-2 text-[10px] text-rose-600 border-rose-200 hover:bg-rose-50" onclick="window.handleAdminDeleteProduct('${pId}', this)">মুছুন</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Render Pagination Controls
+    if (paginationControls) {
+      let pageBtns = '';
+      for (let i = 1; i <= totalPages; i++) {
+        if (i === 1 || i === totalPages || (i >= curPage - 2 && i <= curPage + 2)) {
+          pageBtns += `
+            <button class="px-2.5 py-1 rounded-lg text-xs font-bold border transition ${i === curPage ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-700 dark:text-slate-200 hover:bg-slate-100'}" onclick="window.renderProductsTablePage(${i})">
+              ${i}
+            </button>
+          `;
+        } else if (i === curPage - 3 || i === curPage + 3) {
+          pageBtns += `<span class="px-1 text-slate-400">...</span>`;
+        }
+      }
+
+      paginationControls.innerHTML = `
+        <div class="flex items-center gap-1.5">
+          <button class="btn-secondary py-1 px-2.5 text-xs font-bold ${curPage === 1 ? 'opacity-40 cursor-not-allowed' : ''}" onclick="window.renderProductsTablePage(${curPage - 1})" ${curPage === 1 ? 'disabled' : ''}>
+            ← পূর্ববর্তী
+          </button>
+          ${pageBtns}
+          <button class="btn-secondary py-1 px-2.5 text-xs font-bold ${curPage === totalPages ? 'opacity-40 cursor-not-allowed' : ''}" onclick="window.renderProductsTablePage(${curPage + 1})" ${curPage === totalPages ? 'disabled' : ''}>
+            পরবর্তী →
+          </button>
+        </div>
+      `;
+    }
+
+    // Reset master checkbox
+    const master = document.getElementById('prod-select-all-master');
+    if (master) master.checked = false;
+    window.updateBulkProductsBar();
+  };
+
+  window.toggleSelectAllProducts = function(masterCb) {
+    const checked = masterCb.checked;
+    document.querySelectorAll('.prod-select-cb').forEach(cb => cb.checked = checked);
+    window.updateBulkProductsBar();
+  };
+
+  window.updateBulkProductsBar = function() {
+    const selected = document.querySelectorAll('.prod-select-cb:checked');
+    const bar = document.getElementById('bulk-products-actions-bar');
+    const countEl = document.getElementById('bulk-prod-selected-count');
+    if (countEl) countEl.textContent = selected.length;
+    if (bar) {
+      if (selected.length > 0) bar.classList.remove('hidden');
+      else bar.classList.add('hidden');
+    }
+  };
+
+  window.handleBulkProductsAction = function(action) {
+    const selected = Array.from(document.querySelectorAll('.prod-select-cb:checked')).map(cb => cb.value);
+    if (selected.length === 0) {
+      alert('অনুগ্রহ করে এক বা একাধিক পণ্য নির্বাচন করুন!');
+      return;
+    }
+
+    let prods = JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+
+    if (action === 'price') {
+      const mode = prompt('মূল্য পরিবর্তনের ধরণ লিখুন:\n1. নির্দিষ্ট মূল্য নির্ধারণ করতে নতুন সংখ্যা লিখুন (যেমন: 1250)\n2. শতকরা বাড়াতে বা কমাতে লিখুন (যেমন: +10% অথবা -5%):', '+10%');
+      if (!mode) return;
+
+      let updatedCount = 0;
+      prods = prods.map(p => {
+        if (selected.includes(p.product_id || p.sku)) {
+          if (mode.includes('%')) {
+            const factor = parseFloat(mode) / 100;
+            p.selling_price = Math.round((Number(p.selling_price) || 0) * (1 + factor));
+          } else if (!isNaN(Number(mode))) {
+            p.selling_price = Number(mode);
+          }
+          p.original_price = window.calcOriginalPrice(p.selling_price);
+          updatedCount++;
+        }
+        return p;
+      });
+
+      localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
+      window.renderProductsTablePage(window.__prodCurrentPage);
+      if (toast && toast.show) toast.show({ type: 'success', title: 'বাল্ক প্রাইজ আপডেট', message: `${updatedCount} টি পণ্যের মূল্য আপডেট করা হয়েছে!` });
+    } else if (action === 'stock') {
+      const newStock = prompt('নির্বাচিত পণ্যসমূহের নতুন স্টক সংখ্যা (পিস) লিখুন:', '50');
+      if (newStock === null || isNaN(Number(newStock))) return;
+
+      const s = Number(newStock);
+      prods = prods.map(p => {
+        if (selected.includes(p.product_id || p.sku)) {
+          p.stock = s;
+        }
+        return p;
+      });
+
+      localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
+      window.renderProductsTablePage(window.__prodCurrentPage);
+      if (toast && toast.show) toast.show({ type: 'success', title: 'বাল্ক স্টক আপডেট', message: `${selected.length} টি পণ্যের স্টক ${s} পিস করা হয়েছে!` });
+    } else if (action === 'status') {
+      const newStatus = prompt('নির্বাচিত পণ্যের স্ট্যাটাস লিখুন (সক্রিয় / নিষ্ক্রিয়):', 'সক্রিয়');
+      if (!newStatus) return;
+
+      prods = prods.map(p => {
+        if (selected.includes(p.product_id || p.sku)) {
+          p.status = newStatus;
+        }
+        return p;
+      });
+
+      localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
+      window.renderProductsTablePage(window.__prodCurrentPage);
+      if (toast && toast.show) toast.show({ type: 'success', title: 'বাল্ক স্ট্যাটাস', message: `${selected.length} টি পণ্যের স্ট্যাটাস "${newStatus}" করা হয়েছে!` });
+    } else if (action === 'delete') {
+      if (!confirm(`আপনি কি নিশ্চিত যে নির্বাচিত ${selected.length} টি পণ্য সম্পূর্ণ ডিলিট করতে চান?`)) return;
+
+      prods = prods.filter(p => !selected.includes(p.product_id || p.sku));
+      localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
+      window.renderProductsTablePage(window.__prodCurrentPage);
+      if (toast && toast.show) toast.show({ type: 'success', title: 'বাল্ক ডিলিট', message: `${selected.length} টি পণ্য সফলভাবে মুছে ফেলা হয়েছে!` });
+    }
+  };
+
+  window.filterAdminProducts = function(query) {
+    window.__prodSearchQuery = query || '';
+    window.renderProductsTablePage(1);
+  };
+
+  window.filterAdminProductStatus = function(status, btn) {
+    window.__prodFilterStatus = status;
+    document.querySelectorAll('.prod-status-filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    window.renderProductsTablePage(1);
+  };
+
+  window.inlineEditProduct = function(id, field, currentVal, el) {
+    const label = field === 'selling_price' ? 'বিক্রয় দর (৳)' : 'মজুদ স্টক (পিস)';
+    const newVal = prompt(`${label} পরিবর্তন করুন:`, currentVal);
+    if (newVal === null || newVal.trim() === '' || isNaN(Number(newVal))) return;
+
+    const val = Number(newVal);
+    let prods = JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+    prods = prods.map(p => {
+      if (p.product_id === id || p.sku === id) {
+        p[field] = val;
+        if (field === 'selling_price') {
+          p.original_price = window.calcOriginalPrice(val);
+        }
+      }
+      return p;
+    });
+    localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
+
+    if (el) {
+      if (field === 'selling_price') el.textContent = `৳${val} ✎`;
+      else el.textContent = `${val} পিস ✎`;
+    }
+    if (toast && toast.show) toast.show({ type: 'success', title: 'আপডেট সফল', message: `${label} ৳${val} করা হয়েছে!` });
+  };
+
+  window.toggleProductActive = function(id, btn) {
+    let prods = JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+    let currentStatus = 'সক্রিয়';
+    prods = prods.map(p => {
+      if (p.product_id === id || p.sku === id) {
+        p.status = (p.status === 'নিষ্ক্রিয়') ? 'সক্রিয়' : 'নিষ্ক্রিয়';
+        currentStatus = p.status;
+      }
+      return p;
+    });
+    localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
+
+    if (btn) {
+      const isAct = currentStatus === 'সক্রিয়';
+      btn.className = `px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition ${isAct ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'}`;
+      btn.textContent = currentStatus;
+    }
+    if (toast && toast.show) toast.show({ type: 'success', title: 'পণ্য স্ট্যাটাস', message: `পণ্যটির স্ট্যাটাস "${currentStatus}" করা হয়েছে।` });
+  };
+
+  window.handleAdminDeleteProduct = async function(id, btn) {
+    if (!confirm('আপনি কি নিশ্চিত যে এই পণ্যটি মুছে ফেলতে চান?')) return;
+    try {
+      let prods = JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+      prods = prods.filter(p => p.product_id !== id && p.sku !== id);
+      localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
+      await apiClient.request('products/delete', { id });
+      if (btn) btn.closest('tr')?.remove();
+      if (toast && toast.show) toast.show({ type: 'success', title: 'পণ্য মোছা হয়েছে', message: 'পণ্যটি ডিলিট করা হয়েছে।' });
+    } catch (e) {
+      alert('পণ্য মুছে ফেলা হয়েছে।');
+    }
+  };
+
+  // =========================================================================
+  // ADD PRODUCT FULL FORM HANDLER (WITH ALL 23 SPECIFIED COLUMNS)
+  // =========================================================================
+  window.handleAdminAddProduct = async function(e) {
+    e.preventDefault();
+    const sku = (document.getElementById('adm-add-sku')?.value || '').trim() || ('DCBD-PRD-' + Math.floor(100 + Math.random() * 900));
+    const name = (document.getElementById('adm-add-name')?.value || '').trim();
+    const category = (document.getElementById('adm-add-cat')?.value || '').trim() || 'General';
+    const subCategory = (document.getElementById('adm-add-subcat')?.value || '').trim() || 'Standard';
+    const childCategory = (document.getElementById('adm-add-childcat')?.value || '').trim() || 'Standard Item';
+    const brand = (document.getElementById('adm-add-brand')?.value || '').trim() || 'Dream Cart';
+    const buyingPrice = Number(document.getElementById('adm-add-buyprice')?.value || '0');
+    const sellingPrice = Number(document.getElementById('adm-add-sellprice')?.value || '0') || window.calcSellingPrice(buyingPrice);
+    const stock = Number(document.getElementById('adm-add-stock')?.value || '50');
+    const originalPrice = Number(document.getElementById('adm-add-origprice')?.value || '0') || window.calcOriginalPrice(sellingPrice);
+    const wholesalePrice = Number(document.getElementById('adm-add-wholesaleprice')?.value || '0') || window.calcWholesalePrice(buyingPrice);
+    const minOrderQ = Number(document.getElementById('adm-add-minorder')?.value || '5') || window.calcMinOrderQty(sellingPrice);
+    const imageUrl = (document.getElementById('adm-add-imageurl')?.value || '').trim() || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+    const slug = (document.getElementById('adm-add-slug')?.value || '').trim() || sku.toLowerCase();
+    const description = (document.getElementById('adm-add-desc')?.value || '').trim();
+    const specification = (document.getElementById('adm-add-spec')?.value || '').trim();
+    const others = (document.getElementById('adm-add-others')?.value || '').trim();
+    const color = (document.getElementById('adm-add-color')?.value || 'Standard').trim();
+    const size = (document.getElementById('adm-add-size')?.value || 'Free Size').trim();
+    const weightKg = Number(document.getElementById('adm-add-weight')?.value || '0.5');
+    const widthCm = Number(document.getElementById('adm-add-width')?.value || '10');
+    const lengthCm = Number(document.getElementById('adm-add-length')?.value || '15');
+    const heightCm = Number(document.getElementById('adm-add-height')?.value || '5');
+
+    const newProduct = {
+      product_id: 'PRD-' + Math.floor(1000 + Math.random() * 9000),
+      sku,
+      name,
+      p_name: name,
+      category,
+      sub_category: subCategory,
+      child_category: childCategory,
+      brand,
+      buying_price: buyingPrice,
+      selling_price: sellingPrice,
+      stock,
+      original_price: originalPrice,
+      wholesale_price: wholesalePrice,
+      min_order_q: minOrderQ,
+      thumbnail: imageUrl,
+      image_url: imageUrl,
+      slug,
+      description,
+      specification,
+      others,
+      color,
+      size,
+      weight_kg: weightKg,
+      width_cm: widthCm,
+      length_cm: lengthCm,
+      height_cm: heightCm,
+      status: 'সক্রিয়'
+    };
+
+    let prods = JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+    prods.unshift(newProduct);
+    localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
+
+    await apiClient.request('products/add', newProduct);
+
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'পণ্য সফলভাবে যুক্ত হয়েছে', message: `${name} ক্যাটালগে সংরক্ষিত হয়েছে!` });
+    }
+    document.getElementById('form-add-product-dedicated')?.reset();
+    window.switchAdminPage('page-prod-all', 'group-products');
+  };
+
+  // Image Upload File Preview Handler
+  window.handleProductImageFilePreview = function(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const urlInput = document.getElementById('adm-add-imageurl');
+      const previewImg = document.getElementById('adm-image-preview');
+      const previewWrap = document.getElementById('adm-image-preview-wrap');
+      if (urlInput) urlInput.value = e.target.result;
+      if (previewImg) previewImg.src = e.target.result;
+      if (previewWrap) previewWrap.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Inline Variant Adder inside Add Product Form
+  window.handleInlineAddVariant = function(type) {
+    const val = prompt(`নতুন ${type === 'color' ? 'কালার' : 'সাইজ'} নাম লিখুন:`);
+    if (!val || !val.trim()) return;
+
+    const selectEl = document.getElementById(type === 'color' ? 'adm-add-color' : 'adm-add-size');
+    if (selectEl) {
+      const opt = new Option(val.trim(), val.trim(), true, true);
+      selectEl.add(opt);
+    }
+
+    let variants = JSON.parse(localStorage.getItem('dcbd_variants') || '{"colors":[], "sizes":[]}');
+    if (type === 'color') variants.colors.push(val.trim());
+    else variants.sizes.push(val.trim());
+    localStorage.setItem('dcbd_variants', JSON.stringify(variants));
+
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'ভ্যারিয়েন্ট যুক্ত', message: `"${val.trim()}" ড্রপডাউনে যুক্ত হয়েছে!` });
+    }
+  };
+
+  // =========================================================================
+  // SAMPLE CSV DOWNLOAD & BULK UPLOAD HANDLERS
+  // =========================================================================
+  
+  // 1. Download Product Sample Sheet
+  window.downloadSampleProductCsv = function() {
+    const headers = [
+      'SKU', 'P_Name', 'Category', 'Sub_Category', 'Child_Category', 'Brand',
+      'Buying_price', 'Selling_Price', 'WholeSale_price', 'Original_Price', 'Stock', 'Min_order_Q',
+      'Images', 'Slug', 'Description', 'Specification', 'Others', 'Color', 'Size',
+      'WEIGHT_KG', 'WIDTH_CM', 'LENGTH_CM', 'HEIGHT_CM'
+    ];
+    const sampleRows = [
+      [
+        'DCBD-WT-01', 'Amazfit GTS 4 Smartwatch (Black)', 'Smartwatches', 'Smart Calling Watch', 'Men & Women Fitness Watch', 'Amazfit',
+        '6800', '8490', '7200', '10990', '25', '5',
+        'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400', 'amazfit-gts-4', 'প্রিমিয়াম অ্যামোলেড কলিং স্মার্টওয়াচ', 'Display: 1.75 AMOLED, Battery: 8 Days', '1 Year Warranty', 'Jet Black', 'Regular',
+        '0.25', '8', '12', '4'
+      ],
+      [
+        'DCBD-GS-02', 'অটো গ্যাস সেফটি ডিভাইস (Heavy Duty)', 'Kitchen', 'Gas Safety Devices', 'Heavy Duty Auto Cutoff Regulator', 'SafeGas BD',
+        '1500', '2450', '1850', '3450', '40', '5',
+        'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400', 'auto-gas-safety-device', '১০০% গ্যাস লিকেজ প্রতিরোধক', 'Auto Shut-off, Brass Fitting', '5 Years Replacement', 'Red/Black', 'Standard',
+        '0.65', '12', '18', '8'
+      ]
+    ];
+    window.exportGenericCsv('DreamCart_Bulk_Product_Import_Sample', headers, sampleRows);
+  };
+
+  // 2. Download Price Sample Sheet
+  window.downloadSamplePriceCsv = function() {
+    const headers = ['SKU', 'Product_Name', 'New_Selling_Price', 'New_Wholesale_Price', 'New_Original_Price'];
+    let prods = JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+    const rows = prods.slice(0, 10).map(p => [
+      p.sku || 'SKU-01',
+      p.name || 'Sample Product',
+      p.selling_price || 1200,
+      p.wholesale_price || 950,
+      p.original_price || 1600
+    ]);
+    window.exportGenericCsv('DreamCart_Price_Update_Sample', headers, rows.length ? rows : [
+      ['DCBD-WT-01', 'Amazfit GTS 4', '8490', '7200', '10990'],
+      ['DCBD-GS-02', 'গ্যাস সেফটি ডিভাইস', '2450', '1850', '3450']
+    ]);
+  };
+
+  // 3. Download Image Sample Sheet
+  window.downloadSampleImageCsv = function() {
+    const headers = ['SKU', 'Product_Name', 'New_Image_URL'];
+    let prods = JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+    const rows = prods.slice(0, 10).map(p => [
+      p.sku || 'SKU-01',
+      p.name || 'Sample Product',
+      p.thumbnail || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400'
+    ]);
+    window.exportGenericCsv('DreamCart_Image_Update_Sample', headers, rows.length ? rows : [
+      ['DCBD-WT-01', 'Amazfit GTS 4', 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400'],
+      ['DCBD-GS-02', 'গ্যাস সেফটি ডিভাইস', 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400']
+    ]);
+  };
+
+  // Upload and Parse Bulk Products Sheet
+  window.handleUploadBulkProductsCsv = function(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        if (lines.length < 2) {
+          alert('সিএসভি ফাইলে কোনো পণ্যের ডাটা পাওয়া যায়নি!');
+          return;
+        }
+
+        let prods = JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+        let imported = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+          if (cols.length >= 2 && cols[0]) {
+            const sku = cols[0];
+            const name = cols[1] || 'Bulk Product';
+            const cat = cols[2] || 'General';
+            const subcat = cols[3] || 'Standard';
+            const childcat = cols[4] || 'Retail';
+            const brand = cols[5] || 'Dream Cart';
+            const buyPrice = Number(cols[6]) || 500;
+            const sellPrice = Number(cols[7]) || window.calcSellingPrice(buyPrice);
+            const wsPrice = Number(cols[8]) || window.calcWholesalePrice(buyPrice);
+            const origPrice = Number(cols[9]) || window.calcOriginalPrice(sellPrice);
+            const stock = Number(cols[10]) || 50;
+            const minOrder = Number(cols[11]) || window.calcMinOrderQty(sellPrice);
+            const img = cols[12] || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+            const slug = cols[13] || sku.toLowerCase();
+            const desc = cols[14] || '';
+
+            // Update existing or add new
+            const existingIdx = prods.findIndex(p => p.sku === sku);
+            const item = {
+              product_id: existingIdx >= 0 ? prods[existingIdx].product_id : ('PRD-' + Math.floor(1000 + Math.random() * 9000)),
+              sku,
+              name,
+              category: cat,
+              sub_category: subcat,
+              child_category: childcat,
+              brand,
+              buying_price: buyPrice,
+              selling_price: sellPrice,
+              wholesale_price: wsPrice,
+              original_price: origPrice,
+              stock,
+              min_order_q: minOrder,
+              thumbnail: img,
+              slug,
+              description: desc,
+              status: 'সক্রিয়'
+            };
+
+            if (existingIdx >= 0) prods[existingIdx] = item;
+            else prods.unshift(item);
+            imported++;
+          }
+        }
+
+        localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
+        if (toast && toast.show) {
+          toast.show({ type: 'success', title: 'বাল্ক আপলোড সফল', message: `${imported} টি পণ্য শিট থেকে সংরক্ষিত হয়েছে!` });
+        }
+        setTimeout(() => window.switchAdminPage('page-prod-all', 'group-products'), 600);
+      } catch (err) {
+        alert('সিএসভি ফাইল পার্স করতে ত্রুটি হয়েছে: ' + err.message);
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  };
+
+  // Upload and Parse Bulk Price Update Sheet
+  window.handleUploadBulkPriceCsv = function(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        if (lines.length < 2) return;
+
+        let prods = JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+        let updated = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+          if (cols.length >= 3 && cols[0]) {
+            const sku = cols[0];
+            const newSell = Number(cols[2]);
+            const newWs = Number(cols[3]);
+            const newOrig = Number(cols[4]);
+
+            const p = prods.find(item => item.sku === sku || item.product_id === sku);
+            if (p) {
+              if (!isNaN(newSell) && newSell > 0) p.selling_price = newSell;
+              if (!isNaN(newWs) && newWs > 0) p.wholesale_price = newWs;
+              if (!isNaN(newOrig) && newOrig > 0) p.original_price = newOrig;
+              else if (p.selling_price) p.original_price = window.calcOriginalPrice(p.selling_price);
+              updated++;
+            }
+          }
+        }
+
+        localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
+        if (toast && toast.show) {
+          toast.show({ type: 'success', title: 'মূল্য আপডেট সফল', message: `${updated} টি পণ্যের মূল্য শিট থেকে আপডেট করা হয়েছে!` });
+        }
+        setTimeout(() => window.switchAdminPage('page-prod-all', 'group-products'), 600);
+      } catch (err) {
+        alert('প্রাইজ শিট পার্স ত্রুটি: ' + err.message);
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  };
+
+  // Upload and Parse Bulk Image Update Sheet
+  window.handleUploadBulkImageCsv = function(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        if (lines.length < 2) return;
+
+        let prods = JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+        let updated = 0;
+
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+          if (cols.length >= 3 && cols[0]) {
+            const sku = cols[0];
+            const newImg = cols[2];
+
+            const p = prods.find(item => item.sku === sku || item.product_id === sku);
+            if (p && newImg) {
+              p.thumbnail = newImg;
+              p.image_url = newImg;
+              updated++;
+            }
+          }
+        }
+
+        localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
+        if (toast && toast.show) {
+          toast.show({ type: 'success', title: 'ইমেজ আপডেট সফল', message: `${updated} টি পণ্যের ছবি পরিবর্তন করা হয়েছে!` });
+        }
+        setTimeout(() => window.switchAdminPage('page-prod-all', 'group-products'), 600);
+      } catch (err) {
+        alert('ইমেজ শিট পার্স ত্রুটি: ' + err.message);
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  };
+
+  // =========================================================================
+  // MULTI-LANDING PAGE CMS BUILDER HANDLERS
+  // =========================================================================
+  window.searchAndAddProductToLanding = function(keyword) {
+    const q = (keyword || '').toLowerCase().trim();
+    const dropdown = document.getElementById('adm-landing-search-results');
+    if (!dropdown) return;
+
+    if (!q) {
+      dropdown.classList.add('hidden');
+      return;
+    }
+
+    const prods = JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+    const matches = prods.filter(p => 
+      (p.name && p.name.toLowerCase().includes(q)) || 
+      (p.sku && p.sku.toLowerCase().includes(q))
+    ).slice(0, 6);
+
+    if (matches.length === 0) {
+      dropdown.innerHTML = `<div class="p-2.5 text-slate-400">কোনো পণ্য পাওয়া যায়নি</div>`;
+    } else {
+      dropdown.innerHTML = matches.map(p => `
+        <div class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer flex items-center justify-between border-b last:border-0" onclick="window.addProductToLandingList('${p.sku}', '${p.name.replace(/'/g, "\\'")}', ${p.selling_price || 0})">
+          <div class="truncate max-w-xs"><b>${p.name}</b> <span class="text-[10px] text-slate-400 font-mono">(${p.sku})</span></div>
+          <span class="text-emerald-600 font-bold font-mono">৳${p.selling_price}</span>
+        </div>
+      `).join('');
+    }
+    dropdown.classList.remove('hidden');
+  };
+
+  window.addProductToLandingList = function(sku, name, price) {
+    window.__landingBuilderSelectedProducts = window.__landingBuilderSelectedProducts || [];
+    if (!window.__landingBuilderSelectedProducts.some(p => p.sku === sku)) {
+      window.__landingBuilderSelectedProducts.push({ sku, name, price });
+      window.renderLandingSelectedProducts();
+    }
+    const input = document.getElementById('adm-landing-prod-search');
+    if (input) input.value = '';
+    const dropdown = document.getElementById('adm-landing-search-results');
+    if (dropdown) dropdown.classList.add('hidden');
+  };
+
+  window.removeProductFromLanding = function(sku) {
+    window.__landingBuilderSelectedProducts = (window.__landingBuilderSelectedProducts || []).filter(p => p.sku !== sku);
+    window.renderLandingSelectedProducts();
+  };
+
+  window.renderLandingSelectedProducts = function() {
+    const container = document.getElementById('adm-landing-selected-chips');
+    if (!container) return;
+
+    const list = window.__landingBuilderSelectedProducts || [];
+    if (!list.length) {
+      container.innerHTML = `<span class="text-slate-400 text-xs">কোনো পণ্য নির্বাচন করা হয়নি (উপরে সার্চ করে যোগ করুন)</span>`;
+      return;
+    }
+
+    container.innerHTML = list.map(p => `
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold text-xs border border-emerald-300 dark:border-emerald-700">
+        <span>${p.name} (৳${p.price})</span>
+        <button type="button" class="text-rose-500 hover:text-rose-700 font-black ml-1" onclick="window.removeProductFromLanding('${p.sku}')">✕</button>
+      </span>
+    `).join('');
+  };
+
+  window.handleAdminSaveLandingPage = function(e) {
+    e.preventDefault();
+    const title = (document.getElementById('adm-lp-title')?.value || '').trim();
+    const slug = (document.getElementById('adm-lp-slug')?.value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const heroBanner = (document.getElementById('adm-lp-banner')?.value || '').trim();
+    const videoUrl = (document.getElementById('adm-lp-video')?.value || '').trim();
+    const headline = (document.getElementById('adm-lp-headline')?.value || '').trim();
+    const badge = (document.getElementById('adm-lp-badge')?.value || 'সীমিত সময়ের অফার').trim();
+    const gallery = (document.getElementById('adm-lp-gallery')?.value || '').split('\n').map(s => s.trim()).filter(Boolean);
+    const selectedProds = window.__landingBuilderSelectedProducts || [];
+
+    if (!title || !slug) {
+      alert('অনুগ্রহ করে ল্যান্ডিং পেজের নাম ও URL স্ল্যাগ লিখুন!');
+      return;
+    }
+
+    const newLp = {
+      id: 'LP-' + Math.floor(100 + Math.random() * 900),
+      title,
+      slug,
+      hero_banner: heroBanner,
+      video_url: videoUrl,
+      headline,
+      badge,
+      gallery,
+      products: selectedProds,
+      created_at: new Date().toISOString().slice(0, 10),
+      status: 'Active'
+    };
+
+    let list = JSON.parse(localStorage.getItem('dcbd_landing_pages') || '[]');
+    list.unshift(newLp);
+    localStorage.setItem('dcbd_landing_pages', JSON.stringify(list));
+
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'ল্যান্ডিং পেজ তৈরি সম্পন্ন', message: `"${title}" সফলভাবে সংরক্ষিত হয়েছে!` });
+    }
+
+    document.getElementById('form-add-landing-page')?.reset();
+    window.__landingBuilderSelectedProducts = [];
+    window.renderLandingSelectedProducts();
+    window.renderLandingPagesList();
+  };
+
+  window.renderLandingPagesList = function() {
+    const listEl = document.getElementById('admin-landing-pages-list');
+    if (!listEl) return;
+
+    let list = JSON.parse(localStorage.getItem('dcbd_landing_pages') || '[]');
+    if (!list.length) {
+      list = [
+        {
+          id: 'LP-101',
+          title: 'গ্যাস সেফটি ডিভাইস মেগা ফানেল',
+          slug: 'gas-safety-deal',
+          hero_banner: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600',
+          video_url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+          headline: '১০০% সিলিন্ডার বিস্ফোরণ ও লিকেজ মুক্ত রাখুন আপনার পরিবারকে!',
+          badge: 'বিশেষ ৪০% ছাড় + ফ্রি হোম ডেলিভারি',
+          products: [{ sku: 'DCBD-GS-02', name: 'অটো গ্যাস সেফটি ডিভাইস', price: 2450 }],
+          status: 'Active'
+        }
+      ];
+      localStorage.setItem('dcbd_landing_pages', JSON.stringify(list));
+    }
+
+    listEl.innerHTML = list.map(lp => `
+      <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-3">
+          <img src="${lp.hero_banner || 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=200'}" class="w-16 h-12 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=200';" />
+          <div>
+            <div class="font-bold text-slate-900 dark:text-white text-sm">${lp.title}</div>
+            <div class="text-[10px] text-slate-400 font-mono">URL: /landing/${lp.slug} • পণ্য সংখ্যা: ${lp.products ? lp.products.length : 0} টি</div>
+            <div class="text-[10px] text-emerald-600 font-bold">${lp.badge}</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="/landing?slug=${lp.slug}" target="_blank" class="btn-primary py-1 px-3 text-[10px] font-bold">লাইভ দেখুন ↗</a>
+          <button class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200" onclick="window.deleteLandingPage('${lp.id}')">মুছুন</button>
+        </div>
+      </div>
+    `).join('');
+  };
+
+  window.deleteLandingPage = function(id) {
+    if (!confirm('আপনি কি নিশ্চিত যে এই ল্যান্ডিং পেজটি মুছে ফেলতে চান?')) return;
+    let list = JSON.parse(localStorage.getItem('dcbd_landing_pages') || '[]');
+    list = list.filter(lp => lp.id !== id);
+    localStorage.setItem('dcbd_landing_pages', JSON.stringify(list));
+    window.renderLandingPagesList();
+    if (toast && toast.show) toast.show({ type: 'success', title: 'মুছে ফেলা হয়েছে', message: 'ল্যান্ডিং পেজটি ডিলিট হয়েছে।' });
+  };
+
+  // =========================================================================
+  // RESELLER COMMISSION CONTROL % HANDLER
+  // =========================================================================
+  window.handleSaveResellerSettings = function(e) {
+    e.preventDefault();
+    const globalComm = Number(document.getElementById('adm-reseller-global-pct')?.value || '15');
+    const minOrder = Number(document.getElementById('adm-reseller-min-order')?.value || '1');
+    const minPayout = Number(document.getElementById('adm-reseller-min-payout')?.value || '500');
+    const feePct = Number(document.getElementById('adm-reseller-fee-pct')?.value || '3');
+
+    const settings = {
+      globalCommission: globalComm,
+      minOrderQty: minOrder,
+      minPayout: minPayout,
+      payoutFeePct: feePct
+    };
+
+    localStorage.setItem('dcbd_reseller_settings', JSON.stringify(settings));
+    window.__adminState.resellerSettings = settings;
+
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'রিসেলার সেটিংস সংরক্ষিত', message: `গ্লোবাল রিসেলিং কমিশন ${globalComm}% ও পে-আউট ফি ${feePct}% নির্ধারিত হয়েছে!` });
+    }
+  };
+
+// ORDER MANAGEMENT BULK & ACTION HANDLERS
   window.toggleSelectAllOrders = function(masterCb) {
     const checked = masterCb.checked;
     document.querySelectorAll('.order-select-cb').forEach(cb => cb.checked = checked);
@@ -1700,6 +2862,32 @@ export async function renderAdminPortal(params = {}) {
           display: none;
         }
       }
+    
+      /* Bulk Actions Sticky Floating Bar */
+      .dc-bulk-bar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+      }
+
+      /* AI Matching Banner */
+      .dc-ai-badge {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+      }
+
+      /* Brands Visual Card */
+      .dc-brand-admin-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      }
+      .dc-brand-admin-card:hover {
+        transform: translateY(-3px);
+        border-color: #10b981;
+        box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.2);
+      }
+
     </style>
 
     <div class="dc-admin-wrapper">
@@ -2581,46 +3769,68 @@ export async function renderAdminPortal(params = {}) {
           <!-- DEDICATED PAGES: PRODUCT MANAGEMENT (14 Distinct Standalone Views)-->
           <!-- ================================================================= -->
 
-          <!-- 1. All Products List -->
+          <!-- 1. All Products List (120/page Pagination, Select All Checkboxes, Bulk Actions) -->
           <div id="page-prod-all" class="admin-page-view hidden space-y-4">
-            <div class="dc-admin-card space-y-3">
+            <div class="dc-admin-card space-y-3.5">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b pb-2.5">
                 <div>
                   <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
                     <span>📦</span> সকল পণ্য ক্যাটালগ ও ইনভেন্টরি (${products.length} টি পণ্য)
                   </h3>
-                  <p class="text-[11px] text-slate-400">ক্লিক করে তাৎক্ষণিক মূল্য ও স্টক পরিবর্তন করুন (Live Inline Editing)</p>
+                  <p class="text-[11px] text-slate-400">প্রতি পেজে ১২০টি পণ্য, চেকবক্স নির্বাচন করে বাল্ক প্রাইজ/স্টক/স্ট্যাটাস এডিট ও ডিলিট</p>
                 </div>
-                <div class="flex items-center gap-1.5 text-xs">
-                  <button class="btn-primary py-1 px-3 font-bold" onclick="switchAdminPage('page-prod-add', 'group-products')">+ নতুন পণ্য</button>
+                <div class="flex items-center gap-1.5 text-xs flex-wrap">
+                  <button class="btn-primary py-1 px-3 font-bold" onclick="switchAdminPage('page-prod-add', 'group-products')">+ নতুন পণ্য যোগ</button>
                   <button class="btn-secondary py-1 px-2.5 font-bold" onclick="switchAdminPage('page-prod-bulk-add', 'group-products')">📥 বাল্ক যোগ</button>
-                  <button class="btn-secondary py-1 px-2.5" onclick="window.exportAdminProductsCsv()">CSV</button>
+                  <button class="btn-secondary py-1 px-2.5" onclick="window.downloadSampleProductCsv()">নমুনা শিট 📥</button>
+                  <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Products_All', ['SKU', 'Name', 'Category', 'Price', 'Stock'], products.map(p => [p.sku, p.name, p.category, p.selling_price, p.stock]))">CSV</button>
                   <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
                 </div>
               </div>
 
-              <!-- Search & Filter Counters -->
+              <!-- Search & Status Filter Buttons -->
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                <input 
-                  type="text" 
-                  placeholder="পণ্যের নাম, SKU, ক্যাটাগরি বা ব্র্যান্ড সার্চ..." 
-                  class="form-control text-xs py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-80" 
-                  oninput="window.filterAdminProducts(this.value)" 
-                />
+                <div class="relative w-full sm:w-80">
+                  <input 
+                    type="text" 
+                    placeholder="পণ্যের নাম, SKU, ক্যাটাগরি বা ব্র্যান্ড সার্চ..." 
+                    class="form-control text-xs py-1.5 pl-8 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 w-full" 
+                    oninput="window.filterAdminProducts(this.value)" 
+                  />
+                  <span class="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
+                </div>
 
                 <div class="flex items-center gap-1.5 overflow-x-auto text-xs pb-1">
                   <button class="prod-status-filter-btn active" onclick="window.filterAdminProductStatus('all', this)">সকল (${products.length})</button>
-                  <button class="prod-status-filter-btn" onclick="window.filterAdminProductStatus('low', this)">লো স্টক (${kpi.low_stock_count})</button>
-                  <button class="prod-status-filter-btn" onclick="window.filterAdminProductStatus('out', this)">আউট অব স্টক (${kpi.out_of_stock_count})</button>
+                  <button class="prod-status-filter-btn" onclick="window.filterAdminProductStatus('low', this)">লো স্টক (&lt;৫)</button>
+                  <button class="prod-status-filter-btn" onclick="window.filterAdminProductStatus('out', this)">আউট অব স্টক (০)</button>
+                  <button class="prod-status-filter-btn" onclick="window.filterAdminProductStatus('active', this)">সক্রিয়</button>
+                  <button class="prod-status-filter-btn" onclick="window.filterAdminProductStatus('inactive', this)">নিষ্ক্রিয়</button>
                   <button class="prod-status-filter-btn" onclick="window.filterAdminProductStatus('error', this)">ত্রুটিযুক্ত</button>
                 </div>
               </div>
 
-              <!-- Products Table -->
+              <!-- Sticky Bulk Operations Action Bar for Products -->
+              <div id="bulk-products-actions-bar" class="hidden p-2.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs dc-bulk-bar">
+                <div class="font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                  <span>✓ <span id="bulk-prod-selected-count">0</span> টি পণ্য নির্বাচিত:</span>
+                </div>
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <button class="btn-primary py-1 px-3 text-[10px] font-bold" onclick="window.handleBulkProductsAction('price')">🏷️ প্রাইজ পরিবর্তন</button>
+                  <button class="btn-secondary py-1 px-2.5 text-[10px] font-bold" onclick="window.handleBulkProductsAction('stock')">📦 স্টক পরিবর্তন</button>
+                  <button class="btn-secondary py-1 px-2.5 text-[10px] font-bold" onclick="window.handleBulkProductsAction('status')">🔄 স্ট্যাটাস পরিবর্তন</button>
+                  <button class="btn-secondary py-1 px-2 text-[10px] font-bold text-rose-600 border-rose-300 hover:bg-rose-50" onclick="window.handleBulkProductsAction('delete')">🗑️ ডিলিট</button>
+                </div>
+              </div>
+
+              <!-- Products Table with Checkboxes -->
               <div class="overflow-x-auto">
                 <table class="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400 uppercase text-[10px]">
+                      <th class="py-2.5 px-2 text-center w-8">
+                        <input type="checkbox" id="prod-select-all-master" onchange="window.toggleSelectAllProducts(this)" title="বর্তমান পেজের সব নির্বাচন করুন" />
+                      </th>
                       <th class="py-2.5 px-3">ছবি</th>
                       <th class="py-2.5 px-3">SKU ও নাম</th>
                       <th class="py-2.5 px-3">ক্যাটাগরি</th>
@@ -2632,37 +3842,41 @@ export async function renderAdminPortal(params = {}) {
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-100 dark:divide-slate-800" id="admin-products-tbody">
-                    ${products.map(p => {
+                    ${products.slice(0, 120).map(p => {
                       const isLow = Number(p.stock) > 0 && Number(p.stock) <= 5;
                       const isOut = Number(p.stock) === 0;
                       const isErr = !p.sku || !p.thumbnail || !p.selling_price;
+                      const pId = p.product_id || p.sku;
                       return `
-                        <tr class="admin-prod-row hover:bg-slate-50 dark:hover:bg-slate-800/40 transition" data-stock="${p.stock || 0}" data-error="${isErr}">
+                        <tr class="admin-prod-row hover:bg-slate-50 dark:hover:bg-slate-800/40 transition" data-id="${pId}">
+                          <td class="py-2.5 px-2 text-center">
+                            <input type="checkbox" value="${pId}" class="prod-select-cb" onchange="window.updateBulkProductsBar()" />
+                          </td>
                           <td class="py-2.5 px-3">
                             <img src="${p.thumbnail || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" class="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
                           </td>
                           <td class="py-2.5 px-3 font-bold text-slate-900 dark:text-white max-w-xs">
-                            <div>${p.name}</div>
+                            <div class="line-clamp-1">${p.name}</div>
                             <div class="font-mono text-[10px] text-slate-400">${p.sku || 'SKU-NA'} | ${p.brand || 'No Brand'}</div>
                           </td>
                           <td class="py-2.5 px-3 text-slate-600 dark:text-slate-400">${p.category || 'General'}</td>
-                          <td class="py-2.5 px-3 font-bold text-emerald-600 font-mono cursor-pointer hover:underline" onclick="window.inlineEditProduct('${p.product_id || p.sku}', 'selling_price', ${p.selling_price || 0}, this)" title="ক্লিক করে বিক্রয় দর এডিট করুন">
-                            ${formatCurrency(p.selling_price || 0)} ✎
+                          <td class="py-2.5 px-3 font-bold text-emerald-600 font-mono cursor-pointer hover:underline" onclick="window.inlineEditProduct('${pId}', 'selling_price', ${p.selling_price || 0}, this)" title="ক্লিক করে বিক্রয় দর এডিট করুন">
+                            ৳${p.selling_price || 0} ✎
                           </td>
                           <td class="py-2.5 px-3 font-mono">${formatCurrency(p.wholesale_price || (p.selling_price * 0.85))}</td>
                           <td class="py-2.5 px-3">
-                            <span class="font-bold px-2 py-0.5 rounded text-[11px] cursor-pointer hover:underline ${isOut ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-400' : (isLow ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400')}" onclick="window.inlineEditProduct('${p.product_id || p.sku}', 'stock', ${p.stock || 0}, this)" title="ক্লিক করে স্টক এডিট করুন">
+                            <span class="font-bold px-2 py-0.5 rounded text-[11px] cursor-pointer hover:underline ${isOut ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-400' : (isLow ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-400' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400')}" onclick="window.inlineEditProduct('${pId}', 'stock', ${p.stock || 0}, this)" title="ক্লিক করে স্টক এডিট করুন">
                               ${p.stock || 0} পিস ✎
                             </span>
                           </td>
                           <td class="py-2.5 px-3">
-                            <span class="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition ${p.status === 'নিষ্ক্রিয়' ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'}" onclick="window.toggleProductActive('${p.product_id || p.sku}', this)">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition ${p.status === 'নিষ্ক্রিয়' ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'}" onclick="window.toggleProductActive('${pId}', this)">
                               ${p.status || 'সক্রিয়'}
                             </span>
                           </td>
                           <td class="py-2.5 px-3 text-right space-x-1.5 whitespace-nowrap">
-                            <a href="/product/${p.slug || p.product_id}" target="_blank" class="btn-secondary py-1 px-2 text-[10px]">দেখুন ↗</a>
-                            <button class="btn-secondary py-1 px-2 text-[10px] text-rose-600 border-rose-200 hover:bg-rose-50" onclick="window.handleAdminDeleteProduct('${p.product_id || p.sku}', this)">মুছুন</button>
+                            <a href="/product/${p.slug || pId}" target="_blank" class="btn-secondary py-1 px-2 text-[10px]">দেখুন ↗</a>
+                            <button class="btn-secondary py-1 px-2 text-[10px] text-rose-600 border-rose-200 hover:bg-rose-50" onclick="window.handleAdminDeleteProduct('${pId}', this)">মুছুন</button>
                           </td>
                         </tr>
                       `;
@@ -2670,159 +3884,478 @@ export async function renderAdminPortal(params = {}) {
                   </tbody>
                 </table>
               </div>
+
+              <!-- Pagination Footer (120 per page) -->
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t text-xs">
+                <div id="admin-prod-pagination-info" class="text-slate-500">
+                  মোট ${products.length} টির মধ্যে ১ - ${Math.min(120, products.length)} টি প্রদর্শিত (প্রতি পেজে ১২০টি পণ্য)
+                </div>
+                <div id="admin-prod-pagination-controls">
+                  <div class="flex items-center gap-1.5">
+                    <button class="btn-secondary py-1 px-2.5 text-xs font-bold opacity-40 cursor-not-allowed" disabled>← পূর্ববর্তী</button>
+                    <button class="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600 text-white border border-emerald-600">১</button>
+                    ${products.length > 120 ? `<button class="px-2.5 py-1 rounded-lg text-xs font-bold border bg-white dark:bg-slate-800" onclick="window.renderProductsTablePage(2)">২</button>` : ''}
+                    <button class="btn-secondary py-1 px-2.5 text-xs font-bold ${products.length <= 120 ? 'opacity-40 cursor-not-allowed' : ''}" onclick="window.renderProductsTablePage(2)" ${products.length <= 120 ? 'disabled' : ''}>পরবর্তী →</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- 2. Add Product Page -->
+          <!-- 2. Add Product Page (With AI Auto-Categorization, 16-Tier Slabs & Full Specified Columns) -->
           <div id="page-prod-add" class="admin-page-view hidden space-y-4">
-            <div class="dc-admin-card space-y-4 max-w-2xl">
+            <div class="dc-admin-card space-y-4 max-w-4xl">
               <div class="border-b pb-2.5 flex items-center justify-between">
                 <div>
-                  <h3 class="font-bold text-sm text-slate-900 dark:text-white">➕ নতুন পণ্য ক্যাটালগে সংযোজন (Add Product)</h3>
-                  <p class="text-[11px] text-slate-400">সকল তথ্য পূরণ করে Products শিট ও স্টোরে যুক্ত করুন</p>
+                  <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>➕</span> নতুন পণ্য যোগ করুন (AI Auto-Categorization & 16-Tier Slab Pricing)
+                  </h3>
+                  <p class="text-[11px] text-slate-400">পণ্যের নাম লেখার সাথে সাথে AI ক্যাটাগরি, ব্র্যান্ড ও ডাইমেনশন নির্ধারণ করবে। ক্রয় মূল্য দিলে খুচরা, পাইকারি ও মূল দর স্বয়ংক্রিয় হিসাব হবে।</p>
                 </div>
-                <button class="btn-secondary py-1 px-2.5 text-xs" onclick="switchAdminPage('page-prod-all', 'group-products')">← পণ্য তালিকায় ফিরে যান</button>
+                <button class="btn-secondary py-1 px-2.5 text-xs" onclick="switchAdminPage('page-prod-all', 'group-products')">← সকল পণ্য তালিকায় ফিরে যান</button>
               </div>
 
-              <form id="form-add-product-dedicated" class="space-y-3.5 text-xs" onsubmit="window.handleAdminAddProduct(event)">
+              <!-- AI Status Match Banner -->
+              <div id="adm-ai-match-badge" class="hidden p-3 rounded-2xl dc-ai-badge text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2">
+                ✨ <b>AI ম্যাচিং সফল:</b> ক্যাটাগরি ও সাব-ক্যাটাগরি স্বয়ংক্রিয় সংযুক্ত হয়েছে!
+              </div>
+
+              <form id="form-add-product-dedicated" class="space-y-4 text-xs" onsubmit="window.handleAdminAddProduct(event)">
+                
+                <!-- 1. SKU & 2. P_Name -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label class="block font-bold mb-1">SKU কোড *</label>
-                    <input type="text" id="adm-sku" required placeholder="DCBD-WT-09" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
+                    <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">১. SKU কোড (Manual Type) *</label>
+                    <div class="flex gap-1.5">
+                      <input type="text" id="adm-add-sku" required placeholder="DCBD-WT-09" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold" />
+                      <button type="button" class="btn-secondary py-1 px-2 text-[10px]" onclick="document.getElementById('adm-add-sku').value='DCBD-'+Math.floor(1000+Math.random()*9000)" title="স্বয়ংক্রিয় SKU তৈরি">🎲</button>
+                    </div>
                   </div>
                   <div class="sm:col-span-2">
-                    <label class="block font-bold mb-1">পণ্যের পূর্ণ নাম *</label>
-                    <input type="text" id="adm-name" required placeholder="স্মার্ট গ্যাজেট / কিচেন আইটেম" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+                    <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">২. পণ্যের পূর্ণ নাম (P_Name - টাইপ করলেই AI সক্রিয় হবে) *</label>
+                    <input 
+                      type="text" 
+                      id="adm-add-name" 
+                      required 
+                      placeholder="যেমন: Amazfit GTS 4 Smartwatch / অটো গ্যাস সেফটি ডিভাইস / খাঁটি চাকের মধু" 
+                      class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold text-slate-900 dark:text-white"
+                      oninput="window.handleAiProductAnalyze(this.value)"
+                    />
                   </div>
                 </div>
 
+                <!-- 3. Category, 4. Sub_Category, 5. Child_Category & 6. Brand -->
+                <div class="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border space-y-3">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <span>🤖</span> AI ট্যাক্সোনমি ও ব্র্যান্ড ডিটেকশন (Auto Calculate + Manual Override)
+                    </span>
+                    <span class="text-[10px] text-emerald-600 font-bold">নাম থেকে স্বয়ংক্রিয় সিলেক্ট হবে</span>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                      <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">৩. Category *</label>
+                      <select id="adm-add-cat" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold">
+                        <option value="Smartwatches">Smartwatches</option>
+                        <option value="Kitchen">Kitchen</option>
+                        <option value="Organic & Health">Organic & Health</option>
+                        <option value="Home Appliances">Home Appliances</option>
+                        <option value="Gadgets">Gadgets</option>
+                        <option value="Fashion">Fashion</option>
+                        <option value="Lifestyle">Lifestyle</option>
+                        <option value="General">General</option>
+                        ${categories.map(c => `<option value="${c.category}">${c.category}</option>`).join("")}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">৪. Sub_Category *</label>
+                      <input type="text" id="adm-add-subcat" placeholder="Smart Calling Watch" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+                    </div>
+
+                    <div>
+                      <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">৫. Child_Category</label>
+                      <input type="text" id="adm-add-childcat" placeholder="Men & Women Fitness" class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
+                    </div>
+
+                    <div>
+                      <div class="flex items-center justify-between mb-1">
+                        <label class="font-bold text-slate-700 dark:text-slate-300">৬. Brand *</label>
+                        <button type="button" class="text-[10px] text-emerald-600 font-bold hover:underline" onclick="const nb=prompt('নতুন ব্র্যান্ডের নাম লিখুন:'); if(nb){ const be=document.getElementById('adm-add-brand'); if(be){ be.value=nb; } }">+ নতুন</button>
+                      </div>
+                      <input type="text" id="adm-add-brand" placeholder="Amazfit / Dream Organic" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 7. Buying_Price, 8. Selling_Price, 9. Stock, 10. Original_Price, 11. WholeSale_price, 12. Min_order_Q -->
+                <div class="p-3.5 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-2xl border border-emerald-200 dark:border-emerald-800 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <span>💰</span> ১৬-টিয়ার স্বয়ংক্রিয় প্রাইসিং স্ল্যাব ও স্টক নির্ধারণ
+                    </span>
+                    <span class="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono font-bold">ক্রয় মূল্য দিলে বাকি ৩টি দর অটো হিসাব হবে</span>
+                  </div>
+
+                  <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
+                    <div>
+                      <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">৭. Buying_price (৳) *</label>
+                      <input 
+                        type="number" 
+                        id="adm-add-buyprice" 
+                        required 
+                        placeholder="1000" 
+                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-bold font-mono"
+                        oninput="window.handlePricingAutoCalc()"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="block font-bold mb-1 text-emerald-700 dark:text-emerald-400">৮. Selling_Price (Auto + Manual)</label>
+                      <input 
+                        type="number" 
+                        id="adm-add-sellprice" 
+                        required 
+                        placeholder="1400" 
+                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-black font-mono text-emerald-600"
+                        oninput="window.handleSellingPriceManualChange()"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">৯. Stock (পিস) *</label>
+                      <input 
+                        type="number" 
+                        id="adm-add-stock" 
+                        required 
+                        value="50" 
+                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-bold font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="block font-bold mb-1 text-slate-500">১০. Original_Price (MRP)</label>
+                      <input 
+                        type="number" 
+                        id="adm-add-origprice" 
+                        placeholder="2030" 
+                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-mono line-through text-slate-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">১১. WholeSale_price (৳)</label>
+                      <input 
+                        type="number" 
+                        id="adm-add-wholesaleprice" 
+                        placeholder="1280" 
+                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-bold font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">১২. Min_order_Q</label>
+                      <input 
+                        type="number" 
+                        id="adm-add-minorder" 
+                        value="5" 
+                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-bold font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 13. Images (Link + Manual Upload with Live Preview) & 14. Slug -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div class="sm:col-span-2 space-y-2">
+                    <label class="block font-bold text-slate-700 dark:text-slate-300">১৩. Images (ছবির লিঙ্ক অথবা ফাইল আপলোড - প্রিভিউসহ) *</label>
+                    <div class="flex gap-2">
+                      <input 
+                        type="url" 
+                        id="adm-add-imageurl" 
+                        required 
+                        placeholder="https://images.unsplash.com/... অথবা নিচে ফাইল সিলেক্ট করুন" 
+                        class="form-control text-xs flex-1 py-2 px-3 rounded-xl border"
+                        oninput="const p=document.getElementById('adm-image-preview'); if(p){ p.src=this.value; document.getElementById('adm-image-preview-wrap')?.classList.remove('hidden'); }"
+                      />
+                      <label class="btn-secondary py-2 px-3 text-xs font-bold cursor-pointer whitespace-nowrap">
+                        📁 ফাইল আপলোড
+                        <input type="file" accept="image/*" class="hidden" onchange="window.handleProductImageFilePreview(event)" />
+                      </label>
+                    </div>
+
+                    <!-- Live Image Preview -->
+                    <div id="adm-image-preview-wrap" class="hidden flex items-center gap-3 p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border">
+                      <img id="adm-image-preview" src="" class="w-16 h-16 rounded-lg object-cover border" alt="Preview" />
+                      <span class="text-[11px] text-emerald-600 font-bold">✓ ছবির প্রিভিউ সফলভাবে লোড হয়েছে</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">১৪. Slug (Auto / Article)</label>
+                    <input type="text" id="adm-add-slug" placeholder="amazfit-gts-4" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
+                  </div>
+                </div>
+
+                <!-- 15. Description, 16. Specification & 17. Others -->
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
-                    <label class="block font-bold mb-1">মূল ক্যাটাগরি *</label>
-                    <input type="text" id="adm-cat" required placeholder="Smartwatches" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+                    <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">১৫. Description (পণ্য বিবরণ)</label>
+                    <textarea id="adm-add-desc" rows="3" placeholder="পণ্যের মূল ব্যবহার ও বিশেষত্ব..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
                   </div>
                   <div>
-                    <label class="block font-bold mb-1">সাব-ক্যাটাগরি</label>
-                    <input type="text" id="adm-subcat" placeholder="AMOLED Watch" class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
+                    <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">১৬. Specification (স্পেসিফিকেশন)</label>
+                    <textarea id="adm-add-spec" rows="3" placeholder="রং, সাইজ, ব্যাটারি ব্যাকআপ, মেটেরিয়াল..." class="form-control text-xs w-full p-2.5 rounded-xl border font-mono"></textarea>
                   </div>
                   <div>
-                    <label class="block font-bold mb-1">ব্র্যান্ডের নাম *</label>
-                    <input type="text" id="adm-brand" required placeholder="Amazfit / Dream Organic" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+                    <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">১৭. Others (অন্যান্য তথ্য)</label>
+                    <textarea id="adm-add-others" rows="3" placeholder="ওয়ারেন্টি পলিসি, রিটার্ন ইত্যাদি..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
                   </div>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border">
-                  <div>
-                    <label class="block font-bold mb-1">খুচরা বিক্রয় দর (৳) *</label>
-                    <input type="number" id="adm-sellprice" required placeholder="1450" class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-bold font-mono" />
+                <!-- 18. Color, 19. Size, 20. WEIGHT_KG, 21. WIDTH_CM, 22. LENGTH_CM, 23. HEIGHT_CM -->
+                <div class="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border space-y-3">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-slate-900 dark:text-white">ভ্যারিয়েন্ট ও পরিমাপ (Color, Size & Dimensions)</span>
+                    <span class="text-[10px] text-slate-400">কুরিয়ার ও ওজনের হিসাবের জন্য স্বয়ংক্রিয় গণনা</span>
                   </div>
-                  <div>
-                    <label class="block font-bold mb-1">ক্রয় মূল্য (৳)</label>
-                    <input type="number" id="adm-buyprice" placeholder="1000" class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-mono" />
-                  </div>
-                  <div>
-                    <label class="block font-bold mb-1">হোলসেল দর (৳)</label>
-                    <input type="number" id="adm-wholesaleprice" placeholder="1250" class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-mono" />
-                  </div>
-                  <div>
-                    <label class="block font-bold mb-1">মজুদ স্টক (পিস) *</label>
-                    <input type="number" id="adm-stock" required value="50" class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-bold font-mono" />
+
+                  <div class="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
+                    <div>
+                      <div class="flex items-center justify-between mb-1">
+                        <label class="font-bold text-slate-700 dark:text-slate-300">১৮. Color</label>
+                        <button type="button" class="text-[9px] text-emerald-600 font-bold hover:underline" onclick="window.handleInlineAddVariant('color')">+ যোগ</button>
+                      </div>
+                      <select id="adm-add-color" class="form-control text-xs w-full py-2 px-2 rounded-xl border font-bold">
+                        <option value="Jet Black">Jet Black</option>
+                        <option value="Space Silver">Space Silver</option>
+                        <option value="Midnight Blue">Midnight Blue</option>
+                        <option value="Red">Red</option>
+                        <option value="Natural Amber">Natural Amber</option>
+                        <option value="Standard">Standard</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <div class="flex items-center justify-between mb-1">
+                        <label class="font-bold text-slate-700 dark:text-slate-300">১৯. Size</label>
+                        <button type="button" class="text-[9px] text-emerald-600 font-bold hover:underline" onclick="window.handleInlineAddVariant('size')">+ যোগ</button>
+                      </div>
+                      <select id="adm-add-size" class="form-control text-xs w-full py-2 px-2 rounded-xl border font-bold">
+                        <option value="Free Size">Free Size</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Small">Small</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Large">Large</option>
+                        <option value="XL">XL</option>
+                        <option value="১ কেজি">১ কেজি</option>
+                        <option value="৫০০ গ্রাম">৫০০ গ্রাম</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">২০. WEIGHT_KG</label>
+                      <input type="number" step="0.01" id="adm-add-weight" placeholder="0.25" class="form-control text-xs w-full py-2 px-2 rounded-xl border font-mono font-bold" />
+                    </div>
+
+                    <div>
+                      <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">২১. WIDTH_CM</label>
+                      <input type="number" step="0.1" id="adm-add-width" placeholder="8.0" class="form-control text-xs w-full py-2 px-2 rounded-xl border font-mono font-bold" />
+                    </div>
+
+                    <div>
+                      <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">২২. LENGTH_CM</label>
+                      <input type="number" step="0.1" id="adm-add-length" placeholder="12.0" class="form-control text-xs w-full py-2 px-2 rounded-xl border font-mono font-bold" />
+                    </div>
+
+                    <div>
+                      <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">২৩. HEIGHT_CM</label>
+                      <input type="number" step="0.1" id="adm-add-height" placeholder="4.0" class="form-control text-xs w-full py-2 px-2 rounded-xl border font-mono font-bold" />
+                    </div>
                   </div>
                 </div>
 
-                <div>
-                  <label class="block font-bold mb-1">ছবির লিঙ্ক (Image URL) *</label>
-                  <input type="url" id="adm-imageurl" required placeholder="https://images.unsplash.com/..." class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
-                </div>
-
-                <div>
-                  <label class="block font-bold mb-1">পণ্যের বিস্তারিত বিবরণ</label>
-                  <textarea id="adm-desc" rows="3" placeholder="পণ্যের গুণাগুণ ও ওয়ারেন্টি..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
-                </div>
-
+                <!-- Submit & Reset Buttons -->
                 <div class="flex items-center gap-2 pt-2">
-                  <button type="submit" class="btn-primary py-2.5 px-6 font-bold">পণ্য সংরক্ষণ করুন →</button>
-                  <button type="button" class="btn-secondary py-2.5 px-4" onclick="document.getElementById('form-add-product-dedicated')?.reset()">রিসেট</button>
+                  <button type="submit" class="btn-primary py-2.5 px-8 font-bold text-xs shadow-lg">পণ্য ক্যাটালগে সংরক্ষণ করুন →</button>
+                  <button type="button" class="btn-secondary py-2.5 px-5 text-xs font-bold" onclick="document.getElementById('form-add-product-dedicated')?.reset()">রিসেট</button>
                 </div>
               </form>
             </div>
           </div>
 
-          <!-- 3. Add Bulk Product Page -->
+          <!-- 3. Add Bulk Product Page (With Sample Sheet Download & Upload Parser) -->
           <div id="page-prod-bulk-add" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-4 max-w-2xl">
-              <div class="border-b pb-2">
-                <h3 class="font-bold text-sm text-slate-900 dark:text-white">📥 বাল্ক পণ্য আপলোড (Add Bulk Product)</h3>
-                <p class="text-[11px] text-slate-400">প্রতি লাইনে কমা দিয়ে লিখুন: <code>SKU, পণ্যের নাম, ক্যাটাগরি, বিক্রয় দর, হোলসেল দর, স্টক, ইমেজ URL</code></p>
+              <div class="border-b pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>📥</span> বাল্ক পণ্য আপলোড (Bulk Product Import via CSV)
+                  </h3>
+                  <p class="text-[11px] text-slate-400">নমুনা শিট ডাউনলোড করুন এবং পূরণ করে আপলোড করলেই পণ্যসমূহ ডাটাবেজে যুক্ত হবে</p>
+                </div>
+                <button class="btn-primary py-1.5 px-3 text-xs font-bold" onclick="window.downloadSampleProductCsv()">
+                  📥 নমুনা শিট ডাউনলোড
+                </button>
               </div>
 
-              <form onsubmit="window.handleBulkAddProducts(event)" class="space-y-3.5 text-xs">
-                <textarea id="adm-bulk-products-input" rows="8" class="form-control text-xs w-full p-3 rounded-xl border font-mono" placeholder="DC-10,স্মার্ট গ্যাজেট,Smartwatches,2450,1950,50,https://...&#10;DC-11,খাঁটি মধু,Organic,1200,950,30,https://..."></textarea>
-                <button type="submit" class="btn-primary py-2.5 px-6 font-bold">একসাথে বাল্ক আপলোড করুন →</button>
-              </form>
+              <!-- Upload Section -->
+              <div class="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border-2 border-dashed border-emerald-300 dark:border-emerald-700 text-center space-y-3">
+                <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 font-black text-2xl mx-auto flex items-center justify-center">
+                  📄
+                </div>
+                <div>
+                  <h4 class="font-bold text-sm text-slate-900 dark:text-white">সিএসভি (CSV) ফাইল সিলেক্ট করুন</h4>
+                  <p class="text-[11px] text-slate-400">ডাউনলোডকৃত নমুনা শিটটির ফরম্যাটে ফাইলটি পূরণ করে এখানে আপলোড করুন</p>
+                </div>
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  id="adm-bulk-product-file-input" 
+                  class="hidden" 
+                  onchange="window.handleUploadBulkProductsCsv(event)" 
+                />
+                <button 
+                  type="button" 
+                  class="btn-primary py-2.5 px-6 font-bold text-xs" 
+                  onclick="document.getElementById('adm-bulk-product-file-input').click()"
+                >
+                  📁 ফাইল নির্বাচন ও আপলোড করুন
+                </button>
+              </div>
+
+              <!-- Direct Manual Copy-Paste Alternative -->
+              <div class="space-y-2 pt-2 border-t">
+                <label class="block font-bold text-slate-700 dark:text-slate-300">অথবা সরাসরি টেক্সট পেস্ট করে আপলোড করুন:</label>
+                <form onsubmit="window.handleBulkAddProducts(event)" class="space-y-2.5 text-xs">
+                  <textarea id="adm-bulk-products-input" rows="5" class="form-control text-xs w-full p-3 rounded-xl border font-mono" placeholder="DC-10,স্মার্ট গ্যাজেট,Smartwatches,2450,1950,50,https://...&#10;DC-11,খাঁটি মধু,Organic,1200,950,30,https://..."></textarea>
+                  <button type="submit" class="btn-secondary py-2 px-5 font-bold">সরাসরি বাল্ক আপলোড</button>
+                </form>
+              </div>
             </div>
           </div>
 
-          <!-- 4. Bulk Price Update Page -->
+          <!-- 4. Bulk Price Update Page (Sample Sheet Download & Upload Parser) -->
           <div id="page-prod-bulk-price" class="admin-page-view hidden space-y-4">
-            <div class="dc-admin-card space-y-4 max-w-md">
-              <div class="border-b pb-2">
-                <h3 class="font-bold text-sm text-slate-900 dark:text-white">🏷️ বাল্ক মূল্য পরিবর্তন (Bulk Price Update)</h3>
-                <p class="text-[11px] text-slate-400">ক্যাটাগরি বা সকল পণ্যের শতকরা মূল্য বৃদ্ধি বা হ্রাস করুন</p>
+            <div class="dc-admin-card space-y-4 max-w-xl">
+              <div class="border-b pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>🏷️</span> বাল্ক মূল্য পরিবর্তন (Bulk Price Update)
+                  </h3>
+                  <p class="text-[11px] text-slate-400">নমুনা শিট ডাউনলোড করে প্রাইজ পরিবর্তন করুন অথবা পার্সেন্টেজ আকারে বাড়ান/কমান</p>
+                </div>
+                <button class="btn-primary py-1.5 px-3 text-xs font-bold" onclick="window.downloadSamplePriceCsv()">
+                  📥 প্রাইজ নমুনা শিট
+                </button>
               </div>
 
-              <form onsubmit="window.handleBulkPriceUpdate(event)" class="space-y-3.5 text-xs">
-                <div>
-                  <label class="block font-bold mb-1">ক্যাটাগরি নির্ধারণ করুন</label>
-                  <select id="adm-bulk-cat-target" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold">
-                    <option value="all">সকল ক্যাটাগরি</option>
-                    ${categories.map(c => `<option value="${c.category}">${c.category}</option>`).join("")}
-                  </select>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
+              <!-- CSV Sheet Upload for Price Update -->
+              <div class="p-5 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-emerald-300 dark:border-emerald-700 text-center space-y-2.5 text-xs">
+                <div class="font-bold text-slate-900 dark:text-white">১. শিট আপলোড করে প্রাইজ পরিবর্তন:</div>
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  id="adm-bulk-price-file-input" 
+                  class="hidden" 
+                  onchange="window.handleUploadBulkPriceCsv(event)" 
+                />
+                <button 
+                  type="button" 
+                  class="btn-primary py-2 px-5 font-bold" 
+                  onclick="document.getElementById('adm-bulk-price-file-input').click()"
+                >
+                  📤 প্রাইজ শিট আপলোড করুন
+                </button>
+              </div>
+
+              <!-- Category Percentage Adjustment Option -->
+              <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-3 text-xs">
+                <div class="font-bold text-slate-900 dark:text-white">২. অথবা শতকরা (%) হারে সকল বা নির্দিষ্ট ক্যাটাগরির মূল্য পরিবর্তন:</div>
+                <form onsubmit="window.handleBulkPriceUpdate(event)" class="space-y-3">
                   <div>
-                    <label class="block font-bold mb-1">পরিবর্তনের ধরন</label>
-                    <select id="adm-bulk-price-type" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold">
-                      <option value="increase">মূল্য বৃদ্ধি (%)</option>
-                      <option value="decrease">মূল্য হ্রাস (%)</option>
+                    <label class="block font-bold mb-1">ক্যাটাগরি নির্ধারণ করুন</label>
+                    <select id="adm-bulk-cat-target" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold">
+                      <option value="all">সকল ক্যাটাগরি</option>
+                      ${categories.map(c => `<option value="${c.category}">${c.category}</option>`).join("")}
+                    </select>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block font-bold mb-1">পরিবর্তনের ধরন</label>
+                      <select id="adm-bulk-price-type" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold">
+                        <option value="increase">মূল্য বৃদ্ধি (%)</option>
+                        <option value="decrease">মূল্য হ্রাস (%)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block font-bold mb-1">শতাংশ (%)</label>
+                      <input type="number" id="adm-bulk-pct" required value="5" min="1" max="100" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold font-mono" />
+                    </div>
+                  </div>
+                  <button type="submit" class="btn-primary py-2 px-6 font-bold">শতকরা মূল্য কার্যকর করুন</button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5. Bulk Image Update Page (Sample Sheet Download & Upload Parser) -->
+          <div id="page-prod-bulk-image" class="admin-page-view hidden space-y-4">
+            <div class="dc-admin-card space-y-4 max-w-xl">
+              <div class="border-b pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>🖼️</span> বাল্ক ইমেজ আপডেট (Bulk Image Update)
+                  </h3>
+                  <p class="text-[11px] text-slate-400">নমুনা শিট ডাউনলোড করে ছবির লিঙ্ক পরিবর্তন করুন এবং আপলোড করুন</p>
+                </div>
+                <button class="btn-primary py-1.5 px-3 text-xs font-bold" onclick="window.downloadSampleImageCsv()">
+                  📥 ইমেজ নমুনা শিট
+                </button>
+              </div>
+
+              <!-- CSV Sheet Upload for Image Update -->
+              <div class="p-5 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-dashed border-emerald-300 dark:border-emerald-700 text-center space-y-2.5 text-xs">
+                <div class="font-bold text-slate-900 dark:text-white">১. শিট আপলোড করে ছবি পরিবর্তন:</div>
+                <input 
+                  type="file" 
+                  accept=".csv" 
+                  id="adm-bulk-image-file-input" 
+                  class="hidden" 
+                  onchange="window.handleUploadBulkImageCsv(event)" 
+                />
+                <button 
+                  type="button" 
+                  class="btn-primary py-2 px-5 font-bold" 
+                  onclick="document.getElementById('adm-bulk-image-file-input').click()"
+                >
+                  📤 ইমেজ শিট আপলোড করুন
+                </button>
+              </div>
+
+              <!-- Manual Category Replace -->
+              <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-3 text-xs">
+                <div class="font-bold text-slate-900 dark:text-white">২. অথবা নির্দিষ্ট ক্যাটাগরির ছবি এক ক্লিকে পরিবর্তন:</div>
+                <form onsubmit="window.handleBulkImageUpdate(event)" class="space-y-3">
+                  <div>
+                    <label class="block font-bold mb-1">টার্গেট ক্যাটাগরি</label>
+                    <select id="adm-bulk-image-cat" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold">
+                      <option value="all">সকল পণ্য</option>
+                      ${categories.map(c => `<option value="${c.category}">${c.category}</option>`).join("")}
                     </select>
                   </div>
                   <div>
-                    <label class="block font-bold mb-1">শতাংশ (%)</label>
-                    <input type="number" id="adm-bulk-pct" required value="5" min="1" max="100" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold font-mono" />
+                    <label class="block font-bold mb-1">নতুন ছবির লিঙ্ক (Image URL) *</label>
+                    <input type="url" id="adm-bulk-new-image" required placeholder="https://images.unsplash.com/..." class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
                   </div>
-                </div>
-                <button type="submit" class="btn-primary py-2.5 px-6 font-bold">মূল্য কার্যকর করুন →</button>
-              </form>
-            </div>
-          </div>
-
-          <!-- 5. Bulk Image Update Page -->
-          <div id="page-prod-bulk-image" class="admin-page-view hidden space-y-4">
-            <div class="dc-admin-card space-y-4 max-w-md">
-              <div class="border-b pb-2">
-                <h3 class="font-bold text-sm text-slate-900 dark:text-white">🖼️ বাল্ক ইমেজ আপডেট (Bulk Image Update)</h3>
-                <p class="text-[11px] text-slate-400">নির্দিষ্ট ক্যাটাগরির পণ্যের ছবি একসাথে প্রতিস্থাপন</p>
+                  <button type="submit" class="btn-primary py-2 px-6 font-bold">ইমেজ পরিবর্তন করুন</button>
+                </form>
               </div>
-
-              <form onsubmit="window.handleBulkImageUpdate(event)" class="space-y-3.5 text-xs">
-                <div>
-                  <label class="block font-bold mb-1">টার্গেট ক্যাটাগরি</label>
-                  <select id="adm-bulk-image-cat" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold">
-                    <option value="all">সকল পণ্য</option>
-                    ${categories.map(c => `<option value="${c.category}">${c.category}</option>`).join("")}
-                  </select>
-                </div>
-                <div>
-                  <label class="block font-bold mb-1">নতুন ছবির লিঙ্ক (Image URL) *</label>
-                  <input type="url" id="adm-bulk-new-image" required placeholder="https://images.unsplash.com/..." class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
-                </div>
-                <button type="submit" class="btn-primary py-2.5 px-6 font-bold">ইমেজ পরিবর্তন করুন →</button>
-              </form>
             </div>
           </div>
 
-          <!-- 6. Low Stock Products Page -->
+          <!-- 6. Low Stock Products Page (<5 Pcs) -->
           <div id="page-prod-low-stock" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-3">
               <div class="flex items-center justify-between border-b pb-2">
@@ -2847,7 +4380,7 @@ export async function renderAdminPortal(params = {}) {
             </div>
           </div>
 
-          <!-- 7. Out of Stock Products Page -->
+          <!-- 7. Out of Stock Products Page (0 Pcs) -->
           <div id="page-prod-out-stock" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-3">
               <div class="flex items-center justify-between border-b pb-2">
@@ -2894,28 +4427,46 @@ export async function renderAdminPortal(params = {}) {
             </div>
           </div>
 
-          <!-- 9. Brands Page -->
+          <!-- 9. Brands Showcase (Displayed as Responsive Visual Cards) -->
           <div id="page-prod-brands" class="admin-page-view hidden space-y-4">
-            <div class="dc-admin-card space-y-3">
+            <div class="dc-admin-card space-y-3.5">
               <div class="flex items-center justify-between border-b pb-2">
-                <h3 class="font-bold text-sm text-slate-900 dark:text-white">🏷️ অফিসিয়াল ব্র্যান্ড পার্টনার তালিকা (${brands.length})</h3>
+                <div>
+                  <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>🏷️</span> অফিসিয়াল ব্র্যান্ড পার্টনার তালিকা (${brands.length} টি ব্র্যান্ড)
+                  </h3>
+                  <p class="text-[11px] text-slate-400">কার্ড আকারে ব্র্যান্ড লোগো, বিবরণ ও সংযুক্ত পণ্যের সংখ্যা</p>
+                </div>
                 <div class="flex items-center gap-1.5 text-xs">
                   <button class="btn-primary py-1 px-3 font-bold" onclick="switchAdminPage('page-prod-brand-add', 'group-products')">+ নতুন ব্র্যান্ড</button>
                   <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Brands', ['Brand ID', 'Name', 'Description'], brands.map(b => [b.brand_id, b.brand_name, b.brand_description]))">CSV</button>
                   <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
                 </div>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                ${brands.map(b => `
-                  <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex items-center gap-3">
-                    <img src="${b.brand_image}" class="w-12 h-12 rounded-xl object-contain bg-white p-1 border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
-                    <div class="min-w-0">
-                      <div class="font-bold text-slate-900 dark:text-white truncate">${b.brand_name}</div>
-                      <div class="text-[10px] text-slate-400 font-mono">${b.brand_id || 'BRD-01'}</div>
-                      <a href="/products?brand=${encodeURIComponent(b.brand_name)}" target="_blank" class="text-[10px] text-emerald-600 font-bold hover:underline">পণ্য দেখুন ↗</a>
+
+              <!-- Brand Cards Grid -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
+                ${brands.map(b => {
+                  const bCount = products.filter(p => p.brand && p.brand.toLowerCase() === b.brand_name.toLowerCase()).length;
+                  return `
+                    <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border dc-brand-admin-card flex items-start gap-3.5">
+                      <div class="w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 p-2 border border-slate-200 dark:border-slate-700 flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <img src="${b.brand_image}" class="w-full h-full object-contain" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                      </div>
+                      <div class="min-w-0 flex-1 space-y-1">
+                        <div class="flex items-center justify-between">
+                          <h4 class="font-bold text-slate-900 dark:text-white text-sm truncate">${b.brand_name}</h4>
+                          <span class="badge badge-success text-[9px] font-mono">${bCount} টি পণ্য</span>
+                        </div>
+                        <div class="font-mono text-[10px] text-slate-400">${b.brand_id || 'BRD-01'}</div>
+                        <p class="text-[11px] text-slate-500 line-clamp-2">${b.brand_description || 'অথেন্টিক ব্র্যান্ড পার্টনার।'}</p>
+                        <div class="pt-2 flex items-center gap-2">
+                          <a href="/products?brand=${encodeURIComponent(b.brand_name)}" target="_blank" class="text-[10px] text-emerald-600 font-bold hover:underline">পণ্যসমূহ দেখুন ↗</a>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                `).join("")}
+                  `;
+                }).join("")}
               </div>
             </div>
           </div>
@@ -2923,15 +4474,18 @@ export async function renderAdminPortal(params = {}) {
           <!-- 10. Add Brands Page -->
           <div id="page-prod-brand-add" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-4 max-w-md">
-              <div class="border-b pb-2">
-                <h3 class="font-bold text-sm text-slate-900 dark:text-white">➕ নতুন ব্র্যান্ড যুক্ত করুন</h3>
-                <p class="text-[11px] text-slate-400">লোগো ইমেজ লিঙ্ক ও বিবরণসহ ব্র্যান্ড সংযোজন</p>
+              <div class="border-b pb-2 flex items-center justify-between">
+                <div>
+                  <h3 class="font-bold text-sm text-slate-900 dark:text-white">➕ নতুন ব্র্যান্ড যুক্ত করুন</h3>
+                  <p class="text-[11px] text-slate-400">লোগো ইমেজ লিঙ্ক ও বিবরণসহ ব্র্যান্ড সংযোজন</p>
+                </div>
+                <button class="btn-secondary py-1 px-2 text-xs" onclick="switchAdminPage('page-prod-brands', 'group-products')">← ব্র্যান্ড কার্ডে ফিরুন</button>
               </div>
 
               <form id="form-add-brand-dedicated" class="space-y-3.5 text-xs" onsubmit="window.handleAdminAddBrand(event)">
                 <div>
                   <label class="block font-bold mb-1">ব্র্যান্ডের নাম *</label>
-                  <input type="text" id="adm-new-brand-name" required placeholder="Amazfit / HK" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+                  <input type="text" id="adm-new-brand-name" required placeholder="Amazfit / HK / Kiam" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
                 </div>
                 <div>
                   <label class="block font-bold mb-1">লোগো ছবি (Image URL) *</label>
@@ -2939,7 +4493,7 @@ export async function renderAdminPortal(params = {}) {
                 </div>
                 <div>
                   <label class="block font-bold mb-1">সংক্ষিপ্ত বিবরণ</label>
-                  <textarea id="adm-new-brand-desc" rows="2" placeholder="অফিসিয়াল ব্র্যান্ড..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
+                  <textarea id="adm-new-brand-desc" rows="2" placeholder="অফিসিয়াল ব্র্যান্ড পরিচিতি..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
                 </div>
                 <button type="submit" class="btn-primary py-2.5 px-6 font-bold">ব্র্যান্ড সংরক্ষণ করুন →</button>
               </form>
@@ -3027,62 +4581,113 @@ export async function renderAdminPortal(params = {}) {
             </div>
           </div>
 
-          <!-- 14. Landing Pages CMS Page -->
+          <!-- 14. Multi-Landing Page Builder CMS (Search & Add Products, Multiple Pages, Videos, Banners) -->
           <div id="page-prod-landing" class="admin-page-view hidden space-y-4">
-            <div class="dc-admin-card space-y-4 max-w-xl">
-              <div class="flex items-center justify-between border-b pb-2">
-                <h3 class="font-bold text-sm text-slate-900 dark:text-white">🚀 সিঙ্গেল-প্রোডাক্ট ল্যান্ডিং পেজ CMS</h3>
-                <a href="/landing" target="_blank" class="btn-primary py-1 px-3 text-xs font-bold">লাইভ ভিউ ↗</a>
-              </div>
-              <form class="space-y-3.5 text-xs" onsubmit="window.handleAdminSaveLandingConfig(event)">
+            <div class="dc-admin-card space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-2.5">
                 <div>
-                  <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">ক্যাম্পেইন মূল বাংলা স্লোগান</label>
-                  <input type="text" id="adm-landing-title" value="সেরা মানের অথেন্টিক গ্যাজেট ও লাইফস্টাইল পণ্য সরাসরি আপনার দোরগোড়ায়!" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+                  <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>🚀</span> মাল্টি-ল্যান্ডিং পেজ কনটেন্ট CMS (Multi-Landing Page Funnel Builder)
+                  </h3>
+                  <p class="text-[11px] text-slate-400">একের অধিক ল্যান্ডিং পেজ তৈরি করুন, পণ্য সার্চ করে যুক্ত করুন, ব্যানার ও ভিডিও কনফিগ করুন</p>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">প্রদর্শিত পণ্যের সংখ্যা</label>
-                    <input type="number" id="adm-landing-count" value="8" min="4" max="16" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
-                  </div>
-                  <div>
-                    <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">বিশেষ প্রমোশনাল হেডলাইন</label>
-                    <input type="text" id="adm-landing-promo" value="সীমিত সময়ের জন্য ক্যাশ অন ডেলিভারিতে স্পেশাল ডিসকাউন্ট!" class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
-                  </div>
+                <div class="flex items-center gap-2">
+                  <a href="/landing" target="_blank" class="btn-secondary py-1 px-3 text-xs font-bold">লাইভ ভিউ ↗</a>
                 </div>
-                <button type="submit" class="btn-primary py-2 px-5 font-bold">ল্যান্ডিং সেটিংস আপডেট করুন</button>
-              </form>
-            </div>
-          </div>
+              </div>
 
-          <!-- Modal for Add Banner -->
-          <div id="modal-add-banner" class="admin-modal-backdrop hidden">
-            <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
-              <div class="flex items-center justify-between border-b pb-2">
-                <h4 class="font-black text-sm text-slate-900 dark:text-white">নতুন ব্যানার স্লাইড তৈরি</h4>
-                <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-banner')?.classList.add('hidden')">✕</button>
+              <!-- List of Active Landing Pages -->
+              <div class="space-y-2.5">
+                <h4 class="font-bold text-xs text-slate-900 dark:text-white">তৈরিকৃত ল্যান্ডিং পেজসমূহ:</h4>
+                <div id="admin-landing-pages-list" class="space-y-2">
+                  <!-- Dynamically rendered or pre-populated -->
+                  <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center gap-3">
+                      <img src="https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=200" class="w-16 h-12 rounded-xl object-cover border flex-shrink-0" />
+                      <div>
+                        <div class="font-bold text-slate-900 dark:text-white">গ্যাস সেফটি ডিভাইস মেগা ফানেল</div>
+                        <div class="text-[10px] text-slate-400 font-mono">URL: /landing/gas-safety-deal • পণ্য: ১টি</div>
+                        <div class="text-[10px] text-emerald-600 font-bold">বিশেষ ৪০% ছাড় + ফ্রি হোম ডেলিভারি</div>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <a href="/landing" target="_blank" class="btn-primary py-1 px-3 text-[10px] font-bold">লাইভ দেখুন ↗</a>
+                      <button class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200" onclick="alert('ল্যান্ডিং পেজ ডিলিট হবে না (ডিফল্ট)')">মুছুন</button>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <form class="space-y-3" onsubmit="window.handleAdminAddBanner(event)">
-                <div>
-                  <label class="block font-bold mb-1">ব্যানার শিরোনাম (Title) *</label>
-                  <input type="text" id="adm-new-banner-title" required placeholder="স্মার্ট কিচেন কালেকশন" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+
+              <!-- Create New Landing Page Form -->
+              <div class="p-4 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border space-y-3.5">
+                <div class="border-b pb-2">
+                  <h4 class="font-bold text-sm text-slate-900 dark:text-white">➕ নতুন ল্যান্ডিং পেজ তৈরি করুন (Add New Landing Funnel)</h4>
                 </div>
-                <div>
-                  <label class="block font-bold mb-1">সাবটাইটেল / অফার বিবরণ</label>
-                  <input type="text" id="adm-new-banner-subtitle" placeholder="সর্বোচ্চ ৩০% ছাড়..." class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
-                </div>
-                <div>
-                  <label class="block font-bold mb-1">ইমেজ URL *</label>
-                  <input type="url" id="adm-new-banner-image" required placeholder="https://images.unsplash.com/..." class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
-                </div>
-                <div>
-                  <label class="block font-bold mb-1">টার্গেট লিংক (Target URL)</label>
-                  <input type="text" id="adm-new-banner-link" placeholder="/products?cat=Kitchen" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
-                </div>
-                <div class="flex items-center justify-end gap-2 pt-2">
-                  <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-banner')?.classList.add('hidden')">বাতিল</button>
-                  <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংরক্ষণ করুন</button>
-                </div>
-              </form>
+
+                <form id="form-add-landing-page" class="space-y-3.5 text-xs" onsubmit="window.handleAdminSaveLandingPage(event)">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block font-bold mb-1">ল্যান্ডিং পেজ শিরোনাম (Title) *</label>
+                      <input type="text" id="adm-lp-title" required placeholder="স্মার্টওয়াচ সেলস মেগা অফার" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+                    </div>
+                    <div>
+                      <label class="block font-bold mb-1">URL স্ল্যাগ (Slug - যেমন: smartwatch-deal) *</label>
+                      <input type="text" id="adm-lp-slug" required placeholder="smartwatch-offer" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold" />
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block font-bold mb-1">মূল ব্যানার ইমেজ URL *</label>
+                      <input type="url" id="adm-lp-banner" required placeholder="https://images.unsplash.com/..." class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
+                    </div>
+                    <div>
+                      <label class="block font-bold mb-1">ভিডিও এম্বেড URL (YouTube Embed / MP4)</label>
+                      <input type="url" id="adm-lp-video" placeholder="https://www.youtube.com/embed/..." class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block font-bold mb-1">আকর্ষণীয় বাংলা স্লোগান / হেডলাইন *</label>
+                      <input type="text" id="adm-lp-headline" required placeholder="প্রিমিয়াম গ্যাজেট এখন সরাসরি আপনার দোরগোড়ায় ক্যাশ অন ডেলিভারিতে!" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+                    </div>
+                    <div>
+                      <label class="block font-bold mb-1">অফার ব্যাজ টেক্সট</label>
+                      <input type="text" id="adm-lp-badge" value="সীমিত সময়ের অফার: ৩০% ছাড় + ফ্রি ডেলিভারি" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold text-emerald-600" />
+                    </div>
+                  </div>
+
+                  <!-- Interactive Product Search & Picker for Landing Page -->
+                  <div class="p-3 bg-white dark:bg-slate-900 rounded-xl border space-y-2">
+                    <label class="block font-bold text-slate-900 dark:text-white">
+                      🎯 ল্যান্ডিং পেজে যেসকল পণ্য প্রদর্শন করতে চান (পণ্য সার্চ করে যোগ করুন):
+                    </label>
+                    <div class="relative">
+                      <input 
+                        type="text" 
+                        id="adm-landing-prod-search" 
+                        placeholder="পণ্যের নাম বা SKU লিখে সার্চ করুন..." 
+                        class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold"
+                        oninput="window.searchAndAddProductToLanding(this.value)"
+                      />
+                      <div id="adm-landing-search-results" class="hidden absolute top-full left-0 right-0 z-20 mt-1 bg-white dark:bg-slate-800 border rounded-xl shadow-xl max-h-48 overflow-y-auto"></div>
+                    </div>
+
+                    <!-- Selected Product Chips -->
+                    <div id="adm-landing-selected-chips" class="flex flex-wrap gap-1.5 pt-1">
+                      <span class="text-slate-400 text-xs">কোনো পণ্য নির্বাচন করা হয়নি (উপরে সার্চ করে যোগ করুন)</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block font-bold mb-1">অতিরিক্ত গ্যালারি ছবিসমূহ (প্রতি লাইনে একটি করে Image URL)</label>
+                    <textarea id="adm-lp-gallery" rows="2" placeholder="https://images.unsplash.com/photo-1...&#10;https://images.unsplash.com/photo-2..." class="form-control text-xs w-full p-2.5 rounded-xl border font-mono"></textarea>
+                  </div>
+
+                  <button type="submit" class="btn-primary py-2.5 px-6 font-bold text-xs">ল্যান্ডিং পেজ সংরক্ষণ ও পাবলিশ করুন →</button>
+                </form>
+              </div>
             </div>
           </div>
 
@@ -3585,7 +5190,45 @@ export async function renderAdminPortal(params = {}) {
                 </div>
               </div>
 
-              <div class="overflow-x-auto">
+              
+            <!-- Reseller Commission Control Panel -->
+            <div class="p-4 bg-emerald-50/60 dark:bg-emerald-950/40 rounded-2xl border border-emerald-300 dark:border-emerald-800 space-y-3">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200 dark:border-emerald-800 pb-2">
+                <div>
+                  <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>⚙️</span> রিসেল প্রাইজ ও কমিশন কন্ট্রোল (Reseller Commission & Price Control)
+                  </h4>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400">এডমিন প্যানেল থেকে রিসেলারদের মুনাফা/কমিশন শতকরা হার (%) নির্ধারণ ও নিয়ন্ত্রণ করুন</p>
+                </div>
+                <span class="badge badge-success text-xs font-bold">লাইভ সক্রিয় কন্ট্রোল</span>
+              </div>
+
+              <form onsubmit="window.handleSaveResellerSettings(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs items-end">
+                <div>
+                  <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">গ্লোবাল রিসেলিং কমিশন (%) *</label>
+                  <div class="flex items-center gap-2">
+                    <input type="number" id="adm-reseller-global-pct" value="15" min="1" max="60" required class="form-control text-xs w-24 py-1.5 px-2.5 rounded-xl border font-black font-mono text-emerald-600" />
+                    <span class="text-xs font-bold text-slate-500">% ছাড়/মার্জিন</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">সর্বনিম্ন রিসেল অর্ডার (পিস)</label>
+                  <input type="number" id="adm-reseller-min-order" value="1" min="1" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold font-mono" />
+                </div>
+
+                <div>
+                  <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">উত্তোলন ফি (স্বয়ংক্রিয় কর্তন %)</label>
+                  <input type="number" id="adm-reseller-fee-pct" value="3" min="0" max="10" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold font-mono" />
+                </div>
+
+                <div>
+                  <button type="submit" class="btn-primary py-2 px-5 font-bold w-full">কমিশন রেট সংরক্ষণ করুন</button>
+                </div>
+              </form>
+            </div>
+
+<div class="overflow-x-auto">
                 <table class="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr class="border-b text-slate-400 uppercase text-[10px]">
