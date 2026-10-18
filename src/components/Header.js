@@ -278,6 +278,10 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     let u = String(rawUrl).trim();
     if (!u) return '';
     if (u.startsWith('//')) u = 'https:' + u;
+    // Discard invalid strings, relative fragments (like h_500), or non-web protocols
+    if (!/^https?:\/\//i.test(u) && !u.startsWith('data:') && !u.startsWith('blob:')) {
+      return '';
+    }
     const driveMatch =
       u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=view&)?id=|thumbnail\?id=)([a-zA-Z0-9_-]{15,})/) ||
       u.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]{15,})/);
