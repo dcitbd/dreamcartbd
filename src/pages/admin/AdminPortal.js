@@ -240,7 +240,7 @@ export async function renderAdminPortal(params = {}) {
     <link rel="stylesheet" href="/src/pages/admin/admin-portal.css" />
 
     <div class="dc-admin-wrapper">
-      ${renderSidebarAndTopbar({ products, orders, categories, brands, banners, incompleteOrders, resellers, wholesalers, sellers, markets, workers, admins, couriers, onlinePayments, kpi, userDisplayName, workerType, workerRole })}
+      ${renderSidebarAndTopbar({ products, orders, categories, brands, banners, incompleteOrders, resellers, wholesalers, sellers, markets, workers, admins, couriers, onlinePayments, kpi, userDisplayName, workerType, workerRole, customers, reviews, costs, buying, invest })}
 
       ${renderDashboardModule({ kpi, categories, orders })}
 

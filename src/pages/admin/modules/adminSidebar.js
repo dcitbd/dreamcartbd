@@ -6,7 +6,31 @@
  * - Topbar with Dynamic Title, Subtitle, Global Search, Theme Switcher, and Sheet Sync
  */
 
-export function renderSidebarAndTopbar({ products, orders, categories, brands, banners, incompleteOrders, resellers, wholesalers, sellers, markets, workers, admins, couriers, onlinePayments, kpi, userDisplayName, workerType, workerRole }) {
+export function renderSidebarAndTopbar({
+  products = [],
+  orders = [],
+  categories = [],
+  brands = [],
+  banners = [],
+  incompleteOrders = [],
+  resellers = [],
+  wholesalers = [],
+  sellers = [],
+  markets = [],
+  workers = [],
+  admins = [],
+  couriers = [],
+  onlinePayments = [],
+  kpi = {},
+  userDisplayName = 'Jainal Abedin',
+  workerType = 'Master Admin',
+  workerRole = 'Full System Access',
+  customers = [],
+  reviews = [],
+  costs = [],
+  buying = [],
+  invest = []
+} = {}) {
   // Deduplicate categories for counter badge
   const uniqueCatMap = new Map();
   categories.forEach(c => {
