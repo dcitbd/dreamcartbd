@@ -29,7 +29,8 @@ export function renderSidebarAndTopbar({
   reviews = [],
   costs = [],
   buying = [],
-  invest = []
+  invest = [],
+  activeRoute = { pageId: 'page-dashboard', groupId: 'group-dashboard', slug: 'dashboard', title: '📊 ড্যাশবোর্ড ওভারভিউ (Dashboard)', subtitle: '১৮-পয়েন্ট লাইভ বিজনেস কাউন্টার, রাজস্ব ও সেলস গ্রাফ' }
 } = {}) {
   // Deduplicate categories for counter badge
   const uniqueCatMap = new Map();
@@ -169,6 +170,11 @@ export function renderSidebarAndTopbar({
             <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-courier-fraud', 'group-courier')">🛡️ ফ্রড চেকার (Fraud)</button>
             <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-courier-payments', 'group-courier')">💳 অনলাইন পেমেন্টস</button>
           </div>
+
+          <!-- Others Hub (/admin/others) -->
+          <button class="admin-sidebar-main-btn" onclick="switchAdminPage('page-others-hub', 'group-others')">
+            <span>🧩 অন্যান্য মডিউল (/admin/others)</span>
+          </button>
 
           <!-- Settings -->
           <button class="admin-sidebar-main-btn" onclick="toggleSidebarAccordion('mob-group-settings')">
@@ -467,6 +473,13 @@ export function renderSidebarAndTopbar({
             </div>
           </div>
 
+          <!-- 10. OTHERS HUB (/admin/others) -->
+          <div class="dc-sidebar-nav-group">
+            <button class="admin-sidebar-main-btn" data-group="group-others" onclick="switchAdminPage('page-others-hub', 'group-others')">
+              <span class="flex items-center gap-2"><span>🧩</span> <b>অন্যান্য (/admin/others)</b></span>
+            </button>
+          </div>
+
           <!-- 9. SETTINGS -->
           <div class="dc-sidebar-nav-group">
             <button class="admin-sidebar-main-btn" data-group="group-settings" onclick="toggleSidebarAccordion('group-settings')">
@@ -536,9 +549,9 @@ export function renderSidebarAndTopbar({
             </button>
             <div>
               <h2 id="admin-current-tab-title" class="text-sm sm:text-base font-black text-slate-900 dark:text-white">
-                📊 ড্যাশবোর্ড ওভারভিউ (Dashboard)
+                ${activeRoute.title}
               </h2>
-              <p id="admin-current-tab-subtitle" class="text-[10px] sm:text-[11px] text-slate-400">১৮-পয়েন্ট লাইভ বিজনেস কাউন্টার, রাজস্ব ও সেলস গ্রাফ</p>
+              <p id="admin-current-tab-subtitle" class="text-[10px] sm:text-[11px] text-slate-400">${activeRoute.subtitle}</p>
             </div>
           </div>
 
@@ -563,13 +576,39 @@ export function renderSidebarAndTopbar({
               <span id="admin-theme-icon">🌙</span>
             </button>
 
+            <a href="/" class="btn-secondary text-xs py-1.5 px-3 font-bold" title="হোম পেজে যান">
+              🏠 হোম পেজ ↗
+            </a>
+
             <button 
-              class="btn-secondary text-xs py-1.5 px-2.5 bg-slate-50 dark:bg-slate-800 flex items-center gap-1 font-bold"
+              class="btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1 font-bold"
               onclick="const ic = this.querySelector('.spin-icon'); if(ic) ic.classList.add('animate-spin'); setTimeout(() => { if(ic) ic.classList.remove('animate-spin'); if(toast && toast.show) toast.show({type: 'success', title: 'ডাটা আপডেট', message: 'গুগল শিট থেকে ডাটা রিফ্রেশ হয়েছে!'}); }, 600);"
               title="রিফ্রেশ ডাটা"
             >
               <span class="spin-icon">🔄</span> <span class="hidden md:inline">সিঙ্ক</span>
             </button>
+          </div>
+
+          <!-- Quick Page Route Navigation Bar (domain/admin/...) -->
+          <div class="w-full pt-2.5 mt-1 border-t flex items-center justify-between gap-2 overflow-x-auto">
+            <div class="flex items-center gap-1.5 text-xs">
+              <a href="/admin/dashboard" onclick="event.preventDefault(); switchAdminPage('page-dashboard', 'group-dashboard')" data-page="page-dashboard" class="admin-route-tab ${activeRoute.pageId === 'page-dashboard' ? 'active' : ''}">📊 ড্যাশবোর্ড</a>
+              <a href="/admin/products" onclick="event.preventDefault(); switchAdminPage('page-prod-all', 'group-products')" data-page="page-prod-all" class="admin-route-tab ${activeRoute.pageId === 'page-prod-all' ? 'active' : ''}">📦 প্রোডাক্টস</a>
+              <a href="/admin/addproduct" onclick="event.preventDefault(); switchAdminPage('page-prod-add', 'group-products')" data-page="page-prod-add" class="admin-route-tab ${activeRoute.pageId === 'page-prod-add' ? 'active' : ''}">➕ প্রোডাক্ট যোগ</a>
+              <a href="/admin/categroy" onclick="event.preventDefault(); switchAdminPage('page-prod-categories', 'group-products')" data-page="page-prod-categories" class="admin-route-tab ${activeRoute.pageId === 'page-prod-categories' ? 'active' : ''}">🗂️ ক্যাটাগরি</a>
+              <a href="/admin/brands" onclick="event.preventDefault(); switchAdminPage('page-prod-brands', 'group-products')" data-page="page-prod-brands" class="admin-route-tab ${activeRoute.pageId === 'page-prod-brands' ? 'active' : ''}">🏷️ ব্র্যান্ডসমূহ</a>
+              <a href="/admin/orders" onclick="event.preventDefault(); switchAdminPage('page-orders-all', 'group-orders')" data-page="page-orders-all" class="admin-route-tab ${activeRoute.pageId === 'page-orders-all' ? 'active' : ''}">📋 অর্ডারসমূহ</a>
+              <a href="/admin/landing" onclick="event.preventDefault(); switchAdminPage('page-prod-landing', 'group-products')" data-page="page-prod-landing" class="admin-route-tab ${activeRoute.pageId === 'page-prod-landing' ? 'active' : ''}">🚀 ল্যান্ডিং পেজ</a>
+              <a href="/admin/others" onclick="event.preventDefault(); switchAdminPage('page-others-hub', 'group-others')" data-page="page-others-hub" class="admin-route-tab ${activeRoute.pageId === 'page-others-hub' ? 'active' : ''}">🧩 অন্যান্য</a>
+            </div>
+            <span 
+              id="admin-current-route-badge" 
+              onclick="window.copyToClipboard(window.location.origin + '/admin/${activeRoute.slug}', 'পেজ লিঙ্ক কপি হয়েছে!')"
+              class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-mono text-[11px] font-bold cursor-pointer"
+              title="ক্লিক করে পেজ URL কপি করুন"
+            >
+              🔗 /admin/${activeRoute.slug}
+            </span>
           </div>
         </div>
   `;
