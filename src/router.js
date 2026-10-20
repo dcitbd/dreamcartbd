@@ -99,10 +99,62 @@ export const router = {
     '/wholesaler/register': (params) => renderWholesalePortal({ ...params, subview: 'register' }),
     '/wholesaler/dashboard': (params) => renderWholesalePortal({ ...params, subview: 'dashboard' }),
 
-    // Admin / Worker Portal
+    // Admin / Worker Portal (Multi-Page Route Architecture)
     '/admin': renderAdminPortal,
     '/admin/login': (params) => renderAdminPortal({ ...params, subview: 'login' }),
-    '/admin/dashboard': (params) => renderAdminPortal({ ...params, subview: 'dashboard' })
+    '/admin/dashboard': (params) => renderAdminPortal({ ...params, subview: 'dashboard' }),
+    '/admin/products': (params) => renderAdminPortal({ ...params, subview: 'products' }),
+    '/admin/addproduct': (params) => renderAdminPortal({ ...params, subview: 'addproduct' }),
+    '/admin/add-product': (params) => renderAdminPortal({ ...params, subview: 'addproduct' }),
+    '/admin/categroy': (params) => renderAdminPortal({ ...params, subview: 'categroy' }),
+    '/admin/category': (params) => renderAdminPortal({ ...params, subview: 'category' }),
+    '/admin/categories': (params) => renderAdminPortal({ ...params, subview: 'categories' }),
+    '/admin/brands': (params) => renderAdminPortal({ ...params, subview: 'brands' }),
+    '/admin/addbrand': (params) => renderAdminPortal({ ...params, subview: 'addbrand' }),
+    '/admin/variants': (params) => renderAdminPortal({ ...params, subview: 'variants' }),
+    '/admin/addvariant': (params) => renderAdminPortal({ ...params, subview: 'addvariant' }),
+    '/admin/banners': (params) => renderAdminPortal({ ...params, subview: 'banners' }),
+    '/admin/bulk-upload': (params) => renderAdminPortal({ ...params, subview: 'bulk-upload' }),
+    '/admin/bulk-price': (params) => renderAdminPortal({ ...params, subview: 'bulk-price' }),
+    '/admin/bulk-image': (params) => renderAdminPortal({ ...params, subview: 'bulk-image' }),
+    '/admin/low-stock': (params) => renderAdminPortal({ ...params, subview: 'low-stock' }),
+    '/admin/out-stock': (params) => renderAdminPortal({ ...params, subview: 'out-stock' }),
+    '/admin/error-products': (params) => renderAdminPortal({ ...params, subview: 'error-products' }),
+    '/admin/landing': (params) => renderAdminPortal({ ...params, subview: 'landing' }),
+    '/admin/orders': (params) => renderAdminPortal({ ...params, subview: 'orders' }),
+    '/admin/addorder': (params) => renderAdminPortal({ ...params, subview: 'addorder' }),
+    '/admin/incomplete-orders': (params) => renderAdminPortal({ ...params, subview: 'incomplete-orders' }),
+    '/admin/delivered-orders': (params) => renderAdminPortal({ ...params, subview: 'delivered-orders' }),
+    '/admin/shipping-orders': (params) => renderAdminPortal({ ...params, subview: 'shipping-orders' }),
+    '/admin/unpaid-orders': (params) => renderAdminPortal({ ...params, subview: 'unpaid-orders' }),
+    '/admin/cancelled-orders': (params) => renderAdminPortal({ ...params, subview: 'cancelled-orders' }),
+    '/admin/visitors': (params) => renderAdminPortal({ ...params, subview: 'visitors' }),
+    '/admin/customers': (params) => renderAdminPortal({ ...params, subview: 'customers' }),
+    '/admin/reviews': (params) => renderAdminPortal({ ...params, subview: 'reviews' }),
+    '/admin/resellers': (params) => renderAdminPortal({ ...params, subview: 'resellers' }),
+    '/admin/wholesalers': (params) => renderAdminPortal({ ...params, subview: 'wholesalers' }),
+    '/admin/sellers': (params) => renderAdminPortal({ ...params, subview: 'sellers' }),
+    '/admin/markets': (params) => renderAdminPortal({ ...params, subview: 'markets' }),
+    '/admin/admins': (params) => renderAdminPortal({ ...params, subview: 'admins' }),
+    '/admin/workers': (params) => renderAdminPortal({ ...params, subview: 'workers' }),
+    '/admin/reports': (params) => renderAdminPortal({ ...params, subview: 'reports' }),
+    '/admin/payouts': (params) => renderAdminPortal({ ...params, subview: 'payouts' }),
+    '/admin/finance': (params) => renderAdminPortal({ ...params, subview: 'finance' }),
+    '/admin/costs': (params) => renderAdminPortal({ ...params, subview: 'costs' }),
+    '/admin/buying': (params) => renderAdminPortal({ ...params, subview: 'buying' }),
+    '/admin/invest': (params) => renderAdminPortal({ ...params, subview: 'invest' }),
+    '/admin/couriers': (params) => renderAdminPortal({ ...params, subview: 'couriers' }),
+    '/admin/addcourier': (params) => renderAdminPortal({ ...params, subview: 'addcourier' }),
+    '/admin/fraud': (params) => renderAdminPortal({ ...params, subview: 'fraud' }),
+    '/admin/payments': (params) => renderAdminPortal({ ...params, subview: 'payments' }),
+    '/admin/settings': (params) => renderAdminPortal({ ...params, subview: 'settings' }),
+    '/admin/logs': (params) => renderAdminPortal({ ...params, subview: 'logs' }),
+    '/admin/payment-methods': (params) => renderAdminPortal({ ...params, subview: 'payment-methods' }),
+    '/admin/delivery': (params) => renderAdminPortal({ ...params, subview: 'delivery' }),
+    '/admin/offers': (params) => renderAdminPortal({ ...params, subview: 'offers' }),
+    '/admin/profile': (params) => renderAdminPortal({ ...params, subview: 'profile' }),
+    '/admin/password': (params) => renderAdminPortal({ ...params, subview: 'password' }),
+    '/admin/others': (params) => renderAdminPortal({ ...params, subview: 'others' })
   },
 
   getCleanPath() {
@@ -179,8 +231,9 @@ export const router = {
     const appContainer = document.getElementById('app-content');
     if (!appContainer) return;
 
-    // Branded Shop & Page Loader with Dream Cart BD Logo
-    appContainer.innerHTML = `
+    // Branded Shop & Page Loader (Skipped on fast intra-admin page transitions)
+    const isIntraAdmin = path.startsWith('/admin') && !!appContainer.querySelector('.dc-admin-wrapper');
+    if (!isIntraAdmin) appContainer.innerHTML = `
       <div class="py-16 sm:py-24 flex flex-col items-center justify-center max-w-7xl mx-auto space-y-6 px-4">
         <!-- Center Logo Loader with Glow & Pulse -->
         <div class="relative flex items-center justify-center">
@@ -239,6 +292,9 @@ export const router = {
         viewHtml = await renderTrackOrderPage(params.orderId || params.phone || '');
       } else if (this.routes[path]) {
         viewHtml = await this.routes[path](params);
+      } else if (path === '/admin' || path.startsWith('/admin/')) {
+        const subview = path.replace(/^\/admin\/?/, '') || 'dashboard';
+        viewHtml = await renderAdminPortal({ ...params, subview });
       } else {
         // 404 Fallback
         viewHtml = `

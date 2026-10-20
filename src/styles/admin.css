@@ -1,1 +1,685 @@
-/* Admin Theme Styles */ .admin-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; }
+/* ==========================================================================
+   DREAM CART BD — HARMONIZED ADMIN PANEL DESIGN SYSTEM (src/styles/admin.css)
+   Clean, border-light, color-coordinated enterprise dashboard architecture.
+   Zero harsh nested borders • Unified Slate & Emerald palette • Full Grid Suite
+   ========================================================================== */
+
+:root {
+  --adm-bg: #f1f5f9;
+  --adm-surface: #ffffff;
+  --adm-surface-soft: #f8fafc;
+  --adm-surface-hover: #f1f5f9;
+  --adm-text-main: #0f172a;
+  --adm-text-secondary: #334155;
+  --adm-text-muted: #64748b;
+  --adm-primary: #059669;
+  --adm-primary-hover: #047857;
+  --adm-primary-soft: #ecfdf5;
+  --adm-primary-text: #065f46;
+  --adm-accent: #4f46e5;
+  --adm-accent-soft: #eef2ff;
+  --adm-warn: #d97706;
+  --adm-warn-soft: #fffbeb;
+  --adm-danger: #e11d48;
+  --adm-danger-soft: #fff1f2;
+  --adm-line-subtle: rgba(148, 163, 184, 0.14);
+  --adm-input-border: rgba(148, 163, 184, 0.28);
+  --adm-shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+  --adm-shadow-float: 0 12px 32px -4px rgba(15, 23, 42, 0.08);
+  --adm-radius-card: 18px;
+  --adm-radius-inner: 14px;
+  --adm-radius-control: 10px;
+}
+
+.dark {
+  --adm-bg: #0b1120;
+  --adm-surface: #111827;
+  --adm-surface-soft: #1e293b;
+  --adm-surface-hover: #263349;
+  --adm-text-main: #f8fafc;
+  --adm-text-secondary: #e2e8f0;
+  --adm-text-muted: #94a3b8;
+  --adm-primary: #10b981;
+  --adm-primary-hover: #059669;
+  --adm-primary-soft: rgba(16, 185, 129, 0.14);
+  --adm-primary-text: #34d399;
+  --adm-accent: #6366f1;
+  --adm-accent-soft: rgba(99, 102, 241, 0.15);
+  --adm-warn: #f59e0b;
+  --adm-warn-soft: rgba(245, 158, 11, 0.15);
+  --adm-danger: #f43f5e;
+  --adm-danger-soft: rgba(244, 63, 94, 0.15);
+  --adm-line-subtle: rgba(255, 255, 255, 0.06);
+  --adm-input-border: rgba(255, 255, 255, 0.14);
+  --adm-shadow-card: 0 6px 24px -4px rgba(0, 0, 0, 0.35);
+  --adm-shadow-float: 0 16px 40px -6px rgba(0, 0, 0, 0.55);
+}
+
+/* ==========================================================================
+   1. FULL-SCREEN ADMIN SHELL ISOLATION (Zero Storefront Clutter on /admin/*)
+   ========================================================================== */
+#app-root:has(.dc-admin-wrapper),
+body:has(.dc-admin-wrapper) {
+  background-color: var(--adm-bg) !important;
+  color: var(--adm-text-main) !important;
+}
+
+#app-root:has(.dc-admin-wrapper) > #header-mount,
+#app-root:has(.dc-admin-wrapper) > #footer-mount,
+#app-root:has(.dc-admin-wrapper) > #floatingactions-mount,
+#app-root:has(.dc-admin-wrapper) > #mobilenav-mount {
+  display: none !important;
+}
+
+#app-root:has(.dc-admin-wrapper) > #app-content {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 100vh !important;
+}
+
+/* ==========================================================================
+   2. CORE PAGE STRUCTURE (Sidebar + Topbar + Main Content Canvas)
+   ========================================================================== */
+.dc-admin-wrapper {
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--adm-bg);
+  color: var(--adm-text-main);
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  padding: 1rem 1.25rem 2.5rem;
+  box-sizing: border-box;
+}
+
+.dc-admin-layout {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 1.35rem;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Left Sticky Sidebar — Borderless, Soft Elevated Surface */
+.dc-admin-sidebar {
+  width: 268px;
+  flex-shrink: 0;
+  background: var(--adm-surface);
+  border: none !important;
+  border-radius: var(--adm-radius-card);
+  padding: 1.15rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: var(--adm-shadow-card);
+  position: sticky;
+  top: 1rem;
+  height: calc(100vh - 2rem);
+  overflow-y: auto;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
+}
+
+.dc-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.5rem 0.85rem;
+  border-bottom: 1px solid var(--adm-line-subtle) !important;
+}
+
+.dc-sidebar-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 1.05rem;
+  box-shadow: 0 6px 14px rgba(5, 150, 105, 0.28);
+  flex-shrink: 0;
+}
+
+.dc-sidebar-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--adm-text-main);
+  line-height: 1.2;
+}
+
+.dc-sidebar-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--adm-primary-text);
+  background: var(--adm-primary-soft);
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  display: inline-block;
+  margin-top: 3px;
+}
+
+/* Sidebar Navigation Accordion & Links */
+.dc-sidebar-nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.admin-sidebar-main-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.75rem;
+  border-radius: 11px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--adm-text-secondary);
+  background: transparent;
+  border: none !important;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.admin-sidebar-main-btn:hover {
+  background: var(--adm-surface-soft);
+  color: var(--adm-text-main);
+}
+
+.admin-sidebar-main-btn.active {
+  background: var(--adm-primary-soft);
+  color: var(--adm-primary);
+  font-weight: 800;
+}
+
+.chevron {
+  font-size: 0.6rem;
+  transition: transform 0.22s ease;
+  color: var(--adm-text-muted);
+}
+
+.dc-sidebar-subnav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-left: 0.65rem;
+  margin-left: 0.65rem;
+  margin-top: 0.15rem;
+  border-left: 2px solid var(--adm-line-subtle) !important;
+}
+
+.dc-sidebar-subnav.closed {
+  display: none !important;
+}
+
+.dc-sidebar-sub-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.44rem 0.65rem;
+  border-radius: 9px;
+  font-size: 0.73rem;
+  font-weight: 600;
+  color: var(--adm-text-muted);
+  background: transparent;
+  border: none !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+  width: 100%;
+  text-decoration: none;
+}
+
+.dc-sidebar-sub-item:hover {
+  background: var(--adm-surface-soft);
+  color: var(--adm-text-main);
+}
+
+.dc-sidebar-sub-item.active {
+  background: var(--adm-primary) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25) !important;
+}
+
+.dc-sidebar-sub-item.active .admin-nav-counter {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+
+.admin-nav-counter {
+  font-size: 0.64rem;
+  font-weight: 700;
+  padding: 0.1rem 0.42rem;
+  border-radius: 9999px;
+  background: var(--adm-surface-soft);
+  color: var(--adm-text-muted);
+}
+
+/* Main Fluid Content Area */
+.dc-admin-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Topbar — Clean, Elevated, Borderless */
+.dc-admin-topbar {
+  background: var(--adm-surface);
+  border: none !important;
+  border-radius: var(--adm-radius-card);
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  box-shadow: var(--adm-shadow-card);
+  position: sticky;
+  top: 1rem;
+  z-index: 40;
+}
+
+/* ==========================================================================
+   3. BORDER-LIGHT CARDS, INNER SURFACES & KPI TILES
+   ========================================================================== */
+.dc-admin-card {
+  background: var(--adm-surface);
+  border: none !important;
+  border-radius: var(--adm-radius-card);
+  padding: 1.35rem 1.5rem;
+  box-shadow: var(--adm-shadow-card);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Remove excessive borders inside admin wrapper */
+.dc-admin-wrapper .border,
+.dc-admin-wrapper .border-slate-200,
+.dc-admin-wrapper .border-slate-100,
+.dc-admin-wrapper .border-emerald-200,
+.dc-admin-wrapper .border-amber-200,
+.dc-admin-wrapper .border-rose-200,
+.dc-admin-wrapper .border-indigo-200 {
+  border: none !important;
+}
+
+.dc-admin-wrapper .border-b {
+  border-bottom: 1px solid var(--adm-line-subtle) !important;
+}
+
+.dc-admin-wrapper .border-t {
+  border-top: 1px solid var(--adm-line-subtle) !important;
+}
+
+.dc-admin-wrapper .border-dashed {
+  border: 1.5px dashed var(--adm-input-border) !important;
+}
+
+/* Harmonize inner section backgrounds inside cards */
+.dc-admin-card .bg-slate-50,
+.dc-admin-card .bg-slate-50\/70,
+.dc-admin-card .bg-slate-100\/80,
+.dc-admin-card .bg-emerald-50\/50,
+.dc-admin-card .bg-emerald-50\/40,
+.dc-admin-card .bg-amber-50\/50,
+.dc-admin-card .bg-rose-50\/50,
+.dc-admin-card .bg-indigo-50 {
+  background-color: var(--adm-surface-soft) !important;
+  border: none !important;
+  border-radius: var(--adm-radius-inner);
+}
+
+/* KPI Metric Cards — Clean, Borderless, Harmonious */
+.admin-kpi-card {
+  background: var(--adm-surface);
+  border: none !important;
+  border-radius: 15px;
+  padding: 1rem 1.1rem;
+  box-shadow: var(--adm-shadow-card);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.admin-kpi-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3.5px;
+  background: var(--adm-primary);
+  opacity: 0.75;
+}
+
+.admin-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--adm-shadow-float);
+}
+
+/* Brand & Item Cards inside Admin */
+.admin-searchable-card {
+  background: var(--adm-surface-soft) !important;
+  border: none !important;
+  border-radius: 16px !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03) !important;
+  transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+.admin-searchable-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--adm-shadow-float) !important;
+}
+
+/* ==========================================================================
+   4. FORM CONTROLS, INPUTS, SELECTS & BUTTONS (Clean & Harmonious)
+   ========================================================================== */
+.dc-admin-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.dc-admin-wrapper select,
+.dc-admin-wrapper textarea,
+.dc-admin-wrapper .form-control {
+  background-color: var(--adm-surface) !important;
+  color: var(--adm-text-main) !important;
+  border: 1px solid var(--adm-input-border) !important;
+  border-radius: var(--adm-radius-control) !important;
+  padding: 0.52rem 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  outline: none;
+}
+
+.dc-admin-card .bg-slate-50 input:not([type="checkbox"]),
+.dc-admin-card .bg-slate-50 select,
+.dc-admin-card .bg-slate-50 textarea {
+  background-color: var(--adm-surface) !important;
+}
+
+.dc-admin-wrapper input:focus,
+.dc-admin-wrapper select:focus,
+.dc-admin-wrapper textarea:focus,
+.dc-admin-wrapper .form-control:focus {
+  border-color: var(--adm-primary) !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14) !important;
+}
+
+.dc-admin-wrapper label {
+  color: var(--adm-text-secondary);
+  font-weight: 600;
+}
+
+/* Filter Pill Buttons & Chart Timeframe Buttons */
+.prod-status-filter-btn,
+.order-status-pill,
+.sales-chart-btn,
+.admin-route-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.73rem;
+  font-weight: 700;
+  background: var(--adm-surface-soft);
+  color: var(--adm-text-muted);
+  border: none !important;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.prod-status-filter-btn:hover,
+.order-status-pill:hover,
+.sales-chart-btn:hover,
+.admin-route-tab:hover {
+  background: var(--adm-surface-hover);
+  color: var(--adm-text-main);
+}
+
+.prod-status-filter-btn.active,
+.order-status-pill.active,
+.sales-chart-btn.active,
+.admin-route-tab.active {
+  background: var(--adm-primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.25);
+}
+
+/* Primary & Secondary Buttons inside Admin */
+.dc-admin-wrapper .btn-primary {
+  background: var(--adm-primary) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 0.48rem 0.95rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.2);
+  transition: all 0.15s ease;
+}
+
+.dc-admin-wrapper .btn-primary:hover {
+  background: var(--adm-primary-hover) !important;
+  transform: translateY(-1px);
+}
+
+.dc-admin-wrapper .btn-secondary {
+  background: var(--adm-surface-soft) !important;
+  color: var(--adm-text-secondary) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 0.45rem 0.85rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  transition: all 0.15s ease;
+}
+
+.dc-admin-wrapper .btn-secondary:hover {
+  background: var(--adm-surface-hover) !important;
+  color: var(--adm-text-main) !important;
+}
+
+/* ==========================================================================
+   5. CLEAN BORDERLESS TABLES
+   ========================================================================== */
+.dc-admin-wrapper table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.dc-admin-wrapper thead tr {
+  background: var(--adm-surface-soft) !important;
+  border: none !important;
+}
+
+.dc-admin-wrapper thead th {
+  color: var(--adm-text-muted) !important;
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.75rem 0.85rem !important;
+  border-bottom: 1px solid var(--adm-line-subtle) !important;
+}
+
+.dc-admin-wrapper thead th:first-child {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+.dc-admin-wrapper thead th:last-child {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+.dc-admin-wrapper tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.dc-admin-wrapper tbody tr:hover {
+  background-color: var(--adm-surface-soft) !important;
+}
+
+.dc-admin-wrapper tbody td {
+  padding: 0.75rem 0.85rem !important;
+  border-bottom: 1px solid var(--adm-line-subtle) !important;
+  color: var(--adm-text-secondary);
+  vertical-align: middle;
+}
+
+.dc-admin-wrapper tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
+/* ==========================================================================
+   6. COMPLETE STANDALONE GRID, FLEX & SPACING UTILITIES FOR ADMIN
+   (Ensures 100% layout fidelity without external Tailwind CDN)
+   ========================================================================== */
+.dc-admin-wrapper .grid { display: grid; }
+.dc-admin-wrapper .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.dc-admin-wrapper .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.dc-admin-wrapper .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dc-admin-wrapper .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.dc-admin-wrapper .grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.dc-admin-wrapper .grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.dc-admin-wrapper .col-span-full { grid-column: 1 / -1 !important; }
+
+.dc-admin-wrapper .gap-1 { gap: 0.25rem; }
+.dc-admin-wrapper .gap-1\.5 { gap: 0.375rem; }
+.dc-admin-wrapper .gap-2 { gap: 0.5rem; }
+.dc-admin-wrapper .gap-2\.5 { gap: 0.625rem; }
+.dc-admin-wrapper .gap-3 { gap: 0.75rem; }
+.dc-admin-wrapper .gap-3\.5 { gap: 0.875rem; }
+.dc-admin-wrapper .gap-4 { gap: 1rem; }
+.dc-admin-wrapper .gap-5 { gap: 1.25rem; }
+
+.dc-admin-wrapper .space-y-1 > * + * { margin-top: 0.25rem; }
+.dc-admin-wrapper .space-y-1\.5 > * + * { margin-top: 0.375rem; }
+.dc-admin-wrapper .space-y-2 > * + * { margin-top: 0.5rem; }
+.dc-admin-wrapper .space-y-2\.5 > * + * { margin-top: 0.625rem; }
+.dc-admin-wrapper .space-y-3 > * + * { margin-top: 0.75rem; }
+.dc-admin-wrapper .space-y-3\.5 > * + * { margin-top: 0.875rem; }
+.dc-admin-wrapper .space-y-4 > * + * { margin-top: 1rem; }
+.dc-admin-wrapper .space-y-5 > * + * { margin-top: 1.25rem; }
+.dc-admin-wrapper .space-x-1 > * + * { margin-left: 0.25rem; }
+.dc-admin-wrapper .space-x-1\.5 > * + * { margin-left: 0.375rem; }
+
+.dc-admin-wrapper .w-16 { width: 4rem; }
+.dc-admin-wrapper .h-16 { height: 4rem; }
+.dc-admin-wrapper .w-20 { width: 5rem; }
+.dc-admin-wrapper .h-12 { height: 3rem; }
+.dc-admin-wrapper .h-24 { height: 6rem; }
+.dc-admin-wrapper .h-32 { height: 8rem; }
+.dc-admin-wrapper .h-36 { height: 9rem; }
+.dc-admin-wrapper .h-44 { height: 11rem; }
+.dc-admin-wrapper .max-h-48 { max-height: 12rem; }
+.dc-admin-wrapper .max-h-52 { max-height: 13rem; }
+.dc-admin-wrapper .max-h-56 { max-height: 14rem; }
+.dc-admin-wrapper .aspect-video { aspect-ratio: 16 / 9; }
+.dc-admin-wrapper .rounded-2xl { border-radius: 14px; }
+.dc-admin-wrapper .rounded-3xl { border-radius: 18px; }
+
+@media (min-width: 640px) {
+  .dc-admin-wrapper .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dc-admin-wrapper .sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dc-admin-wrapper .sm\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .dc-admin-wrapper .sm\:col-span-2 { grid-column: span 2 / span 2; }
+  .dc-admin-wrapper .sm\:flex-row { flex-direction: row; }
+  .dc-admin-wrapper .sm\:items-center { align-items: center; }
+  .dc-admin-wrapper .sm\:w-80 { width: 20rem; }
+}
+
+@media (min-width: 768px) {
+  .dc-admin-wrapper .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dc-admin-wrapper .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dc-admin-wrapper .md\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .dc-admin-wrapper .md\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .dc-admin-wrapper .md\:col-span-2 { grid-column: span 2 / span 2; }
+}
+
+@media (min-width: 1024px) {
+  .dc-admin-wrapper .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .dc-admin-wrapper .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .dc-admin-wrapper .lg\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .dc-admin-wrapper .lg\:col-span-2 { grid-column: span 2 / span 2; }
+  .dc-admin-wrapper .lg\:hidden { display: none !important; }
+}
+
+/* Mobile Drawer & Modal Backdrops */
+.dc-admin-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 280px;
+  background: var(--adm-surface);
+  z-index: 100;
+  padding: 1.15rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: var(--adm-shadow-float);
+  box-sizing: border-box;
+}
+
+.dc-admin-drawer.closed { transform: translateX(-105%); }
+.dc-admin-drawer.open { transform: translateX(0); }
+
+.dc-admin-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  z-index: 90;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease;
+}
+
+.dc-admin-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.admin-modal-backdrop.hidden {
+  display: none !important;
+}
+
+@media (max-width: 1023px) {
+  .dc-admin-sidebar { display: none !important; }
+  .dc-admin-wrapper { padding: 0.65rem 0.65rem 2rem; }
+}
