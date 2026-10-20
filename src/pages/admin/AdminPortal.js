@@ -1,23 +1,9 @@
 /**
  * DREAM CART BD — 100% SELF-CONTAINED ROUTE-BASED ADMIN PORTAL (src/pages/admin/AdminPortal.js)
  * - ZERO external admin sub-file dependencies (no ./modules/* or ./AdminRoutes.js imports to break Vite/Rollup builds!)
+ * - Complete Self-Contained CSS Design System embedded (Fonts, Colors, Backgrounds, Paddings, Margins, Zero Excessive Borders)
  * - Only imports core project utilities: ../../api/client.js, ../../store/authStore.js, ../../utils/format.js, ../../components/Toast.js
- * - Renders ONLY the active /admin/* route module into the DOM (zero DOM bloat, instant page transitions):
- *   /admin/dashboard   -> Dashboard
- *   /admin/products    -> All Products Catalog (120/page, multi-filters, bulk checkbox edit/delete)
- *   /admin/addproduct  -> 23-Column AI Auto-Fill & 16-Tier Pricing Add Product
- *   /admin/categroy    -> Deduplicated Category Management (also /admin/category)
- *   /admin/brands      -> Brand Cards Grid (also /admin/addbrand)
- *   /admin/bulk-upload -> Bulk Product Sample CSV Download & Instant Upload
- *   /admin/bulk-price  -> Bulk Price Sample CSV Download & Instant Update
- *   /admin/bulk-image  -> Bulk Image Sample CSV Download & Instant Update
- *   /admin/landing     -> Multi-Landing Page CMS Builder (search & add products, hero/gallery banners, videos)
- *   /admin/orders      -> Order Management & Manual Order Creation (/admin/addorder)
- *   /admin/resellers   -> Resellers, Wholesalers, Sellers, Markets & Staff
- *   /admin/reports     -> Sales, Customer, Stock & Reseller Reports
- *   /admin/payouts     -> Payouts (-3% fee), Costs, Buying & Capital Investment
- *   /admin/couriers    -> Couriers, Fraud Checker, Payment Gateways & Settings
- *   /admin/others      -> All-in-One Operations Hub Directory
+ * - Renders ONLY the active /admin/* route module into the DOM (zero DOM bloat, instant page transitions)
  */
 
 import { apiClient } from '../../api/client.js';
@@ -25,75 +11,134 @@ import { authStore } from '../../store/authStore.js';
 import { formatCurrency } from '../../utils/format.js';
 import { showToast } from '../../components/Toast.js';
 
+const toast = {
+  show: (opts) => {
+    if (typeof showToast === 'function') {
+      const msg = opts && typeof opts === 'object' ? (opts.message || opts.title || 'সম্পন্ন হয়েছে') : String(opts || '');
+      const type = opts && typeof opts === 'object' ? (opts.type || 'info') : 'info';
+      showToast(msg, type);
+    }
+  }
+};
+
 function injectHarmonizedAdminStyles() {
   if (typeof document === 'undefined') return;
-  if (document.getElementById('dc-admin-harmonized-css')) return;
-  const styleEl = document.createElement('style');
-  styleEl.id = 'dc-admin-harmonized-css';
+  if (!document.getElementById('dc-admin-google-fonts')) {
+    const fontLink = document.createElement('link');
+    fontLink.id = 'dc-admin-google-fonts';
+    fontLink.rel = 'stylesheet';
+    fontLink.href = 'https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap';
+    document.head.appendChild(fontLink);
+  }
+  let styleEl = document.getElementById('dc-admin-harmonized-css');
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'dc-admin-harmonized-css';
+    document.head.appendChild(styleEl);
+  }
   styleEl.textContent = `/* ==========================================================================
-   DREAM CART BD — HARMONIZED ADMIN PANEL DESIGN SYSTEM (src/styles/admin.css)
-   Clean, border-light, color-coordinated enterprise dashboard architecture.
-   Zero harsh nested borders • Unified Slate & Emerald palette • Full Grid Suite
+   DREAM CART BD — COMPLETE SELF-CONTAINED ADMIN PANEL DESIGN SYSTEM
+   - Rich Bengali & English Typography (Hind Siliguri + Plus Jakarta Sans + JetBrains Mono)
+   - Harmonized Emerald, Slate & Indigo Color Palette (Light & Dark Mode)
+   - 100% Borderless Cards, Sections & Tables (Zero harsh nested borders!)
+   - Complete Padding, Margin, Flex, Grid, Color, Background & Sizing Engine
    ========================================================================== */
 
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
 :root {
-  --adm-bg: #f1f5f9;
+  --adm-font-sans: 'Hind Siliguri', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --adm-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --adm-bg: #eef2f6;
+  --adm-bg-gradient: linear-gradient(145deg, #eef2f6 0%, #e2e8f0 100%);
   --adm-surface: #ffffff;
   --adm-surface-soft: #f8fafc;
-  --adm-surface-hover: #f1f5f9;
+  --adm-surface-muted: #f1f5f9;
+  --adm-surface-hover: #e2e8f0;
+
   --adm-text-main: #0f172a;
   --adm-text-secondary: #334155;
   --adm-text-muted: #64748b;
+  --adm-text-light: #94a3b8;
+
   --adm-primary: #059669;
   --adm-primary-hover: #047857;
   --adm-primary-soft: #ecfdf5;
+  --adm-primary-soft-hover: #d1fae5;
   --adm-primary-text: #065f46;
-  --adm-accent: #4f46e5;
-  --adm-accent-soft: #eef2ff;
-  --adm-warn: #d97706;
-  --adm-warn-soft: #fffbeb;
-  --adm-danger: #e11d48;
-  --adm-danger-soft: #fff1f2;
-  --adm-line-subtle: rgba(148, 163, 184, 0.14);
-  --adm-input-border: rgba(148, 163, 184, 0.28);
-  --adm-shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
-  --adm-shadow-float: 0 12px 32px -4px rgba(15, 23, 42, 0.08);
-  --adm-radius-card: 18px;
-  --adm-radius-inner: 14px;
-  --adm-radius-control: 10px;
+
+  --adm-indigo: #4f46e5;
+  --adm-indigo-hover: #4338ca;
+  --adm-indigo-soft: #eef2ff;
+  --adm-indigo-text: #3730a3;
+
+  --adm-amber: #d97706;
+  --adm-amber-soft: #fffbeb;
+  --adm-amber-text: #92400e;
+
+  --adm-rose: #e11d48;
+  --adm-rose-soft: #fff1f2;
+  --adm-rose-text: #9f1239;
+
+  --adm-shadow-xs: 0 2px 6px rgba(15, 23, 42, 0.03);
+  --adm-shadow-card: 0 10px 30px -5px rgba(15, 23, 42, 0.05), 0 4px 12px -2px rgba(15, 23, 42, 0.025);
+  --adm-shadow-float: 0 20px 40px -8px rgba(15, 23, 42, 0.10), 0 8px 16px -4px rgba(15, 23, 42, 0.04);
+  --adm-shadow-primary: 0 8px 20px -4px rgba(5, 150, 105, 0.32);
+
+  --adm-radius-xl: 22px;
+  --adm-radius-lg: 16px;
+  --adm-radius-md: 12px;
+  --adm-radius-sm: 8px;
 }
 
 .dark {
   --adm-bg: #0b1120;
+  --adm-bg-gradient: linear-gradient(145deg, #0b1120 0%, #0f172a 100%);
   --adm-surface: #111827;
   --adm-surface-soft: #1e293b;
-  --adm-surface-hover: #263349;
+  --adm-surface-muted: #263349;
+  --adm-surface-hover: #334155;
+
   --adm-text-main: #f8fafc;
-  --adm-text-secondary: #e2e8f0;
+  --adm-text-secondary: #cbd5e1;
   --adm-text-muted: #94a3b8;
+  --adm-text-light: #64748b;
+
   --adm-primary: #10b981;
   --adm-primary-hover: #059669;
   --adm-primary-soft: rgba(16, 185, 129, 0.14);
+  --adm-primary-soft-hover: rgba(16, 185, 129, 0.22);
   --adm-primary-text: #34d399;
-  --adm-accent: #6366f1;
-  --adm-accent-soft: rgba(99, 102, 241, 0.15);
-  --adm-warn: #f59e0b;
-  --adm-warn-soft: rgba(245, 158, 11, 0.15);
-  --adm-danger: #f43f5e;
-  --adm-danger-soft: rgba(244, 63, 94, 0.15);
-  --adm-line-subtle: rgba(255, 255, 255, 0.06);
-  --adm-input-border: rgba(255, 255, 255, 0.14);
-  --adm-shadow-card: 0 6px 24px -4px rgba(0, 0, 0, 0.35);
-  --adm-shadow-float: 0 16px 40px -6px rgba(0, 0, 0, 0.55);
+
+  --adm-indigo: #6366f1;
+  --adm-indigo-hover: #4f46e5;
+  --adm-indigo-soft: rgba(99, 102, 241, 0.15);
+  --adm-indigo-text: #818cf8;
+
+  --adm-amber: #f59e0b;
+  --adm-amber-soft: rgba(245, 158, 11, 0.15);
+  --adm-amber-text: #fbbf24;
+
+  --adm-rose: #f43f5e;
+  --adm-rose-soft: rgba(244, 63, 94, 0.15);
+  --adm-rose-text: #fb7185;
+
+  --adm-shadow-xs: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --adm-shadow-card: 0 12px 32px -4px rgba(0, 0, 0, 0.45);
+  --adm-shadow-float: 0 24px 48px -8px rgba(0, 0, 0, 0.65);
 }
 
 /* ==========================================================================
-   1. FULL-SCREEN ADMIN SHELL ISOLATION (Zero Storefront Clutter on /admin/*)
+   1. FULL-SCREEN ADMIN SHELL ISOLATION
    ========================================================================== */
 #app-root:has(.dc-admin-wrapper),
 body:has(.dc-admin-wrapper) {
-  background-color: var(--adm-bg) !important;
+  background: var(--adm-bg-gradient) !important;
   color: var(--adm-text-main) !important;
+  font-family: var(--adm-font-sans) !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 #app-root:has(.dc-admin-wrapper) > #header-mount,
@@ -112,15 +157,24 @@ body:has(.dc-admin-wrapper) {
 }
 
 /* ==========================================================================
-   2. CORE PAGE STRUCTURE (Sidebar + Topbar + Main Content Canvas)
+   2. CORE ADMIN LAYOUT, SIDEBAR & TOPBAR (Paddings, Margins & Surfaces)
    ========================================================================== */
 .dc-admin-wrapper {
   min-height: 100vh;
   width: 100%;
-  background-color: var(--adm-bg);
+  background: var(--adm-bg-gradient);
   color: var(--adm-text-main);
-  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  padding: 1rem 1.25rem 2.5rem;
+  font-family: var(--adm-font-sans);
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 1.25rem 1.5rem 3rem;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dc-admin-wrapper *,
+.dc-admin-wrapper *::before,
+.dc-admin-wrapper *::after {
   box-sizing: border-box;
 }
 
@@ -128,30 +182,28 @@ body:has(.dc-admin-wrapper) {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 1.35rem;
-  max-width: 1600px;
+  gap: 1.5rem;
+  max-width: 1640px;
   margin: 0 auto;
   width: 100%;
-  box-sizing: border-box;
 }
 
-/* Left Sticky Sidebar — Borderless, Soft Elevated Surface */
+/* Left Sticky Sidebar — Zero Borders, Soft Floating Surface */
 .dc-admin-sidebar {
-  width: 268px;
+  width: 276px;
   flex-shrink: 0;
   background: var(--adm-surface);
   border: none !important;
-  border-radius: var(--adm-radius-card);
-  padding: 1.15rem 0.85rem;
+  border-radius: var(--adm-radius-xl);
+  padding: 1.35rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.85rem;
   box-shadow: var(--adm-shadow-card);
   position: sticky;
-  top: 1rem;
-  height: calc(100vh - 2rem);
+  top: 1.25rem;
+  height: calc(100vh - 2.5rem);
   overflow-y: auto;
-  box-sizing: border-box;
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
 }
@@ -159,71 +211,77 @@ body:has(.dc-admin-wrapper) {
 .dc-sidebar-brand {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.25rem 0.5rem 0.85rem;
-  border-bottom: 1px solid var(--adm-line-subtle) !important;
+  gap: 0.85rem;
+  padding: 0.35rem 0.65rem 1rem;
+  margin-bottom: 0.25rem;
+  background: linear-gradient(135deg, var(--adm-primary-soft) 0%, transparent 100%);
+  border-radius: var(--adm-radius-lg);
+  border: none !important;
 }
 
 .dc-sidebar-logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  font-weight: 900;
-  font-size: 1.05rem;
-  box-shadow: 0 6px 14px rgba(5, 150, 105, 0.28);
+  font-weight: 800;
+  font-size: 1.15rem;
+  box-shadow: var(--adm-shadow-primary);
   flex-shrink: 0;
 }
 
 .dc-sidebar-title {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: var(--adm-text-main);
-  line-height: 1.2;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
 }
 
 .dc-sidebar-badge {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 700;
   color: var(--adm-primary-text);
   background: var(--adm-primary-soft);
-  padding: 0.15rem 0.5rem;
-  border-radius: 6px;
+  padding: 0.2rem 0.6rem;
+  border-radius: 9999px;
   display: inline-block;
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
-/* Sidebar Navigation Accordion & Links */
+/* Sidebar Navigation Accordion Buttons */
 .dc-sidebar-nav-group {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.25rem;
 }
 
 .admin-sidebar-main-btn {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.55rem 0.75rem;
-  border-radius: 11px;
-  font-size: 0.78rem;
+  padding: 0.68rem 0.9rem;
+  border-radius: 13px;
+  font-family: var(--adm-font-sans);
+  font-size: 0.86rem;
   font-weight: 700;
   color: var(--adm-text-secondary);
   background: transparent;
   border: none !important;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   text-align: left;
   width: 100%;
 }
 
 .admin-sidebar-main-btn:hover {
-  background: var(--adm-surface-soft);
+  background: var(--adm-surface-muted);
   color: var(--adm-text-main);
+  transform: translateX(2px);
 }
 
 .admin-sidebar-main-btn.active {
@@ -233,7 +291,7 @@ body:has(.dc-admin-wrapper) {
 }
 
 .chevron {
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   transition: transform 0.22s ease;
   color: var(--adm-text-muted);
 }
@@ -241,11 +299,13 @@ body:has(.dc-admin-wrapper) {
 .dc-sidebar-subnav {
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
-  padding-left: 0.65rem;
-  margin-left: 0.65rem;
+  gap: 0.22rem;
+  padding: 0.35rem 0.35rem 0.35rem 0.85rem;
+  margin-left: 0.55rem;
   margin-top: 0.15rem;
-  border-left: 2px solid var(--adm-line-subtle) !important;
+  background: var(--adm-surface-soft);
+  border-radius: 12px;
+  border: none !important;
 }
 
 .dc-sidebar-subnav.closed {
@@ -256,132 +316,134 @@ body:has(.dc-admin-wrapper) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.44rem 0.65rem;
-  border-radius: 9px;
-  font-size: 0.73rem;
+  padding: 0.52rem 0.78rem;
+  border-radius: 10px;
+  font-family: var(--adm-font-sans);
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--adm-text-muted);
   background: transparent;
   border: none !important;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.16s ease;
   text-align: left;
   width: 100%;
   text-decoration: none;
 }
 
 .dc-sidebar-sub-item:hover {
-  background: var(--adm-surface-soft);
+  background: var(--adm-surface-muted);
   color: var(--adm-text-main);
+  padding-left: 0.95rem;
 }
 
 .dc-sidebar-sub-item.active {
-  background: var(--adm-primary) !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
-  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25) !important;
+  box-shadow: var(--adm-shadow-primary) !important;
 }
 
 .dc-sidebar-sub-item.active .admin-nav-counter {
-  background: rgba(255, 255, 255, 0.22) !important;
+  background: rgba(255, 255, 255, 0.24) !important;
   color: #ffffff !important;
 }
 
 .admin-nav-counter {
-  font-size: 0.64rem;
+  font-family: var(--adm-font-mono);
+  font-size: 0.68rem;
   font-weight: 700;
-  padding: 0.1rem 0.42rem;
+  padding: 0.12rem 0.5rem;
   border-radius: 9999px;
-  background: var(--adm-surface-soft);
-  color: var(--adm-text-muted);
+  background: var(--adm-surface-muted);
+  color: var(--adm-text-secondary);
 }
 
-/* Main Fluid Content Area */
+/* Main Content Area */
 .dc-admin-main {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
   width: 100%;
-  box-sizing: border-box;
 }
 
-/* Topbar — Clean, Elevated, Borderless */
+/* Topbar — Elevated, Spacious, Borderless */
 .dc-admin-topbar {
   background: var(--adm-surface);
   border: none !important;
-  border-radius: var(--adm-radius-card);
-  padding: 0.85rem 1.25rem;
+  border-radius: var(--adm-radius-xl);
+  padding: 1.15rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.85rem;
+  gap: 1rem;
   box-shadow: var(--adm-shadow-card);
   position: sticky;
-  top: 1rem;
+  top: 1.25rem;
   z-index: 40;
 }
 
 /* ==========================================================================
-   3. BORDER-LIGHT CARDS, INNER SURFACES & KPI TILES
+   3. ZERO-BORDER CARDS, SECTIONS & KPI TILES (Generous Padding & Margin)
    ========================================================================== */
 .dc-admin-card {
   background: var(--adm-surface);
   border: none !important;
-  border-radius: var(--adm-radius-card);
-  padding: 1.35rem 1.5rem;
+  border-radius: var(--adm-radius-xl);
+  padding: 1.65rem 1.75rem;
   box-shadow: var(--adm-shadow-card);
   width: 100%;
-  box-sizing: border-box;
+  margin-bottom: 0.25rem;
 }
 
-/* Remove excessive borders inside admin wrapper */
+/* Eliminate ALL excessive borders inside Admin Panel */
 .dc-admin-wrapper .border,
-.dc-admin-wrapper .border-slate-200,
+.dc-admin-wrapper .border-2,
+.dc-admin-wrapper .border-b,
+.dc-admin-wrapper .border-t,
+.dc-admin-wrapper .border-l,
 .dc-admin-wrapper .border-slate-100,
+.dc-admin-wrapper .border-slate-200,
+.dc-admin-wrapper .border-slate-200\/80,
+.dc-admin-wrapper .border-slate-200\/90,
+.dc-admin-wrapper .border-slate-300,
+.dc-admin-wrapper .border-slate-600,
+.dc-admin-wrapper .border-slate-700,
+.dc-admin-wrapper .border-slate-800,
 .dc-admin-wrapper .border-emerald-200,
+.dc-admin-wrapper .border-emerald-200\/60,
+.dc-admin-wrapper .border-emerald-200\/70,
+.dc-admin-wrapper .border-emerald-300,
+.dc-admin-wrapper .border-emerald-400,
+.dc-admin-wrapper .border-emerald-500\/20,
+.dc-admin-wrapper .border-emerald-600,
+.dc-admin-wrapper .border-emerald-800\/40,
 .dc-admin-wrapper .border-amber-200,
 .dc-admin-wrapper .border-rose-200,
-.dc-admin-wrapper .border-indigo-200 {
+.dc-admin-wrapper .border-rose-300,
+.dc-admin-wrapper .border-indigo-200,
+.dc-admin-wrapper .divide-y > * + *,
+.dc-admin-wrapper .divide-slate-100 > * + * {
   border: none !important;
 }
 
-.dc-admin-wrapper .border-b {
-  border-bottom: 1px solid var(--adm-line-subtle) !important;
-}
-
-.dc-admin-wrapper .border-t {
-  border-top: 1px solid var(--adm-line-subtle) !important;
-}
-
+/* Keep dashed dropzone subtle for file upload boxes only */
 .dc-admin-wrapper .border-dashed {
-  border: 1.5px dashed var(--adm-input-border) !important;
+  border: 2px dashed rgba(16, 185, 129, 0.35) !important;
+  background: var(--adm-primary-soft) !important;
 }
 
-/* Harmonize inner section backgrounds inside cards */
-.dc-admin-card .bg-slate-50,
-.dc-admin-card .bg-slate-50\\/70,
-.dc-admin-card .bg-slate-100\\/80,
-.dc-admin-card .bg-emerald-50\\/50,
-.dc-admin-card .bg-emerald-50\\/40,
-.dc-admin-card .bg-amber-50\\/50,
-.dc-admin-card .bg-rose-50\\/50,
-.dc-admin-card .bg-indigo-50 {
-  background-color: var(--adm-surface-soft) !important;
-  border: none !important;
-  border-radius: var(--adm-radius-inner);
-}
-
-/* KPI Metric Cards — Clean, Borderless, Harmonious */
+/* KPI Metric Cards — Soft Elevated Tiles with Accent Indicator */
 .admin-kpi-card {
   background: var(--adm-surface);
   border: none !important;
-  border-radius: 15px;
-  padding: 1rem 1.1rem;
+  border-radius: 18px;
+  padding: 1.15rem 1.25rem !important;
   box-shadow: var(--adm-shadow-card);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
   position: relative;
   overflow: hidden;
 }
@@ -390,34 +452,194 @@ body:has(.dc-admin-wrapper) {
   content: '';
   position: absolute;
   left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3.5px;
-  background: var(--adm-primary);
-  opacity: 0.75;
+  top: 18%;
+  bottom: 18%;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
 }
 
 .admin-kpi-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   box-shadow: var(--adm-shadow-float);
+  background: var(--adm-surface-soft);
 }
 
-/* Brand & Item Cards inside Admin */
+/* Searchable Cards (Brand Cards, Hub Cards, Item Cards) */
 .admin-searchable-card {
   background: var(--adm-surface-soft) !important;
   border: none !important;
-  border-radius: 16px !important;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03) !important;
-  transition: transform 0.18s ease, box-shadow 0.18s ease !important;
+  border-radius: 20px !important;
+  padding: 1.35rem !important;
+  box-shadow: var(--adm-shadow-xs) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+  text-decoration: none;
 }
 
 .admin-searchable-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  background: var(--adm-surface) !important;
   box-shadow: var(--adm-shadow-float) !important;
 }
 
 /* ==========================================================================
-   4. FORM CONTROLS, INPUTS, SELECTS & BUTTONS (Clean & Harmonious)
+   4. TYPOGRAPHY, FONTS, SIZES & WEIGHTS
+   ========================================================================== */
+.dc-admin-wrapper h1,
+.dc-admin-wrapper h2,
+.dc-admin-wrapper h3,
+.dc-admin-wrapper h4,
+.dc-admin-wrapper h5 {
+  margin: 0;
+  font-family: var(--adm-font-sans);
+  color: var(--adm-text-main);
+  letter-spacing: -0.01em;
+}
+
+.dc-admin-wrapper p {
+  margin: 0;
+}
+
+.dc-admin-wrapper a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.dc-admin-wrapper .font-sans { font-family: var(--adm-font-sans) !important; }
+.dc-admin-wrapper .font-mono { font-family: var(--adm-font-mono) !important; }
+.dc-admin-wrapper .font-normal { font-weight: 400 !important; }
+.dc-admin-wrapper .font-medium { font-weight: 500 !important; }
+.dc-admin-wrapper .font-bold { font-weight: 700 !important; }
+.dc-admin-wrapper .font-black { font-weight: 800 !important; }
+
+.dc-admin-wrapper .text-\[9px\] { font-size: 0.72rem !important; line-height: 1.35; }
+.dc-admin-wrapper .text-\[10px\] { font-size: 0.76rem !important; line-height: 1.4; }
+.dc-admin-wrapper .text-\[11px\] { font-size: 0.81rem !important; line-height: 1.45; }
+.dc-admin-wrapper .text-xs { font-size: 0.85rem !important; line-height: 1.5; }
+.dc-admin-wrapper .text-sm { font-size: 0.95rem !important; line-height: 1.5; }
+.dc-admin-wrapper .text-base { font-size: 1.08rem !important; line-height: 1.5; }
+.dc-admin-wrapper .text-lg { font-size: 1.22rem !important; line-height: 1.4; }
+.dc-admin-wrapper .text-xl { font-size: 1.38rem !important; line-height: 1.35; }
+.dc-admin-wrapper .text-2xl { font-size: 1.6rem !important; line-height: 1.3; }
+.dc-admin-wrapper .text-3xl { font-size: 1.95rem !important; line-height: 1.25; }
+.dc-admin-wrapper .text-4xl { font-size: 2.35rem !important; line-height: 1.2; }
+
+.dc-admin-wrapper .leading-tight { line-height: 1.28 !important; }
+.dc-admin-wrapper .leading-relaxed { line-height: 1.65 !important; }
+.dc-admin-wrapper .tracking-wider { letter-spacing: 0.04em !important; }
+.dc-admin-wrapper .uppercase { text-transform: uppercase !important; }
+.dc-admin-wrapper .underline { text-decoration: underline !important; }
+.dc-admin-wrapper .line-through { text-decoration: line-through !important; }
+.dc-admin-wrapper .text-left { text-align: left !important; }
+.dc-admin-wrapper .text-center { text-align: center !important; }
+.dc-admin-wrapper .text-right { text-align: right !important; }
+.dc-admin-wrapper .whitespace-nowrap { white-space: nowrap !important; }
+
+.dc-admin-wrapper .truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dc-admin-wrapper .line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dc-admin-wrapper .line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ==========================================================================
+   5. COLORS & BACKGROUNDS (Harmonized Slate, Emerald, Indigo, Amber, Rose)
+   ========================================================================== */
+/* Text Colors */
+.dc-admin-wrapper .text-white { color: #ffffff !important; }
+.dc-admin-wrapper .text-slate-200 { color: #e2e8f0 !important; }
+.dc-admin-wrapper .text-slate-300 { color: #cbd5e1 !important; }
+.dc-admin-wrapper .text-slate-400 { color: var(--adm-text-muted) !important; }
+.dc-admin-wrapper .text-slate-500 { color: var(--adm-text-muted) !important; }
+.dc-admin-wrapper .text-slate-600 { color: var(--adm-text-secondary) !important; }
+.dc-admin-wrapper .text-slate-700 { color: var(--adm-text-secondary) !important; }
+.dc-admin-wrapper .text-slate-800 { color: var(--adm-text-main) !important; }
+.dc-admin-wrapper .text-slate-900 { color: var(--adm-text-main) !important; }
+.dc-admin-wrapper .text-slate-950 { color: #020617 !important; }
+
+.dc-admin-wrapper .text-emerald-600 { color: var(--adm-primary) !important; }
+.dc-admin-wrapper .text-emerald-700 { color: var(--adm-primary-text) !important; }
+.dc-admin-wrapper .text-emerald-800 { color: var(--adm-primary-text) !important; }
+
+.dc-admin-wrapper .text-indigo-500 { color: var(--adm-indigo) !important; }
+.dc-admin-wrapper .text-indigo-600 { color: var(--adm-indigo) !important; }
+.dc-admin-wrapper .text-indigo-700 { color: var(--adm-indigo-text) !important; }
+.dc-admin-wrapper .text-indigo-800 { color: var(--adm-indigo-text) !important; }
+
+.dc-admin-wrapper .text-amber-500 { color: var(--adm-amber) !important; }
+.dc-admin-wrapper .text-amber-600 { color: var(--adm-amber) !important; }
+.dc-admin-wrapper .text-amber-800 { color: var(--adm-amber-text) !important; }
+
+.dc-admin-wrapper .text-rose-500 { color: var(--adm-rose) !important; }
+.dc-admin-wrapper .text-rose-600 { color: var(--adm-rose) !important; }
+.dc-admin-wrapper .text-rose-700 { color: var(--adm-rose-text) !important; }
+.dc-admin-wrapper .text-rose-800 { color: var(--adm-rose-text) !important; }
+
+/* Surface & Section Backgrounds */
+.dc-admin-wrapper .bg-white { background-color: var(--adm-surface) !important; }
+.dc-admin-wrapper .bg-white\/15 { background-color: rgba(255, 255, 255, 0.16) !important; }
+.dc-admin-wrapper .bg-black { background-color: #000000 !important; }
+.dc-admin-wrapper .bg-slate-50,
+.dc-admin-wrapper .bg-slate-50\/70 { background-color: var(--adm-surface-soft) !important; }
+.dc-admin-wrapper .bg-slate-100,
+.dc-admin-wrapper .bg-slate-100\/80 { background-color: var(--adm-surface-muted) !important; }
+.dc-admin-wrapper .bg-slate-200 { background-color: var(--adm-surface-hover) !important; }
+.dc-admin-wrapper .bg-slate-800,
+.dc-admin-wrapper .bg-slate-800\/40,
+.dc-admin-wrapper .bg-slate-800\/60,
+.dc-admin-wrapper .bg-slate-800\/70,
+.dc-admin-wrapper .bg-slate-800\/80 { background-color: var(--adm-surface-soft) !important; }
+.dc-admin-wrapper .bg-slate-900 { background-color: #0f172a !important; color: #ffffff !important; }
+.dc-admin-wrapper .bg-slate-900\/80 { background-color: rgba(15, 23, 42, 0.82) !important; }
+.dc-admin-wrapper .bg-slate-950 { background-color: #020617 !important; }
+
+.dc-admin-wrapper .bg-emerald-50,
+.dc-admin-wrapper .bg-emerald-50\/40,
+.dc-admin-wrapper .bg-emerald-50\/50,
+.dc-admin-wrapper .bg-emerald-50\/60,
+.dc-admin-wrapper .bg-emerald-50\/70,
+.dc-admin-wrapper .bg-emerald-100,
+.dc-admin-wrapper .bg-emerald-500\/10 { background-color: var(--adm-primary-soft) !important; }
+.dc-admin-wrapper .bg-emerald-500 { background-color: #10b981 !important; }
+.dc-admin-wrapper .bg-emerald-600 { background-color: var(--adm-primary) !important; color: #ffffff !important; }
+
+.dc-admin-wrapper .bg-indigo-50,
+.dc-admin-wrapper .bg-indigo-100 { background-color: var(--adm-indigo-soft) !important; }
+.dc-admin-wrapper .bg-indigo-600 { background-color: var(--adm-indigo) !important; color: #ffffff !important; }
+
+.dc-admin-wrapper .bg-amber-50\/50,
+.dc-admin-wrapper .bg-amber-100 { background-color: var(--adm-amber-soft) !important; }
+.dc-admin-wrapper .bg-amber-400 { background-color: #fbbf24 !important; color: #0f172a !important; }
+.dc-admin-wrapper .bg-amber-500 { background-color: #f59e0b !important; color: #0f172a !important; }
+
+.dc-admin-wrapper .bg-rose-50,
+.dc-admin-wrapper .bg-rose-50\/50,
+.dc-admin-wrapper .bg-rose-100 { background-color: var(--adm-rose-soft) !important; }
+.dc-admin-wrapper .bg-rose-600 { background-color: var(--adm-rose) !important; color: #ffffff !important; }
+
+.dc-admin-wrapper .bg-gradient-to-r {
+  background: linear-gradient(135deg, var(--adm-primary-soft) 0%, var(--adm-indigo-soft) 100%) !important;
+}
+
+.dc-admin-wrapper .bg-gradient-to-t {
+  background: linear-gradient(to top, rgba(2, 6, 23, 0.88) 0%, rgba(2, 6, 23, 0.35) 55%, transparent 100%) !important;
+}
+
+/* ==========================================================================
+   6. FORM INPUTS, SELECTS, TEXTAREAS, BUTTONS & BADGES
    ========================================================================== */
 .dc-admin-wrapper input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 .dc-admin-wrapper select,
@@ -425,19 +647,21 @@ body:has(.dc-admin-wrapper) {
 .dc-admin-wrapper .form-control {
   background-color: var(--adm-surface) !important;
   color: var(--adm-text-main) !important;
-  border: 1px solid var(--adm-input-border) !important;
-  border-radius: var(--adm-radius-control) !important;
-  padding: 0.52rem 0.75rem;
-  font-size: 0.78rem;
-  line-height: 1.4;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-  outline: none;
+  border: 1.5px solid rgba(148, 163, 184, 0.26) !important;
+  border-radius: 12px !important;
+  padding: 0.62rem 0.9rem !important;
+  font-family: var(--adm-font-sans) !important;
+  font-size: 0.85rem !important;
+  line-height: 1.45 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02) !important;
+  transition: all 0.18s ease !important;
+  outline: none !important;
 }
 
-.dc-admin-card .bg-slate-50 input:not([type="checkbox"]),
-.dc-admin-card .bg-slate-50 select,
-.dc-admin-card .bg-slate-50 textarea {
-  background-color: var(--adm-surface) !important;
+.dc-admin-wrapper input::placeholder,
+.dc-admin-wrapper textarea::placeholder {
+  color: var(--adm-text-light) !important;
+  font-weight: 400;
 }
 
 .dc-admin-wrapper input:focus,
@@ -445,31 +669,94 @@ body:has(.dc-admin-wrapper) {
 .dc-admin-wrapper textarea:focus,
 .dc-admin-wrapper .form-control:focus {
   border-color: var(--adm-primary) !important;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14) !important;
+  background-color: var(--adm-surface) !important;
+  box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.16) !important;
 }
 
 .dc-admin-wrapper label {
+  font-family: var(--adm-font-sans);
   color: var(--adm-text-secondary);
-  font-weight: 600;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
 }
 
-/* Filter Pill Buttons & Chart Timeframe Buttons */
+.dc-admin-wrapper input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--adm-primary);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+/* Primary & Secondary Action Buttons */
+.dc-admin-wrapper .btn-primary {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 0.58rem 1.15rem;
+  font-family: var(--adm-font-sans);
+  font-size: 0.83rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  box-shadow: var(--adm-shadow-primary);
+  transition: all 0.18s ease;
+  text-decoration: none;
+}
+
+.dc-admin-wrapper .btn-primary:hover {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -4px rgba(5, 150, 105, 0.42);
+}
+
+.dc-admin-wrapper .btn-secondary {
+  background: var(--adm-surface-muted) !important;
+  color: var(--adm-text-secondary) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 0.55rem 1rem;
+  font-family: var(--adm-font-sans);
+  font-size: 0.82rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  text-decoration: none;
+}
+
+.dc-admin-wrapper .btn-secondary:hover {
+  background: var(--adm-surface-hover) !important;
+  color: var(--adm-text-main) !important;
+  transform: translateY(-1px);
+}
+
+/* Filter Pills & Route Tabs */
 .prod-status-filter-btn,
 .order-status-pill,
 .sales-chart-btn,
 .admin-route-tab {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.42rem 0.85rem;
+  gap: 0.4rem;
+  padding: 0.48rem 0.95rem;
   border-radius: 9999px;
-  font-size: 0.73rem;
+  font-family: var(--adm-font-sans);
+  font-size: 0.79rem;
   font-weight: 700;
-  background: var(--adm-surface-soft);
-  color: var(--adm-text-muted);
+  background: var(--adm-surface-muted);
+  color: var(--adm-text-secondary);
   border: none !important;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s ease;
   white-space: nowrap;
   text-decoration: none;
 }
@@ -486,73 +773,61 @@ body:has(.dc-admin-wrapper) {
 .order-status-pill.active,
 .sales-chart-btn.active,
 .admin-route-tab.active {
-  background: var(--adm-primary) !important;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
   color: #ffffff !important;
-  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.25);
+  box-shadow: var(--adm-shadow-primary);
 }
 
-/* Primary & Secondary Buttons inside Admin */
-.dc-admin-wrapper .btn-primary {
-  background: var(--adm-primary) !important;
-  color: #ffffff !important;
-  border: none !important;
-  border-radius: 10px !important;
-  padding: 0.48rem 0.95rem;
-  font-weight: 700;
+/* Status Badges */
+.dc-admin-wrapper .badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.2);
-  transition: all 0.15s ease;
-}
-
-.dc-admin-wrapper .btn-primary:hover {
-  background: var(--adm-primary-hover) !important;
-  transform: translateY(-1px);
-}
-
-.dc-admin-wrapper .btn-secondary {
-  background: var(--adm-surface-soft) !important;
-  color: var(--adm-text-secondary) !important;
-  border: none !important;
-  border-radius: 10px !important;
-  padding: 0.45rem 0.85rem;
+  padding: 0.22rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
   font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  transition: all 0.15s ease;
+  border: none !important;
 }
 
-.dc-admin-wrapper .btn-secondary:hover {
-  background: var(--adm-surface-hover) !important;
-  color: var(--adm-text-main) !important;
+.dc-admin-wrapper .badge-success {
+  background: var(--adm-primary-soft) !important;
+  color: var(--adm-primary-text) !important;
+}
+
+.dc-admin-wrapper .badge-warning {
+  background: var(--adm-amber-soft) !important;
+  color: var(--adm-amber-text) !important;
+}
+
+.dc-admin-wrapper .badge-danger {
+  background: var(--adm-rose-soft) !important;
+  color: var(--adm-rose-text) !important;
 }
 
 /* ==========================================================================
-   5. CLEAN BORDERLESS TABLES
+   7. BORDERLESS MODERN TABLES (Soft Alternating Rows & Generous Cell Padding)
    ========================================================================== */
 .dc-admin-wrapper table {
   width: 100%;
   border-collapse: separate;
-  border-spacing: 0;
+  border-spacing: 0 6px;
 }
 
 .dc-admin-wrapper thead tr {
-  background: var(--adm-surface-soft) !important;
+  background: var(--adm-surface-muted) !important;
   border: none !important;
 }
 
 .dc-admin-wrapper thead th {
-  color: var(--adm-text-muted) !important;
-  font-weight: 700;
-  font-size: 0.68rem;
+  color: var(--adm-text-secondary) !important;
+  font-family: var(--adm-font-sans);
+  font-weight: 800;
+  font-size: 0.74rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  padding: 0.75rem 0.85rem !important;
-  border-bottom: 1px solid var(--adm-line-subtle) !important;
+  padding: 0.85rem 1rem !important;
+  border: none !important;
 }
 
 .dc-admin-wrapper thead th:first-child {
@@ -566,29 +841,70 @@ body:has(.dc-admin-wrapper) {
 }
 
 .dc-admin-wrapper tbody tr {
-  transition: background-color 0.12s ease;
+  background: var(--adm-surface-soft);
+  transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .dc-admin-wrapper tbody tr:hover {
-  background-color: var(--adm-surface-soft) !important;
+  background: var(--adm-surface-muted) !important;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
 }
 
 .dc-admin-wrapper tbody td {
-  padding: 0.75rem 0.85rem !important;
-  border-bottom: 1px solid var(--adm-line-subtle) !important;
+  padding: 0.85rem 1rem !important;
+  border: none !important;
   color: var(--adm-text-secondary);
   vertical-align: middle;
+  font-size: 0.84rem;
 }
 
-.dc-admin-wrapper tbody tr:last-child td {
-  border-bottom: none !important;
+.dc-admin-wrapper tbody td:first-child {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+.dc-admin-wrapper tbody td:last-child {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
 }
 
 /* ==========================================================================
-   6. COMPLETE STANDALONE GRID, FLEX & SPACING UTILITIES FOR ADMIN
-   (Ensures 100% layout fidelity without external Tailwind CDN)
+   8. COMPLETE PADDING, MARGIN, SPACE, FLEX, GRID & SIZING UTILITIES
    ========================================================================== */
+/* Display & Positioning */
+.dc-admin-wrapper .block { display: block; }
+.dc-admin-wrapper .inline-block { display: inline-block; }
+.dc-admin-wrapper .flex { display: flex; }
+.dc-admin-wrapper .inline-flex { display: inline-flex; }
 .dc-admin-wrapper .grid { display: grid; }
+.dc-admin-wrapper .hidden { display: none !important; }
+.dc-admin-wrapper .relative { position: relative; }
+.dc-admin-wrapper .absolute { position: absolute; }
+.dc-admin-wrapper .sticky { position: sticky; }
+.dc-admin-wrapper .inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+.dc-admin-wrapper .top-0 { top: 0; }
+.dc-admin-wrapper .top-2 { top: 0.5rem; }
+.dc-admin-wrapper .top-2\.5 { top: 0.625rem; }
+.dc-admin-wrapper .top-3 { top: 0.75rem; }
+.dc-admin-wrapper .left-2\.5 { left: 0.625rem; }
+.dc-admin-wrapper .right-2\.5 { right: 0.625rem; }
+.dc-admin-wrapper .right-3 { right: 0.75rem; }
+.dc-admin-wrapper .z-10 { z-index: 10; }
+
+/* Flex & Grid Alignment */
+.dc-admin-wrapper .flex-col { flex-direction: column; }
+.dc-admin-wrapper .flex-wrap { flex-wrap: wrap; }
+.dc-admin-wrapper .flex-1 { flex: 1 1 0%; }
+.dc-admin-wrapper .flex-shrink-0 { flex-shrink: 0; }
+.dc-admin-wrapper .items-start { align-items: flex-start; }
+.dc-admin-wrapper .items-center { align-items: center; }
+.dc-admin-wrapper .items-end { align-items: flex-end; }
+.dc-admin-wrapper .justify-center { justify-content: center; }
+.dc-admin-wrapper .justify-between { justify-content: space-between; }
+.dc-admin-wrapper .justify-end { justify-content: flex-end; }
+.dc-admin-wrapper .self-start { align-self: flex-start; }
+
+/* Grid Columns */
 .dc-admin-wrapper .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
 .dc-admin-wrapper .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .dc-admin-wrapper .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -597,83 +913,223 @@ body:has(.dc-admin-wrapper) {
 .dc-admin-wrapper .grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .dc-admin-wrapper .col-span-full { grid-column: 1 / -1 !important; }
 
-.dc-admin-wrapper .gap-1 { gap: 0.25rem; }
-.dc-admin-wrapper .gap-1\\.5 { gap: 0.375rem; }
-.dc-admin-wrapper .gap-2 { gap: 0.5rem; }
-.dc-admin-wrapper .gap-2\\.5 { gap: 0.625rem; }
-.dc-admin-wrapper .gap-3 { gap: 0.75rem; }
-.dc-admin-wrapper .gap-3\\.5 { gap: 0.875rem; }
-.dc-admin-wrapper .gap-4 { gap: 1rem; }
-.dc-admin-wrapper .gap-5 { gap: 1.25rem; }
+/* Gaps */
+.dc-admin-wrapper .gap-1 { gap: 0.3rem; }
+.dc-admin-wrapper .gap-1\.5 { gap: 0.45rem; }
+.dc-admin-wrapper .gap-2 { gap: 0.6rem; }
+.dc-admin-wrapper .gap-2\.5 { gap: 0.75rem; }
+.dc-admin-wrapper .gap-3 { gap: 0.9rem; }
+.dc-admin-wrapper .gap-3\.5 { gap: 1.05rem; }
+.dc-admin-wrapper .gap-4 { gap: 1.2rem; }
+.dc-admin-wrapper .gap-5 { gap: 1.5rem; }
 
-.dc-admin-wrapper .space-y-1 > * + * { margin-top: 0.25rem; }
-.dc-admin-wrapper .space-y-1\\.5 > * + * { margin-top: 0.375rem; }
-.dc-admin-wrapper .space-y-2 > * + * { margin-top: 0.5rem; }
-.dc-admin-wrapper .space-y-2\\.5 > * + * { margin-top: 0.625rem; }
-.dc-admin-wrapper .space-y-3 > * + * { margin-top: 0.75rem; }
-.dc-admin-wrapper .space-y-3\\.5 > * + * { margin-top: 0.875rem; }
-.dc-admin-wrapper .space-y-4 > * + * { margin-top: 1rem; }
-.dc-admin-wrapper .space-y-5 > * + * { margin-top: 1.25rem; }
-.dc-admin-wrapper .space-x-1 > * + * { margin-left: 0.25rem; }
-.dc-admin-wrapper .space-x-1\\.5 > * + * { margin-left: 0.375rem; }
+/* Vertical & Horizontal Spacing (Margins between children) */
+.dc-admin-wrapper .space-y-1 > * + * { margin-top: 0.35rem !important; }
+.dc-admin-wrapper .space-y-1\.5 > * + * { margin-top: 0.5rem !important; }
+.dc-admin-wrapper .space-y-2 > * + * { margin-top: 0.65rem !important; }
+.dc-admin-wrapper .space-y-2\.5 > * + * { margin-top: 0.8rem !important; }
+.dc-admin-wrapper .space-y-3 > * + * { margin-top: 0.95rem !important; }
+.dc-admin-wrapper .space-y-3\.5 > * + * { margin-top: 1.1rem !important; }
+.dc-admin-wrapper .space-y-4 > * + * { margin-top: 1.25rem !important; }
+.dc-admin-wrapper .space-y-5 > * + * { margin-top: 1.5rem !important; }
+.dc-admin-wrapper .space-y-6 > * + * { margin-top: 1.75rem !important; }
+.dc-admin-wrapper .space-y-8 > * + * { margin-top: 2.25rem !important; }
+.dc-admin-wrapper .space-x-1 > * + * { margin-left: 0.35rem !important; }
+.dc-admin-wrapper .space-x-1\.5 > * + * { margin-left: 0.5rem !important; }
 
+/* Paddings */
+.dc-admin-wrapper .p-1 { padding: 0.3rem; }
+.dc-admin-wrapper .p-1\.5 { padding: 0.45rem; }
+.dc-admin-wrapper .p-2 { padding: 0.6rem; }
+.dc-admin-wrapper .p-2\.5 { padding: 0.75rem; }
+.dc-admin-wrapper .p-3 { padding: 0.95rem; }
+.dc-admin-wrapper .p-3\.5 { padding: 1.1rem; }
+.dc-admin-wrapper .p-4 { padding: 1.25rem; }
+.dc-admin-wrapper .p-5 { padding: 1.5rem; }
+.dc-admin-wrapper .p-6 { padding: 1.75rem; }
+.dc-admin-wrapper .p-8 { padding: 2.25rem; }
+
+.dc-admin-wrapper .px-1 { padding-left: 0.3rem; padding-right: 0.3rem; }
+.dc-admin-wrapper .px-1\.5 { padding-left: 0.45rem; padding-right: 0.45rem; }
+.dc-admin-wrapper .px-2 { padding-left: 0.6rem; padding-right: 0.6rem; }
+.dc-admin-wrapper .px-2\.5 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.dc-admin-wrapper .px-3 { padding-left: 0.9rem; padding-right: 0.9rem; }
+.dc-admin-wrapper .px-3\.5 { padding-left: 1.05rem; padding-right: 1.05rem; }
+.dc-admin-wrapper .px-4 { padding-left: 1.2rem; padding-right: 1.2rem; }
+.dc-admin-wrapper .px-5 { padding-left: 1.4rem; padding-right: 1.4rem; }
+.dc-admin-wrapper .px-6 { padding-left: 1.65rem; padding-right: 1.65rem; }
+.dc-admin-wrapper .px-8 { padding-left: 2rem; padding-right: 2rem; }
+
+.dc-admin-wrapper .py-0\.2 { padding-top: 0.1rem; padding-bottom: 0.1rem; }
+.dc-admin-wrapper .py-0\.5 { padding-top: 0.2rem; padding-bottom: 0.2rem; }
+.dc-admin-wrapper .py-1 { padding-top: 0.38rem; padding-bottom: 0.38rem; }
+.dc-admin-wrapper .py-1\.5 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.dc-admin-wrapper .py-2 { padding-top: 0.62rem; padding-bottom: 0.62rem; }
+.dc-admin-wrapper .py-2\.5 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.dc-admin-wrapper .py-3 { padding-top: 0.9rem; padding-bottom: 0.9rem; }
+.dc-admin-wrapper .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+.dc-admin-wrapper .py-12 { padding-top: 3rem; padding-bottom: 3rem; }
+
+.dc-admin-wrapper .pt-0\.5 { padding-top: 0.2rem; }
+.dc-admin-wrapper .pt-1 { padding-top: 0.35rem; }
+.dc-admin-wrapper .pt-2 { padding-top: 0.65rem; }
+.dc-admin-wrapper .pt-2\.5 { padding-top: 0.8rem; }
+.dc-admin-wrapper .pt-3 { padding-top: 1rem; }
+.dc-admin-wrapper .pb-1 { padding-bottom: 0.35rem; }
+.dc-admin-wrapper .pb-1\.5 { padding-bottom: 0.5rem; }
+.dc-admin-wrapper .pb-2 { padding-bottom: 0.65rem; }
+.dc-admin-wrapper .pb-2\.5 { padding-bottom: 0.8rem; }
+.dc-admin-wrapper .pb-3 { padding-bottom: 1rem; }
+.dc-admin-wrapper .pl-7 { padding-left: 2rem !important; }
+.dc-admin-wrapper .pr-3 { padding-right: 0.9rem !important; }
+
+/* Margins */
+.dc-admin-wrapper .mx-auto { margin-left: auto; margin-right: auto; }
+.dc-admin-wrapper .mt-0\.5 { margin-top: 0.2rem; }
+.dc-admin-wrapper .mt-1 { margin-top: 0.35rem; }
+.dc-admin-wrapper .mt-auto { margin-top: auto; }
+.dc-admin-wrapper .mb-1 { margin-bottom: 0.35rem; }
+.dc-admin-wrapper .mb-2 { margin-bottom: 0.65rem; }
+.dc-admin-wrapper .ml-1 { margin-left: 0.35rem; }
+
+/* Widths, Heights & Sizing */
+.dc-admin-wrapper .w-1\.5 { width: 0.375rem; }
+.dc-admin-wrapper .h-1\.5 { height: 0.375rem; }
+.dc-admin-wrapper .w-2\.5 { width: 0.625rem; }
+.dc-admin-wrapper .h-2\.5 { height: 0.625rem; }
+.dc-admin-wrapper .w-4 { width: 1rem; }
+.dc-admin-wrapper .h-4 { height: 1rem; }
+.dc-admin-wrapper .w-5 { width: 1.25rem; }
+.dc-admin-wrapper .h-5 { height: 1.25rem; }
+.dc-admin-wrapper .w-8 { width: 2rem; }
+.dc-admin-wrapper .h-8 { height: 2rem; }
+.dc-admin-wrapper .w-9 { width: 2.25rem; }
+.dc-admin-wrapper .h-9 { height: 2.25rem; }
+.dc-admin-wrapper .w-10 { width: 2.5rem; }
+.dc-admin-wrapper .h-10 { height: 2.5rem; }
+.dc-admin-wrapper .w-12 { width: 3rem; }
+.dc-admin-wrapper .h-12 { height: 3rem; }
 .dc-admin-wrapper .w-16 { width: 4rem; }
 .dc-admin-wrapper .h-16 { height: 4rem; }
 .dc-admin-wrapper .w-20 { width: 5rem; }
-.dc-admin-wrapper .h-12 { height: 3rem; }
+.dc-admin-wrapper .w-24 { width: 6rem; }
 .dc-admin-wrapper .h-24 { height: 6rem; }
+.dc-admin-wrapper .w-32 { width: 8rem; }
 .dc-admin-wrapper .h-32 { height: 8rem; }
+.dc-admin-wrapper .w-36 { width: 9rem; }
 .dc-admin-wrapper .h-36 { height: 9rem; }
+.dc-admin-wrapper .w-44 { width: 11rem; }
 .dc-admin-wrapper .h-44 { height: 11rem; }
+.dc-admin-wrapper .h-64 { height: 16rem; }
+.dc-admin-wrapper .w-full { width: 100%; }
+.dc-admin-wrapper .h-full { height: 100%; }
+.dc-admin-wrapper .min-w-0 { min-width: 0; }
+
+.dc-admin-wrapper .max-w-xs { max-width: 20rem; }
+.dc-admin-wrapper .max-w-sm { max-width: 24rem; }
+.dc-admin-wrapper .max-w-md { max-width: 28rem; }
+.dc-admin-wrapper .max-w-xl { max-width: 36rem; }
+.dc-admin-wrapper .max-w-2xl { max-width: 42rem; }
+.dc-admin-wrapper .max-w-3xl { max-width: 48rem; }
+.dc-admin-wrapper .max-w-4xl { max-width: 56rem; }
+.dc-admin-wrapper .max-w-5xl { max-width: 68rem; }
+.dc-admin-wrapper .max-w-\[160px\] { max-width: 160px; }
+
 .dc-admin-wrapper .max-h-48 { max-height: 12rem; }
 .dc-admin-wrapper .max-h-52 { max-height: 13rem; }
 .dc-admin-wrapper .max-h-56 { max-height: 14rem; }
-.dc-admin-wrapper .aspect-video { aspect-ratio: 16 / 9; }
-.dc-admin-wrapper .rounded-2xl { border-radius: 14px; }
-.dc-admin-wrapper .rounded-3xl { border-radius: 18px; }
+.dc-admin-wrapper .max-h-\[90vh\] { max-height: 90vh; }
 
+/* Border Radius & Shadows */
+.dc-admin-wrapper .rounded { border-radius: 6px; }
+.dc-admin-wrapper .rounded-lg { border-radius: 10px; }
+.dc-admin-wrapper .rounded-xl { border-radius: 12px; }
+.dc-admin-wrapper .rounded-2xl { border-radius: 16px; }
+.dc-admin-wrapper .rounded-3xl { border-radius: 22px; }
+.dc-admin-wrapper .rounded-full { border-radius: 9999px; }
+
+.dc-admin-wrapper .shadow,
+.dc-admin-wrapper .shadow-sm { box-shadow: var(--adm-shadow-xs); }
+.dc-admin-wrapper .shadow-md,
+.dc-admin-wrapper .shadow-lg { box-shadow: var(--adm-shadow-card); }
+.dc-admin-wrapper .shadow-xl,
+.dc-admin-wrapper .shadow-2xl { box-shadow: var(--adm-shadow-float); }
+.dc-admin-wrapper .shadow-inner { box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.04); }
+
+/* Overflow, Object Fit & Cursor */
+.dc-admin-wrapper .overflow-hidden { overflow: hidden; }
+.dc-admin-wrapper .overflow-x-auto { overflow-x: auto; }
+.dc-admin-wrapper .overflow-y-auto { overflow-y: auto; }
+.dc-admin-wrapper .object-cover { object-fit: cover; }
+.dc-admin-wrapper .object-contain { object-fit: contain; }
+.dc-admin-wrapper .aspect-video { aspect-ratio: 16 / 9; }
+.dc-admin-wrapper .cursor-pointer { cursor: pointer; }
+.dc-admin-wrapper .opacity-35 { opacity: 0.35; }
+.dc-admin-wrapper .opacity-40 { opacity: 0.4; }
+
+/* Keyframe Animations */
+@keyframes adm-spin { to { transform: rotate(360deg); } }
+@keyframes adm-ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+@keyframes adm-pulse { 50% { opacity: 0.5; } }
+.dc-admin-wrapper .animate-spin { animation: adm-spin 1s linear infinite; }
+.dc-admin-wrapper .animate-ping { animation: adm-ping 1.2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+.dc-admin-wrapper .animate-pulse { animation: adm-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+/* Responsive Breakpoints */
 @media (min-width: 640px) {
-  .dc-admin-wrapper .sm\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dc-admin-wrapper .sm\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .dc-admin-wrapper .sm\\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .dc-admin-wrapper .sm\\:col-span-2 { grid-column: span 2 / span 2; }
-  .dc-admin-wrapper .sm\\:flex-row { flex-direction: row; }
-  .dc-admin-wrapper .sm\\:items-center { align-items: center; }
-  .dc-admin-wrapper .sm\\:w-80 { width: 20rem; }
+  .dc-admin-wrapper .sm\:block { display: block !important; }
+  .dc-admin-wrapper .sm\:inline-flex { display: inline-flex !important; }
+  .dc-admin-wrapper .sm\:flex-row { flex-direction: row !important; }
+  .dc-admin-wrapper .sm\:items-center { align-items: center !important; }
+  .dc-admin-wrapper .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .dc-admin-wrapper .sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .dc-admin-wrapper .sm\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .dc-admin-wrapper .sm\:col-span-2 { grid-column: span 2 / span 2 !important; }
+  .dc-admin-wrapper .sm\:w-80 { width: 20rem !important; }
+  .dc-admin-wrapper .sm\:h-52 { height: 13rem !important; }
+  .dc-admin-wrapper .sm\:h-80 { height: 20rem !important; }
+  .dc-admin-wrapper .sm\:p-8 { padding: 2rem !important; }
+  .dc-admin-wrapper .sm\:p-12 { padding: 3rem !important; }
+  .dc-admin-wrapper .sm\:text-base { font-size: 1.08rem !important; }
+  .dc-admin-wrapper .sm\:text-sm { font-size: 0.95rem !important; }
+  .dc-admin-wrapper .sm\:text-3xl { font-size: 1.95rem !important; }
 }
 
 @media (min-width: 768px) {
-  .dc-admin-wrapper .md\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .dc-admin-wrapper .md\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .dc-admin-wrapper .md\\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .dc-admin-wrapper .md\\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .dc-admin-wrapper .md\\:col-span-2 { grid-column: span 2 / span 2; }
+  .dc-admin-wrapper .md\:inline { display: inline !important; }
+  .dc-admin-wrapper .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .dc-admin-wrapper .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .dc-admin-wrapper .md\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .dc-admin-wrapper .md\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+  .dc-admin-wrapper .md\:col-span-2 { grid-column: span 2 / span 2 !important; }
+  .dc-admin-wrapper .md\:w-52 { width: 13rem !important; }
+  .dc-admin-wrapper .md\:text-4xl { font-size: 2.35rem !important; }
 }
 
 @media (min-width: 1024px) {
-  .dc-admin-wrapper .lg\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .dc-admin-wrapper .lg\\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .dc-admin-wrapper .lg\\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .dc-admin-wrapper .lg\\:col-span-2 { grid-column: span 2 / span 2; }
-  .dc-admin-wrapper .lg\\:hidden { display: none !important; }
+  .dc-admin-wrapper .lg\:hidden { display: none !important; }
+  .dc-admin-wrapper .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .dc-admin-wrapper .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .dc-admin-wrapper .lg\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+  .dc-admin-wrapper .lg\:col-span-2 { grid-column: span 2 / span 2 !important; }
 }
 
-/* Mobile Drawer & Modal Backdrops */
+/* Mobile Off-Canvas Drawer & Modal Backdrops */
 .dc-admin-drawer {
   position: fixed;
   top: 0;
   left: 0;
   bottom: 0;
-  width: 280px;
+  width: 288px;
   background: var(--adm-surface);
   z-index: 100;
-  padding: 1.15rem 0.9rem;
+  padding: 1.25rem 1rem;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   box-shadow: var(--adm-shadow-float);
-  box-sizing: border-box;
+  border: none !important;
 }
 
 .dc-admin-drawer.closed { transform: translateX(-105%); }
@@ -698,13 +1154,13 @@ body:has(.dc-admin-wrapper) {
 .admin-modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(5px);
   z-index: 110;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 1.25rem;
 }
 
 .admin-modal-backdrop.hidden {
@@ -713,12 +1169,11 @@ body:has(.dc-admin-wrapper) {
 
 @media (max-width: 1023px) {
   .dc-admin-sidebar { display: none !important; }
-  .dc-admin-wrapper { padding: 0.65rem 0.65rem 2rem; }
+  .dc-admin-wrapper { padding: 0.85rem 0.85rem 2.5rem; }
+  .dc-admin-card { padding: 1.25rem; }
 }
 `;
-  document.head.appendChild(styleEl);
 }
-
 
 // ============================================================================
 // MODULE: adminState.js
@@ -6381,7 +6836,7 @@ function renderBulkToolsModule({ categories = [] }) {
                   </button>
                 </div>
 
-                <div class="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border-2 border-dashed border-emerald-400 dark:border-emerald-700 flex flex-col items-center justify-center text-center space-y-2.5">
+                <div class="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border-dashed border-emerald-400 dark:border-emerald-700 flex flex-col items-center justify-center text-center space-y-2.5">
                   <div class="text-2xl">📤</div>
                   <div class="font-black text-slate-900 dark:text-white">ধাপ ২: সীট আপলোড করেই পণ্য আপডেট করুন</div>
                   <p class="text-[10px] text-slate-500">আপনার পূরণকৃত CSV সীট ফাইল সিলেক্ট করলেই সাথে সাথে পণ্য আপলোড ও আপডেট হয়ে যাবে</p>
@@ -6434,7 +6889,7 @@ function renderBulkToolsModule({ categories = [] }) {
                   </div>
                 </div>
 
-                <div class="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border-2 border-dashed border-emerald-400 dark:border-emerald-700 flex flex-col items-center justify-center text-center space-y-2.5">
+                <div class="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border-dashed border-emerald-400 dark:border-emerald-700 flex flex-col items-center justify-center text-center space-y-2.5">
                   <div class="text-2xl">🏷️</div>
                   <div class="font-black text-slate-900 dark:text-white">ধাপ ২: সীট আপলোড করেই প্রাইজ আপডেট করুন</div>
                   <p class="text-[10px] text-slate-500">প্রাইজ সীট (.CSV) আপলোড করার সাথে সাথে স্বয়ংক্রিয়ভাবে প্রাইজ আপডেট হয়ে যাবে</p>
@@ -6504,7 +6959,7 @@ function renderBulkToolsModule({ categories = [] }) {
                   </div>
                 </div>
 
-                <div class="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border-2 border-dashed border-emerald-400 dark:border-emerald-700 flex flex-col items-center justify-center text-center space-y-2.5">
+                <div class="p-4 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20 border-dashed border-emerald-400 dark:border-emerald-700 flex flex-col items-center justify-center text-center space-y-2.5">
                   <div class="text-2xl">🖼️</div>
                   <div class="font-black text-slate-900 dark:text-white">ধাপ ২: সীট আপলোড করেই ছবি আপডেট করুন</div>
                   <p class="text-[10px] text-slate-500">ইমেজ সীট (.CSV) আপলোড করলেই প্রিভিউসহ সকল পণ্যের ছবি আপডেট হয়ে যাবে</p>
@@ -8854,6 +9309,7 @@ function renderAdminLoginView() {
   const captchaSum = captchaNum1 + captchaNum2;
 
   return `
+    <div class="dc-admin-wrapper">
     <div class="max-w-md mx-auto py-12 px-4 space-y-6">
       
       <div class="text-center space-y-2">
@@ -8938,6 +9394,7 @@ function renderAdminLoginView() {
 
       </div>
 
+    </div>
     </div>
   `;
 }
