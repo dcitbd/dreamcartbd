@@ -20,21 +20,22 @@
 
 import { apiClient } from '../../api/client.js';
 import { authStore } from '../../store/authStore.js';
-import { resolveAdminRoute } from './AdminRoutes.js';
-import { initAdminGlobalState } from './modules/adminState.js';
+import { initAdminGlobalState, resolveAdminRoute } from './modules/adminState.js';
 import { renderSidebarAndTopbar } from './modules/adminSidebar.js';
 import { renderDashboardModule } from './modules/adminDashboard.js';
-import { renderProductCatalogModule } from './modules/adminProductCatalog.js';
-import { renderAddProductModule } from './modules/adminAddProduct.js';
-import { renderCategoryBrandModule } from './modules/adminCategoryBrand.js';
-import { renderBulkToolsModule } from './modules/adminBulkTools.js';
-import { renderLandingCmsModule } from './modules/adminLandingCms.js';
+import {
+  renderProductCatalogModule,
+  renderAddProductModule,
+  renderCategoryBrandModule,
+  renderBulkToolsModule,
+  renderLandingCmsModule,
+  renderOthersModule
+} from './modules/adminProducts.js';
 import { renderOrdersModule } from './modules/adminOrders.js';
 import { renderPartnersModule } from './modules/adminPartners.js';
 import { renderReportsModule } from './modules/adminReports.js';
 import { renderInventoryModule } from './modules/adminInventory.js';
 import { renderCouriersSettingsModule } from './modules/adminCouriersSettings.js';
-import { renderOthersModule } from './modules/adminOthers.js';
 
 initAdminGlobalState();
 
