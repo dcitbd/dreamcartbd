@@ -6107,7 +6107,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <!-- SECTION 1: Columns 1 & 2 -> SKU (manual type) & P_Name (manual type) -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ১: পণ্যের কোড ও নাম (১. SKU এবং ২. P_Name)
+                    ধাপ ১: পণ্যের কোড ও নাম
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div>
