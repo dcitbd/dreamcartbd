@@ -9,17 +9,7 @@
 import { apiClient } from '../../api/client.js';
 import { authStore } from '../../store/authStore.js';
 import { formatCurrency } from '../../utils/format.js';
-import { showToast } from '../../components/Toast.js';
-
-const toast = {
-  show: (opts) => {
-    if (typeof showToast === 'function') {
-      const msg = opts && typeof opts === 'object' ? (opts.message || opts.title || 'সম্পন্ন হয়েছে') : String(opts || '');
-      const type = opts && typeof opts === 'object' ? (opts.type || 'info') : 'info';
-      showToast(msg, type);
-    }
-  }
-};
+import { toast } from '../../components/Toast.js';
 
 function injectHarmonizedAdminStyles() {
   if (typeof document === 'undefined') return;
