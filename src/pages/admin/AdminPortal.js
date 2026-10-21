@@ -6111,14 +6111,14 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div>
-                      <label class="block font-bold mb-1">1. SKU (Manual Type) *</label>
+                      <label class="block font-bold mb-1">1. SKU *</label>
                       <div class="flex gap-1.5">
                         <input type="text" id="adm-sku" required placeholder="যেমন: DCBD-WT-09" oninput="window.updateAddProductLiveSummary()" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold" />
                         <button type="button" onclick="const el=document.getElementById('adm-sku'); if(el){el.value='DCBD-'+Math.floor(1000+Math.random()*9000); window.updateAddProductLiveSummary();}" class="btn-secondary px-2.5 text-[10px] font-bold" title="অটো জেনারেট">অটো</button>
                       </div>
                     </div>
                     <div class="sm:col-span-2">
-                      <label class="block font-bold mb-1">2. P_Name (পণ্যের নাম — টাইপ করলেই AI অটো-ফিল হবে) *</label>
+                      <label class="block font-bold mb-1">2. P_Name*</label>
                       <input 
                         type="text" 
                         id="adm-name" 
@@ -6134,12 +6134,12 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <!-- SECTION 2: Columns 3, 4, 5, 6 -> Category, Sub_Category, Child_Category (AI Dropdowns) & Brand (Auto + Manual Add) -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ২: AI ক্যাটাগরি ট্রি ও ব্র্যান্ড (৩. Category &rsaquo; ৪. Sub_Category &rsaquo; ৫. Child_Category ও ৬. Brand)
+                    ধাপ ২: AI ক্যাটাগরি ট্রি ও ব্র্যান্ড
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                     <!-- 3. Category Dropdown -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">3. Category (ক্যাটাগরি ড্রপডাউন - AI) *</label>
+                      <label class="block font-bold">3. Category*</label>
                       <select id="adm-cat" required onchange="window.handleAdminCategoryChange(this.value, 'adm')" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900">
                         ${Array.from(new Set(['Smartwatches', 'Kitchen', 'Organic & Health', 'Home Appliances', 'Audio & Earbuds', 'Mobile & Computer Accessories', 'Fashion & Lifestyle', ...categories.map(c => c.category), ...products.map(p => p.category)].filter(Boolean))).map(c => `<option value="${c}">${c}</option>`).join("")}
                       </select>
@@ -6151,7 +6151,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
 
                     <!-- 4. Sub_Category Dropdown -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">4. Sub_Category (সাব-ক্যাটাগরি - AI) *</label>
+                      <label class="block font-bold">4. Sub_Category *</label>
                       <select id="adm-subcat" onchange="window.updateAddProductLiveSummary()" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900">
                         ${Array.from(new Set(['AMOLED Watch', 'Calling Watch', 'Safety Device', 'Blender', 'Cookware', 'Honey', 'Seeds', 'Oils', 'Lighting', 'Gadgets', 'TWS Earbuds', 'Smart Accessories', ...products.map(p => p.sub_category)].filter(Boolean))).map(s => `<option value="${s}">${s}</option>`).join("")}
                       </select>
@@ -6163,7 +6163,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
 
                     <!-- 5. Child_Category Dropdown -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">5. Child_Category (চাইল্ড ক্যাটাগরি - AI) *</label>
+                      <label class="block font-bold">5. Child_Category*</label>
                       <select id="adm-childcat" onchange="window.updateAddProductLiveSummary()" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900">
                         ${Array.from(new Set(['Men', 'Women', 'Fitness & GPS', 'Appliances', 'Pure Natural', 'Rechargeable', 'Standard', 'Premium Grade', ...products.map(p => p.child_category)].filter(Boolean))).map(ch => `<option value="${ch}">${ch}</option>`).join("")}
                       </select>
@@ -6191,10 +6191,10 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <div class="p-4 rounded-2xl bg-emerald-50/50 dark:bg-slate-800/60 border border-emerald-200 dark:border-slate-700 space-y-3">
                   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/70 dark:border-slate-700 pb-1.5">
                     <div class="font-black text-xs text-slate-800 dark:text-white uppercase tracking-wider">
-                      ধাপ ৩: টিয়ার ফর্মুলা প্রাইসিং ও স্টক (৭. Buying_price &rsaquo; ৮. Selling_Price &rsaquo; ৯. Stock &rsaquo; ১০. Original_Price &rsaquo; ১১. WholeSale_price &rsaquo; ১২. Min_order_Q)
+                      ধাপ ৩: টিয়ার ফর্মুলা প্রাইসিং ও স্টক
                     </div>
                     <button type="button" onclick="window.handleBuyingPriceAutoCalc(document.getElementById('adm-buyprice')?.value, 'adm', true)" class="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 underline">
-                      🔄 ক্রয় মূল্য থেকে পুনরায় অটো-ক্যালকুলেট করুন
+                      🔄 অটো-ক্যালকুলেট
                     </button>
                   </div>
 
@@ -6308,7 +6308,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                   </div>
                   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div class="lg:col-span-2 space-y-2.5">
-                      <label class="block font-bold">13. Images (ইমেজ লিঙ্ক + ম্যানুয়াল ফাইল আপলোড ও প্রিভিউ) *</label>
+                      <label class="block font-bold">13. Images *</label>
                       <input 
                         type="text" 
                         id="adm-imageurl" 
@@ -6335,7 +6335,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                     </div>
 
                     <div class="space-y-2">
-                      <label class="block font-bold">14. Slug (Auto from P_Name / Article)</label>
+                      <label class="block font-bold">14. Slug </label>
                       <input 
                         type="text" 
                         id="adm-slug" 
@@ -6347,7 +6347,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                         🔄 নাম থেকে অটো স্লাগ তৈরি করুন
                       </button>
                       <p class="text-[10px] text-slate-400 leading-relaxed">
-                        পণ্যের নাম লিখলে স্বয়ংক্রিয়ভাবে SEO-বান্ধব URL Slug তৈরি হবে।
+                        স্বয়ংক্রিয়ভাবে URL Slug তৈরি হবে।
                       </p>
                     </div>
                   </div>
@@ -6356,7 +6356,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <!-- SECTION 5: Columns 15, 16, 17 -> Description, Specification, Others -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ৫: বিবরণ, স্পেসিফিকেশন ও অন্যান্য তথ্য (১৫. Description, ১৬. Specification ও ১৭. Others)
+                    ধাপ ৫: বিবরণ, স্পেসিফিকেশন ও অন্যান্য তথ্য
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div>
@@ -6377,12 +6377,12 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <!-- SECTION 6: Columns 18, 19, 20, 21, 22, 23 -> Color, Size & Auto Dimensions (WEIGHT_KG, WIDTH_CM, LENGTH_CM, HEIGHT_CM) -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ৬: কালার, সাইজ এবং স্বয়ংক্রিয় ওজন ও পরিমাপ (১৮. Color, ১৯. Size, ২০. WEIGHT_KG, ২১. WIDTH_CM, ২২. LENGTH_CM, ২৩. HEIGHT_CM)
+                    ধাপ ৬: কালার, সাইজ এবং স্বয়ংক্রিয় ওজন ও পরিমাপ
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- 18. Color (Dropdown + Add New) -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">18. Color (ড্রপডাউন + নতুন কালার যোগ)</label>
+                      <label class="block font-bold">18. Color</label>
                       <div class="flex gap-1.5">
                         <select id="adm-color-select" onchange="window.handleSelectColorOrSizeTag('color', this, 'adm')" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold bg-white dark:bg-slate-900 flex-1">
                           <option value="">-- কালার সিলেক্ট করুন --</option>
@@ -6397,7 +6397,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
 
                     <!-- 19. Size (Dropdown + Add New) -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">19. Size (ড্রপডাউন + নতুন সাইজ যোগ)</label>
+                      <label class="block font-bold">19. Size</label>
                       <div class="flex gap-1.5">
                         <select id="adm-size-select" onchange="window.handleSelectColorOrSizeTag('size', this, 'adm')" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold bg-white dark:bg-slate-900 flex-1">
                           <option value="">-- সাইজ সিলেক্ট করুন --</option>
