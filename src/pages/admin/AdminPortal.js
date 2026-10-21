@@ -1157,6 +1157,186 @@ body:has(.dc-admin-wrapper) {
   display: none !important;
 }
 
+
+/* ==========================================================================
+   9. INTERACTIVE 3-LEVEL CATEGORY TREE & BANNER CMS STYLES
+   ========================================================================== */
+.dc-tree-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.dc-tree-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.dc-tree-node-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.62rem 1rem;
+  border-radius: 14px;
+  background: var(--adm-surface-soft);
+  color: var(--adm-text-main);
+  font-family: var(--adm-font-sans);
+  font-weight: 800;
+  font-size: 0.88rem;
+  cursor: pointer;
+  border: none !important;
+  box-shadow: var(--adm-shadow-xs);
+  transition: all 0.18s ease;
+  text-align: left;
+  flex-shrink: 0;
+}
+
+.dc-tree-node-btn:hover {
+  background: var(--adm-primary-soft);
+  color: var(--adm-primary-text);
+  transform: translateX(2px);
+}
+
+.dc-tree-node-btn.active-node {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff !important;
+  box-shadow: var(--adm-shadow-primary);
+}
+
+.dc-tree-node-btn.sub-node {
+  font-size: 0.83rem;
+  font-weight: 700;
+  padding: 0.5rem 0.9rem;
+  background: var(--adm-surface);
+}
+
+.dc-tree-node-btn.sub-node.active-node {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px -4px rgba(79, 70, 229, 0.35);
+}
+
+.dc-tree-node-btn.child-node {
+  font-size: 0.79rem;
+  font-weight: 700;
+  padding: 0.42rem 0.85rem;
+  background: var(--adm-surface);
+  cursor: default;
+}
+
+.dc-tree-leader-line {
+  flex: 1;
+  height: 2px;
+  min-width: 24px;
+  background: repeating-linear-gradient(
+    to right,
+    rgba(100, 116, 139, 0.45) 0,
+    rgba(100, 116, 139, 0.45) 6px,
+    transparent 6px,
+    transparent 11px
+  );
+}
+
+.dark .dc-tree-leader-line {
+  background: repeating-linear-gradient(
+    to right,
+    rgba(148, 163, 184, 0.35) 0,
+    rgba(148, 163, 184, 0.35) 6px,
+    transparent 6px,
+    transparent 11px
+  );
+}
+
+.dc-tree-branch-children {
+  position: relative;
+  margin-left: 1.65rem;
+  padding-left: 1.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.dc-tree-branch-children::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -0.35rem;
+  bottom: 1.15rem;
+  width: 2px;
+  background: rgba(16, 185, 129, 0.45);
+  border-radius: 2px;
+}
+
+.dc-tree-branch-children.sub-branch::before {
+  background: rgba(79, 70, 229, 0.42);
+}
+
+.dc-tree-branch-item {
+  position: relative;
+}
+
+.dc-tree-branch-item::before {
+  content: '';
+  position: absolute;
+  left: -1.45rem;
+  top: 1.15rem;
+  width: 1.25rem;
+  height: 2px;
+  background: rgba(16, 185, 129, 0.45);
+}
+
+.dc-tree-branch-children.sub-branch > .dc-tree-branch-item::before {
+  background: rgba(79, 70, 229, 0.42);
+}
+
+.dc-tree-action-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.85rem;
+  border-radius: 9999px;
+  font-family: var(--adm-font-sans);
+  font-size: 0.76rem;
+  font-weight: 800;
+  background: var(--adm-primary-soft);
+  color: var(--adm-primary-text);
+  border: none !important;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+.dc-tree-action-pill:hover {
+  background: var(--adm-primary);
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.dc-tree-action-pill.indigo-pill {
+  background: var(--adm-indigo-soft);
+  color: var(--adm-indigo-text);
+}
+
+.dc-tree-action-pill.indigo-pill:hover {
+  background: var(--adm-indigo);
+  color: #ffffff !important;
+}
+
+.dc-tree-action-pill.amber-pill {
+  background: var(--adm-amber-soft);
+  color: var(--adm-amber-text);
+}
+
+.dc-tree-action-pill.amber-pill:hover {
+  background: var(--adm-amber);
+  color: #ffffff !important;
+}
+
 @media (max-width: 1023px) {
   .dc-admin-sidebar { display: none !important; }
   .dc-admin-wrapper { padding: 0.85rem 0.85rem 2.5rem; }
@@ -1435,6 +1615,12 @@ function initAdminGlobalState() {
     if (target) {
       target.classList.remove('hidden');
       target.style.display = 'block';
+    }
+    if (pageId === 'page-prod-categories' && window.renderInteractiveCategoryTree) {
+      window.renderInteractiveCategoryTree();
+    }
+    if (pageId === 'page-prod-banners' && window.renderAdminBannersList) {
+      window.renderAdminBannersList();
     }
 
     // Update top route tabs & URL badge
@@ -3792,31 +3978,330 @@ function initAdminGlobalState() {
     window.switchAdminPage('page-prod-variants', 'group-products');
   };
 
+  // ============================================================================
+  // FULL BANNER & SLIDER CMS HANDLERS (ADD, EDIT, DELETE, STATUS TOGGLE, COUNTERS)
+  // ============================================================================
+  window.__bannerFilterStatus = window.__bannerFilterStatus || 'all';
+  window.__bannerSearchQuery = window.__bannerSearchQuery || '';
+
+  window.getAdminBannersList = function() {
+    if (window.__adminState && Array.isArray(window.__adminState.banners) && window.__adminState.banners.length > 0) {
+      return window.__adminState.banners;
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem('dcbd_sheet_banners') || 'null');
+      if (Array.isArray(saved) && saved.length > 0) {
+        if (window.__adminState) window.__adminState.banners = saved;
+        return saved;
+      }
+    } catch (e) {}
+    const defaults = [
+      { banner_id: 'BAN-01', title: 'স্মার্ট কিচেন ও নিরাপদ কুকিং গ্যাজেট', subtitle: 'সর্বোচ্চ ৩০% বিশেষ ছাড় চলছে!', image_url: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800', link_url: '/products?cat=Kitchen', cta_text: 'এখনই কিনুন →', position: 1, status: 'Active' },
+      { banner_id: 'BAN-02', title: '১০০% খাঁটি অর্গানিক ফুড ও সাপ্লিমেন্ট', subtitle: 'সুন্দরবনের প্রাকৃতিক চাকের মধু ও চিয়া সিড', image_url: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=800', link_url: '/products?cat=Organic%20%26%20Health', cta_text: 'অর্ডার করুন →', position: 2, status: 'Active' }
+    ];
+    localStorage.setItem('dcbd_sheet_banners', JSON.stringify(defaults));
+    if (window.__adminState) window.__adminState.banners = defaults;
+    return defaults;
+  };
+
+  window.syncBannerCountersEverywhere = function() {
+    const banners = window.getAdminBannersList();
+    const total = banners.length;
+    const activeCount = banners.filter(b => (b.status || 'Active') === 'Active').length;
+    const inactiveCount = total - activeCount;
+    const linkedCount = banners.filter(b => Boolean((b.link_url || '').trim())).length;
+
+    const setElText = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = val;
+    };
+    setElText('banner-kpi-total', `${total} টি`);
+    setElText('banner-kpi-active', `${activeCount} টি`);
+    setElText('banner-kpi-inactive', `${inactiveCount} টি`);
+    setElText('banner-kpi-linked', `${linkedCount} টি`);
+    setElText('banner-header-count-badge', `${total} টি স্লাইড`);
+    setElText('banner-pill-count-all', total);
+    setElText('banner-pill-count-active', activeCount);
+    setElText('banner-pill-count-inactive', inactiveCount);
+
+    document.querySelectorAll('button[data-page="page-prod-banners"] .admin-nav-counter').forEach(el => {
+      el.textContent = total;
+    });
+  };
+
+  window.renderAdminBannersList = function() {
+    const banners = window.getAdminBannersList();
+    window.syncBannerCountersEverywhere();
+
+    const container = document.getElementById('admin-banners-grid-container');
+    if (!container) return;
+
+    const filterSt = window.__bannerFilterStatus || 'all';
+    const q = (window.__bannerSearchQuery || '').toLowerCase().trim();
+
+    const filtered = banners.filter(b => {
+      const st = b.status || 'Active';
+      if (filterSt === 'Active' && st !== 'Active') return false;
+      if (filterSt === 'Inactive' && st === 'Active') return false;
+      if (q) {
+        const hay = `${b.banner_id || ''} ${b.title || ''} ${b.subtitle || ''} ${b.link_url || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="col-span-full p-8 rounded-3xl bg-slate-50 dark:bg-slate-800/50 text-center space-y-2">
+          <div class="text-2xl">🖼️</div>
+          <div class="font-bold text-slate-700 dark:text-slate-200 text-sm">কোনো ব্যানার স্লাইড পাওয়া যায়নি</div>
+          <p class="text-xs text-slate-400">নতুন ব্যানার যোগ করতে উপরের "+ নতুন ব্যানার যুক্ত করুন" বাটনে ক্লিক করুন।</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = filtered.map((bn, idx) => {
+      const safeId = String(bn.banner_id || `BAN-${idx + 1}`).replace(/'/g, "\'");
+      const isAct = (bn.status || 'Active') === 'Active';
+      const pos = bn.position || (idx + 1);
+      const cta = bn.cta_text || 'এখনই দেখুন →';
+      return `
+        <div class="admin-searchable-card bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm flex flex-col justify-between space-y-3.5">
+          <div class="space-y-3">
+            <div class="relative h-44 rounded-2xl overflow-hidden bg-slate-900">
+              <img src="${bn.image_url}" alt="${bn.title || ''}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600';" />
+              <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent flex flex-col justify-between p-3.5">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="px-2.5 py-0.5 rounded-full bg-slate-900/80 text-white font-mono text-[10px] font-bold">
+                    #${pos} • ${bn.banner_id || 'BAN-01'}
+                  </span>
+                  <button
+                    type="button"
+                    onclick="window.toggleAdminBannerStatus('${safeId}')"
+                    class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer"
+                    title="ক্লিক করে স্ট্যাটাস পরিবর্তন করুন"
+                  >
+                    ${isAct ? '● Active (সক্রিয়)' : '○ Inactive (নিষ্ক্রিয়)'}
+                  </button>
+                </div>
+                <div>
+                  <h4 class="text-white font-black text-sm line-clamp-1">${bn.title || 'শিরোনামহীন ব্যানার'}</h4>
+                  <p class="text-slate-200 text-[11px] line-clamp-1 mt-0.5">${bn.subtitle || 'কোনো সাবটাইটেল নেই'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-2 text-[11px] text-slate-500 px-1">
+              <div class="truncate">
+                <span class="font-bold text-slate-700 dark:text-slate-300">টার্গেট লিংক:</span>
+                <a href="${bn.link_url || '/products'}" target="_blank" class="font-mono text-emerald-600 hover:underline ml-1">${bn.link_url || '/products'}</a>
+              </div>
+              <span class="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[10px] flex-shrink-0">
+                ${cta}
+              </span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-1">
+              <button type="button" onclick="window.moveAdminBannerSlide('${safeId}', -1)" class="btn-secondary py-1 px-2 text-[10px] font-bold" title="উপরে নিন">↑</button>
+              <button type="button" onclick="window.moveAdminBannerSlide('${safeId}', 1)" class="btn-secondary py-1 px-2 text-[10px] font-bold" title="নিচে নিন">↓</button>
+              <button type="button" onclick="window.toggleAdminBannerStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold">
+                ${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}
+              </button>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="window.openAdminBannerModal('${safeId}')" class="btn-primary py-1.5 px-3 text-[11px] font-bold">
+                ✏️ এডিট
+              </button>
+              <button type="button" onclick="window.handleDeleteAdminBanner('${safeId}')" class="btn-secondary py-1.5 px-3 text-[11px] font-bold text-rose-600">
+                🗑️ ডিলিট
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  window.filterAdminBannersByStatus = function(status, btn) {
+    window.__bannerFilterStatus = status || 'all';
+    if (btn) {
+      document.querySelectorAll('.banner-filter-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    window.renderAdminBannersList();
+  };
+
+  window.searchAdminBanners = function(q) {
+    window.__bannerSearchQuery = q || '';
+    window.renderAdminBannersList();
+  };
+
+  window.handleBannerFileUpload = function(fileInput) {
+    const file = fileInput?.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      const dataUrl = evt.target?.result;
+      if (!dataUrl) return;
+      const urlInp = document.getElementById('adm-new-banner-image');
+      const prevImg = document.getElementById('adm-banner-modal-preview');
+      if (urlInp) urlInp.value = dataUrl;
+      if (prevImg) {
+        prevImg.src = dataUrl;
+        prevImg.classList.remove('hidden');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.openAdminBannerModal = function(bannerId = '') {
+    const modal = document.getElementById('modal-add-banner');
+    const titleEl = document.getElementById('modal-banner-header-title');
+    const idInp = document.getElementById('adm-edit-banner-id');
+    const tInp = document.getElementById('adm-new-banner-title');
+    const sInp = document.getElementById('adm-new-banner-subtitle');
+    const imgInp = document.getElementById('adm-new-banner-image');
+    const linkInp = document.getElementById('adm-new-banner-link');
+    const ctaInp = document.getElementById('adm-new-banner-cta');
+    const posInp = document.getElementById('adm-new-banner-pos');
+    const stInp = document.getElementById('adm-new-banner-status');
+    const prevImg = document.getElementById('adm-banner-modal-preview');
+
+    const banners = window.getAdminBannersList();
+    const existing = bannerId ? banners.find(b => b.banner_id === bannerId) : null;
+
+    if (existing) {
+      if (titleEl) titleEl.textContent = `✏️ ব্যানার স্লাইড এডিট করুন (${existing.banner_id})`;
+      if (idInp) idInp.value = existing.banner_id;
+      if (tInp) tInp.value = existing.title || '';
+      if (sInp) sInp.value = existing.subtitle || '';
+      if (imgInp) imgInp.value = existing.image_url || '';
+      if (linkInp) linkInp.value = existing.link_url || '/products';
+      if (ctaInp) ctaInp.value = existing.cta_text || 'এখনই কিনুন →';
+      if (posInp) posInp.value = existing.position || 1;
+      if (stInp) stInp.value = existing.status || 'Active';
+      if (prevImg && existing.image_url) {
+        prevImg.src = existing.image_url;
+        prevImg.classList.remove('hidden');
+      }
+    } else {
+      if (titleEl) titleEl.textContent = '➕ নতুন ব্যানার স্লাইড তৈরি করুন';
+      if (idInp) idInp.value = '';
+      if (tInp) tInp.value = '';
+      if (sInp) sInp.value = '';
+      if (imgInp) imgInp.value = '';
+      if (linkInp) linkInp.value = '/products';
+      if (ctaInp) ctaInp.value = 'এখনই কিনুন →';
+      if (posInp) posInp.value = banners.length + 1;
+      if (stInp) stInp.value = 'Active';
+      if (prevImg) {
+        prevImg.src = '';
+        prevImg.classList.add('hidden');
+      }
+    }
+
+    if (modal) modal.classList.remove('hidden');
+  };
+
   window.handleAdminAddBanner = async function(e) {
     e.preventDefault();
+    const editId = document.getElementById('adm-edit-banner-id')?.value.trim();
     const title = document.getElementById('adm-new-banner-title')?.value.trim();
     const subtitle = document.getElementById('adm-new-banner-subtitle')?.value.trim();
     const image = document.getElementById('adm-new-banner-image')?.value.trim();
     const link = document.getElementById('adm-new-banner-link')?.value.trim() || '/products';
+    const ctaText = document.getElementById('adm-new-banner-cta')?.value.trim() || 'এখনই কিনুন →';
+    const position = Number(document.getElementById('adm-new-banner-pos')?.value || 1);
+    const status = document.getElementById('adm-new-banner-status')?.value || 'Active';
     if (!title || !image) return;
 
-    const newBanner = {
-      banner_id: 'BAN-' + Math.floor(10 + Math.random() * 90),
-      title,
-      subtitle: subtitle || '',
-      image_url: image,
-      link_url: link,
-      status: 'Active'
-    };
+    let banners = [...window.getAdminBannersList()];
+    if (editId) {
+      banners = banners.map(b => {
+        if (b.banner_id === editId) {
+          return {
+            ...b,
+            title,
+            subtitle: subtitle || '',
+            image_url: image,
+            link_url: link,
+            cta_text: ctaText,
+            position,
+            status
+          };
+        }
+        return b;
+      });
+      if (toast && toast.show) toast.show({ type: 'success', title: 'ব্যানার আপডেট সম্পন্ন', message: `"${title}" সফলভাবে আপডেট করা হয়েছে!` });
+    } else {
+      const newBanner = {
+        banner_id: 'BAN-' + Math.floor(100 + Math.random() * 900),
+        title,
+        subtitle: subtitle || '',
+        image_url: image,
+        link_url: link,
+        cta_text: ctaText,
+        position,
+        status
+      };
+      banners.unshift(newBanner);
+      apiClient.request('banners/add', newBanner).catch(() => {});
+      if (toast && toast.show) toast.show({ type: 'success', title: 'নতুন ব্যানার যুক্ত', message: `"${title}" স্লাইডারে সংরক্ষিত হয়েছে!` });
+    }
 
-    let banners = JSON.parse(localStorage.getItem('dcbd_sheet_banners') || '[]');
-    banners.unshift(newBanner);
     localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
-    await apiClient.request('banners/add', newBanner);
+    if (window.__adminState) window.__adminState.banners = banners;
 
-    if (toast && toast.show) toast.show({ type: 'success', title: 'ব্যানার যুক্ত', message: 'নতুন ব্যানার স্লাইডারে সংরক্ষিত হয়েছে!' });
     document.getElementById('form-add-banner-dedicated')?.reset();
-    window.switchAdminPage('page-prod-banners', 'group-products');
+    document.getElementById('modal-add-banner')?.classList.add('hidden');
+    window.renderAdminBannersList();
+  };
+
+  window.toggleAdminBannerStatus = function(bannerId) {
+    let banners = [...window.getAdminBannersList()];
+    let newStatus = 'Active';
+    banners = banners.map(b => {
+      if (b.banner_id === bannerId) {
+        newStatus = (b.status || 'Active') === 'Active' ? 'Inactive' : 'Active';
+        return { ...b, status: newStatus };
+      }
+      return b;
+    });
+    localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
+    if (window.__adminState) window.__adminState.banners = banners;
+    window.renderAdminBannersList();
+    if (toast && toast.show) {
+      toast.show({ type: 'info', title: 'স্ট্যাটাস পরিবর্তিত', message: `ব্যানার #${bannerId} এখন "${newStatus}" করা হয়েছে।` });
+    }
+  };
+
+  window.moveAdminBannerSlide = function(bannerId, direction = -1) {
+    let banners = [...window.getAdminBannersList()];
+    const idx = banners.findIndex(b => b.banner_id === bannerId);
+    if (idx < 0) return;
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= banners.length) return;
+    const temp = banners[idx];
+    banners[idx] = banners[targetIdx];
+    banners[targetIdx] = temp;
+    banners = banners.map((b, i) => ({ ...b, position: i + 1 }));
+    localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
+    if (window.__adminState) window.__adminState.banners = banners;
+    window.renderAdminBannersList();
+  };
+
+  window.handleDeleteAdminBanner = function(bannerId) {
+    if (!confirm(`আপনি কি নিশ্চিত যে এই ব্যানার স্লাইডটি (${bannerId}) ডিলিট করতে চান?`)) return;
+    let banners = window.getAdminBannersList().filter(b => b.banner_id !== bannerId);
+    localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
+    if (window.__adminState) window.__adminState.banners = banners;
+    window.renderAdminBannersList();
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'ব্যানার মুছে ফেলা হয়েছে', message: `ব্যানার ${bannerId} সফলভাবে ডিলিট হয়েছে।` });
+    }
   };
 
   // ============================================================================
@@ -4768,53 +5253,603 @@ function initAdminGlobalState() {
   };
 
 
-  // CATEGORY MANAGEMENT WITH DEDUPLICATION (/admin/categroy & /admin/category)
+  // ============================================================================
+  // INTERACTIVE 3-LEVEL CATEGORY TREE MANAGEMENT (Category -> Sub Category -> Chaild Category)
+  // ============================================================================
+  window.__catTreeExpanded = window.__catTreeExpanded || {
+    categories: new Set(['Smartwatches']),
+    subCategories: new Set(['Smartwatches::AMOLED Watch'])
+  };
+  window.__catTreeSearchQuery = window.__catTreeSearchQuery || '';
+
+  window.buildNormalizedCategoryTree = function() {
+    const rawCats = (window.__adminState && window.__adminState.categories) || JSON.parse(localStorage.getItem('dcbd_sheet_categories') || '[]');
+    const prods = (window.__adminState && window.__adminState.products) || JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+
+    const catMap = new Map();
+
+    const ensureCat = (catName, catId = '', catImg = '') => {
+      const clean = String(catName || '').trim();
+      if (!clean) return null;
+      const key = clean.toLowerCase();
+      if (!catMap.has(key)) {
+        catMap.set(key, {
+          catagory_id: catId || ('CAT-' + (100 + catMap.size + 1)),
+          category: clean,
+          category_image: catImg || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+          subMap: new Map()
+        });
+      } else {
+        const entry = catMap.get(key);
+        if (catId && (!entry.catagory_id || entry.catagory_id.startsWith('CAT-'))) entry.catagory_id = catId;
+        if (catImg && !entry.category_image) entry.category_image = catImg;
+      }
+      return catMap.get(key);
+    };
+
+    const ensureSub = (catEntry, subName) => {
+      if (!catEntry) return null;
+      const cleanSub = String(subName || '').trim();
+      if (!cleanSub) return null;
+      const sKey = cleanSub.toLowerCase();
+      if (!catEntry.subMap.has(sKey)) {
+        catEntry.subMap.set(sKey, {
+          name: cleanSub,
+          children: new Set()
+        });
+      }
+      return catEntry.subMap.get(sKey);
+    };
+
+    rawCats.forEach(c => {
+      const catEntry = ensureCat(c.category, c.catagory_id, c.category_image);
+      if (!catEntry) return;
+
+      // If structured tree_subs exists, use it directly
+      if (Array.isArray(c.tree_subs) && c.tree_subs.length > 0) {
+        c.tree_subs.forEach(ts => {
+          const sEntry = ensureSub(catEntry, ts.name);
+          if (sEntry && Array.isArray(ts.children)) {
+            ts.children.forEach(ch => {
+              const cleanCh = String(ch || '').trim();
+              if (cleanCh) sEntry.children.add(cleanCh);
+            });
+          }
+        });
+      } else {
+        const subs = String(c.sub_category || '').split(',').map(s => s.trim()).filter(Boolean);
+        const childs = String(c.chail_category || c.child_category || '').split(',').map(s => s.trim()).filter(Boolean);
+        if (subs.length === 0) subs.push('General');
+        subs.forEach(s => {
+          const sEntry = ensureSub(catEntry, s);
+          if (sEntry) {
+            if (childs.length > 0) {
+              childs.forEach(ch => sEntry.children.add(ch));
+            } else {
+              sEntry.children.add('Standard');
+            }
+          }
+        });
+      }
+    });
+
+    prods.forEach(p => {
+      if (!p.category) return;
+      const catEntry = ensureCat(p.category, '', p.thumbnail || '');
+      if (!catEntry) return;
+      if (p.sub_category) {
+        const sEntry = ensureSub(catEntry, p.sub_category);
+        if (sEntry && p.child_category) {
+          sEntry.children.add(String(p.child_category).trim());
+        }
+      }
+    });
+
+    const treeList = Array.from(catMap.values()).map(c => {
+      const subsArr = Array.from(c.subMap.values()).map(s => ({
+        name: s.name,
+        children: Array.from(s.children)
+      }));
+      const flatSubs = subsArr.map(s => s.name).join(', ');
+      const flatChilds = Array.from(new Set(subsArr.flatMap(s => s.children))).join(', ');
+      return {
+        catagory_id: c.catagory_id,
+        category: c.category,
+        category_image: c.category_image,
+        sub_category: flatSubs || 'General',
+        chail_category: flatChilds || 'Standard',
+        tree_subs: subsArr
+      };
+    });
+
+    return treeList;
+  };
+
+  window.persistNormalizedCategoryTree = function(treeList) {
+    localStorage.setItem('dcbd_sheet_categories', JSON.stringify(treeList));
+    if (window.__adminState) window.__adminState.categories = treeList;
+
+    // Update sidebar category counter badge
+    document.querySelectorAll('button[data-page="page-prod-categories"] .admin-nav-counter').forEach(el => {
+      el.textContent = treeList.length;
+    });
+  };
+
+  window.toggleCategoryNode = function(catName) {
+    const exp = window.__catTreeExpanded.categories;
+    if (exp.has(catName)) exp.delete(catName);
+    else exp.add(catName);
+    window.renderInteractiveCategoryTree();
+  };
+
+  window.toggleSubCategoryNode = function(catName, subName) {
+    const key = `${catName}::${subName}`;
+    const exp = window.__catTreeExpanded.subCategories;
+    if (exp.has(key)) exp.delete(key);
+    else exp.add(key);
+    window.renderInteractiveCategoryTree();
+  };
+
+  window.expandOrCollapseAllCategoryTree = function(expand = true) {
+    const tree = window.buildNormalizedCategoryTree();
+    if (!expand) {
+      window.__catTreeExpanded.categories.clear();
+      window.__catTreeExpanded.subCategories.clear();
+    } else {
+      tree.forEach(c => {
+        window.__catTreeExpanded.categories.add(c.category);
+        (c.tree_subs || []).forEach(s => {
+          window.__catTreeExpanded.subCategories.add(`${c.category}::${s.name}`);
+        });
+      });
+    }
+    window.renderInteractiveCategoryTree();
+  };
+
+  window.searchCategoryTree = function(query) {
+    window.__catTreeSearchQuery = query || '';
+    if (window.__catTreeSearchQuery.trim()) {
+      window.expandOrCollapseAllCategoryTree(true);
+    } else {
+      window.renderInteractiveCategoryTree();
+    }
+  };
+
+  // Prompt/Modal-based quick add & edit for Category, Sub Category, Chaild Category
+  window.openCategoryTreeActionModal = function(mode, catName = '', subName = '', childName = '') {
+    const modal = document.getElementById('modal-category-tree-action');
+    const modeInp = document.getElementById('cat-tree-modal-mode');
+    const parentCatInp = document.getElementById('cat-tree-modal-parent-cat');
+    const parentSubInp = document.getElementById('cat-tree-modal-parent-sub');
+    const oldValInp = document.getElementById('cat-tree-modal-old-val');
+    const titleEl = document.getElementById('cat-tree-modal-title');
+    const labelEl = document.getElementById('cat-tree-modal-label');
+    const nameInp = document.getElementById('cat-tree-modal-input');
+    const extraBox = document.getElementById('cat-tree-modal-extra-fields');
+
+    if (!modal || !nameInp) return;
+
+    modeInp.value = mode;
+    parentCatInp.value = catName || '';
+    parentSubInp.value = subName || '';
+    oldValInp.value = '';
+    if (extraBox) extraBox.classList.add('hidden');
+
+    if (mode === 'add_cat') {
+      titleEl.textContent = '➕ নতুন Category (মূল ক্যাটাগরি) যুক্ত করুন';
+      labelEl.textContent = 'Category নাম লিখুন *';
+      nameInp.value = '';
+      nameInp.placeholder = 'যেমন: Smartwatches / Electronics / Fashion';
+      if (extraBox) extraBox.classList.remove('hidden');
+    } else if (mode === 'edit_cat') {
+      titleEl.textContent = `✏️ Category নাম পরিবর্তন (${catName})`;
+      labelEl.textContent = 'নতুন Category নাম লিখুন *';
+      nameInp.value = catName;
+      oldValInp.value = catName;
+    } else if (mode === 'add_sub') {
+      titleEl.textContent = `➕ "${catName}"-এ নতুন Sub Category যুক্ত করুন`;
+      labelEl.textContent = `Sub Category নাম লিখুন (Parent: ${catName}) *`;
+      nameInp.value = '';
+      nameInp.placeholder = 'যেমন: Calling Watch / AMOLED Watch / Blender';
+    } else if (mode === 'edit_sub') {
+      titleEl.textContent = `✏️ Sub Category এডিট করুন (${subName})`;
+      labelEl.textContent = 'নতুন Sub Category নাম লিখুন *';
+      nameInp.value = subName;
+      oldValInp.value = subName;
+    } else if (mode === 'add_child') {
+      titleEl.textContent = `➕ "${subName}"-এ নতুন Chaild Category যুক্ত করুন`;
+      labelEl.textContent = `Chaild Category নাম লিখুন (Sub: ${subName}) *`;
+      nameInp.value = '';
+      nameInp.placeholder = 'যেমন: Men / Women / Fitness & GPS / Pure Natural';
+    } else if (mode === 'edit_child') {
+      titleEl.textContent = `✏️ Chaild Category এডিট করুন (${childName})`;
+      labelEl.textContent = 'নতুন Chaild Category নাম লিখুন *';
+      nameInp.value = childName;
+      oldValInp.value = childName;
+    }
+
+    modal.classList.remove('hidden');
+    setTimeout(() => nameInp.focus(), 50);
+  };
+
+  window.handleSaveCategoryTreeModal = function(e) {
+    e.preventDefault();
+    const mode = document.getElementById('cat-tree-modal-mode')?.value;
+    const parentCat = document.getElementById('cat-tree-modal-parent-cat')?.value;
+    const parentSub = document.getElementById('cat-tree-modal-parent-sub')?.value;
+    const oldVal = document.getElementById('cat-tree-modal-old-val')?.value;
+    const newVal = (document.getElementById('cat-tree-modal-input')?.value || '').trim();
+    if (!newVal) return;
+
+    let tree = window.buildNormalizedCategoryTree();
+
+    if (mode === 'add_cat') {
+      if (tree.some(c => c.category.toLowerCase() === newVal.toLowerCase())) {
+        if (toast && toast.show) toast.show({ type: 'warning', title: 'ডুপ্লিকেট ক্যাটাগরি', message: `"${newVal}" ইতিমধ্যে ক্যাটাগরি ট্রিতে বিদ্যমান!` });
+        return;
+      }
+      const initSub = (document.getElementById('cat-tree-modal-init-sub')?.value || '').trim() || 'General';
+      const initChild = (document.getElementById('cat-tree-modal-init-child')?.value || '').trim() || 'Standard';
+      const subArr = initSub.split(',').map(s => s.trim()).filter(Boolean).map(s => ({
+        name: s,
+        children: initChild.split(',').map(ch => ch.trim()).filter(Boolean)
+      }));
+      tree.unshift({
+        catagory_id: 'CAT-' + Math.floor(100 + Math.random() * 900),
+        category: newVal,
+        category_image: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+        sub_category: subArr.map(s => s.name).join(', '),
+        chail_category: Array.from(new Set(subArr.flatMap(s => s.children))).join(', '),
+        tree_subs: subArr
+      });
+      window.__catTreeExpanded.categories.add(newVal);
+      if (subArr[0]) window.__catTreeExpanded.subCategories.add(`${newVal}::${subArr[0].name}`);
+      if (toast && toast.show) toast.show({ type: 'success', title: 'Category যুক্ত হয়েছে', message: `"${newVal}" ক্যাটাগরি ট্রিতে যুক্ত হয়েছে!` });
+    } else if (mode === 'edit_cat') {
+      tree = tree.map(c => {
+        if (c.category === oldVal) {
+          c.category = newVal;
+        }
+        return c;
+      });
+      window.__catTreeExpanded.categories.add(newVal);
+      if (toast && toast.show) toast.show({ type: 'success', title: 'Category আপডেট', message: `"${oldVal}" পরিবর্তিত হয়ে "${newVal}" হয়েছে!` });
+    } else if (mode === 'add_sub') {
+      tree = tree.map(c => {
+        if (c.category === parentCat) {
+          c.tree_subs = c.tree_subs || [];
+          if (!c.tree_subs.some(s => s.name.toLowerCase() === newVal.toLowerCase())) {
+            c.tree_subs.push({ name: newVal, children: ['Standard'] });
+          }
+          c.sub_category = c.tree_subs.map(s => s.name).join(', ');
+        }
+        return c;
+      });
+      window.__catTreeExpanded.categories.add(parentCat);
+      window.__catTreeExpanded.subCategories.add(`${parentCat}::${newVal}`);
+      if (toast && toast.show) toast.show({ type: 'success', title: 'Sub Category যুক্ত', message: `"${parentCat}" এর অধীনে "${newVal}" যুক্ত হয়েছে!` });
+    } else if (mode === 'edit_sub') {
+      tree = tree.map(c => {
+        if (c.category === parentCat) {
+          c.tree_subs = (c.tree_subs || []).map(s => s.name === oldVal ? { ...s, name: newVal } : s);
+          c.sub_category = c.tree_subs.map(s => s.name).join(', ');
+        }
+        return c;
+      });
+      window.__catTreeExpanded.subCategories.add(`${parentCat}::${newVal}`);
+      if (toast && toast.show) toast.show({ type: 'success', title: 'Sub Category আপডেট', message: `"${oldVal}" পরিবর্তিত হয়ে "${newVal}" হয়েছে!` });
+    } else if (mode === 'add_child') {
+      tree = tree.map(c => {
+        if (c.category === parentCat) {
+          c.tree_subs = (c.tree_subs || []).map(s => {
+            if (s.name === parentSub) {
+              const children = Array.isArray(s.children) ? [...s.children] : [];
+              if (!children.some(ch => ch.toLowerCase() === newVal.toLowerCase())) {
+                children.push(newVal);
+              }
+              return { ...s, children };
+            }
+            return s;
+          });
+          c.chail_category = Array.from(new Set(c.tree_subs.flatMap(s => s.children || []))).join(', ');
+        }
+        return c;
+      });
+      window.__catTreeExpanded.categories.add(parentCat);
+      window.__catTreeExpanded.subCategories.add(`${parentCat}::${parentSub}`);
+      if (toast && toast.show) toast.show({ type: 'success', title: 'Chaild Category যুক্ত', message: `"${parentSub}" এর অধীনে "${newVal}" যুক্ত হয়েছে!` });
+    } else if (mode === 'edit_child') {
+      tree = tree.map(c => {
+        if (c.category === parentCat) {
+          c.tree_subs = (c.tree_subs || []).map(s => {
+            if (s.name === parentSub) {
+              return { ...s, children: (s.children || []).map(ch => ch === oldVal ? newVal : ch) };
+            }
+            return s;
+          });
+          c.chail_category = Array.from(new Set(c.tree_subs.flatMap(s => s.children || []))).join(', ');
+        }
+        return c;
+      });
+      if (toast && toast.show) toast.show({ type: 'success', title: 'Chaild Category আপডেট', message: `"${oldVal}" পরিবর্তিত হয়ে "${newVal}" হয়েছে!` });
+    }
+
+    window.persistNormalizedCategoryTree(tree);
+    document.getElementById('modal-category-tree-action')?.classList.add('hidden');
+    window.renderInteractiveCategoryTree();
+  };
+
+  window.deleteCategoryTreeItem = function(level, catName, subName = '', childName = '') {
+    let tree = window.buildNormalizedCategoryTree();
+    if (level === 'cat') {
+      if (!confirm(`আপনি কি নিশ্চিত যে "${catName}" মূল ক্যাটাগরি এবং এর সকল সাব/চাইল্ড ক্যাটাগরি মুছে ফেলতে চান?`)) return;
+      tree = tree.filter(c => c.category !== catName);
+    } else if (level === 'sub') {
+      if (!confirm(`"${catName}" থেকে সাব-ক্যাটাগরি "${subName}" মুছে ফেলতে চান?`)) return;
+      tree = tree.map(c => {
+        if (c.category === catName) {
+          c.tree_subs = (c.tree_subs || []).filter(s => s.name !== subName);
+          c.sub_category = c.tree_subs.map(s => s.name).join(', ');
+          c.chail_category = Array.from(new Set(c.tree_subs.flatMap(s => s.children || []))).join(', ');
+        }
+        return c;
+      });
+    } else if (level === 'child') {
+      if (!confirm(`"${subName}" থেকে চাইল্ড ক্যাটাগরি "${childName}" মুছে ফেলতে চান?`)) return;
+      tree = tree.map(c => {
+        if (c.category === catName) {
+          c.tree_subs = (c.tree_subs || []).map(s => {
+            if (s.name === subName) {
+              return { ...s, children: (s.children || []).filter(ch => ch !== childName) };
+            }
+            return s;
+          });
+          c.chail_category = Array.from(new Set(c.tree_subs.flatMap(s => s.children || []))).join(', ');
+        }
+        return c;
+      });
+    }
+    window.persistNormalizedCategoryTree(tree);
+    window.renderInteractiveCategoryTree();
+    if (toast && toast.show) toast.show({ type: 'success', title: 'মুছে ফেলা হয়েছে', message: 'ক্যাটাগরি ট্রি সফলভাবে আপডেট করা হয়েছে।' });
+  };
+
+  window.renderInteractiveCategoryTree = function() {
+    const container = document.getElementById('admin-interactive-cat-tree-mount');
+    const tree = window.buildNormalizedCategoryTree();
+    const prods = (window.__adminState && window.__adminState.products) || [];
+
+    // Update KPI counters on Category Page
+    const totalCats = tree.length;
+    const totalSubs = tree.reduce((acc, c) => acc + (c.tree_subs ? c.tree_subs.length : 0), 0);
+    const totalChilds = tree.reduce((acc, c) => acc + (c.tree_subs ? c.tree_subs.reduce((sAcc, s) => sAcc + (s.children ? s.children.length : 0), 0) : 0), 0);
+
+    const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setEl('cattree-kpi-cats', `${totalCats} টি`);
+    setEl('cattree-kpi-subs', `${totalSubs} টি`);
+    setEl('cattree-kpi-childs', `${totalChilds} টি`);
+    setEl('cattree-kpi-prods', `${prods.length} টি`);
+
+    if (!container) return;
+
+    const q = (window.__catTreeSearchQuery || '').toLowerCase().trim();
+    const filteredTree = tree.filter(c => {
+      if (!q) return true;
+      const hay = `${c.category} ${c.sub_category} ${c.chail_category}`.toLowerCase();
+      return hay.includes(q);
+    });
+
+    if (filteredTree.length === 0) {
+      container.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs rounded-2xl bg-slate-50 dark:bg-slate-800/40">কোনো ক্যাটাগরি পাওয়া যায়নি।</div>`;
+      return;
+    }
+
+    container.innerHTML = filteredTree.map(c => {
+      const safeCat = c.category.replace(/'/g, "\'");
+      const isCatOpen = window.__catTreeExpanded.categories.has(c.category);
+      const subs = c.tree_subs || [];
+      const catProdCount = prods.filter(p => (p.category || '').toLowerCase() === c.category.toLowerCase()).length;
+
+      return `
+        <div class="p-4 rounded-3xl bg-slate-50/80 dark:bg-slate-800/50 space-y-2 shadow-sm">
+          <!-- LEVEL 1: CATEGORY ROW -->
+          <div class="dc-tree-row">
+            <button
+              type="button"
+              onclick="window.toggleCategoryNode('${safeCat}')"
+              class="dc-tree-node-btn ${isCatOpen ? 'active-node' : ''}"
+              title="ক্লিক করে সাব-ক্যাটাগরি দেখুন বা লুকান"
+            >
+              <span class="text-xs font-mono">${isCatOpen ? '▼' : '▶'}</span>
+              <span>🗂️ ${c.category}</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-mono ${isCatOpen ? 'bg-white/20 text-white' : 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'}">
+                ${subs.length} Sub • ${catProdCount} পণ্য
+              </span>
+            </button>
+
+            <div class="dc-tree-leader-line"></div>
+
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <button
+                type="button"
+                onclick="window.openCategoryTreeActionModal('add_sub', '${safeCat}')"
+                class="dc-tree-action-pill indigo-pill"
+                title="এই ক্যাটাগরিতে নতুন সাব-ক্যাটাগরি যোগ করুন"
+              >
+                + (add Sub category)
+              </button>
+              <button
+                type="button"
+                onclick="window.openCategoryTreeActionModal('edit_cat', '${safeCat}')"
+                class="btn-secondary py-1 px-2.5 text-[10px] font-bold"
+                title="ক্যাটাগরি এডিট করুন"
+              >
+                ✏️
+              </button>
+              <button
+                type="button"
+                onclick="window.deleteCategoryTreeItem('cat', '${safeCat}')"
+                class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-rose-600"
+                title="ক্যাটাগরি মুছুন"
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+
+          <!-- LEVEL 2: SUB CATEGORY BRANCH (shown after clicking Category) -->
+          <div class="dc-tree-branch-children ${isCatOpen ? '' : 'hidden'}">
+            ${subs.map(s => {
+              const safeSub = s.name.replace(/'/g, "\'");
+              const subKey = `${c.category}::${s.name}`;
+              const isSubOpen = window.__catTreeExpanded.subCategories.has(subKey);
+              const childs = s.children || [];
+
+              return `
+                <div class="dc-tree-branch-item space-y-2">
+                  <div class="dc-tree-row">
+                    <button
+                      type="button"
+                      onclick="window.toggleSubCategoryNode('${safeCat}', '${safeSub}')"
+                      class="dc-tree-node-btn sub-node ${isSubOpen ? 'active-node' : ''}"
+                      title="ক্লিক করে চাইল্ড ক্যাটাগরি দেখুন বা লুকান"
+                    >
+                      <span class="text-[10px] font-mono">${isSubOpen ? '▼' : '▶'}</span>
+                      <span>📂 ${s.name}</span>
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-mono ${isSubOpen ? 'bg-white/20 text-white' : 'bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'}">
+                        ${childs.length} Chaild
+                      </span>
+                    </button>
+
+                    <div class="dc-tree-leader-line"></div>
+
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                      <button
+                        type="button"
+                        onclick="window.openCategoryTreeActionModal('add_child', '${safeCat}', '${safeSub}')"
+                        class="dc-tree-action-pill amber-pill"
+                        title="এই সাব-ক্যাটাগরিতে নতুন চাইল্ড ক্যাটাগরি যোগ করুন"
+                      >
+                        + (add chaild category)
+                      </button>
+                      <button
+                        type="button"
+                        onclick="window.openCategoryTreeActionModal('edit_sub', '${safeCat}', '${safeSub}')"
+                        class="btn-secondary py-1 px-2 text-[10px] font-bold"
+                        title="সাব-ক্যাটাগরি এডিট"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        type="button"
+                        onclick="window.deleteCategoryTreeItem('sub', '${safeCat}', '${safeSub}')"
+                        class="btn-secondary py-1 px-2 text-[10px] font-bold text-rose-600"
+                        title="সাব-ক্যাটাগরি মুছুন"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- LEVEL 3: CHAILD CATEGORY BRANCH (shown after clicking Sub Category) -->
+                  <div class="dc-tree-branch-children sub-branch ${isSubOpen ? '' : 'hidden'}">
+                    ${childs.map(ch => {
+                      const safeChild = String(ch).replace(/'/g, "\'");
+                      return `
+                        <div class="dc-tree-branch-item">
+                          <div class="dc-tree-row">
+                            <div class="dc-tree-node-btn child-node">
+                              <span class="text-amber-500">🏷️</span>
+                              <span>${ch}</span>
+                              <span class="text-[10px] text-slate-400 font-normal">(Chaild Category)</span>
+                            </div>
+
+                            <div class="dc-tree-leader-line"></div>
+
+                            <div class="flex items-center gap-1.5 flex-shrink-0">
+                              <button
+                                type="button"
+                                onclick="window.openCategoryTreeActionModal('add_child', '${safeCat}', '${safeSub}')"
+                                class="dc-tree-action-pill amber-pill"
+                              >
+                                + (add chaild category)
+                              </button>
+                              <button
+                                type="button"
+                                onclick="window.openCategoryTreeActionModal('edit_child', '${safeCat}', '${safeSub}', '${safeChild}')"
+                                class="btn-secondary py-1 px-2 text-[10px] font-bold"
+                                title="চাইল্ড ক্যাটাগরি এডিট"
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                type="button"
+                                onclick="window.deleteCategoryTreeItem('child', '${safeCat}', '${safeSub}', '${safeChild}')"
+                                class="btn-secondary py-1 px-2 text-[10px] font-bold text-rose-600"
+                                title="চাইল্ড ক্যাটাগরি মুছুন"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
   window.handleAdminAddCategory = async function(e) {
     e.preventDefault();
     const catName = (document.getElementById('adm-new-cat-name')?.value || '').trim();
-    const subcats = (document.getElementById('adm-new-cat-sub')?.value || '').trim();
-    const childcats = (document.getElementById('adm-new-cat-child')?.value || '').trim();
+    const subcats = (document.getElementById('adm-new-cat-sub')?.value || '').trim() || 'General';
+    const childcats = (document.getElementById('adm-new-cat-child')?.value || '').trim() || 'Standard';
     const image = (document.getElementById('adm-new-cat-image')?.value || '').trim() || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
     if (!catName) return;
 
-    let categories = (window.__adminState && window.__adminState.categories) || JSON.parse(localStorage.getItem('dcbd_sheet_categories') || '[]');
-    const exists = categories.some(c => (c.category || '').toLowerCase() === catName.toLowerCase());
-    if (exists) {
+    let tree = window.buildNormalizedCategoryTree();
+    if (tree.some(c => (c.category || '').toLowerCase() === catName.toLowerCase())) {
       if (toast && toast.show) toast.show({ type: 'warning', title: 'ডুপ্লিকেট ক্যাটাগরি', message: `"${catName}" ইতিমধ্যে তালিকায় রয়েছে!` });
-      else alert(`"${catName}" নামের ক্যাটাগরি ইতিমধ্যে বিদ্যমান রয়েছে!`);
       return;
     }
+
+    const subList = subcats.split(',').map(s => s.trim()).filter(Boolean);
+    const childList = childcats.split(',').map(ch => ch.trim()).filter(Boolean);
+    const treeSubs = (subList.length ? subList : ['General']).map(s => ({
+      name: s,
+      children: childList.length ? childList : ['Standard']
+    }));
 
     const newCat = {
       catagory_id: 'CAT-' + Math.floor(100 + Math.random() * 900),
       category: catName,
-      sub_category: subcats || 'Standard',
-      chail_category: childcats || 'General',
-      category_image: image
+      sub_category: subcats,
+      chail_category: childcats,
+      category_image: image,
+      tree_subs: treeSubs
     };
 
-    categories.unshift(newCat);
-    localStorage.setItem('dcbd_sheet_categories', JSON.stringify(categories));
-    if (window.__adminState) window.__adminState.categories = categories;
+    tree.unshift(newCat);
+    window.__catTreeExpanded.categories.add(catName);
+    if (treeSubs[0]) window.__catTreeExpanded.subCategories.add(`${catName}::${treeSubs[0].name}`);
+    window.persistNormalizedCategoryTree(tree);
     await apiClient.request('categories/add', newCat).catch(() => {});
 
     if (toast && toast.show) {
-      toast.show({ type: 'success', title: 'ক্যাটাগরি যুক্ত হয়েছে', message: `"${catName}" সফলভাবে সংরক্ষিত হয়েছে!` });
+      toast.show({ type: 'success', title: 'ক্যাটাগরি যুক্ত হয়েছে', message: `"${catName}" ক্যাটাগরি ট্রিতে সফলভাবে সংরক্ষিত হয়েছে!` });
     }
     document.getElementById('form-add-category-dedicated')?.reset();
-    if (window.router && window.router.resolve) window.router.resolve();
+    window.renderInteractiveCategoryTree();
   };
 
   window.handleDeleteCategory = function(catName) {
-    if (!confirm(`আপনি কি নিশ্চিত যে "${catName}" ক্যাটাগরিটি মুছে ফেলতে চান?`)) return;
-    let categories = (window.__adminState && window.__adminState.categories) || JSON.parse(localStorage.getItem('dcbd_sheet_categories') || '[]');
-    categories = categories.filter(c => (c.category || '').toLowerCase() !== catName.toLowerCase());
-    localStorage.setItem('dcbd_sheet_categories', JSON.stringify(categories));
-    if (window.__adminState) window.__adminState.categories = categories;
-    if (toast && toast.show) {
-      toast.show({ type: 'success', title: 'ক্যাটাগরি মোছা হয়েছে', message: `"${catName}" মুছে ফেলা হয়েছে!` });
-    }
-    if (window.router && window.router.resolve) window.router.resolve();
+    window.deleteCategoryTreeItem('cat', catName);
   };
 
   window.handleAdminLogout = function() {
@@ -6083,7 +7118,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
             <div class="dc-admin-card space-y-4 max-w-5xl">
               <div class="border-b pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h3 class="font-bold text-base text-slate-900 dark:text-white">➕ নতুন পণ্য যোগ করুন</h3>
+                  <h3 class="font-bold text-base text-slate-900 dark:text-white">➕ নতুন পণ্য যোগ করুন (23-Column AI Smart Product Form)</h3>
                   <p class="text-[11px] text-slate-400">পণ্যের নাম দিলেই AI সার্চের মাধ্যমে ক্যাটাগরি &rsaquo; সাব-ক্যাটাগরি &rsaquo; চাইল্ড ক্যাটাগরি, ব্র্যান্ড, স্লাগ ও ওজন অটো বসে যাবে এবং ক্রয় মূল্য দিলে টিয়ার ফর্মুলায় সকল মূল্য হিসাব হবে</p>
                 </div>
                 <button class="btn-secondary py-1.5 px-3 text-xs font-bold self-start" onclick="switchAdminPage('page-prod-all', 'group-products')">← সকল পণ্য তালিকায় ফিরে যান</button>
@@ -6107,18 +7142,18 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <!-- SECTION 1: Columns 1 & 2 -> SKU (manual type) & P_Name (manual type) -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ১: পণ্যের কোড ও নাম
+                    ধাপ ১: পণ্যের কোড ও নাম (১. SKU এবং ২. P_Name)
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div>
-                      <label class="block font-bold mb-1">1. SKU *</label>
+                      <label class="block font-bold mb-1">1. SKU (Manual Type) *</label>
                       <div class="flex gap-1.5">
                         <input type="text" id="adm-sku" required placeholder="যেমন: DCBD-WT-09" oninput="window.updateAddProductLiveSummary()" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold" />
                         <button type="button" onclick="const el=document.getElementById('adm-sku'); if(el){el.value='DCBD-'+Math.floor(1000+Math.random()*9000); window.updateAddProductLiveSummary();}" class="btn-secondary px-2.5 text-[10px] font-bold" title="অটো জেনারেট">অটো</button>
                       </div>
                     </div>
                     <div class="sm:col-span-2">
-                      <label class="block font-bold mb-1">2. P_Name*</label>
+                      <label class="block font-bold mb-1">2. P_Name (পণ্যের নাম — টাইপ করলেই AI অটো-ফিল হবে) *</label>
                       <input 
                         type="text" 
                         id="adm-name" 
@@ -6134,12 +7169,12 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <!-- SECTION 2: Columns 3, 4, 5, 6 -> Category, Sub_Category, Child_Category (AI Dropdowns) & Brand (Auto + Manual Add) -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ২: AI ক্যাটাগরি ট্রি ও ব্র্যান্ড
+                    ধাপ ২: AI ক্যাটাগরি ট্রি ও ব্র্যান্ড (৩. Category &rsaquo; ৪. Sub_Category &rsaquo; ৫. Child_Category ও ৬. Brand)
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                     <!-- 3. Category Dropdown -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">3. Category*</label>
+                      <label class="block font-bold">3. Category (ক্যাটাগরি ড্রপডাউন - AI) *</label>
                       <select id="adm-cat" required onchange="window.handleAdminCategoryChange(this.value, 'adm')" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900">
                         ${Array.from(new Set(['Smartwatches', 'Kitchen', 'Organic & Health', 'Home Appliances', 'Audio & Earbuds', 'Mobile & Computer Accessories', 'Fashion & Lifestyle', ...categories.map(c => c.category), ...products.map(p => p.category)].filter(Boolean))).map(c => `<option value="${c}">${c}</option>`).join("")}
                       </select>
@@ -6151,7 +7186,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
 
                     <!-- 4. Sub_Category Dropdown -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">4. Sub_Category *</label>
+                      <label class="block font-bold">4. Sub_Category (সাব-ক্যাটাগরি - AI) *</label>
                       <select id="adm-subcat" onchange="window.updateAddProductLiveSummary()" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900">
                         ${Array.from(new Set(['AMOLED Watch', 'Calling Watch', 'Safety Device', 'Blender', 'Cookware', 'Honey', 'Seeds', 'Oils', 'Lighting', 'Gadgets', 'TWS Earbuds', 'Smart Accessories', ...products.map(p => p.sub_category)].filter(Boolean))).map(s => `<option value="${s}">${s}</option>`).join("")}
                       </select>
@@ -6163,7 +7198,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
 
                     <!-- 5. Child_Category Dropdown -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">5. Child_Category*</label>
+                      <label class="block font-bold">5. Child_Category (চাইল্ড ক্যাটাগরি - AI) *</label>
                       <select id="adm-childcat" onchange="window.updateAddProductLiveSummary()" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900">
                         ${Array.from(new Set(['Men', 'Women', 'Fitness & GPS', 'Appliances', 'Pure Natural', 'Rechargeable', 'Standard', 'Premium Grade', ...products.map(p => p.child_category)].filter(Boolean))).map(ch => `<option value="${ch}">${ch}</option>`).join("")}
                       </select>
@@ -6191,10 +7226,10 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <div class="p-4 rounded-2xl bg-emerald-50/50 dark:bg-slate-800/60 border border-emerald-200 dark:border-slate-700 space-y-3">
                   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/70 dark:border-slate-700 pb-1.5">
                     <div class="font-black text-xs text-slate-800 dark:text-white uppercase tracking-wider">
-                      ধাপ ৩: টিয়ার ফর্মুলা প্রাইসিং ও স্টক
+                      ধাপ ৩: টিয়ার ফর্মুলা প্রাইসিং ও স্টক (৭. Buying_price &rsaquo; ৮. Selling_Price &rsaquo; ৯. Stock &rsaquo; ১০. Original_Price &rsaquo; ১১. WholeSale_price &rsaquo; ১২. Min_order_Q)
                     </div>
                     <button type="button" onclick="window.handleBuyingPriceAutoCalc(document.getElementById('adm-buyprice')?.value, 'adm', true)" class="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 underline">
-                      🔄 অটো-ক্যালকুলেট
+                      🔄 ক্রয় মূল্য থেকে পুনরায় অটো-ক্যালকুলেট করুন
                     </button>
                   </div>
 
@@ -6308,7 +7343,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                   </div>
                   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div class="lg:col-span-2 space-y-2.5">
-                      <label class="block font-bold">13. Images *</label>
+                      <label class="block font-bold">13. Images (ইমেজ লিঙ্ক + ম্যানুয়াল ফাইল আপলোড ও প্রিভিউ) *</label>
                       <input 
                         type="text" 
                         id="adm-imageurl" 
@@ -6335,7 +7370,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                     </div>
 
                     <div class="space-y-2">
-                      <label class="block font-bold">14. Slug </label>
+                      <label class="block font-bold">14. Slug (Auto from P_Name / Article)</label>
                       <input 
                         type="text" 
                         id="adm-slug" 
@@ -6347,7 +7382,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                         🔄 নাম থেকে অটো স্লাগ তৈরি করুন
                       </button>
                       <p class="text-[10px] text-slate-400 leading-relaxed">
-                        স্বয়ংক্রিয়ভাবে URL Slug তৈরি হবে।
+                        পণ্যের নাম লিখলে স্বয়ংক্রিয়ভাবে SEO-বান্ধব URL Slug তৈরি হবে।
                       </p>
                     </div>
                   </div>
@@ -6356,7 +7391,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <!-- SECTION 5: Columns 15, 16, 17 -> Description, Specification, Others -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ৫: বিবরণ, স্পেসিফিকেশন ও অন্যান্য তথ্য
+                    ধাপ ৫: বিবরণ, স্পেসিফিকেশন ও অন্যান্য তথ্য (১৫. Description, ১৬. Specification ও ১৭. Others)
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div>
@@ -6377,12 +7412,12 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <!-- SECTION 6: Columns 18, 19, 20, 21, 22, 23 -> Color, Size & Auto Dimensions (WEIGHT_KG, WIDTH_CM, LENGTH_CM, HEIGHT_CM) -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ৬: কালার, সাইজ এবং স্বয়ংক্রিয় ওজন ও পরিমাপ
+                    ধাপ ৬: কালার, সাইজ এবং স্বয়ংক্রিয় ওজন ও পরিমাপ (১৮. Color, ১৯. Size, ২০. WEIGHT_KG, ২১. WIDTH_CM, ২২. LENGTH_CM, ২৩. HEIGHT_CM)
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- 18. Color (Dropdown + Add New) -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">18. Color</label>
+                      <label class="block font-bold">18. Color (ড্রপডাউন + নতুন কালার যোগ)</label>
                       <div class="flex gap-1.5">
                         <select id="adm-color-select" onchange="window.handleSelectColorOrSizeTag('color', this, 'adm')" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold bg-white dark:bg-slate-900 flex-1">
                           <option value="">-- কালার সিলেক্ট করুন --</option>
@@ -6397,7 +7432,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
 
                     <!-- 19. Size (Dropdown + Add New) -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">19. Size</label>
+                      <label class="block font-bold">19. Size (ড্রপডাউন + নতুন সাইজ যোগ)</label>
                       <div class="flex gap-1.5">
                         <select id="adm-size-select" onchange="window.handleSelectColorOrSizeTag('size', this, 'adm')" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold bg-white dark:bg-slate-900 flex-1">
                           <option value="">-- সাইজ সিলেক্ট করুন --</option>
@@ -6478,93 +7513,195 @@ function renderCategoryBrandModule({ products = [], categories = [], brands = []
   const dedupedCategories = Array.from(uniqueCatMap.values());
 
   return `
-    <!-- 3. Deduplicated Category Management Page (ক্যাটাগরি তালিকা) -->
-    <div id="page-prod-categories" class="admin-page-view hidden space-y-4">
+    <!-- 3. Interactive 3-Level Category Tree Page (ক্যাটাগরি ট্রি — Category > Sub Category > Chaild Category) -->
+    <div id="page-prod-categories" class="admin-page-view hidden space-y-5">
+      
+      <!-- 4 Counter Cards for Category Tree -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <div class="admin-kpi-card p-3.5">
+          <div class="flex items-center justify-between text-slate-400">
+            <span class="text-[10px] font-bold uppercase">মোট Category</span>
+            <span>🗂️</span>
+          </div>
+          <div id="cattree-kpi-cats" class="text-lg font-black text-slate-900 dark:text-white mt-1 font-mono">${dedupedCategories.length} টি</div>
+          <div class="text-[10px] text-emerald-600 font-bold">Level 1 মূল ক্যাটাগরি</div>
+        </div>
+        <div class="admin-kpi-card p-3.5">
+          <div class="flex items-center justify-between text-slate-400">
+            <span class="text-[10px] font-bold uppercase">মোট Sub Category</span>
+            <span>📂</span>
+          </div>
+          <div id="cattree-kpi-subs" class="text-lg font-black text-indigo-600 mt-1 font-mono">
+            ${dedupedCategories.reduce((acc, c) => acc + String(c.sub_category || 'General').split(',').filter(Boolean).length, 0)} টি
+          </div>
+          <div class="text-[10px] text-slate-400">Level 2 সাব-ক্যাটাগরি</div>
+        </div>
+        <div class="admin-kpi-card p-3.5">
+          <div class="flex items-center justify-between text-slate-400">
+            <span class="text-[10px] font-bold uppercase">মোট Chaild Category</span>
+            <span>🏷️</span>
+          </div>
+          <div id="cattree-kpi-childs" class="text-lg font-black text-amber-600 mt-1 font-mono">
+            ${dedupedCategories.reduce((acc, c) => acc + String(c.chail_category || c.child_category || 'Standard').split(',').filter(Boolean).length, 0)} টি
+          </div>
+          <div class="text-[10px] text-slate-400">Level 3 চাইল্ড ক্যাটাগরি</div>
+        </div>
+        <div class="admin-kpi-card p-3.5">
+          <div class="flex items-center justify-between text-slate-400">
+            <span class="text-[10px] font-bold uppercase">সংযুক্ত মোট পণ্য</span>
+            <span>📦</span>
+          </div>
+          <div id="cattree-kpi-prods" class="text-lg font-black text-emerald-600 mt-1 font-mono">${products.length} টি</div>
+          <div class="text-[10px] text-slate-400">ক্যাটালগভুক্ত আইটেম</div>
+        </div>
+      </div>
+
+      <!-- Visual Blueprint Diagram Banner (Matching User's Uploaded Image) -->
       <div class="dc-admin-card space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b pb-2.5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3">
           <div>
-            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <span>🗂️</span> ডুপ্লিকেট-মুক্ত ক্যাটাগরি তালিকা (${dedupedCategories.length} টি ক্যাটাগরি)
+            <h3 class="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <span>🌳</span> ইন্টারেক্টিভ ৩-স্তরের ক্যাটাগরি ট্রি (Category &rsaquo; Sub Category &rsaquo; Chaild Category)
             </h3>
-            <p class="text-[11px] text-slate-400">একই নামের ক্যাটাগরি বারবার আসবে না। এখান থেকে সাব-ক্যাটাগরি ও নতুন ক্যাটাগরি পরিচালনা করুন।</p>
+            <p class="text-[11px] text-slate-400">
+              Category-তে ক্লিক করলে Sub Category খুলবে এবং Sub Category-তে ক্লিক করলে Chaild Category খুলবে — ডানপাশের বাটনে ক্লিক করে নতুন স্তর যুক্ত করুন
+            </p>
           </div>
-          <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('form-add-category-box')?.scrollIntoView({ behavior: 'smooth' })">+ নতুন ক্যাটাগরি</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Categories', ['ID', 'Category', 'Sub Category'], dedupedCategories.map(c=>[c.catagory_id, c.category, c.sub_category]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          <div class="flex flex-wrap items-center gap-1.5 text-xs">
+            <button type="button" class="btn-primary py-1.5 px-3.5 font-bold" onclick="window.openCategoryTreeActionModal('add_cat')">
+              + (add category)
+            </button>
+            <button type="button" class="btn-secondary py-1.5 px-2.5 font-bold" onclick="window.expandOrCollapseAllCategoryTree(true)">
+              ➕ সবগুলো খুলুন (Expand All)
+            </button>
+            <button type="button" class="btn-secondary py-1.5 px-2.5 font-bold" onclick="window.expandOrCollapseAllCategoryTree(false)">
+              ➖ সবগুলো বন্ধ করুন
+            </button>
+            <button type="button" class="btn-secondary py-1.5 px-2.5" onclick="window.exportGenericCsv('Categories_Tree', ['ID', 'Category', 'Sub Category', 'Chaild Category'], (window.buildNormalizedCategoryTree ? window.buildNormalizedCategoryTree() : []).map(c=>[c.catagory_id, c.category, c.sub_category, c.chail_category]))">
+              📥 CSV
+            </button>
           </div>
         </div>
 
-        <!-- Categories Table -->
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400 uppercase text-[10px]">
-                <th class="py-2.5 px-3">ছবি</th>
-                <th class="py-2.5 px-3">ক্যাটাগরি নাম</th>
-                <th class="py-2.5 px-3">আইডি</th>
-                <th class="py-2.5 px-3">সাব-ক্যাটাগরি সমূহ</th>
-                <th class="py-2.5 px-3">সংযুক্ত পণ্য</th>
-                <th class="py-2.5 px-3 text-right">অ্যাকশন</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-              ${dedupedCategories.map(c => {
-                const count = products.filter(p => (p.category || '').toLowerCase() === (c.category || '').toLowerCase()).length;
-                return `
-                  <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-                    <td class="py-2.5 px-3">
-                      <img src="${c.category_image || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" class="w-10 h-10 rounded-xl object-cover border" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
-                    </td>
-                    <td class="py-2.5 px-3 font-bold text-slate-900 dark:text-white text-sm">
-                      ${c.category}
-                    </td>
-                    <td class="py-2.5 px-3 font-mono text-[10px] text-slate-400">
-                      ${c.catagory_id || 'CAT-NA'}
-                    </td>
-                    <td class="py-2.5 px-3 text-slate-600 dark:text-slate-400 max-w-xs truncate">
-                      ${c.sub_category || 'General'}
-                    </td>
-                    <td class="py-2.5 px-3 font-bold font-mono text-emerald-600">
-                      ${count} টি পণ্য
-                    </td>
-                    <td class="py-2.5 px-3 text-right space-x-1.5 whitespace-nowrap">
-                      <a href="/products?cat=${encodeURIComponent(c.category)}" target="_blank" class="btn-secondary py-1 px-2.5 text-[10px]">পণ্য দেখুন ↗</a>
-                      <button class="btn-secondary py-1 px-2 text-[10px] text-rose-600 border-rose-200" onclick="window.handleDeleteCategory('${c.category.replace(/'/g, "\\'")}')">মুছুন</button>
-                    </td>
-                  </tr>
-                `;
-              }).join("")}
-            </tbody>
-          </table>
+        <!-- Exact Structural Guide Diagram Box (As shown in user's image) -->
+        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 space-y-2.5 text-xs font-bold">
+          <div class="text-[10px] uppercase tracking-wider text-emerald-600 font-black mb-1">📌 ক্যাটাগরি ট্রি স্ট্রাকচার গাইড (Tree Blueprint):</div>
+          <div class="dc-tree-row">
+            <span class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-black text-xs">
+              Category (showing sub category after clicked of Category)
+            </span>
+            <div class="dc-tree-leader-line"></div>
+            <button type="button" onclick="window.openCategoryTreeActionModal('add_cat')" class="dc-tree-action-pill">
+              + (add category)
+            </button>
+          </div>
+
+          <div class="dc-tree-branch-children">
+            <div class="dc-tree-branch-item space-y-2.5">
+              <div class="dc-tree-row">
+                <span class="px-3 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs">
+                  Sub Category (showing Chaild category after clicked of Sub Category)
+                </span>
+                <div class="dc-tree-leader-line"></div>
+                <button type="button" onclick="const firstCat=(window.buildNormalizedCategoryTree()[0]||{}).category||'Smartwatches'; window.openCategoryTreeActionModal('add_sub', firstCat);" class="dc-tree-action-pill indigo-pill">
+                  + (add Sub category)
+                </button>
+              </div>
+
+              <div class="dc-tree-branch-children sub-branch">
+                <div class="dc-tree-branch-item">
+                  <div class="dc-tree-row">
+                    <span class="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs">
+                      Chaild Category
+                    </span>
+                    <div class="dc-tree-leader-line"></div>
+                    <button type="button" onclick="const t=window.buildNormalizedCategoryTree()[0]||{category:'Smartwatches',tree_subs:[{name:'AMOLED Watch'}]}; window.openCategoryTreeActionModal('add_child', t.category, (t.tree_subs&&t.tree_subs[0]?t.tree_subs[0].name:'General'));" class="dc-tree-action-pill amber-pill">
+                      + (add chaild category)
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Add Category Form -->
-        <div id="form-add-category-box" class="p-4 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border space-y-3 max-w-xl text-xs">
-          <h4 class="font-bold text-sm text-slate-900 dark:text-white">➕ নতুন ক্যাটাগরি তৈরি করুন (ডুপ্লিকেট সুরক্ষা সহ)</h4>
+        <!-- Search Filter for Tree -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <input
+            type="text"
+            placeholder="🔍 ক্যাটাগরি, সাব-ক্যাটাগরি বা চাইল্ড ক্যাটাগরি খুঁজুন..."
+            oninput="window.searchCategoryTree(this.value)"
+            class="form-control text-xs py-2 px-3.5 rounded-xl w-full sm:w-96"
+          />
+          <span class="text-[11px] text-slate-400">💡 যেকোনো Category বা Sub Category নামের ওপর ক্লিক করে ভেতরের শাখা খুলুন</span>
+        </div>
+
+        <!-- Dynamic Interactive Tree Mount -->
+        <div id="admin-interactive-cat-tree-mount" class="dc-tree-container pt-1"></div>
+
+        <!-- Quick Full Tree Add Form -->
+        <div id="form-add-category-box" class="p-4 bg-slate-50 dark:bg-slate-800/80 rounded-2xl space-y-3 max-w-2xl text-xs mt-4">
+          <h4 class="font-bold text-sm text-slate-900 dark:text-white">➕ একসাথে নতুন Category, Sub Category ও Chaild Category তৈরি করুন</h4>
           <form id="form-add-category-dedicated" onsubmit="window.handleAdminAddCategory(event)" class="space-y-3">
-            <div>
-              <label class="block font-bold mb-1">ক্যাটাগরি নাম *</label>
-              <input type="text" id="adm-new-cat-name" required placeholder="Smartwatches / Kitchen / Organic" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block font-bold mb-1">1. Category নাম *</label>
+                <input type="text" id="adm-new-cat-name" required placeholder="Smartwatches / Kitchen" class="form-control text-xs w-full py-2 px-3 rounded-xl font-bold" />
+              </div>
+              <div>
+                <label class="block font-bold mb-1">2. Sub Category (কমা দিয়ে)</label>
+                <input type="text" id="adm-new-cat-sub" placeholder="Calling Watch, AMOLED Watch" class="form-control text-xs w-full py-2 px-3 rounded-xl" />
+              </div>
+              <div>
+                <label class="block font-bold mb-1">3. Chaild Category (কমা দিয়ে)</label>
+                <input type="text" id="adm-new-cat-child" placeholder="Men, Women, Kids" class="form-control text-xs w-full py-2 px-3 rounded-xl" />
+              </div>
             </div>
-            <div>
-              <label class="block font-bold mb-1">সাব-ক্যাটাগরি সমূহ (কমা দিয়ে লিখুন)</label>
-              <input type="text" id="adm-new-cat-sub" placeholder="Smart Calling Watch, AMOLED Watch, Fitness Watch" class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
+            <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+              <input type="url" id="adm-new-cat-image" placeholder="ক্যাটাগরি থাম্বনেইল ছবি URL (ঐচ্ছিক): https://..." class="form-control text-xs flex-1 py-2 px-3 rounded-xl" />
+              <button type="submit" class="btn-primary py-2 px-6 font-bold whitespace-nowrap">ক্যাটাগরি ট্রিতে সংরক্ষণ করুন →</button>
             </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Modal for Interactive Category / Sub Category / Chaild Category Add & Edit -->
+      <div id="modal-category-tree-action" class="admin-modal-backdrop hidden">
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-2xl max-w-md w-full space-y-4 text-xs">
+          <div class="flex items-center justify-between pb-2">
+            <h4 id="cat-tree-modal-title" class="font-black text-sm text-slate-900 dark:text-white">ক্যাটাগরি ট্রি অ্যাকশন</h4>
+            <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-category-tree-action')?.classList.add('hidden')">✕</button>
+          </div>
+          <form onsubmit="window.handleSaveCategoryTreeModal(event)" class="space-y-3">
+            <input type="hidden" id="cat-tree-modal-mode" value="add_cat" />
+            <input type="hidden" id="cat-tree-modal-parent-cat" value="" />
+            <input type="hidden" id="cat-tree-modal-parent-sub" value="" />
+            <input type="hidden" id="cat-tree-modal-old-val" value="" />
+
             <div>
-              <label class="block font-bold mb-1">চাইল্ড ক্যাটাগরি (কমা দিয়ে লিখুন)</label>
-              <input type="text" id="adm-new-cat-child" placeholder="Men, Women, Kids" class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
+              <label id="cat-tree-modal-label" class="block font-bold mb-1">নাম লিখুন *</label>
+              <input type="text" id="cat-tree-modal-input" required class="form-control text-xs w-full py-2 px-3 rounded-xl font-bold" />
             </div>
-            <div>
-              <label class="block font-bold mb-1">ক্যাটাগরি ছবি URL</label>
-              <input type="url" id="adm-new-cat-image" placeholder="https://images.unsplash.com/..." class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
+
+            <div id="cat-tree-modal-extra-fields" class="hidden space-y-2.5 pt-1">
+              <div>
+                <label class="block font-bold mb-1">প্রাথমিক Sub Category (কমা দিয়ে)</label>
+                <input type="text" id="cat-tree-modal-init-sub" placeholder="যেমন: Calling Watch, AMOLED Watch" class="form-control text-xs w-full py-2 px-3 rounded-xl" />
+              </div>
+              <div>
+                <label class="block font-bold mb-1">প্রাথমিক Chaild Category (কমা দিয়ে)</label>
+                <input type="text" id="cat-tree-modal-init-child" placeholder="যেমন: Men, Women, Standard" class="form-control text-xs w-full py-2 px-3 rounded-xl" />
+              </div>
             </div>
-            <button type="submit" class="btn-primary py-2 px-6 font-bold">ক্যাটাগরি সংরক্ষণ করুন →</button>
+
+            <div class="flex items-center justify-end gap-2 pt-2">
+              <button type="button" class="btn-secondary py-2 px-4" onclick="document.getElementById('modal-category-tree-action')?.classList.add('hidden')">বাতিল</button>
+              <button type="submit" class="btn-primary py-2 px-5 font-bold">সংরক্ষণ করুন ✓</button>
+            </div>
           </form>
         </div>
       </div>
     </div>
-
 
           <!-- 9. Brands Page (ব্রান্ড সমূহ কার্ড আকারে দেখা যাবে) -->
           <div id="page-prod-brands" class="admin-page-view hidden space-y-4">
@@ -6729,62 +7866,169 @@ function renderCategoryBrandModule({ products = [], categories = [], brands = []
             </div>
           </div>
 
-          <!-- 13. Banners CMS Page -->
-          <div id="page-prod-banners" class="admin-page-view hidden space-y-4">
-            <div class="dc-admin-card space-y-3">
-              <div class="flex items-center justify-between border-b pb-2">
-                <h3 class="font-bold text-sm text-slate-900 dark:text-white">🖼️ ব্যানার ও স্লাইডার CMS (${banners.length} টি স্লাইড)</h3>
-                <div class="flex items-center gap-1.5 text-xs">
-                  <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-banner')?.classList.remove('hidden')">+ ব্যানার স্লাইড</button>
-                  <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Banners', ['ID', 'Title', 'Link', 'Status'], banners.map(b => [b.banner_id, b.title, b.link_url, b.status]))">CSV</button>
-                  <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          <!-- 13. Complete Banners & Slider CMS Page (Add, Edit, Delete, Status Toggle & Live Counters) -->
+          <div id="page-prod-banners" class="admin-page-view hidden space-y-5">
+            
+            <!-- 4 Live Banner KPI Counter Cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div class="admin-kpi-card p-3.5">
+                <div class="flex items-center justify-between text-slate-400">
+                  <span class="text-[10px] font-bold uppercase">মোট ব্যানার স্লাইড</span>
+                  <span>🖼️</span>
+                </div>
+                <div id="banner-kpi-total" class="text-lg font-black text-slate-900 dark:text-white mt-1 font-mono">${banners.length} টি</div>
+                <div class="text-[10px] text-emerald-600 font-bold">হোমপেজ ও ক্যাম্পেইন স্লাইডার</div>
+              </div>
+
+              <div class="admin-kpi-card p-3.5">
+                <div class="flex items-center justify-between text-emerald-600">
+                  <span class="text-[10px] font-bold uppercase">সক্রিয় ব্যানার (Active)</span>
+                  <span>🟢</span>
+                </div>
+                <div id="banner-kpi-active" class="text-lg font-black text-emerald-600 mt-1 font-mono">
+                  ${banners.filter(b => (b.status || 'Active') === 'Active').length} টি
+                </div>
+                <div class="text-[10px] text-emerald-600 font-bold">লাইভ প্রদর্শিত হচ্ছে</div>
+              </div>
+
+              <div class="admin-kpi-card p-3.5">
+                <div class="flex items-center justify-between text-amber-500">
+                  <span class="text-[10px] font-bold uppercase">নিষ্ক্রিয় / ড্রাফট</span>
+                  <span>⏸️</span>
+                </div>
+                <div id="banner-kpi-inactive" class="text-lg font-black text-amber-500 mt-1 font-mono">
+                  ${banners.filter(b => (b.status || 'Active') !== 'Active').length} টি
+                </div>
+                <div class="text-[10px] text-slate-400">সাময়িক বিরতিতে থাকা স্লাইড</div>
+              </div>
+
+              <div class="admin-kpi-card p-3.5">
+                <div class="flex items-center justify-between text-indigo-500">
+                  <span class="text-[10px] font-bold uppercase">টার্গেট লিংকযুক্ত</span>
+                  <span>🔗</span>
+                </div>
+                <div id="banner-kpi-linked" class="text-lg font-black text-indigo-600 mt-1 font-mono">
+                  ${banners.filter(b => Boolean((b.link_url || '').trim())).length} টি
+                </div>
+                <div class="text-[10px] text-slate-400">ক্লিকযোগ্য অফার লিংক</div>
+              </div>
+            </div>
+
+            <!-- Main Banner Management Card -->
+            <div class="dc-admin-card space-y-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2">
+                <div>
+                  <h3 class="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>🖼️</span> ব্যানার ও স্লাইডার CMS (<span id="banner-header-count-badge">${banners.length} টি স্লাইড</span>)
+                  </h3>
+                  <p class="text-[11px] text-slate-400">নতুন ব্যানার যোগ, এডিট, ডিলিট, পজিশন সাজানো এবং সক্রিয়/নিষ্ক্রিয় স্ট্যাটাস নিয়ন্ত্রণ</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                  <button type="button" class="btn-primary py-2 px-4 font-bold shadow" onclick="window.openAdminBannerModal('')">
+                    + নতুন ব্যানার যুক্ত করুন
+                  </button>
+                  <button type="button" class="btn-secondary py-2 px-3" onclick="window.exportGenericCsv('Banners_Export', ['ID', 'Title', 'Subtitle', 'Image', 'Link', 'Status'], (window.getAdminBannersList ? window.getAdminBannersList() : []).map(b => [b.banner_id, b.title, b.subtitle, b.image_url, b.link_url, b.status]))">
+                    📥 CSV
+                  </button>
+                  <button type="button" class="btn-secondary py-2 px-3" onclick="window.printActiveSection()">
+                    🖨️ প্রিন্ট
+                  </button>
                 </div>
               </div>
 
-              <div class="space-y-2.5 text-xs">
-                ${banners.map(bn => `
-                  <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-3">
-                      <img src="${bn.image_url}" class="w-20 h-12 rounded-xl object-cover border" onerror="this.src='https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400';" />
-                      <div>
-                        <div class="font-bold text-slate-900 dark:text-white">${bn.title}</div>
-                        <div class="text-[10px] text-slate-400">${bn.subtitle}</div>
-                      </div>
-                    </div>
-                    <span class="badge badge-success text-[10px]">Active</span>
-                  </div>
-                `).join("")}
+              <!-- Filter Pills & Search Bar -->
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div class="flex items-center gap-1.5 overflow-x-auto text-xs">
+                  <button type="button" class="prod-status-filter-btn banner-filter-pill active" onclick="window.filterAdminBannersByStatus('all', this)">
+                    সকল ব্যানার (<span id="banner-pill-count-all">${banners.length}</span>)
+                  </button>
+                  <button type="button" class="prod-status-filter-btn banner-filter-pill" onclick="window.filterAdminBannersByStatus('Active', this)">
+                    সক্রিয় (<span id="banner-pill-count-active">${banners.filter(b => (b.status || 'Active') === 'Active').length}</span>)
+                  </button>
+                  <button type="button" class="prod-status-filter-btn banner-filter-pill" onclick="window.filterAdminBannersByStatus('Inactive', this)">
+                    নিষ্ক্রিয় (<span id="banner-pill-count-inactive">${banners.filter(b => (b.status || 'Active') !== 'Active').length}</span>)
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  placeholder="🔍 ব্যানার শিরোনাম বা লিংক দিয়ে খুঁজুন..."
+                  oninput="window.searchAdminBanners(this.value)"
+                  class="form-control text-xs py-1.5 px-3 rounded-xl w-full sm:w-72"
+                />
               </div>
+
+              <!-- Banners Grid Container -->
+              <div id="admin-banners-grid-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs"></div>
             </div>
           </div>
 
-
+          <!-- Modal for Add / Edit Banner Slide -->
           <div id="modal-add-banner" class="admin-modal-backdrop hidden">
-            <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
-              <div class="flex items-center justify-between border-b pb-2">
-                <h4 class="font-black text-sm text-slate-900 dark:text-white">নতুন ব্যানার স্লাইড তৈরি</h4>
+            <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-2xl max-w-lg w-full space-y-3.5 text-xs">
+              <div class="flex items-center justify-between pb-2">
+                <h4 id="modal-banner-header-title" class="font-black text-sm text-slate-900 dark:text-white">➕ নতুন ব্যানার স্লাইড তৈরি করুন</h4>
                 <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-banner')?.classList.add('hidden')">✕</button>
               </div>
               <form id="form-add-banner-dedicated" class="space-y-3" onsubmit="window.handleAdminAddBanner(event)">
+                <input type="hidden" id="adm-edit-banner-id" value="" />
+
                 <div>
                   <label class="block font-bold mb-1">ব্যানার শিরোনাম (Title) *</label>
-                  <input type="text" id="adm-new-banner-title" required placeholder="স্মার্ট কিচেন কালেকশন" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+                  <input type="text" id="adm-new-banner-title" required placeholder="যেমন: স্মার্ট কিচেন ও নিরাপদ কুকিং গ্যাজেট" class="form-control text-xs w-full py-2 px-3 rounded-xl font-bold" />
                 </div>
+
                 <div>
-                  <label class="block font-bold mb-1">সাবটাইটেল / অফার বিবরণ</label>
-                  <input type="text" id="adm-new-banner-subtitle" placeholder="সর্বোচ্চ ৩০% ছাড়..." class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+                  <label class="block font-bold mb-1">সাবটাইটেল / অফার বিবরণ (Subtitle)</label>
+                  <input type="text" id="adm-new-banner-subtitle" placeholder="যেমন: সর্বোচ্চ ৩০% বিশেষ ছাড় চলছে!" class="form-control text-xs w-full py-2 px-3 rounded-xl" />
                 </div>
-                <div>
-                  <label class="block font-bold mb-1">ইমেজ URL *</label>
-                  <input type="url" id="adm-new-banner-image" required placeholder="https://images.unsplash.com/..." class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+
+                <div class="space-y-2">
+                  <label class="block font-bold">ব্যানার ছবি (Image URL অথবা ফাইল আপলোড) *</label>
+                  <div class="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      id="adm-new-banner-image"
+                      required
+                      placeholder="https://images.unsplash.com/..."
+                      oninput="const p=document.getElementById('adm-banner-modal-preview'); if(p){p.src=this.value; p.classList.remove('hidden');}"
+                      class="form-control text-xs flex-1 py-2 px-3 rounded-xl font-mono"
+                    />
+                    <label class="btn-secondary py-2 px-3 text-xs font-bold cursor-pointer inline-flex items-center justify-center whitespace-nowrap">
+                      <span>📤 ছবি ফাইল আপলোড</span>
+                      <input type="file" accept="image/*" class="hidden" onchange="window.handleBannerFileUpload(this)" />
+                    </label>
+                  </div>
+                  <img id="adm-banner-modal-preview" src="" class="hidden w-full h-32 object-cover rounded-2xl shadow-sm" onerror="this.classList.add('hidden')" />
                 </div>
-                <div>
-                  <label class="block font-bold mb-1">টার্গেট লিংক (Target URL)</label>
-                  <input type="text" id="adm-new-banner-link" placeholder="/products?cat=Kitchen" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block font-bold mb-1">টার্গেট লিংক (Target URL)</label>
+                    <input type="text" id="adm-new-banner-link" placeholder="/products?cat=Kitchen" value="/products" class="form-control text-xs w-full py-2 px-3 rounded-xl font-mono" />
+                  </div>
+                  <div>
+                    <label class="block font-bold mb-1">বাটন টেক্সট (CTA Text)</label>
+                    <input type="text" id="adm-new-banner-cta" placeholder="এখনই কিনুন →" value="এখনই কিনুন →" class="form-control text-xs w-full py-2 px-3 rounded-xl font-bold" />
+                  </div>
                 </div>
-                <div class="flex items-center justify-end gap-2 pt-2">
-                  <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-banner')?.classList.add('hidden')">বাতিল</button>
-                  <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংরক্ষণ করুন</button>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block font-bold mb-1">স্লাইড পজিশন / ক্রম</label>
+                    <input type="number" id="adm-new-banner-pos" min="1" value="1" class="form-control text-xs w-full py-2 px-3 rounded-xl font-mono font-bold" />
+                  </div>
+                  <div>
+                    <label class="block font-bold mb-1">স্ট্যাটাস (Status)</label>
+                    <select id="adm-new-banner-status" class="form-control text-xs w-full py-2 px-3 rounded-xl font-bold">
+                      <option value="Active">Active (সক্রিয়)</option>
+                      <option value="Inactive">Inactive (নিষ্ক্রিয়)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-3">
+                  <button type="button" class="btn-secondary py-2 px-4" onclick="document.getElementById('modal-add-banner')?.classList.add('hidden')">বাতিল</button>
+                  <button type="submit" class="btn-primary py-2 px-6 font-bold">💾 ব্যানার সংরক্ষণ করুন ✓</button>
                 </div>
               </form>
             </div>
@@ -9668,6 +10912,12 @@ export async function renderAdminPortal(params = {}) {
       if (chevron) chevron.style.transform = 'rotate(90deg)';
       if (activeRoute.pageId === 'page-prod-add' && window.updateAddProductLiveSummary) {
         window.updateAddProductLiveSummary();
+      }
+      if (window.renderInteractiveCategoryTree) {
+        window.renderInteractiveCategoryTree();
+      }
+      if (window.renderAdminBannersList) {
+        window.renderAdminBannersList();
       }
     }, 0);
   }
