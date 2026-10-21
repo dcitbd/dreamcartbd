@@ -1157,7 +1157,6 @@ body:has(.dc-admin-wrapper) {
   display: none !important;
 }
 
-
 /* ==========================================================================
    9. INTERACTIVE 3-LEVEL CATEGORY TREE & BANNER CMS STYLES
    ========================================================================== */
@@ -1351,7 +1350,7 @@ body:has(.dc-admin-wrapper) {
 /**
  * DREAM CART BD — ENTERPRISE MASTER ADMIN & WORKER PORTAL (AdminPortal.js)
  * Fully responsive, ultra-fast executive dashboard with comprehensive business management.
- * 
+ *
  * Features Implemented:
  * 1. Dedicated Sidebar with Collapsible Accordion Sub-Menus for Every Module
  * 2. Distinct, Dedicated Standalone Page View for Every Listed Feature
@@ -1374,74 +1373,74 @@ body:has(.dc-admin-wrapper) {
  */
 
 const ADMIN_ROUTES = {
-  'dashboard': { pageId: 'page-dashboard', groupId: 'group-dashboard', slug: 'dashboard', module: 'dashboard', title: '📊 ড্যাশবোর্ড ওভারভিউ (Dashboard)', subtitle: '১৮-পয়েন্ট লাইভ বিজনেস কাউন্টার, রাজস্ব ও সেলস গ্রাফ' },
-  'products': { pageId: 'page-prod-all', groupId: 'group-products', slug: 'products', module: 'catalog', title: '📦 সকল পণ্য তালিকা (/admin/products)', subtitle: 'প্রতি পেজে ১২০টি পণ্য, মাল্টি-ফিল্টার, চেকবক্স বাল্ক এডিট ও ডিলিট' },
-  'addproduct': { pageId: 'page-prod-add', groupId: 'group-products', slug: 'addproduct', module: 'addproduct', title: '➕ নতুন পণ্য সংযোজন (/admin/addproduct)', subtitle: '২৩-কলাম AI অটো-ক্যাটাগরি, ১৬-টিয়ার প্রাইসিং ফর্মুলা ও ইমেজ আপলোড প্রিভিউ' },
-  'add-product': { pageId: 'page-prod-add', groupId: 'group-products', slug: 'addproduct', module: 'addproduct', title: '➕ নতুন পণ্য সংযোজন (/admin/addproduct)', subtitle: '২৩-কলাম AI অটো-ক্যাটাগরি, ১৬-টিয়ার প্রাইসিং ফর্মুলা ও ইমেজ আপলোড প্রিভিউ' },
-  'categroy': { pageId: 'page-prod-categories', groupId: 'group-products', slug: 'categroy', module: 'catbrand', title: '🗂️ ক্যাটাগরি ম্যানেজমেন্ট (/admin/categroy)', subtitle: 'ডুপ্লিকেট-মুক্ত ক্যাটাগরি, সাব-ক্যাটাগরি ও চাইল্ড ক্যাটাগরি পরিচালনা' },
-  'category': { pageId: 'page-prod-categories', groupId: 'group-products', slug: 'categroy', module: 'catbrand', title: '🗂️ ক্যাটাগরি ম্যানেজমেন্ট (/admin/category)', subtitle: 'ডুপ্লিকেট-মুক্ত ক্যাটাগরি, সাব-ক্যাটাগরি ও চাইল্ড ক্যাটাগরি পরিচালনা' },
-  'categories': { pageId: 'page-prod-categories', groupId: 'group-products', slug: 'categroy', module: 'catbrand', title: '🗂️ ক্যাটাগরি ম্যানেজমেন্ট (/admin/categories)', subtitle: 'ডুপ্লিকেট-মুক্ত ক্যাটাগরি, সাব-ক্যাটাগরি ও চাইল্ড ক্যাটাগরি পরিচালনা' },
-  'brands': { pageId: 'page-prod-brands', groupId: 'group-products', slug: 'brands', module: 'catbrand', title: '🏷️ অফিসিয়াল ব্র্যান্ড পার্টনার্স (/admin/brands)', subtitle: 'কার্ড আকারে ব্র্যান্ড শোকেস, পণ্য কাউন্টার ও ফিল্টারিং' },
-  'addbrand': { pageId: 'page-prod-brand-add', groupId: 'group-products', slug: 'addbrand', module: 'catbrand', title: '➕ নতুন ব্র্যান্ড যুক্ত করুন (/admin/addbrand)', subtitle: 'লোগো আপলোড ও বিবরণসহ নতুন ব্র্যান্ড কার্ড সংযোজন' },
-  'add-brand': { pageId: 'page-prod-brand-add', groupId: 'group-products', slug: 'addbrand', module: 'catbrand', title: '➕ নতুন ব্র্যান্ড যুক্ত করুন (/admin/addbrand)', subtitle: 'লোগো আপলোড ও বিবরণসহ নতুন ব্র্যান্ড কার্ড সংযোজন' },
-  'variants': { pageId: 'page-prod-variants', groupId: 'group-products', slug: 'variants', module: 'catbrand', title: '🎨 কালার ও সাইজ ভ্যারিয়েন্ট (/admin/variants)', subtitle: 'উপলব্ধ কালার শেডস ও সাইজ স্কেল তালিকা' },
-  'addvariant': { pageId: 'page-prod-variant-add', groupId: 'group-products', slug: 'addvariant', module: 'catbrand', title: '➕ নতুন ভ্যারিয়েন্ট যুক্ত করুন (/admin/addvariant)', subtitle: 'নতুন রং বা সাইজ অপশন সংরক্ষণ' },
-  'banners': { pageId: 'page-prod-banners', groupId: 'group-products', slug: 'banners', module: 'catbrand', title: '🖼️ ব্যানার ও স্লাইডার CMS (/admin/banners)', subtitle: 'ওয়েবসাইটের হিরো ব্যানার স্লাইড পরিচালনা' },
-  'bulk-upload': { pageId: 'page-prod-bulk-add', groupId: 'group-products', slug: 'bulk-upload', module: 'bulk', title: '📥 বাল্ক পণ্য আপলোড (/admin/bulk-upload)', subtitle: 'নমুনা শিট ডাউনলোড এবং শিট আপলোড করেই পণ্য আপডেট' },
-  'bulkupload': { pageId: 'page-prod-bulk-add', groupId: 'group-products', slug: 'bulk-upload', module: 'bulk', title: '📥 বাল্ক পণ্য আপলোড (/admin/bulk-upload)', subtitle: 'নমুনা শিট ডাউনলোড এবং শিট আপলোড করেই পণ্য আপডেট' },
-  'bulk-price': { pageId: 'page-prod-bulk-price', groupId: 'group-products', slug: 'bulk-price', module: 'bulk', title: '🏷️ বাল্ক মূল্য পরিবর্তন (/admin/bulk-price)', subtitle: 'নমুনা প্রাইজ শিট ডাউনলোড এবং শিট আপলোড করেই প্রাইজ আপডেট' },
-  'bulkprice': { pageId: 'page-prod-bulk-price', groupId: 'group-products', slug: 'bulk-price', module: 'bulk', title: '🏷️ বাল্ক মূল্য পরিবর্তন (/admin/bulk-price)', subtitle: 'নমুনা প্রাইজ শিট ডাউনলোড এবং শিট আপলোড করেই প্রাইজ আপডেট' },
-  'bulk-image': { pageId: 'page-prod-bulk-image', groupId: 'group-products', slug: 'bulk-image', module: 'bulk', title: '🖼️ বাল্ক ইমেজ আপডেট (/admin/bulk-image)', subtitle: 'নমুনা ইমেজ শিট ডাউনলোড এবং শিট আপলোড করেই ছবি আপডেট' },
-  'bulkimage': { pageId: 'page-prod-bulk-image', groupId: 'group-products', slug: 'bulk-image', module: 'bulk', title: '🖼️ বাল্ক ইমেজ আপডেট (/admin/bulk-image)', subtitle: 'নমুনা ইমেজ শিট ডাউনলোড এবং শিট আপলোড করেই ছবি আপডেট' },
-  'low-stock': { pageId: 'page-prod-low-stock', groupId: 'group-products', slug: 'low-stock', module: 'catalog', title: '⚠️ লো-স্টক পণ্য তালিকা (/admin/low-stock)', subtitle: 'যেসব পণ্যের স্টক ৫ পিসের নিচে নেমে এসেছে' },
-  'out-stock': { pageId: 'page-prod-out-stock', groupId: 'group-products', slug: 'out-stock', module: 'catalog', title: '🚫 আউট অব স্টক পণ্য (/admin/out-stock)', subtitle: 'বর্তমানে স্টক শূন্য হওয়া আইটেমসমূহ' },
-  'error-products': { pageId: 'page-prod-error', groupId: 'group-products', slug: 'error-products', module: 'catalog', title: '⚙️ ত্রুটিযুক্ত পণ্য যাচাই (/admin/error-products)', subtitle: 'ছবি, মূল্য বা SKU অনুপস্থিত থাকা আইটেম' },
-  'landing': { pageId: 'page-prod-landing', groupId: 'group-products', slug: 'landing', module: 'landing', title: '🚀 মাল্টি-ল্যান্ডিং পেজ CMS (/admin/landing)', subtitle: 'একের অধিক ল্যান্ডিং পেজ তৈরি, প্রোডাক্ট সার্চ করে অ্যাড, ব্যানার ও ভিডিও আপডেট' },
-  'orders': { pageId: 'page-orders-all', groupId: 'group-orders', slug: 'orders', module: 'orders', title: '📋 সকল অর্ডার তালিকা (/admin/orders)', subtitle: 'বাল্ক সিলেকশন, ফ্রড চেক, কুরিয়ার বুকিং ও ভাউচার প্রিন্ট' },
-  'incomplete-orders': { pageId: 'page-orders-incomplete', groupId: 'group-orders', slug: 'incomplete-orders', module: 'orders', title: '⚠️ অসম্পূর্ণ অর্ডারসমূহ (/admin/incomplete-orders)', subtitle: 'ফর্ম পূরণ করেও চেকআউট না করা গ্রাহকদের WhatsApp অফার' },
-  'delivered-orders': { pageId: 'page-orders-success', groupId: 'group-orders', slug: 'delivered-orders', module: 'orders', title: '✓ সফল ডেলিভারি (/admin/delivered-orders)', subtitle: 'কুরিয়ারে সফলভাবে সরবরাহ ও পরিশোধিত অর্ডার' },
-  'shipping-orders': { pageId: 'page-orders-shipping', groupId: 'group-orders', slug: 'shipping-orders', module: 'orders', title: '🚚 কুরিয়ারে / শিপিং অর্ডার (/admin/shipping-orders)', subtitle: 'প্যাকিং, ইন ট্রানজিট ও ডেলিভারি পথে থাকা পার্সেল' },
-  'unpaid-orders': { pageId: 'page-orders-unpaid', groupId: 'group-orders', slug: 'unpaid-orders', module: 'orders', title: '💳 পেমেন্ট অসম্পূর্ণ (/admin/unpaid-orders)', subtitle: 'ডেলিভারি হয়েছে কিন্তু এখনো টাকা জমা হয়নি' },
-  'cancelled-orders': { pageId: 'page-orders-cancelled', groupId: 'group-orders', slug: 'cancelled-orders', module: 'orders', title: '✕ বাতিল ও রিটার্নকৃত অর্ডার (/admin/cancelled-orders)', subtitle: 'গ্রাহক বা কুরিয়ার কর্তৃক ফেরত আসা পার্সেল' },
-  'addorder': { pageId: 'page-orders-add', groupId: 'group-orders', slug: 'addorder', module: 'orders', title: '➕ নতুন অর্ডার এন্ট্রি (/admin/addorder)', subtitle: 'পণ্য সার্চ, গ্রাহকের তথ্য ইনপুট ও ভাউচার তৈরি' },
-  'add-order': { pageId: 'page-orders-add', groupId: 'group-orders', slug: 'addorder', module: 'orders', title: '➕ নতুন অর্ডার এন্ট্রি (/admin/addorder)', subtitle: 'পণ্য সার্চ, গ্রাহকের তথ্য ইনপুট ও ভাউচার তৈরি' },
-  'visitors': { pageId: 'page-orders-visitors', groupId: 'group-orders', slug: 'visitors', module: 'orders', title: '🟢 লাইভ সক্রিয় ভিজিটর (/admin/visitors)', subtitle: 'ওয়েবসাইটে বর্তমানে ব্রাউজিং করা ইউজার ও পেজ হিস্ট্রি' },
-  'customers': { pageId: 'page-orders-customers', groupId: 'group-orders', slug: 'customers', module: 'orders', title: '👥 কাস্টমার ডাটাবেজ (/admin/customers)', subtitle: 'সকল গ্রাহকদের ফোন নম্বর, ঠিকানা ও মোট ক্রয়ের হিসাব' },
-  'reviews': { pageId: 'page-orders-reviews', groupId: 'group-orders', slug: 'reviews', module: 'orders', title: '⭐ গ্রাহক রিভিউ ও রেটিং (/admin/reviews)', subtitle: 'পণ্য রিভিউ অনুমোদন ও মডারেশন প্যানেল' },
-  'resellers': { pageId: 'page-partner-resellers', groupId: 'group-partners', slug: 'resellers', module: 'partners', title: '🤝 রিসেলার পার্টনার তালিকা (/admin/resellers)', subtitle: 'রিসেলারদের সেলস ভলিউম, ব্যালেন্স ও কমিশন ট্র্যাকিং' },
-  'wholesalers': { pageId: 'page-partner-wholesalers', groupId: 'group-partners', slug: 'wholesalers', module: 'partners', title: '🏢 পাইকারি ক্রেতা (/admin/wholesalers)', subtitle: 'হোলসেলার ডিসকাউন্ট টিয়ার ও মোট অর্ডার হিস্ট্রি' },
-  'sellers': { pageId: 'page-partner-sellers', groupId: 'group-partners', slug: 'sellers', module: 'partners', title: '🏪 মার্চেন্ট সেলার / ভেন্ডর (/admin/sellers)', subtitle: 'ভেন্ডরদের পণ্যের সংখ্যা ও কমিশন মার্জিন' },
-  'markets': { pageId: 'page-partner-markets', groupId: 'group-partners', slug: 'markets', module: 'partners', title: '🌐 অন্যান্য মার্কেটপ্লেস চ্যানেল (/admin/markets)', subtitle: 'দারাজ, ফেসবুক শপ ও বিক্রয় ডট কমের সাথে ক্যাটালগ সিঙ্ক' },
-  'admins': { pageId: 'page-admin-users', groupId: 'group-admins', slug: 'admins', module: 'partners', title: '👑 মাস্টার অ্যাডমিন একাউন্টস (/admin/admins)', subtitle: 'সিস্টেমের পূর্ণ নিয়ন্ত্রণপ্রাপ্ত অ্যাডমিন ইউজার' },
-  'workers': { pageId: 'page-admin-workers', groupId: 'group-admins', slug: 'workers', module: 'partners', title: '👷 কর্মী ও স্টাফ টিম (/admin/workers)', subtitle: 'অর্ডার, ডেলিভারি, সাপোর্ট ও হিসাবরক্ষক কর্মী' },
-  'team': { pageId: 'page-admin-workers', groupId: 'group-admins', slug: 'workers', module: 'partners', title: '👷 কর্মী ও স্টাফ টিম (/admin/workers)', subtitle: 'অর্ডার, ডেলিভারি, সাপোর্ট ও হিসাবরক্ষক কর্মী' },
-  'reports': { pageId: 'page-report-sales', groupId: 'group-reports', slug: 'reports', module: 'reports', title: '📊 সার্বিক বিক্রয় রিপোর্ট (/admin/reports)', subtitle: 'দৈনিক, সাপ্তাহিক, মাসিক ও বাৎসরিক বিক্রয় খতিয়ান' },
-  'report-sales': { pageId: 'page-report-sales', groupId: 'group-reports', slug: 'report-sales', module: 'reports', title: '📊 সার্বিক বিক্রয় রিপোর্ট (/admin/report-sales)', subtitle: 'দৈনিক, সাপ্তাহিক, মাসিক ও বাৎসরিক বিক্রয় খতিয়ান' },
-  'report-seller': { pageId: 'page-report-seller', groupId: 'group-reports', slug: 'report-seller', module: 'reports', title: '🏪 সেলার পারফরম্যান্স রিপোর্ট (/admin/report-seller)', subtitle: 'ভেন্ডরদের মাসিক ও বাৎসরিক বিক্রয় রিপোর্ট' },
-  'report-reseller': { pageId: 'page-report-reseller', groupId: 'group-reports', slug: 'report-reseller', module: 'reports', title: '🤝 রিসেলার কমিশন রিপোর্ট (/admin/report-reseller)', subtitle: 'রিসেলারদের মাধ্যমে বিক্রির হিসাব' },
-  'report-wholesaler': { pageId: 'page-report-wholesaler', groupId: 'group-reports', slug: 'report-wholesaler', module: 'reports', title: '🏢 হোলসেলার ক্রয় রিপোর্ট (/admin/report-wholesaler)', subtitle: 'পাইকারি পার্টনারদের ভলিউম রিপোর্ট' },
-  'report-wholesale': { pageId: 'page-report-wholesale', groupId: 'group-reports', slug: 'report-wholesale', module: 'reports', title: '📦 হোলসেল সাপ্লাই রিপোর্ট (/admin/report-wholesale)', subtitle: 'বাল্ক অর্ডারের রাজস্ব হিসাব' },
-  'report-costs': { pageId: 'page-report-costs', groupId: 'group-reports', slug: 'report-costs', module: 'reports', title: '💸 ব্যবসায়িক ব্যয় রিপোর্ট (/admin/report-costs)', subtitle: 'মার্কেটিং, অফিস ও প্যাকেজিং খরচের হিসাব' },
-  'report-buying': { pageId: 'page-report-buying', groupId: 'group-reports', slug: 'report-buying', module: 'reports', title: '🛒 পাইকারি স্টক ক্রয় রিপোর্ট (/admin/report-buying)', subtitle: 'সাপ্লায়ারদের থেকে পণ্য ক্রয়ের তালিকা' },
-  'report-invest': { pageId: 'page-report-invest', groupId: 'group-reports', slug: 'report-invest', module: 'reports', title: '💼 মূলধন ও বিনিয়োগ রিপোর্ট (/admin/report-invest)', subtitle: 'পার্টনার ও শেয়ারহোল্ডারদের ইকুইটি ফান্ড' },
-  'payouts': { pageId: 'page-inv-payout', groupId: 'group-inventory', slug: 'payouts', module: 'inventory', title: '💳 রিসেলার পে-আউট রিকোয়েস্ট (/admin/payouts)', subtitle: 'স্বয়ংক্রিয় -৩% ফি কর্তন সাপেক্ষে উত্তোলন অনুমোদন' },
-  'finance': { pageId: 'page-inv-payout', groupId: 'group-inventory', slug: 'payouts', module: 'inventory', title: '💳 ফাইন্যান্স ও পে-আউট (/admin/finance)', subtitle: 'স্বয়ংক্রিয় -৩% ফি কর্তন সাপেক্ষে উত্তোলন অনুমোদন' },
-  'costs': { pageId: 'page-inv-costs', groupId: 'group-inventory', slug: 'costs', module: 'inventory', title: '💸 ব্যবসায়িক খরচ ও ব্যয় লেজার (/admin/costs)', subtitle: 'ভাউচার ভিত্তিক খরচের হিসাব সংরক্ষণ' },
-  'buying': { pageId: 'page-inv-buying', groupId: 'group-inventory', slug: 'buying', module: 'inventory', title: '🛒 পাইকারি স্টক ক্রয় হিসাব (/admin/buying)', subtitle: 'সাপ্লায়ার স্টক ক্রয় ইনভয়েস' },
-  'invest': { pageId: 'page-inv-invest', groupId: 'group-inventory', slug: 'invest', module: 'inventory', title: '💼 মূলধন বিনিয়োগ ট্র্যাকার (/admin/invest)', subtitle: 'ব্যবসায়ের বিনিয়োগ ও মূলধনের বৃদ্ধি' },
-  'couriers': { pageId: 'page-courier-list', groupId: 'group-courier', slug: 'couriers', module: 'couriers_settings', title: '🚚 সংযুক্ত কুরিয়ার সার্ভিসসমূহ (/admin/couriers)', subtitle: 'স্টিডফাস্ট, পাঠাও ও রেডএক্স লাইভ ব্যালেন্স ও স্ট্যাটাস' },
-  'addcourier': { pageId: 'page-courier-add', groupId: 'group-courier', slug: 'addcourier', module: 'couriers_settings', title: '➕ নতুন কুরিয়ার এপিআই কনফিগ (/admin/addcourier)', subtitle: 'API Key, Secret Key ও Webhook স্বয়ংক্রিয় সংযোগ' },
-  'fraud': { pageId: 'page-courier-fraud', groupId: 'group-courier', slug: 'fraud', module: 'couriers_settings', title: '🛡️ কাস্টমার ফ্রড চেকার (/admin/fraud)', subtitle: 'কুরিয়ার ডেলিভারি সাকসেস ও রিটার্ন রেট বিশ্লেষণ' },
-  'payments': { pageId: 'page-courier-payments', groupId: 'group-courier', slug: 'payments', module: 'couriers_settings', title: '💳 অনলাইন পেমেন্ট গেটওয়ে (/admin/payments)', subtitle: 'বিকাশ মার্চেন্ট, SSLCommerz, সূর্যপে ও নগদ ইন্টিগ্রেশন' },
-  'settings': { pageId: 'page-set-info', groupId: 'group-settings', slug: 'settings', module: 'couriers_settings', title: '⚙️ দোকানের তথ্য ও সেটিংস (/admin/settings)', subtitle: 'নাম, লোগো, ঠিকানা, হটলাইন ও শীর্ষ নোটিশ বার' },
-  'shop-info': { pageId: 'page-set-info', groupId: 'group-settings', slug: 'settings', module: 'couriers_settings', title: '🏢 দোকানের তথ্য ও হটলাইন (/admin/shop-info)', subtitle: 'নাম, লোগো, ঠিকানা, হটলাইন ও শীর্ষ নোটিশ বার' },
-  'logs': { pageId: 'page-set-logs', groupId: 'group-settings', slug: 'logs', module: 'couriers_settings', title: '📜 অডিট লগ ও কর্মী অ্যাক্টিভিটি (/admin/logs)', subtitle: 'লগইন হিস্ট্রি, আইপি অ্যাড্রেস ও ইউজার অ্যাকশন' },
-  'payment-methods': { pageId: 'page-set-payment', groupId: 'group-settings', slug: 'payment-methods', module: 'couriers_settings', title: '💳 পেমেন্ট মেথড কনফিগারেশন (/admin/payment-methods)', subtitle: 'ক্যাশ অন ডেলিভারি, বিকাশ ও নগদ সেটিংস' },
-  'delivery': { pageId: 'page-set-delivery', groupId: 'group-settings', slug: 'delivery', module: 'couriers_settings', title: '🚚 ডেলিভারি চার্জ ও জোন (/admin/delivery)', subtitle: 'কুমিল্লা, ঢাকা ও ঢাকার বাইরে ডেলিভারি ফি নির্ধারণ' },
-  'offers': { pageId: 'page-set-offers', groupId: 'group-settings', slug: 'offers', module: 'couriers_settings', title: '🎁 অফার ও প্রমো কুপন কোড (/admin/offers)', subtitle: 'ডিসকাউন্ট কুপন তৈরি ও সক্রিয়করণ' },
-  'profile': { pageId: 'page-set-profile', groupId: 'group-settings', slug: 'profile', module: 'couriers_settings', title: '👤 অ্যাডমিন প্রোফাইল আপডেট (/admin/profile)', subtitle: 'ব্যবহারকারীর নাম ও পদবী' },
-  'password': { pageId: 'page-set-password', groupId: 'group-settings', slug: 'password', module: 'couriers_settings', title: '🔒 পাসওয়ার্ড পরিবর্তন (/admin/password)', subtitle: 'নতুন সুরক্ষিত পাসওয়ার্ড নির্ধারণ' },
-  'others': { pageId: 'page-others-hub', groupId: 'group-others', slug: 'others', module: 'others', title: '🧩 অন্যান্য মডিউল ও অপারেশনস হাব (/admin/others)', subtitle: 'পার্টনার, মার্কেটপ্লেস, ফাইন্যান্স, কুরিয়ার, ফ্রড চেকার, রিপোর্ট ও সেটিংস কুইক হাব' }
+  'dashboard': { pageId: 'page-dashboard', groupId: 'group-dashboard', slug: 'dashboard', module: 'dashboard', title: '📊 ড্যাশবোর্ড ওভারভিউ', subtitle: '১৮-পয়েন্ট লাইভ বিজনেস কাউন্টার, রাজস্ব ও সেলস গ্রাফ' },
+  'products': { pageId: 'page-prod-all', groupId: 'group-products', slug: 'products', module: 'catalog', title: '📦 সকল পণ্য তালিকা', subtitle: 'প্রতি পেজে ১২০টি পণ্য, মাল্টি-ফিল্টার, চেকবক্স বাল্ক এডিট ও ডিলিট' },
+  'addproduct': { pageId: 'page-prod-add', groupId: 'group-products', slug: 'addproduct', module: 'addproduct', title: '➕ নতুন পণ্য সংযোজন', subtitle: '২৩-কলাম AI অটো-ক্যাটাগরি, ১৬-টিয়ার প্রাইসিং ফর্মুলা ও ইমেজ আপলোড প্রিভিউ' },
+  'add-product': { pageId: 'page-prod-add', groupId: 'group-products', slug: 'addproduct', module: 'addproduct', title: '➕ নতুন পণ্য সংযোজন', subtitle: '২৩-কলাম AI অটো-ক্যাটাগরি, ১৬-টিয়ার প্রাইসিং ফর্মুলা ও ইমেজ আপলোড প্রিভিউ' },
+  'categroy': { pageId: 'page-prod-categories', groupId: 'group-products', slug: 'categroy', module: 'catbrand', title: '🗂️ ক্যাটাগরি ম্যানেজমেন্ট', subtitle: 'ডুপ্লিকেট-মুক্ত ক্যাটাগরি, সাব-ক্যাটাগরি ও চাইল্ড ক্যাটাগরি পরিচালনা' },
+  'category': { pageId: 'page-prod-categories', groupId: 'group-products', slug: 'categroy', module: 'catbrand', title: '🗂️ ক্যাটাগরি ম্যানেজমেন্ট', subtitle: 'ডুপ্লিকেট-মুক্ত ক্যাটাগরি, সাব-ক্যাটাগরি ও চাইল্ড ক্যাটাগরি পরিচালনা' },
+  'categories': { pageId: 'page-prod-categories', groupId: 'group-products', slug: 'categroy', module: 'catbrand', title: '🗂️ ক্যাটাগরি ম্যানেজমেন্ট', subtitle: 'ডুপ্লিকেট-মুক্ত ক্যাটাগরি, সাব-ক্যাটাগরি ও চাইল্ড ক্যাটাগরি পরিচালনা' },
+  'brands': { pageId: 'page-prod-brands', groupId: 'group-products', slug: 'brands', module: 'catbrand', title: '🏷️ অফিসিয়াল ব্র্যান্ড পার্টনার্স', subtitle: 'কার্ড আকারে ব্র্যান্ড শোকেস, পণ্য কাউন্টার ও ফিল্টারিং' },
+  'addbrand': { pageId: 'page-prod-brand-add', groupId: 'group-products', slug: 'addbrand', module: 'catbrand', title: '➕ নতুন ব্র্যান্ড যুক্ত করুন', subtitle: 'লোগো আপলোড ও বিবরণসহ নতুন ব্র্যান্ড কার্ড সংযোজন' },
+  'add-brand': { pageId: 'page-prod-brand-add', groupId: 'group-products', slug: 'addbrand', module: 'catbrand', title: '➕ নতুন ব্র্যান্ড যুক্ত করুন', subtitle: 'লোগো আপলোড ও বিবরণসহ নতুন ব্র্যান্ড কার্ড সংযোজন' },
+  'variants': { pageId: 'page-prod-variants', groupId: 'group-products', slug: 'variants', module: 'catbrand', title: '🎨 কালার ও সাইজ ভ্যারিয়েন্ট', subtitle: 'উপলব্ধ কালার শেডস ও সাইজ স্কেল তালিকা' },
+  'addvariant': { pageId: 'page-prod-variant-add', groupId: 'group-products', slug: 'addvariant', module: 'catbrand', title: '➕ নতুন ভ্যারিয়েন্ট যুক্ত করুন', subtitle: 'নতুন রং বা সাইজ অপশন সংরক্ষণ' },
+  'banners': { pageId: 'page-prod-banners', groupId: 'group-products', slug: 'banners', module: 'catbrand', title: '🖼️ ব্যানার ও স্লাইডার CMS', subtitle: 'ওয়েবসাইটের হিরো ব্যানার স্লাইড পরিচালনা' },
+  'bulk-upload': { pageId: 'page-prod-bulk-add', groupId: 'group-products', slug: 'bulk-upload', module: 'bulk', title: '📥 বাল্ক পণ্য আপলোড', subtitle: 'নমুনা শিট ডাউনলোড এবং শিট আপলোড করেই পণ্য আপডেট' },
+  'bulkupload': { pageId: 'page-prod-bulk-add', groupId: 'group-products', slug: 'bulk-upload', module: 'bulk', title: '📥 বাল্ক পণ্য আপলোড', subtitle: 'নমুনা শিট ডাউনলোড এবং শিট আপলোড করেই পণ্য আপডেট' },
+  'bulk-price': { pageId: 'page-prod-bulk-price', groupId: 'group-products', slug: 'bulk-price', module: 'bulk', title: '🏷️ বাল্ক মূল্য পরিবর্তন', subtitle: 'নমুনা প্রাইজ শিট ডাউনলোড এবং শিট আপলোড করেই প্রাইজ আপডেট' },
+  'bulkprice': { pageId: 'page-prod-bulk-price', groupId: 'group-products', slug: 'bulk-price', module: 'bulk', title: '🏷️ বাল্ক মূল্য পরিবর্তন', subtitle: 'নমুনা প্রাইজ শিট ডাউনলোড এবং শিট আপলোড করেই প্রাইজ আপডেট' },
+  'bulk-image': { pageId: 'page-prod-bulk-image', groupId: 'group-products', slug: 'bulk-image', module: 'bulk', title: '🖼️ বাল্ক ইমেজ আপডেট', subtitle: 'নমুনা ইমেজ শিট ডাউনলোড এবং শিট আপলোড করেই ছবি আপডেট' },
+  'bulkimage': { pageId: 'page-prod-bulk-image', groupId: 'group-products', slug: 'bulk-image', module: 'bulk', title: '🖼️ বাল্ক ইমেজ আপডেট', subtitle: 'নমুনা ইমেজ শিট ডাউনলোড এবং শিট আপলোড করেই ছবি আপডেট' },
+  'low-stock': { pageId: 'page-prod-low-stock', groupId: 'group-products', slug: 'low-stock', module: 'catalog', title: '⚠️ লো-স্টক পণ্য তালিকা', subtitle: 'যেসব পণ্যের স্টক ৫ পিসের নিচে নেমে এসেছে' },
+  'out-stock': { pageId: 'page-prod-out-stock', groupId: 'group-products', slug: 'out-stock', module: 'catalog', title: '🚫 আউট অব স্টক পণ্য', subtitle: 'বর্তমানে স্টক শূন্য হওয়া আইটেমসমূহ' },
+  'error-products': { pageId: 'page-prod-error', groupId: 'group-products', slug: 'error-products', module: 'catalog', title: '⚙️ ত্রুটিযুক্ত পণ্য যাচাই', subtitle: 'ছবি, মূল্য বা SKU অনুপস্থিত থাকা আইটেম' },
+  'landing': { pageId: 'page-prod-landing', groupId: 'group-products', slug: 'landing', module: 'landing', title: '🚀 মাল্টি-ল্যান্ডিং পেজ CMS', subtitle: 'একের অধিক ল্যান্ডিং পেজ তৈরি, প্রোডাক্ট সার্চ করে অ্যাড, ব্যানার ও ভিডিও আপডেট' },
+  'orders': { pageId: 'page-orders-all', groupId: 'group-orders', slug: 'orders', module: 'orders', title: '📋 সকল অর্ডার তালিকা', subtitle: 'বাল্ক সিলেকশন, ফ্রড চেক, কুরিয়ার বুকিং ও ভাউচার প্রিন্ট' },
+  'incomplete-orders': { pageId: 'page-orders-incomplete', groupId: 'group-orders', slug: 'incomplete-orders', module: 'orders', title: '⚠️ অসম্পূর্ণ অর্ডারসমূহ', subtitle: 'ফর্ম পূরণ করেও চেকআউট না করা গ্রাহকদের WhatsApp অফার' },
+  'delivered-orders': { pageId: 'page-orders-success', groupId: 'group-orders', slug: 'delivered-orders', module: 'orders', title: '✓ সফল ডেলিভারি', subtitle: 'কুরিয়ারে সফলভাবে সরবরাহ ও পরিশোধিত অর্ডার' },
+  'shipping-orders': { pageId: 'page-orders-shipping', groupId: 'group-orders', slug: 'shipping-orders', module: 'orders', title: '🚚 কুরিয়ারে / শিপিং অর্ডার', subtitle: 'প্যাকিং, ইন ট্রানজিট ও ডেলিভারি পথে থাকা পার্সেল' },
+  'unpaid-orders': { pageId: 'page-orders-unpaid', groupId: 'group-orders', slug: 'unpaid-orders', module: 'orders', title: '💳 পেমেন্ট অসম্পূর্ণ', subtitle: 'ডেলিভারি হয়েছে কিন্তু এখনো টাকা জমা হয়নি' },
+  'cancelled-orders': { pageId: 'page-orders-cancelled', groupId: 'group-orders', slug: 'cancelled-orders', module: 'orders', title: '✕ বাতিল ও রিটার্নকৃত অর্ডার', subtitle: 'গ্রাহক বা কুরিয়ার কর্তৃক ফেরত আসা পার্সেল' },
+  'addorder': { pageId: 'page-orders-add', groupId: 'group-orders', slug: 'addorder', module: 'orders', title: '➕ নতুন অর্ডার এন্ট্রি', subtitle: 'পণ্য সার্চ, গ্রাহকের তথ্য ইনপুট ও ভাউচার তৈরি' },
+  'add-order': { pageId: 'page-orders-add', groupId: 'group-orders', slug: 'addorder', module: 'orders', title: '➕ নতুন অর্ডার এন্ট্রি', subtitle: 'পণ্য সার্চ, গ্রাহকের তথ্য ইনপুট ও ভাউচার তৈরি' },
+  'visitors': { pageId: 'page-orders-visitors', groupId: 'group-orders', slug: 'visitors', module: 'orders', title: '🟢 লাইভ সক্রিয় ভিজিটর', subtitle: 'ওয়েবসাইটে বর্তমানে ব্রাউজিং করা ইউজার ও পেজ হিস্ট্রি' },
+  'customers': { pageId: 'page-orders-customers', groupId: 'group-orders', slug: 'customers', module: 'orders', title: '👥 কাস্টমার ডাটাবেজ', subtitle: 'সকল গ্রাহকদের ফোন নম্বর, ঠিকানা ও মোট ক্রয়ের হিসাব' },
+  'reviews': { pageId: 'page-orders-reviews', groupId: 'group-orders', slug: 'reviews', module: 'orders', title: '⭐ গ্রাহক রিভিউ ও রেটিং', subtitle: 'পণ্য রিভিউ অনুমোদন ও মডারেশন প্যানেল' },
+  'resellers': { pageId: 'page-partner-resellers', groupId: 'group-partners', slug: 'resellers', module: 'partners', title: '🤝 রিসেলার পার্টনার তালিকা', subtitle: 'রিসেলারদের সেলস ভলিউম, ব্যালেন্স ও কমিশন ট্র্যাকিং' },
+  'wholesalers': { pageId: 'page-partner-wholesalers', groupId: 'group-partners', slug: 'wholesalers', module: 'partners', title: '🏢 পাইকারি ক্রেতা', subtitle: 'হোলসেলার ডিসকাউন্ট টিয়ার ও মোট অর্ডার হিস্ট্রি' },
+  'sellers': { pageId: 'page-partner-sellers', groupId: 'group-partners', slug: 'sellers', module: 'partners', title: '🏪 মার্চেন্ট সেলার / ভেন্ডর', subtitle: 'ভেন্ডরদের পণ্যের সংখ্যা ও কমিশন মার্জিন' },
+  'markets': { pageId: 'page-partner-markets', groupId: 'group-partners', slug: 'markets', module: 'partners', title: '🌐 অন্যান্য মার্কেটপ্লেস চ্যানেল', subtitle: 'দারাজ, ফেসবুক শপ ও বিক্রয় ডট কমের সাথে ক্যাটালগ সিঙ্ক' },
+  'admins': { pageId: 'page-admin-users', groupId: 'group-admins', slug: 'admins', module: 'partners', title: '👑 মাস্টার অ্যাডমিন একাউন্টস', subtitle: 'সিস্টেমের পূর্ণ নিয়ন্ত্রণপ্রাপ্ত অ্যাডমিন ইউজার' },
+  'workers': { pageId: 'page-admin-workers', groupId: 'group-admins', slug: 'workers', module: 'partners', title: '👷 কর্মী ও স্টাফ টিম', subtitle: 'অর্ডার, ডেলিভারি, সাপোর্ট ও হিসাবরক্ষক কর্মী' },
+  'team': { pageId: 'page-admin-workers', groupId: 'group-admins', slug: 'workers', module: 'partners', title: '👷 কর্মী ও স্টাফ টিম', subtitle: 'অর্ডার, ডেলিভারি, সাপোর্ট ও হিসাবরক্ষক কর্মী' },
+  'reports': { pageId: 'page-report-sales', groupId: 'group-reports', slug: 'reports', module: 'reports', title: '📊 সার্বিক বিক্রয় রিপোর্ট', subtitle: 'দৈনিক, সাপ্তাহিক, মাসিক ও বাৎসরিক বিক্রয় খতিয়ান' },
+  'report-sales': { pageId: 'page-report-sales', groupId: 'group-reports', slug: 'report-sales', module: 'reports', title: '📊 সার্বিক বিক্রয় রিপোর্ট', subtitle: 'দৈনিক, সাপ্তাহিক, মাসিক ও বাৎসরিক বিক্রয় খতিয়ান' },
+  'report-seller': { pageId: 'page-report-seller', groupId: 'group-reports', slug: 'report-seller', module: 'reports', title: '🏪 সেলার পারফরম্যান্স রিপোর্ট', subtitle: 'ভেন্ডরদের মাসিক ও বাৎসরিক বিক্রয় রিপোর্ট' },
+  'report-reseller': { pageId: 'page-report-reseller', groupId: 'group-reports', slug: 'report-reseller', module: 'reports', title: '🤝 রিসেলার কমিশন রিপোর্ট', subtitle: 'রিসেলারদের মাধ্যমে বিক্রির হিসাব' },
+  'report-wholesaler': { pageId: 'page-report-wholesaler', groupId: 'group-reports', slug: 'report-wholesaler', module: 'reports', title: '🏢 হোলসেলার ক্রয় রিপোর্ট', subtitle: 'পাইকারি পার্টনারদের ভলিউম রিপোর্ট' },
+  'report-wholesale': { pageId: 'page-report-wholesale', groupId: 'group-reports', slug: 'report-wholesale', module: 'reports', title: '📦 হোলসেল সাপ্লাই রিপোর্ট', subtitle: 'বাল্ক অর্ডারের রাজস্ব হিসাব' },
+  'report-costs': { pageId: 'page-report-costs', groupId: 'group-reports', slug: 'report-costs', module: 'reports', title: '💸 ব্যবসায়িক ব্যয় রিপোর্ট', subtitle: 'মার্কেটিং, অফিস ও প্যাকেজিং খরচের হিসাব' },
+  'report-buying': { pageId: 'page-report-buying', groupId: 'group-reports', slug: 'report-buying', module: 'reports', title: '🛒 পাইকারি স্টক ক্রয় রিপোর্ট', subtitle: 'সাপ্লায়ারদের থেকে পণ্য ক্রয়ের তালিকা' },
+  'report-invest': { pageId: 'page-report-invest', groupId: 'group-reports', slug: 'report-invest', module: 'reports', title: '💼 মূলধন ও বিনিয়োগ রিপোর্ট', subtitle: 'পার্টনার ও শেয়ারহোল্ডারদের ইকুইটি ফান্ড' },
+  'payouts': { pageId: 'page-inv-payout', groupId: 'group-inventory', slug: 'payouts', module: 'inventory', title: '💳 রিসেলার পে-আউট রিকোয়েস্ট', subtitle: 'স্বয়ংক্রিয় -৩% ফি কর্তন সাপেক্ষে উত্তোলন অনুমোদন' },
+  'finance': { pageId: 'page-inv-payout', groupId: 'group-inventory', slug: 'payouts', module: 'inventory', title: '💳 ফাইন্যান্স ও পে-আউট', subtitle: 'স্বয়ংক্রিয় -৩% ফি কর্তন সাপেক্ষে উত্তোলন অনুমোদন' },
+  'costs': { pageId: 'page-inv-costs', groupId: 'group-inventory', slug: 'costs', module: 'inventory', title: '💸 ব্যবসায়িক খরচ ও ব্যয় লেজার', subtitle: 'ভাউচার ভিত্তিক খরচের হিসাব সংরক্ষণ' },
+  'buying': { pageId: 'page-inv-buying', groupId: 'group-inventory', slug: 'buying', module: 'inventory', title: '🛒 পাইকারি স্টক ক্রয় হিসাব', subtitle: 'সাপ্লায়ার স্টক ক্রয় ইনভয়েস' },
+  'invest': { pageId: 'page-inv-invest', groupId: 'group-inventory', slug: 'invest', module: 'inventory', title: '💼 মূলধন বিনিয়োগ ট্র্যাকার', subtitle: 'ব্যবসায়ের বিনিয়োগ ও মূলধনের বৃদ্ধি' },
+  'couriers': { pageId: 'page-courier-list', groupId: 'group-courier', slug: 'couriers', module: 'couriers_settings', title: '🚚 সংযুক্ত কুরিয়ার সার্ভিসসমূহ', subtitle: 'স্টিডফাস্ট, পাঠাও ও রেডএক্স লাইভ ব্যালেন্স ও স্ট্যাটাস' },
+  'addcourier': { pageId: 'page-courier-add', groupId: 'group-courier', slug: 'addcourier', module: 'couriers_settings', title: '➕ নতুন কুরিয়ার এপিআই কনফিগ', subtitle: 'API Key, Secret Key ও Webhook স্বয়ংক্রিয় সংযোগ' },
+  'fraud': { pageId: 'page-courier-fraud', groupId: 'group-courier', slug: 'fraud', module: 'couriers_settings', title: '🛡️ কাস্টমার ফ্রড চেকার', subtitle: 'কুরিয়ার ডেলিভারি সাকসেস ও রিটার্ন রেট বিশ্লেষণ' },
+  'payments': { pageId: 'page-courier-payments', groupId: 'group-courier', slug: 'payments', module: 'couriers_settings', title: '💳 অনলাইন পেমেন্ট গেটওয়ে', subtitle: 'বিকাশ মার্চেন্ট, SSLCommerz, সূর্যপে ও নগদ ইন্টিগ্রেশন' },
+  'settings': { pageId: 'page-set-info', groupId: 'group-settings', slug: 'settings', module: 'couriers_settings', title: '⚙️ দোকানের তথ্য ও সেটিংস', subtitle: 'নাম, লোগো, ঠিকানা, হটলাইন ও শীর্ষ নোটিশ বার' },
+  'shop-info': { pageId: 'page-set-info', groupId: 'group-settings', slug: 'settings', module: 'couriers_settings', title: '🏢 দোকানের তথ্য ও হটলাইন', subtitle: 'নাম, লোগো, ঠিকানা, হটলাইন ও শীর্ষ নোটিশ বার' },
+  'logs': { pageId: 'page-set-logs', groupId: 'group-settings', slug: 'logs', module: 'couriers_settings', title: '📜 অডিট লগ ও কর্মী অ্যাক্টিভিটি', subtitle: 'লগইন হিস্ট্রি, আইপি অ্যাড্রেস ও ইউজার অ্যাকশন' },
+  'payment-methods': { pageId: 'page-set-payment', groupId: 'group-settings', slug: 'payment-methods', module: 'couriers_settings', title: '💳 পেমেন্ট মেথড কনফিগারেশন', subtitle: 'ক্যাশ অন ডেলিভারি, বিকাশ ও নগদ সেটিংস' },
+  'delivery': { pageId: 'page-set-delivery', groupId: 'group-settings', slug: 'delivery', module: 'couriers_settings', title: '🚚 ডেলিভারি চার্জ ও জোন', subtitle: 'কুমিল্লা, ঢাকা ও ঢাকার বাইরে ডেলিভারি ফি নির্ধারণ' },
+  'offers': { pageId: 'page-set-offers', groupId: 'group-settings', slug: 'offers', module: 'couriers_settings', title: '🎁 অফার ও প্রমো কুপন কোড', subtitle: 'ডিসকাউন্ট কুপন তৈরি ও সক্রিয়করণ' },
+  'profile': { pageId: 'page-set-profile', groupId: 'group-settings', slug: 'profile', module: 'couriers_settings', title: '👤 অ্যাডমিন প্রোফাইল আপডেট', subtitle: 'ব্যবহারকারীর নাম ও পদবী' },
+  'password': { pageId: 'page-set-password', groupId: 'group-settings', slug: 'password', module: 'couriers_settings', title: '🔒 পাসওয়ার্ড পরিবর্তন', subtitle: 'নতুন সুরক্ষিত পাসওয়ার্ড নির্ধারণ' },
+  'others': { pageId: 'page-others-hub', groupId: 'group-others', slug: 'others', module: 'others', title: '🧩 অন্যান্য মডিউল ও অপারেশনস হাব', subtitle: 'পার্টনার, মার্কেটপ্লেস, ফাইন্যান্স, কুরিয়ার, ফ্রড চেকার, রিপোর্ট ও সেটিংস কুইক হাব' }
 };
 
 const PAGE_ID_TO_ROUTE = {};
@@ -1465,7 +1464,6 @@ function resolveAdminRoute(rawInput = 'dashboard') {
   }
   return ADMIN_ROUTES['dashboard'];
 }
-
 
 function initAdminGlobalState() {
   if (typeof window === 'undefined') return;
@@ -1499,16 +1497,16 @@ function initAdminGlobalState() {
 
   // Map of Page IDs to their Display Titles and Subtitles
   window.__pageTitleMap = {
-    'page-dashboard': { title: '📊 ড্যাশবোর্ড ওভারভিউ (Dashboard)', subtitle: '১৮-পয়েন্ট লাইভ বিজনেস কাউন্টার, রাজস্ব ও সেলস গ্রাফ' },
+    'page-dashboard': { title: '📊 ড্যাশবোর্ড ওভারভিউ', subtitle: '১৮-পয়েন্ট লাইভ বিজনেস কাউন্টার, রাজস্ব ও সেলস গ্রাফ' },
     // Product Management
-    'page-prod-all': { title: '📦 সকল পণ্য তালিকা (Product Catalog)', subtitle: 'ইনলাইন এডিট, স্টক নিয়ন্ত্রণ ও ফিল্টারিং' },
-    'page-prod-add': { title: '➕ নতুন পণ্য সংযোজন (Add Product)', subtitle: 'SKU, ছবি, দর ও স্টক নির্ধারণ করে প্রোডাক্ট শিটে যোগ' },
-    'page-prod-bulk-add': { title: '📥 বাল্ক পণ্য আপলোড (Bulk CSV)', subtitle: 'একসাথে একাধিক পণ্য সিএসভি ফরম্যাটে আপলোড' },
-    'page-prod-bulk-price': { title: '🏷️ বাল্ক মূল্য পরিবর্তন (Bulk Price Update)', subtitle: 'ক্যাটাগরি বা সকল পণ্যের শতকরা মূল্য বৃদ্ধি/হ্রাস' },
-    'page-prod-bulk-image': { title: '🖼️ বাল্ক ইমেজ আপডেট (Bulk Image Update)', subtitle: 'এক ক্লিকে একাধিক পণ্যের ছবি পরিবর্তন' },
+    'page-prod-all': { title: '📦 সকল পণ্য তালিকা', subtitle: 'ইনলাইন এডিট, স্টক নিয়ন্ত্রণ ও ফিল্টারিং' },
+    'page-prod-add': { title: '➕ নতুন পণ্য সংযোজন', subtitle: 'SKU, ছবি, দর ও স্টক নির্ধারণ করে প্রোডাক্ট শিটে যোগ' },
+    'page-prod-bulk-add': { title: '📥 বাল্ক পণ্য আপলোড', subtitle: 'একসাথে একাধিক পণ্য সিএসভি ফরম্যাটে আপলোড' },
+    'page-prod-bulk-price': { title: '🏷️ বাল্ক মূল্য পরিবর্তন', subtitle: 'ক্যাটাগরি বা সকল পণ্যের শতকরা মূল্য বৃদ্ধি/হ্রাস' },
+    'page-prod-bulk-image': { title: '🖼️ বাল্ক ইমেজ আপডেট', subtitle: 'এক ক্লিকে একাধিক পণ্যের ছবি পরিবর্তন' },
     'page-prod-low-stock': { title: '⚠️ লো-স্টক পণ্য তালিকা (<৫ পিস)', subtitle: 'যেসব পণ্যের স্টক ৫ পিসের নিচে নেমে এসেছে' },
     'page-prod-out-stock': { title: '🚫 আউট অব স্টক পণ্য (০ পিস)', subtitle: 'বর্তমানে স্টক শূন্য হওয়া আইটেমসমূহ' },
-    'page-prod-error': { title: '⚙️ ত্রুটিযুক্ত পণ্য যাচাই (Error Products)', subtitle: 'ছবি, মূল্য বা SKU অনুপস্থিত থাকা আইটেম' },
+    'page-prod-error': { title: '⚙️ ত্রুটিযুক্ত পণ্য যাচাই', subtitle: 'ছবি, মূল্য বা SKU অনুপস্থিত থাকা আইটেম' },
     'page-prod-brands': { title: '🏷️ অফিসিয়াল ব্র্যান্ড পার্টনার্স', subtitle: 'ব্র্যান্ডের তালিকা ও প্রোডাক্ট ফিল্টার' },
     'page-prod-brand-add': { title: '➕ নতুন ব্র্যান্ড যুক্ত করুন', subtitle: 'লোগো ও তথ্যসহ নতুন ব্র্যান্ড সংযোজন' },
     'page-prod-variants': { title: '🎨 কালার ও সাইজ ভ্যারিয়েন্ট', subtitle: 'উপলব্ধ কালার শেডস ও সাইজ স্কেল তালিকা' },
@@ -1516,15 +1514,15 @@ function initAdminGlobalState() {
     'page-prod-banners': { title: '🖼️ ব্যানার ও স্লাইডার CMS', subtitle: 'ওয়েবসাইটের হিরো ব্যানার স্লাইড পরিচালনা' },
     'page-prod-landing': { title: '🚀 ল্যান্ডিং পেজ কনটেন্ট CMS', subtitle: 'সিঙ্গেল-প্রোডাক্ট সেলস ফানেল কনফিগারেশন' },
     // Order Management
-    'page-orders-all': { title: '📋 সকল অর্ডার তালিকা (All Orders)', subtitle: 'বাল্ক সিলেকশন, ফ্রড চেক, কুরিয়ার বুকিং ও ভাউচার প্রিন্ট' },
-    'page-orders-incomplete': { title: '⚠️ অসম্পূর্ণ অর্ডারসমূহ (Abandoned)', subtitle: 'ফর্ম পূরণ করেও চেকআউট না করা গ্রাহকদের WhatsApp অফার' },
-    'page-orders-success': { title: '✓ সফল ডেলিভারি (Delivered & Paid)', subtitle: 'কুরিয়ারে সফলভাবে সরবরাহ ও পরিশোধিত অর্ডার' },
-    'page-orders-shipping': { title: '🚚 কুরিয়ারে / শিপিং অর্ডার (In Courier)', subtitle: 'প্যাকিং, ইন ট্রানজিট ও ডেলিভারি পথে থাকা পার্সেল' },
-    'page-orders-unpaid': { title: '💳 পেমেন্ট অসম্পূর্ণ (COD Pending)', subtitle: 'ডেলিভারি হয়েছে কিন্তু এখনো টাকা জমা হয়নি' },
+    'page-orders-all': { title: '📋 সকল অর্ডার তালিকা', subtitle: 'বাল্ক সিলেকশন, ফ্রড চেক, কুরিয়ার বুকিং ও ভাউচার প্রিন্ট' },
+    'page-orders-incomplete': { title: '⚠️ অসম্পূর্ণ অর্ডারসমূহ', subtitle: 'ফর্ম পূরণ করেও চেকআউট না করা গ্রাহকদের WhatsApp অফার' },
+    'page-orders-success': { title: '✓ সফল ডেলিভারি', subtitle: 'কুরিয়ারে সফলভাবে সরবরাহ ও পরিশোধিত অর্ডার' },
+    'page-orders-shipping': { title: '🚚 কুরিয়ারে / শিপিং অর্ডার', subtitle: 'প্যাকিং, ইন ট্রানজিট ও ডেলিভারি পথে থাকা পার্সেল' },
+    'page-orders-unpaid': { title: '💳 পেমেন্ট অসম্পূর্ণ', subtitle: 'ডেলিভারি হয়েছে কিন্তু এখনো টাকা জমা হয়নি' },
     'page-orders-cancelled': { title: '✕ বাতিল ও রিটার্নকৃত অর্ডার', subtitle: 'গ্রাহক বা কুরিয়ার কর্তৃক ফেরত আসা পার্সেল' },
     'page-orders-add': { title: '➕ নতুন অর্ডার এন্ট্রি (Add Order)', subtitle: 'পণ্য সার্চ, গ্রাহকের তথ্য ইনপুট ও ভাউচার তৈরি' },
     'page-orders-visitors': { title: '🟢 লাইভ সক্রিয় ভিজিটর ট্র্যাকিং', subtitle: 'ওয়েবসাইটে বর্তমানে ব্রাউজিং করা ইউজার ও পেজ হিস্ট্রি' },
-    'page-orders-customers': { title: '👥 কাস্টমার ডাটাবেজ (Customer CRM)', subtitle: 'সকল গ্রাহকদের ফোন নম্বর, ঠিকানা ও মোট ক্রয়ের হিসাব' },
+    'page-orders-customers': { title: '👥 কাস্টমার ডাটাবেজ', subtitle: 'সকল গ্রাহকদের ফোন নম্বর, ঠিকানা ও মোট ক্রয়ের হিসাব' },
     'page-orders-reviews': { title: '⭐ গ্রাহক রিভিউ ও রেটিং', subtitle: 'পণ্য রিভিউ অনুমোদন ও মডারেশন প্যানেল' },
     // Partner Management
     'page-partner-resellers': { title: '🤝 রিসেলার পার্টনার তালিকা', subtitle: 'রিসেলারদের সেলস ভলিউম, ব্যালেন্স ও কমিশন ট্র্যাকিং' },
@@ -1892,7 +1890,7 @@ function initAdminGlobalState() {
     const isHighRisk = cleanPhone.endsWith('44') || cleanPhone.endsWith('88');
     const rate = isHighRisk ? '৬৫% ডেলিভারি সাকসেস (২টি রিটার্ন রেকর্ড)' : '৯৮% সফল ডেলিভারি (জিরো রিটার্ন)';
     const riskLevel = isHighRisk ? 'সতর্কতা: মাঝারি ঝুঁকি (Moderate Risk)' : 'নিরাপদ কাস্টমার (Verified Safe ✓)';
-    
+
     if (textEl) textEl.innerHTML = `ফোন: <b>${cleanPhone}</b><br>কুরিয়ার ডাটা: ${rate}<br>অর্ডার হিস্ট্রি: ড্রিম কার্টে ২ টি সফল অর্ডার সম্পন্ন করেছেন।`;
     if (badgeEl) {
       badgeEl.textContent = riskLevel;
@@ -2234,7 +2232,6 @@ function initAdminGlobalState() {
     };
   };
 
-
   // Ensure option exists in a <select> and select it
   window.ensureSelectValue = function(selectId, val) {
     const sel = document.getElementById(selectId);
@@ -2495,7 +2492,6 @@ function initAdminGlobalState() {
     });
   };
 
-
   // Image Link + Manual File Upload with Live Preview
   window.__admUploadedImages = window.__admUploadedImages || [];
 
@@ -2577,34 +2573,7 @@ function initAdminGlobalState() {
   };
 
   // Live 23-Column Summary Preview in Add Product Form
-  window.updateAddProductLiveSummary = function() {
-    const box = document.getElementById('adm-23col-live-preview');
-    if (!box) return;
-    const getVal = id => (document.getElementById(id)?.value || '').trim();
-    const imgs = getVal('adm-imageurl').split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
-    box.innerHTML = `
-      <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 text-[10px]">
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">1. SKU:</span><b class="font-mono">${getVal('adm-sku') || '—'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">2. P_Name:</span><b class="truncate block">${getVal('adm-name') || '—'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">3. Category:</span><b>${getVal('adm-cat') || '—'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">4. Sub_Category:</span><b>${getVal('adm-subcat') || '—'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">5. Child_Category:</span><b>${getVal('adm-childcat') || '—'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">6. Brand:</span><b>${getVal('adm-brand') || '—'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">7. Buying_price:</span><b class="font-mono">৳${getVal('adm-buyprice') || '0'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">8. Selling_Price:</span><b class="font-mono text-emerald-600">৳${getVal('adm-sellprice') || '0'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">9. Stock:</span><b class="font-mono">${getVal('adm-stock') || '0'} পিস</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">10. Original_Price:</span><b class="font-mono">৳${getVal('adm-origprice') || '0'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">11. WholeSale_price:</span><b class="font-mono">৳${getVal('adm-wholesaleprice') || '0'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">12. Min_order_Q:</span><b class="font-mono">${getVal('adm-minorderq') || '5'} পিস</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">13. Images:</span><b>${imgs.length} টি ছবি</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">14. Slug:</span><b class="font-mono truncate block">${getVal('adm-slug') || '—'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">18. Color:</span><b>${getVal('adm-color') || '—'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">19. Size:</span><b>${getVal('adm-size') || '—'}</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">20. WEIGHT_KG:</span><b class="font-mono">${getVal('adm-weight') || '0.25'} kg</b></div>
-        <div class="p-2 rounded-lg bg-white dark:bg-slate-900 border"><span class="text-slate-400 block">21-23. W×L×H (cm):</span><b class="font-mono">${getVal('adm-width') || 10}×${getVal('adm-length') || 12}×${getVal('adm-height') || 6}</b></div>
-      </div>
-    `;
-  };
+  window.updateAddProductLiveSummary = function() {};
 
   // Save New Product (All 23 Columns)
   window.handleAdminAddProduct = async function(e) {
@@ -3255,7 +3224,6 @@ function initAdminGlobalState() {
     }
   };
 
-
   // ============================================================================
   // REQUIREMENTS 3, 4, 5: BULK PRICE, BULK IMAGE, BULK PRODUCT SAMPLE DOWNLOAD & SHEET UPLOAD
   // ============================================================================
@@ -3819,7 +3787,6 @@ function initAdminGlobalState() {
     window.renderAdminProductsTable && window.renderAdminProductsTable();
     if (toast && toast.show) toast.show({ type: 'success', title: 'ইমেজ আপডেট', message: `${count} টি পণ্যের ছবি পরিবর্তন করা হয়েছে!` });
   };
-
 
   // ============================================================================
   // REQUIREMENT 6: BRANDS CARD VIEW & BRAND MANAGEMENT HANDLERS
@@ -4912,7 +4879,6 @@ function initAdminGlobalState() {
     modal.classList.remove('hidden');
   };
 
-
   // PARTNER HANDLERS
   window.handleAdminAddReseller = function(e) {
     e.preventDefault();
@@ -5251,7 +5217,6 @@ function initAdminGlobalState() {
       inputEl.focus();
     }
   };
-
 
   // ============================================================================
   // INTERACTIVE 3-LEVEL CATEGORY TREE MANAGEMENT (Category -> Sub Category -> Chaild Category)
@@ -5676,7 +5641,7 @@ function initAdminGlobalState() {
                 class="dc-tree-action-pill indigo-pill"
                 title="এই ক্যাটাগরিতে নতুন সাব-ক্যাটাগরি যোগ করুন"
               >
-                + (add Sub category)
+                + সাব-ক্যাটাগরি
               </button>
               <button
                 type="button"
@@ -5730,7 +5695,7 @@ function initAdminGlobalState() {
                         class="dc-tree-action-pill amber-pill"
                         title="এই সাব-ক্যাটাগরিতে নতুন চাইল্ড ক্যাটাগরি যোগ করুন"
                       >
-                        + (add chaild category)
+                        + চাইল্ড ক্যাটাগরি
                       </button>
                       <button
                         type="button"
@@ -5761,7 +5726,7 @@ function initAdminGlobalState() {
                             <div class="dc-tree-node-btn child-node">
                               <span class="text-amber-500">🏷️</span>
                               <span>${ch}</span>
-                              <span class="text-[10px] text-slate-400 font-normal">(Chaild Category)</span>
+                              <span class="text-[10px] text-slate-400 font-normal"></span>
                             </div>
 
                             <div class="dc-tree-leader-line"></div>
@@ -5772,7 +5737,7 @@ function initAdminGlobalState() {
                                 onclick="window.openCategoryTreeActionModal('add_child', '${safeCat}', '${safeSub}')"
                                 class="dc-tree-action-pill amber-pill"
                               >
-                                + (add chaild category)
+                                + চাইল্ড ক্যাটাগরি
                               </button>
                               <button
                                 type="button"
@@ -5871,8 +5836,6 @@ async function safeFetchWithTimeout(fetchPromise, timeoutMs = 1800, fallbackVal 
   }
 }
 
-
-
 // ============================================================================
 // MODULE: adminSidebar.js
 // ============================================================================
@@ -5908,7 +5871,7 @@ function renderSidebarAndTopbar({
   costs = [],
   buying = [],
   invest = [],
-  activeRoute = { pageId: 'page-dashboard', groupId: 'group-dashboard', slug: 'dashboard', title: '📊 ড্যাশবোর্ড ওভারভিউ (Dashboard)', subtitle: '১৮-পয়েন্ট লাইভ বিজনেস কাউন্টার, রাজস্ব ও সেলস গ্রাফ' }
+  activeRoute = { pageId: 'page-dashboard', groupId: 'group-dashboard', slug: 'dashboard', title: '📊 ড্যাশবোর্ড ওভারভিউ', subtitle: '১৮-পয়েন্ট লাইভ বিজনেস কাউন্টার, রাজস্ব ও সেলস গ্রাফ' }
 } = {}) {
   // Deduplicate categories for counter badge
   const uniqueCatMap = new Map();
@@ -5920,9 +5883,9 @@ function renderSidebarAndTopbar({
 
   return `
     <!-- Mobile Off-Canvas Sidebar Overlay Backdrop -->
-    <div 
-      id="admin-sidebar-overlay" 
-      class="dc-admin-overlay" 
+    <div
+      id="admin-sidebar-overlay"
+      class="dc-admin-overlay"
       onclick="window.closeAdminSidebar && window.closeAdminSidebar()"
     ></div>
 
@@ -6049,9 +6012,9 @@ function renderSidebarAndTopbar({
             <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-courier-payments', 'group-courier')">💳 অনলাইন পেমেন্টস</button>
           </div>
 
-          <!-- Others Hub (/admin/others) -->
+          <!-- Others Hub -->
           <button class="admin-sidebar-main-btn" onclick="switchAdminPage('page-others-hub', 'group-others')">
-            <span>🧩 অন্যান্য মডিউল (/admin/others)</span>
+            <span>🧩 অন্যান্য মডিউল</span>
           </button>
 
           <!-- Settings -->
@@ -6083,7 +6046,7 @@ function renderSidebarAndTopbar({
 
       <!-- Desktop Left Sticky Sidebar (সাইড বার) -->
       <aside class="dc-admin-sidebar">
-        
+
         <!-- Brand Badge Header -->
         <div class="dc-sidebar-brand">
           <div class="dc-sidebar-logo">DC</div>
@@ -6351,10 +6314,10 @@ function renderSidebarAndTopbar({
             </div>
           </div>
 
-          <!-- 10. OTHERS HUB (/admin/others) -->
+          <!-- 10. OTHERS HUB -->
           <div class="dc-sidebar-nav-group">
             <button class="admin-sidebar-main-btn" data-group="group-others" onclick="switchAdminPage('page-others-hub', 'group-others')">
-              <span class="flex items-center gap-2"><span>🧩</span> <b>অন্যান্য (/admin/others)</b></span>
+              <span class="flex items-center gap-2"><span>🧩</span> <b>অন্যান্য</b></span>
             </button>
           </div>
 
@@ -6399,7 +6362,7 @@ function renderSidebarAndTopbar({
             </span>
             <span class="font-mono text-[9px] text-slate-400">v3.5 Live</span>
           </div>
-          
+
           <div class="flex items-center gap-1.5 pt-0.5">
             <a href="/products" target="_blank" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1 text-center bg-slate-100 dark:bg-slate-800">
               শপ ভিউ ↗
@@ -6414,11 +6377,11 @@ function renderSidebarAndTopbar({
 
       <!-- Right Main Panel Header -->
       <main id="admin-main-panel" class="dc-admin-main">
-        
+
         <!-- Top Bar -->
         <div class="dc-admin-topbar">
           <div class="flex items-center gap-2.5">
-            <button 
+            <button
               class="lg:hidden p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-emerald-50 transition"
               onclick="window.toggleAdminSidebar && window.toggleAdminSidebar()"
               aria-label="Toggle Menu"
@@ -6436,16 +6399,16 @@ function renderSidebarAndTopbar({
           <!-- Global Search & Actions -->
           <div class="flex items-center gap-1.5">
             <div class="relative hidden sm:block">
-              <input 
-                type="text" 
-                placeholder="বর্তমান পেজে সার্চ..." 
+              <input
+                type="text"
+                placeholder="বর্তমান পেজে সার্চ..."
                 class="form-control text-xs py-1.5 pl-7 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 w-36 md:w-52"
                 oninput="window.handleAdminGlobalSearch(this.value)"
               />
               <span class="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
             </div>
 
-            <button 
+            <button
               id="admin-theme-toggle"
               class="btn-secondary text-xs py-1.5 px-2 bg-slate-50 dark:bg-slate-800 font-bold"
               onclick="window.toggleAdminTheme && window.toggleAdminTheme()"
@@ -6458,7 +6421,7 @@ function renderSidebarAndTopbar({
               🏠 হোম পেজ ↗
             </a>
 
-            <button 
+            <button
               class="btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1 font-bold"
               onclick="const ic = this.querySelector('.spin-icon'); if(ic) ic.classList.add('animate-spin'); setTimeout(() => { if(ic) ic.classList.remove('animate-spin'); if(toast && toast.show) toast.show({type: 'success', title: 'ডাটা আপডেট', message: 'গুগল শিট থেকে ডাটা রিফ্রেশ হয়েছে!'}); }, 600);"
               title="রিফ্রেশ ডাটা"
@@ -6479,8 +6442,8 @@ function renderSidebarAndTopbar({
               <a href="/admin/landing" onclick="event.preventDefault(); switchAdminPage('page-prod-landing', 'group-products')" data-page="page-prod-landing" class="admin-route-tab ${activeRoute.pageId === 'page-prod-landing' ? 'active' : ''}">🚀 ল্যান্ডিং পেজ</a>
               <a href="/admin/others" onclick="event.preventDefault(); switchAdminPage('page-others-hub', 'group-others')" data-page="page-others-hub" class="admin-route-tab ${activeRoute.pageId === 'page-others-hub' ? 'active' : ''}">🧩 অন্যান্য</a>
             </div>
-            <span 
-              id="admin-current-route-badge" 
+            <span
+              id="admin-current-route-badge"
               onclick="window.copyToClipboard(window.location.origin + '/admin/${activeRoute.slug}', 'পেজ লিঙ্ক কপি হয়েছে!')"
               class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-mono text-[11px] font-bold cursor-pointer"
               title="ক্লিক করে পেজ URL কপি করুন"
@@ -6504,23 +6467,22 @@ function renderSidebarAndTopbar({
  * - Recent Orders Live Preview Table
  */
 
-
 function renderDashboardModule({ kpi, categories, orders }) {
   return `
     <!-- ================================================================= -->
     <!-- DEDICATED PAGE: DASHBOARD OVERVIEW                                -->
     <!-- ================================================================= -->
     <div id="page-dashboard" class="admin-page-view space-y-5">
-      
+
       <!-- 18-Point Full KPI Matrix Grid -->
       <div class="space-y-2">
         <div class="flex items-center justify-between px-1">
-          <h3 class="text-xs font-black uppercase tracking-wider text-slate-500">১৮-পয়েন্ট সামগ্রিক বিজনেস মেট্রিক্স (18 Live Metrics)</h3>
+          <h3 class="text-xs font-black uppercase tracking-wider text-slate-500">সামগ্রিক বিজনেস মেট্রিক্স</h3>
           <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-full">● রিয়েলটাইম শিট সিঙ্ক</span>
         </div>
 
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
-          
+
           <!-- 1. Total Products -->
           <div class="admin-kpi-card p-3 cursor-pointer" onclick="switchAdminPage('page-prod-all', 'group-products')">
             <div class="flex items-center justify-between text-slate-400">
@@ -6709,7 +6671,7 @@ function renderDashboardModule({ kpi, categories, orders }) {
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
           <div>
             <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>📈</span> সেলস গ্রাফ ও পারফরম্যান্স (Interactive Sales Analytics)
+              <span>📈</span> সেলস গ্রাফ ও পারফরম্যান্স
             </h3>
             <p class="text-[11px] text-slate-400">সময়কাল অনুসারে লাইভ রাজস্ব ও অর্ডার ট্রেন্ড অ্যানালাইসিস</p>
           </div>
@@ -6740,7 +6702,7 @@ function renderDashboardModule({ kpi, categories, orders }) {
                 <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
               </linearGradient>
             </defs>
-            
+
             <line x1="20" y1="40" x2="580" y2="40" stroke="rgba(148, 163, 184, 0.15)" stroke-dasharray="4"/>
             <line x1="20" y1="90" x2="580" y2="90" stroke="rgba(148, 163, 184, 0.15)" stroke-dasharray="4"/>
             <line x1="20" y1="140" x2="580" y2="140" stroke="rgba(148, 163, 184, 0.15)" stroke-dasharray="4"/>
@@ -6768,7 +6730,7 @@ function renderDashboardModule({ kpi, categories, orders }) {
 
       <!-- Quick Action Shortcuts -->
       <div class="dc-admin-card space-y-3">
-        <h3 class="text-sm font-bold text-slate-900 dark:text-white">দ্রুত অ্যাকশন শর্টকাট (Quick Navigation)</h3>
+        <h3 class="text-sm font-bold text-slate-900 dark:text-white">দ্রুত অ্যাকশন শর্টকাট</h3>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-bold">
           <button class="p-3 rounded-xl bg-slate-50 hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-left transition flex items-center gap-2" onclick="switchAdminPage('page-orders-all', 'group-orders')">
             <span class="text-lg">📋</span>
@@ -6805,7 +6767,7 @@ function renderDashboardModule({ kpi, categories, orders }) {
       <div class="dc-admin-card space-y-3.5">
         <div class="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white">সাম্প্রতিক অর্ডারসমূহ (Recent Orders)</h3>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white">সাম্প্রতিক অর্ডারসমূহ</h3>
             <p class="text-[11px] text-slate-400">সর্বশেষ প্রেরিত কাস্টমার অর্ডার তালিকা</p>
           </div>
           <button class="text-xs text-emerald-600 font-bold hover:underline" onclick="switchAdminPage('page-orders-all', 'group-orders')">
@@ -6865,7 +6827,6 @@ function renderDashboardModule({ kpi, categories, orders }) {
  * Routes: /admin/products, /admin/low-stock, /admin/out-stock, /admin/error-products
  */
 
-
 function renderProductCatalogModule({ products = [], categories = [], brands = [], kpi = {} }) {
   return `
           <!-- 1. All Products List (Filters + 120 Per Page + Checkboxes + Bulk Price/Stock/Status Edit & Delete) -->
@@ -6892,12 +6853,12 @@ function renderProductCatalogModule({ products = [], categories = [], brands = [
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-2 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 text-xs">
                 <div class="lg:col-span-2">
                   <label class="block text-[10px] font-bold text-slate-400 mb-1">🔍 নাম, SKU, ক্যাটাগরি বা ব্র্যান্ড সার্চ</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     id="adm-prod-search-input"
-                    placeholder="পণ্যের নাম, SKU, ব্র্যান্ড বা ক্যাটাগরি লিখুন..." 
-                    class="form-control text-xs py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 w-full bg-white dark:bg-slate-900" 
-                    oninput="window.filterAdminProducts(this.value)" 
+                    placeholder="পণ্যের নাম, SKU, ব্র্যান্ড বা ক্যাটাগরি লিখুন..."
+                    class="form-control text-xs py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 w-full bg-white dark:bg-slate-900"
+                    oninput="window.filterAdminProducts(this.value)"
                   />
                 </div>
                 <div>
@@ -7028,13 +6989,12 @@ function renderProductCatalogModule({ products = [], categories = [], brands = [
             </div>
           </div>
 
-
           <!-- 6. Low Stock Products Page -->
           <div id="page-prod-low-stock" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-3">
               <div class="flex items-center justify-between border-b pb-2">
                 <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                  <span class="text-amber-500">⚠️</span> লো-স্টক পণ্য তালিকা (Stock &le; 5 Pcs)
+                  <span class="text-amber-500">⚠️</span> লো-স্টক পণ্য তালিকা
                 </h3>
                 <span class="badge badge-warning text-xs font-bold">মোট ${kpi.low_stock_count} টি পণ্য</span>
               </div>
@@ -7059,7 +7019,7 @@ function renderProductCatalogModule({ products = [], categories = [], brands = [
             <div class="dc-admin-card space-y-3">
               <div class="flex items-center justify-between border-b pb-2">
                 <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                  <span class="text-rose-500">🚫</span> স্টক শূন্য পণ্য তালিকা (Out of Stock - 0 Pcs)
+                  <span class="text-rose-500">🚫</span> আউট অব স্টক পণ্য তালিকা
                 </h3>
                 <span class="badge badge-danger text-xs font-bold">মোট ${kpi.out_of_stock_count} টি পণ্য</span>
               </div>
@@ -7084,7 +7044,7 @@ function renderProductCatalogModule({ products = [], categories = [], brands = [
             <div class="dc-admin-card space-y-3">
               <div class="flex items-center justify-between border-b pb-2">
                 <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                  <span class="text-indigo-500">⚙️</span> ত্রুটিযুক্ত পণ্য যাচাই (Error Products)
+                  <span class="text-indigo-500">⚙️</span> ত্রুটিযুক্ত পণ্য যাচাই
                 </h3>
               </div>
               <div class="space-y-2 text-xs">
@@ -7101,7 +7061,6 @@ function renderProductCatalogModule({ products = [], categories = [], brands = [
             </div>
           </div>
 
-
   `;
 }
 
@@ -7110,7 +7069,6 @@ function renderProductCatalogModule({ products = [], categories = [], brands = [
  * Route: /admin/addproduct
  */
 
-
 function renderAddProductModule({ products = [], categories = [], brands = [], variants = { colors: [], sizes: [] } }) {
   return `
           <!-- 2. Add Product Page (All 23 Sequential Columns + AI Search Auto-Fill + Tiered Pricing Engine + Image Upload Preview) -->
@@ -7118,7 +7076,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
             <div class="dc-admin-card space-y-4 max-w-5xl">
               <div class="border-b pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h3 class="font-bold text-base text-slate-900 dark:text-white">➕ নতুন পণ্য যোগ করুন (23-Column AI Smart Product Form)</h3>
+                  <h3 class="font-bold text-base text-slate-900 dark:text-white">➕ নতুন পণ্য যোগ করুন</h3>
                   <p class="text-[11px] text-slate-400">পণ্যের নাম দিলেই AI সার্চের মাধ্যমে ক্যাটাগরি &rsaquo; সাব-ক্যাটাগরি &rsaquo; চাইল্ড ক্যাটাগরি, ব্র্যান্ড, স্লাগ ও ওজন অটো বসে যাবে এবং ক্রয় মূল্য দিলে টিয়ার ফর্মুলায় সকল মূল্য হিসাব হবে</p>
                 </div>
                 <button class="btn-secondary py-1.5 px-3 text-xs font-bold self-start" onclick="switchAdminPage('page-prod-all', 'group-products')">← সকল পণ্য তালিকায় ফিরে যান</button>
@@ -7138,29 +7096,29 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
               </div>
 
               <form id="form-add-product-dedicated" class="space-y-5 text-xs" onsubmit="window.handleAdminAddProduct(event)">
-                
+
                 <!-- SECTION 1: Columns 1 & 2 -> SKU (manual type) & P_Name (manual type) -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ১: পণ্যের কোড ও নাম (১. SKU এবং ২. P_Name)
+                    ১. পণ্যের কোড ও নাম
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div>
-                      <label class="block font-bold mb-1">1. SKU (Manual Type) *</label>
+                      <label class="block font-bold mb-1">পণ্যের কোড (SKU) *</label>
                       <div class="flex gap-1.5">
                         <input type="text" id="adm-sku" required placeholder="যেমন: DCBD-WT-09" oninput="window.updateAddProductLiveSummary()" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold" />
                         <button type="button" onclick="const el=document.getElementById('adm-sku'); if(el){el.value='DCBD-'+Math.floor(1000+Math.random()*9000); window.updateAddProductLiveSummary();}" class="btn-secondary px-2.5 text-[10px] font-bold" title="অটো জেনারেট">অটো</button>
                       </div>
                     </div>
                     <div class="sm:col-span-2">
-                      <label class="block font-bold mb-1">2. P_Name (পণ্যের নাম — টাইপ করলেই AI অটো-ফিল হবে) *</label>
-                      <input 
-                        type="text" 
-                        id="adm-name" 
-                        required 
-                        placeholder="যেমন: Amazfit GTS 4 Calling Smartwatch / সুন্দরবনের খাঁটি চাকের মধু ১ কেজি" 
-                        oninput="window.handleProductNameAiAutoFill(this.value, 'adm')" 
-                        class="form-control text-xs w-full py-2 px-3 rounded-xl border border-emerald-400 font-bold" 
+                      <label class="block font-bold mb-1">পণ্যের নাম *</label>
+                      <input
+                        type="text"
+                        id="adm-name"
+                        required
+                        placeholder="যেমন: Amazfit GTS 4 Calling Smartwatch / সুন্দরবনের খাঁটি চাকের মধু ১ কেজি"
+                        oninput="window.handleProductNameAiAutoFill(this.value, 'adm')"
+                        class="form-control text-xs w-full py-2 px-3 rounded-xl border border-emerald-400 font-bold"
                       />
                     </div>
                   </div>
@@ -7169,12 +7127,12 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <!-- SECTION 2: Columns 3, 4, 5, 6 -> Category, Sub_Category, Child_Category (AI Dropdowns) & Brand (Auto + Manual Add) -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ২: AI ক্যাটাগরি ট্রি ও ব্র্যান্ড (৩. Category &rsaquo; ৪. Sub_Category &rsaquo; ৫. Child_Category ও ৬. Brand)
+                    ২. ক্যাটাগরি ও ব্র্যান্ড
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
                     <!-- 3. Category Dropdown -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">3. Category (ক্যাটাগরি ড্রপডাউন - AI) *</label>
+                      <label class="block font-bold">ক্যাটাগরি *</label>
                       <select id="adm-cat" required onchange="window.handleAdminCategoryChange(this.value, 'adm')" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900">
                         ${Array.from(new Set(['Smartwatches', 'Kitchen', 'Organic & Health', 'Home Appliances', 'Audio & Earbuds', 'Mobile & Computer Accessories', 'Fashion & Lifestyle', ...categories.map(c => c.category), ...products.map(p => p.category)].filter(Boolean))).map(c => `<option value="${c}">${c}</option>`).join("")}
                       </select>
@@ -7186,7 +7144,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
 
                     <!-- 4. Sub_Category Dropdown -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">4. Sub_Category (সাব-ক্যাটাগরি - AI) *</label>
+                      <label class="block font-bold">সাব-ক্যাটাগরি *</label>
                       <select id="adm-subcat" onchange="window.updateAddProductLiveSummary()" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900">
                         ${Array.from(new Set(['AMOLED Watch', 'Calling Watch', 'Safety Device', 'Blender', 'Cookware', 'Honey', 'Seeds', 'Oils', 'Lighting', 'Gadgets', 'TWS Earbuds', 'Smart Accessories', ...products.map(p => p.sub_category)].filter(Boolean))).map(s => `<option value="${s}">${s}</option>`).join("")}
                       </select>
@@ -7198,7 +7156,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
 
                     <!-- 5. Child_Category Dropdown -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">5. Child_Category (চাইল্ড ক্যাটাগরি - AI) *</label>
+                      <label class="block font-bold">চাইল্ড ক্যাটাগরি *</label>
                       <select id="adm-childcat" onchange="window.updateAddProductLiveSummary()" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900">
                         ${Array.from(new Set(['Men', 'Women', 'Fitness & GPS', 'Appliances', 'Pure Natural', 'Rechargeable', 'Standard', 'Premium Grade', ...products.map(p => p.child_category)].filter(Boolean))).map(ch => `<option value="${ch}">${ch}</option>`).join("")}
                       </select>
@@ -7210,7 +7168,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
 
                     <!-- 6. Brand (Auto Calculate from Name + Manual Add System) -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">6. Brand (অটো + ম্যানুয়াল যোগ) *</label>
+                      <label class="block font-bold">ব্র্যান্ড *</label>
                       <select id="adm-brand" onchange="window.updateAddProductLiveSummary()" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900">
                         ${Array.from(new Set(['Amazfit', 'Dream Organic', 'HK', 'Kieslect', 'Haylou', 'Xiaomi', 'Samsung', 'Baseus', 'Dream Cart BD', ...brands.map(b => b.brand_name), ...products.map(p => p.brand)].filter(Boolean))).map(b => `<option value="${b}">${b}</option>`).join("")}
                       </select>
@@ -7226,7 +7184,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <div class="p-4 rounded-2xl bg-emerald-50/50 dark:bg-slate-800/60 border border-emerald-200 dark:border-slate-700 space-y-3">
                   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/70 dark:border-slate-700 pb-1.5">
                     <div class="font-black text-xs text-slate-800 dark:text-white uppercase tracking-wider">
-                      ধাপ ৩: টিয়ার ফর্মুলা প্রাইসিং ও স্টক (৭. Buying_price &rsaquo; ৮. Selling_Price &rsaquo; ৯. Stock &rsaquo; ১০. Original_Price &rsaquo; ১১. WholeSale_price &rsaquo; ১২. Min_order_Q)
+                      ৩. মূল্য ও স্টক নির্ধারণ
                     </div>
                     <button type="button" onclick="window.handleBuyingPriceAutoCalc(document.getElementById('adm-buyprice')?.value, 'adm', true)" class="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 underline">
                       🔄 ক্রয় মূল্য থেকে পুনরায় অটো-ক্যালকুলেট করুন
@@ -7236,16 +7194,16 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <!-- 7. Buying_price -->
                     <div>
-                      <label class="block font-bold mb-1 text-slate-800 dark:text-slate-200">7. Buying_price (৳) *</label>
-                      <input 
-                        type="number" 
-                        id="adm-buyprice" 
-                        required 
-                        min="0" 
-                        step="any" 
-                        placeholder="1000" 
-                        oninput="window.handleBuyingPriceAutoCalc(this.value, 'adm')" 
-                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border border-emerald-400 font-bold font-mono bg-white dark:bg-slate-900" 
+                      <label class="block font-bold mb-1 text-slate-800 dark:text-slate-200">ক্রয় মূল্য (৳) *</label>
+                      <input
+                        type="number"
+                        id="adm-buyprice"
+                        required
+                        min="0"
+                        step="any"
+                        placeholder="1000"
+                        oninput="window.handleBuyingPriceAutoCalc(this.value, 'adm')"
+                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border border-emerald-400 font-bold font-mono bg-white dark:bg-slate-900"
                       />
                       <span class="text-[9px] text-slate-400">টাইপ করলেই সব প্রাইজ অটো বসবে</span>
                     </div>
@@ -7253,85 +7211,85 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                     <!-- 8. Selling_Price (auto + manual) -->
                     <div>
                       <div class="flex items-center justify-between mb-1">
-                        <label class="font-bold text-emerald-700 dark:text-emerald-400">8. Selling_Price *</label>
+                        <label class="font-bold text-emerald-700 dark:text-emerald-400">বিক্রয় মূল্য (৳) *</label>
                         <span id="adm-sell-rate-badge" class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 font-bold">অটো %</span>
                       </div>
-                      <input 
-                        type="number" 
-                        id="adm-sellprice" 
-                        required 
-                        min="0" 
-                        step="any" 
-                        placeholder="1450" 
-                        oninput="window.handleSellingPriceManualChange(this.value, 'adm')" 
-                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-bold font-mono text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-900" 
+                      <input
+                        type="number"
+                        id="adm-sellprice"
+                        required
+                        min="0"
+                        step="any"
+                        placeholder="1450"
+                        oninput="window.handleSellingPriceManualChange(this.value, 'adm')"
+                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-bold font-mono text-emerald-700 dark:text-emerald-300 bg-white dark:bg-slate-900"
                       />
                       <span class="text-[9px] text-slate-400">অটো ফর্মুলা + ম্যানুয়াল এডিটযোগ্য</span>
                     </div>
 
                     <!-- 9. Stock -->
                     <div>
-                      <label class="block font-bold mb-1">9. Stock (পিস) *</label>
-                      <input 
-                        type="number" 
-                        id="adm-stock" 
-                        required 
-                        min="0" 
-                        value="50" 
-                        oninput="window.updateAddProductLiveSummary()" 
-                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-bold font-mono bg-white dark:bg-slate-900" 
+                      <label class="block font-bold mb-1">স্টক (পিস) *</label>
+                      <input
+                        type="number"
+                        id="adm-stock"
+                        required
+                        min="0"
+                        value="50"
+                        oninput="window.updateAddProductLiveSummary()"
+                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-bold font-mono bg-white dark:bg-slate-900"
                       />
                       <span class="text-[9px] text-slate-400">মজুদ পণ্যের সংখ্যা</span>
                     </div>
 
-                    <!-- 10. Original_Price -->
+                    <!-- রেগুলার মূল্য (৳) -->
                     <div>
                       <div class="flex items-center justify-between mb-1">
-                        <label class="font-bold">10. Original_Price</label>
+                        <label class="font-bold">রেগুলার মূল্য (৳)</label>
                         <span id="adm-orig-rate-badge" class="text-[9px] px-1.5 py-0.2 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold">অটো %</span>
                       </div>
-                      <input 
-                        type="number" 
-                        id="adm-origprice" 
-                        min="0" 
-                        step="any" 
-                        placeholder="2103" 
-                        oninput="window.updateAddProductLiveSummary()" 
-                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-mono bg-white dark:bg-slate-900" 
+                      <input
+                        type="number"
+                        id="adm-origprice"
+                        min="0"
+                        step="any"
+                        placeholder="2103"
+                        oninput="window.updateAddProductLiveSummary()"
+                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-mono bg-white dark:bg-slate-900"
                       />
-                      <span class="text-[9px] text-slate-400">=Selling + Selling×Tier%</span>
+                      <span class="text-[9px] text-slate-400">রেগুলার দর</span>
                     </div>
 
-                    <!-- 11. WholeSale_price -->
+                    <!-- পাইকারি মূল্য (৳) -->
                     <div>
                       <div class="flex items-center justify-between mb-1">
-                        <label class="font-bold text-indigo-600 dark:text-indigo-400">11. WholeSale_price</label>
+                        <label class="font-bold text-indigo-600 dark:text-indigo-400">পাইকারি মূল্য (৳)</label>
                         <span id="adm-ws-rate-badge" class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 font-bold">অটো %</span>
                       </div>
-                      <input 
-                        type="number" 
-                        id="adm-wholesaleprice" 
-                        min="0" 
-                        step="any" 
-                        placeholder="1280" 
-                        oninput="window.updateAddProductLiveSummary()" 
-                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-mono text-indigo-600 bg-white dark:bg-slate-900" 
+                      <input
+                        type="number"
+                        id="adm-wholesaleprice"
+                        min="0"
+                        step="any"
+                        placeholder="1280"
+                        oninput="window.updateAddProductLiveSummary()"
+                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-mono text-indigo-600 bg-white dark:bg-slate-900"
                       />
-                      <span class="text-[9px] text-slate-400">=Buying + Buying×WS_Tier%</span>
+                      <span class="text-[9px] text-slate-400">হোলসেল দর</span>
                     </div>
 
-                    <!-- 12. Min_order_Q -->
+                    <!-- সর্বনিম্ন পাইকারি অর্ডার -->
                     <div>
-                      <label class="block font-bold mb-1">12. Min_order_Q</label>
-                      <input 
-                        type="number" 
-                        id="adm-minorderq" 
-                        min="1" 
-                        value="5" 
-                        oninput="window.updateAddProductLiveSummary()" 
-                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-bold font-mono bg-white dark:bg-slate-900" 
+                      <label class="block font-bold mb-1">সর্বনিম্ন পাইকারি অর্ডার</label>
+                      <input
+                        type="number"
+                        id="adm-minorderq"
+                        min="1"
+                        value="5"
+                        oninput="window.updateAddProductLiveSummary()"
+                        class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-bold font-mono bg-white dark:bg-slate-900"
                       />
-                      <span class="text-[9px] text-slate-400">=IF(Selling&le;200, 10, 5)</span>
+                      <span class="text-[9px] text-slate-400">পাইকারি ন্যূনতম সংখ্যা</span>
                     </div>
                   </div>
                 </div>
@@ -7339,17 +7297,17 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <!-- SECTION 4: Columns 13 & 14 -> Images (Link + Manual Upload + Preview) & Slug (Auto) -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ৪: পণ্যের ছবি (লিংক + ম্যানুয়াল আপলোড ও প্রিভিউ) এবং অটো স্লাগ (১৩. Images ও ১৪. Slug)
+                    ৪. পণ্যের ছবি ও লিংক
                   </div>
                   <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div class="lg:col-span-2 space-y-2.5">
-                      <label class="block font-bold">13. Images (ইমেজ লিঙ্ক + ম্যানুয়াল ফাইল আপলোড ও প্রিভিউ) *</label>
-                      <input 
-                        type="text" 
-                        id="adm-imageurl" 
-                        placeholder="https://images.unsplash.com/... (একাধিক লিঙ্ক কমা দিয়ে লিখুন অথবা নিচে যোগ করুন)" 
-                        oninput="window.renderAdminProductImagePreviews('adm'); window.updateAddProductLiveSummary();" 
-                        class="form-control text-xs w-full py-2 px-3 rounded-xl border bg-white dark:bg-slate-900 font-mono" 
+                      <label class="block font-bold">পণ্যের ছবি *</label>
+                      <input
+                        type="text"
+                        id="adm-imageurl"
+                        placeholder="https://images.unsplash.com/... (একাধিক লিঙ্ক কমা দিয়ে লিখুন অথবা নিচে যোগ করুন)"
+                        oninput="window.renderAdminProductImagePreviews('adm'); window.updateAddProductLiveSummary();"
+                        class="form-control text-xs w-full py-2 px-3 rounded-xl border bg-white dark:bg-slate-900 font-mono"
                       />
                       <div class="flex flex-col sm:flex-row gap-2">
                         <div class="flex gap-1.5 flex-1">
@@ -7370,13 +7328,13 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                     </div>
 
                     <div class="space-y-2">
-                      <label class="block font-bold">14. Slug (Auto from P_Name / Article)</label>
-                      <input 
-                        type="text" 
-                        id="adm-slug" 
-                        placeholder="auto-generated-product-slug" 
-                        oninput="this.dataset.manualEdit='true'; window.updateAddProductLiveSummary();" 
-                        class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono bg-white dark:bg-slate-900" 
+                      <label class="block font-bold">পণ্য লিংক স্লাগ (Slug)</label>
+                      <input
+                        type="text"
+                        id="adm-slug"
+                        placeholder="auto-generated-product-slug"
+                        oninput="this.dataset.manualEdit='true'; window.updateAddProductLiveSummary();"
+                        class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono bg-white dark:bg-slate-900"
                       />
                       <button type="button" onclick="const el=document.getElementById('adm-slug'); if(el){delete el.dataset.manualEdit; window.handleProductNameAiAutoFill(document.getElementById('adm-name')?.value, 'adm');}" class="btn-secondary py-1 px-2.5 text-[10px] font-bold">
                         🔄 নাম থেকে অটো স্লাগ তৈরি করুন
@@ -7391,19 +7349,19 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <!-- SECTION 5: Columns 15, 16, 17 -> Description, Specification, Others -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ৫: বিবরণ, স্পেসিফিকেশন ও অন্যান্য তথ্য (১৫. Description, ১৬. Specification ও ১৭. Others)
+                    ৫. বিবরণ ও স্পেসিফিকেশন
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                     <div>
-                      <label class="block font-bold mb-1">15. Description (বিস্তারিত বিবরণ)</label>
+                      <label class="block font-bold mb-1">বিস্তারিত বিবরণ</label>
                       <textarea id="adm-desc" rows="3" placeholder="পণ্যের বিস্তারিত বিবরণ ও বৈশিষ্ট্য..." oninput="window.updateAddProductLiveSummary()" class="form-control text-xs w-full p-2.5 rounded-xl border bg-white dark:bg-slate-900"></textarea>
                     </div>
                     <div>
-                      <label class="block font-bold mb-1">16. Specification (টেকনিক্যাল স্পেসিফিকেশন)</label>
+                      <label class="block font-bold mb-1">স্পেসিফিকেশন</label>
                       <textarea id="adm-spec" rows="3" placeholder="যেমন: Display: 1.75 AMOLED | Battery: 300mAh | Warranty: 1 Year" oninput="window.updateAddProductLiveSummary()" class="form-control text-xs w-full p-2.5 rounded-xl border bg-white dark:bg-slate-900"></textarea>
                     </div>
                     <div>
-                      <label class="block font-bold mb-1">17. Others (ওয়ারেন্টি / ডেলিভারি নোট / অন্যান্য)</label>
+                      <label class="block font-bold mb-1">ওয়ারেন্টি ও অন্যান্য তথ্য</label>
                       <textarea id="adm-others" rows="3" placeholder="যেমন: 1 Year Official Warranty, Fast Dispatch from Cumilla Hub." oninput="window.updateAddProductLiveSummary()" class="form-control text-xs w-full p-2.5 rounded-xl border bg-white dark:bg-slate-900"></textarea>
                     </div>
                   </div>
@@ -7412,12 +7370,12 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                 <!-- SECTION 6: Columns 18, 19, 20, 21, 22, 23 -> Color, Size & Auto Dimensions (WEIGHT_KG, WIDTH_CM, LENGTH_CM, HEIGHT_CM) -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
                   <div class="font-black text-xs text-slate-700 dark:text-slate-200 uppercase tracking-wider border-b pb-1.5">
-                    ধাপ ৬: কালার, সাইজ এবং স্বয়ংক্রিয় ওজন ও পরিমাপ (১৮. Color, ১৯. Size, ২০. WEIGHT_KG, ২১. WIDTH_CM, ২২. LENGTH_CM, ২৩. HEIGHT_CM)
+                    ৬. কালার, সাইজ ও পরিমাপ
                   </div>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <!-- 18. Color (Dropdown + Add New) -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">18. Color (ড্রপডাউন + নতুন কালার যোগ)</label>
+                      <label class="block font-bold">কালার ভ্যারিয়েন্ট</label>
                       <div class="flex gap-1.5">
                         <select id="adm-color-select" onchange="window.handleSelectColorOrSizeTag('color', this, 'adm')" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold bg-white dark:bg-slate-900 flex-1">
                           <option value="">-- কালার সিলেক্ট করুন --</option>
@@ -7432,7 +7390,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
 
                     <!-- 19. Size (Dropdown + Add New) -->
                     <div class="space-y-1.5">
-                      <label class="block font-bold">19. Size (ড্রপডাউন + নতুন সাইজ যোগ)</label>
+                      <label class="block font-bold">সাইজ ভ্যারিয়েন্ট</label>
                       <div class="flex gap-1.5">
                         <select id="adm-size-select" onchange="window.handleSelectColorOrSizeTag('size', this, 'adm')" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold bg-white dark:bg-slate-900 flex-1">
                           <option value="">-- সাইজ সিলেক্ট করুন --</option>
@@ -7449,29 +7407,25 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
                   <!-- 20-23: WEIGHT_KG, WIDTH_CM, LENGTH_CM, HEIGHT_CM -->
                   <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                     <div>
-                      <label class="block font-bold mb-1">20. WEIGHT_KG (অটো ওজন)</label>
+                      <label class="block font-bold mb-1">ওজন (কেজি)</label>
                       <input type="number" id="adm-weight" step="0.01" value="0.25" oninput="this.dataset.manualEdit='true'; window.updateAddProductLiveSummary();" class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-mono font-bold bg-white dark:bg-slate-900" />
                     </div>
                     <div>
-                      <label class="block font-bold mb-1">21. WIDTH_CM (অটো প্রস্থ)</label>
+                      <label class="block font-bold mb-1">প্রস্থ (সেমি)</label>
                       <input type="number" id="adm-width" step="0.1" value="10" oninput="this.dataset.manualEdit='true'; window.updateAddProductLiveSummary();" class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-mono font-bold bg-white dark:bg-slate-900" />
                     </div>
                     <div>
-                      <label class="block font-bold mb-1">22. LENGTH_CM (অটো দৈর্ঘ্য)</label>
+                      <label class="block font-bold mb-1">দৈর্ঘ্য (সেমি)</label>
                       <input type="number" id="adm-length" step="0.1" value="12" oninput="this.dataset.manualEdit='true'; window.updateAddProductLiveSummary();" class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-mono font-bold bg-white dark:bg-slate-900" />
                     </div>
                     <div>
-                      <label class="block font-bold mb-1">23. HEIGHT_CM (অটো উচ্চতা)</label>
+                      <label class="block font-bold mb-1">উচ্চতা (সেমি)</label>
                       <input type="number" id="adm-height" step="0.1" value="6" oninput="this.dataset.manualEdit='true'; window.updateAddProductLiveSummary();" class="form-control text-xs w-full py-2 px-2.5 rounded-xl border font-mono font-bold bg-white dark:bg-slate-900" />
                     </div>
                   </div>
                 </div>
 
-                <!-- 23-Column Live Sheet Row Summary Preview -->
-                <div class="p-3.5 rounded-2xl bg-slate-100/80 dark:bg-slate-800/80 border space-y-2">
-                  <div class="font-bold text-[11px] text-slate-600 dark:text-slate-300">📋 ২৩-কলাম ডাটা শিট প্রিভিউ (Live Column Preview):</div>
-                  <div id="adm-23col-live-preview"></div>
-                </div>
+                
 
                 <div class="flex flex-wrap items-center gap-2.5 pt-2">
                   <button type="submit" class="btn-primary py-3 px-8 font-black text-xs shadow-lg">💾 পণ্য ক্যাটালগ ও শিটে সংরক্ষণ করুন →</button>
@@ -7488,7 +7442,6 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
  * DREAM CART BD — Categories, Brands Card Grid, Variants & Banners Module (adminCategoryBrand.js)
  * Routes: /admin/categroy, /admin/category, /admin/brands, /admin/addbrand, /admin/variants, /admin/banners
  */
-
 
 function renderCategoryBrandModule({ products = [], categories = [], brands = [], variants = { colors: [], sizes: [] }, banners = [] }) {
   const uniqueCatMap = new Map();
@@ -7515,7 +7468,7 @@ function renderCategoryBrandModule({ products = [], categories = [], brands = []
   return `
     <!-- 3. Interactive 3-Level Category Tree Page (ক্যাটাগরি ট্রি — Category > Sub Category > Chaild Category) -->
     <div id="page-prod-categories" class="admin-page-view hidden space-y-5">
-      
+
       <!-- 4 Counter Cards for Category Tree -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         <div class="admin-kpi-card p-3.5">
@@ -7561,7 +7514,7 @@ function renderCategoryBrandModule({ products = [], categories = [], brands = []
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3">
           <div>
             <h3 class="font-black text-base text-slate-900 dark:text-white flex items-center gap-2">
-              <span>🌳</span> ইন্টারেক্টিভ ৩-স্তরের ক্যাটাগরি ট্রি (Category &rsaquo; Sub Category &rsaquo; Chaild Category)
+              <span>🌳</span> ক্যাটাগরি ও সাব-ক্যাটাগরি ট্রি
             </h3>
             <p class="text-[11px] text-slate-400">
               Category-তে ক্লিক করলে Sub Category খুলবে এবং Sub Category-তে ক্লিক করলে Chaild Category খুলবে — ডানপাশের বাটনে ক্লিক করে নতুন স্তর যুক্ত করুন
@@ -7569,10 +7522,10 @@ function renderCategoryBrandModule({ products = [], categories = [], brands = []
           </div>
           <div class="flex flex-wrap items-center gap-1.5 text-xs">
             <button type="button" class="btn-primary py-1.5 px-3.5 font-bold" onclick="window.openCategoryTreeActionModal('add_cat')">
-              + (add category)
+              + নতুন ক্যাটাগরি
             </button>
             <button type="button" class="btn-secondary py-1.5 px-2.5 font-bold" onclick="window.expandOrCollapseAllCategoryTree(true)">
-              ➕ সবগুলো খুলুন (Expand All)
+              ➕ সবগুলো খুলুন
             </button>
             <button type="button" class="btn-secondary py-1.5 px-2.5 font-bold" onclick="window.expandOrCollapseAllCategoryTree(false)">
               ➖ সবগুলো বন্ধ করুন
@@ -7580,48 +7533,6 @@ function renderCategoryBrandModule({ products = [], categories = [], brands = []
             <button type="button" class="btn-secondary py-1.5 px-2.5" onclick="window.exportGenericCsv('Categories_Tree', ['ID', 'Category', 'Sub Category', 'Chaild Category'], (window.buildNormalizedCategoryTree ? window.buildNormalizedCategoryTree() : []).map(c=>[c.catagory_id, c.category, c.sub_category, c.chail_category]))">
               📥 CSV
             </button>
-          </div>
-        </div>
-
-        <!-- Exact Structural Guide Diagram Box (As shown in user's image) -->
-        <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/70 space-y-2.5 text-xs font-bold">
-          <div class="text-[10px] uppercase tracking-wider text-emerald-600 font-black mb-1">📌 ক্যাটাগরি ট্রি স্ট্রাকচার গাইড (Tree Blueprint):</div>
-          <div class="dc-tree-row">
-            <span class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-black text-xs">
-              Category (showing sub category after clicked of Category)
-            </span>
-            <div class="dc-tree-leader-line"></div>
-            <button type="button" onclick="window.openCategoryTreeActionModal('add_cat')" class="dc-tree-action-pill">
-              + (add category)
-            </button>
-          </div>
-
-          <div class="dc-tree-branch-children">
-            <div class="dc-tree-branch-item space-y-2.5">
-              <div class="dc-tree-row">
-                <span class="px-3 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs">
-                  Sub Category (showing Chaild category after clicked of Sub Category)
-                </span>
-                <div class="dc-tree-leader-line"></div>
-                <button type="button" onclick="const firstCat=(window.buildNormalizedCategoryTree()[0]||{}).category||'Smartwatches'; window.openCategoryTreeActionModal('add_sub', firstCat);" class="dc-tree-action-pill indigo-pill">
-                  + (add Sub category)
-                </button>
-              </div>
-
-              <div class="dc-tree-branch-children sub-branch">
-                <div class="dc-tree-branch-item">
-                  <div class="dc-tree-row">
-                    <span class="px-3 py-1.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs">
-                      Chaild Category
-                    </span>
-                    <div class="dc-tree-leader-line"></div>
-                    <button type="button" onclick="const t=window.buildNormalizedCategoryTree()[0]||{category:'Smartwatches',tree_subs:[{name:'AMOLED Watch'}]}; window.openCategoryTreeActionModal('add_child', t.category, (t.tree_subs&&t.tree_subs[0]?t.tree_subs[0].name:'General'));" class="dc-tree-action-pill amber-pill">
-                      + (add chaild category)
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -7712,10 +7623,10 @@ function renderCategoryBrandModule({ products = [], categories = [], brands = []
                   <p class="text-[11px] text-slate-400">ব্র্যান্ড কার্ড থেকে সরাসরি ওই ব্র্যান্ডের পণ্য ফিল্টার করুন অথবা নতুন ব্র্যান্ড যুক্ত করুন</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 text-xs">
-                  <input 
-                    type="text" 
-                    placeholder="ব্র্যান্ড কার্ড খুঁজুন..." 
-                    oninput="window.renderAdminBrandCards(this.value)" 
+                  <input
+                    type="text"
+                    placeholder="ব্র্যান্ড কার্ড খুঁজুন..."
+                    oninput="window.renderAdminBrandCards(this.value)"
                     class="form-control text-xs py-1.5 px-3 rounded-xl border w-44"
                   />
                   <button class="btn-primary py-1.5 px-3.5 font-bold" onclick="switchAdminPage('page-prod-brand-add', 'group-products')">+ নতুন ব্র্যান্ড যুক্ত করুন</button>
@@ -7868,7 +7779,7 @@ function renderCategoryBrandModule({ products = [], categories = [], brands = []
 
           <!-- 13. Complete Banners & Slider CMS Page (Add, Edit, Delete, Status Toggle & Live Counters) -->
           <div id="page-prod-banners" class="admin-page-view hidden space-y-5">
-            
+
             <!-- 4 Live Banner KPI Counter Cards -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
               <div class="admin-kpi-card p-3.5">
@@ -8049,7 +7960,7 @@ function renderBulkToolsModule({ categories = [] }) {
             <div class="dc-admin-card space-y-4 max-w-4xl">
               <div class="border-b pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h3 class="font-bold text-sm text-slate-900 dark:text-white">📥 বাল্ক পণ্য আপলোড (Bulk Product Sheet Upload & Update)</h3>
+                  <h3 class="font-bold text-sm text-slate-900 dark:text-white">📥 বাল্ক পণ্য আপলোড</h3>
                   <p class="text-[11px] text-slate-400">নমুনা সীট ডাউনলোড করুন এবং সীট ফাইল আপলোড করেই এক ক্লিকে সকল পণ্য যুক্ত বা আপডেট করুন</p>
                 </div>
                 <div class="flex flex-wrap gap-1.5 text-xs">
@@ -8098,7 +8009,7 @@ function renderBulkToolsModule({ categories = [] }) {
             <div class="dc-admin-card space-y-4 max-w-4xl">
               <div class="border-b pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h3 class="font-bold text-sm text-slate-900 dark:text-white">🏷️ বাল্ক মূল্য পরিবর্তন (Bulk Price Sheet Download & Instant Update)</h3>
+                  <h3 class="font-bold text-sm text-slate-900 dark:text-white">🏷️ বাল্ক মূল্য পরিবর্তন</h3>
                   <p class="text-[11px] text-slate-400">নমুনা প্রাইজ সীট ডাউনলোড করুন এবং সীট আপলোড করেই সকল পণ্যের মূল্য আপডেট করুন</p>
                 </div>
                 <div class="flex flex-wrap gap-1.5 text-xs">
@@ -8172,7 +8083,7 @@ function renderBulkToolsModule({ categories = [] }) {
             <div class="dc-admin-card space-y-4 max-w-4xl">
               <div class="border-b pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h3 class="font-bold text-sm text-slate-900 dark:text-white">🖼️ বাল্ক ইমেজ আপডেট (Bulk Image Sheet Download & Instant Update)</h3>
+                  <h3 class="font-bold text-sm text-slate-900 dark:text-white">🖼️ বাল্ক ইমেজ আপডেট</h3>
                   <p class="text-[11px] text-slate-400">ইমেজ নমুনা সীট ডাউনলোড করুন এবং সীট আপলোড করেই এক ক্লিকে সকল পণ্যের ছবি আপডেট করুন</p>
                 </div>
                 <div class="flex flex-wrap gap-1.5 text-xs">
@@ -8230,7 +8141,6 @@ function renderBulkToolsModule({ categories = [] }) {
             </div>
           </div>
 
-
   `;
 }
 
@@ -8243,7 +8153,7 @@ function renderLandingCmsModule({ products = [] }) {
   return `
           <!-- 14. Multi-Landing Pages CMS & Builder Page (একের অধিক ল্যান্ডিং পেজ, প্রোডাক্ট সার্চ করে অ্যাড, ব্যানার/ছবি/ভিডিও গ্যালারি) -->
           <div id="page-prod-landing" class="admin-page-view hidden space-y-5">
-            
+
             <!-- Saved Landing Pages List Card -->
             <div class="dc-admin-card space-y-4">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b pb-3">
@@ -8382,13 +8292,13 @@ function renderLandingCmsModule({ products = [] }) {
 
                   <!-- Search Input -->
                   <div class="flex gap-2">
-                    <input 
-                      type="text" 
-                      id="adm-lp-prod-search" 
-                      placeholder="🔍 পণ্যের নাম, SKU, ব্র্যান্ড বা ক্যাটাগরি লিখে সার্চ করুন..." 
-                      oninput="window.searchProductsForLandingBuilder(this.value)" 
+                    <input
+                      type="text"
+                      id="adm-lp-prod-search"
+                      placeholder="🔍 পণ্যের নাম, SKU, ব্র্যান্ড বা ক্যাটাগরি লিখে সার্চ করুন..."
+                      oninput="window.searchProductsForLandingBuilder(this.value)"
                       onfocus="window.searchProductsForLandingBuilder(this.value)"
-                      class="form-control text-xs py-2 px-3.5 rounded-xl border border-emerald-400 flex-1 bg-white dark:bg-slate-900 font-bold" 
+                      class="form-control text-xs py-2 px-3.5 rounded-xl border border-emerald-400 flex-1 bg-white dark:bg-slate-900 font-bold"
                     />
                     <button type="button" onclick="window.searchProductsForLandingBuilder('')" class="btn-secondary py-2 px-3 text-xs font-bold bg-white dark:bg-slate-900">সকল পণ্য দেখুন</button>
                   </div>
@@ -8535,7 +8445,6 @@ function renderLandingCmsModule({ products = [] }) {
  * Route: /admin/others
  */
 
-
 function renderOthersModule({
   resellers = [],
   wholesalers = [],
@@ -8604,7 +8513,7 @@ function renderOthersModule({
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
           <div>
             <h3 class="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-              <span>🧩</span> অ্যাডমিন অল-ইন-ওয়ান পেজ ডিরেক্টরি ও কুইক হাব (/admin/others)
+              <span>🧩</span> অ্যাডমিন অল-ইন-ওয়ান পেজ ডিরেক্টরি ও কুইক হাব
             </h3>
             <p class="text-xs text-slate-500">প্রতিটি মডিউল আলাদা পেজ আকারে সাজানো হয়েছে — যেকোনো কার্ডে ক্লিক করে সরাসরি নির্ধারিত পেজে যান</p>
           </div>
@@ -8620,8 +8529,8 @@ function renderOthersModule({
               <h4 class="text-xs font-black uppercase tracking-wider text-slate-500 px-1">${sec.groupTitle}</h4>
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
                 ${sec.items.map(item => `
-                  <a 
-                    href="${item.url}" 
+                  <a
+                    href="${item.url}"
                     onclick="event.preventDefault(); window.switchAdminPage('${item.pageId}');"
                     class="admin-searchable-card p-4 flex flex-col justify-between gap-2.5 cursor-pointer group"
                   >
@@ -8648,7 +8557,6 @@ function renderOthersModule({
   `;
 }
 
-
 function renderProductsModule(props = {}) {
   return [
     renderProductCatalogModule(props),
@@ -8671,7 +8579,6 @@ function renderProductsModule(props = {}) {
  * - Manual order entry with instant cash voucher popup and printing
  * - Customer CRM database & Reviews moderation
  */
-
 
 function renderOrdersModule({ orders, incompleteOrders, customers, reviews }) {
   return `
@@ -8698,11 +8605,11 @@ function renderOrdersModule({ orders, incompleteOrders, customers, reviews }) {
 
         <!-- Search Bar & Status Filters -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-          <input 
-            type="text" 
-            placeholder="অর্ডার আইডি, নাম, ফোন বা ঠিকানা দিয়ে সার্চ..." 
-            class="form-control text-xs py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-80" 
-            oninput="window.handleAdminGlobalSearch(this.value)" 
+          <input
+            type="text"
+            placeholder="অর্ডার আইডি, নাম, ফোন বা ঠিকানা দিয়ে সার্চ..."
+            class="form-control text-xs py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-80"
+            oninput="window.handleAdminGlobalSearch(this.value)"
           />
 
           <div class="flex items-center gap-1.5 overflow-x-auto text-xs pb-1">
@@ -8780,8 +8687,8 @@ function renderOrdersModule({ orders, incompleteOrders, customers, reviews }) {
                     <div class="text-[10px] text-amber-500 mt-0.5">${o.customer_rating || '5/5 ★'}</div>
                   </td>
                   <td class="py-3 px-3">
-                    <select 
-                      class="form-control text-[11px] py-1 px-2 rounded-lg border font-bold" 
+                    <select
+                      class="form-control text-[11px] py-1 px-2 rounded-lg border font-bold"
                       onchange="window.updateOrderStatus('${o.order_id}', this.value)"
                     >
                       <option value="Order Placed" ${o.order_status === 'Order Placed' ? 'selected' : ''}>Order Placed</option>
@@ -8816,7 +8723,7 @@ function renderOrdersModule({ orders, incompleteOrders, customers, reviews }) {
         <div class="flex items-center justify-between border-b pb-2">
           <div>
             <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span class="text-rose-500">⚠️</span> অসম্পূর্ণ অর্ডারসমূহ (Abandoned Checkout Recovery)
+              <span class="text-rose-500">⚠️</span> অসম্পূর্ণ অর্ডারসমূহ
             </h3>
             <p class="text-[11px] text-slate-400">যেসব গ্রাহক ফর্ম পূরণ করেও অর্ডার কনফার্ম করেননি</p>
           </div>
@@ -8866,7 +8773,7 @@ function renderOrdersModule({ orders, incompleteOrders, customers, reviews }) {
       <div class="dc-admin-card space-y-3">
         <div class="border-b pb-2 flex items-center justify-between">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-            <span class="text-emerald-600">✓</span> সফল ও পরিশোধিত ডেলিভারি (Delivered & Paid)
+            <span class="text-emerald-600">✓</span> সফল ডেলিভারি
           </h3>
           <span class="badge badge-success text-xs font-bold">৯৫.২% সাকসেসফুল</span>
         </div>
@@ -8889,7 +8796,7 @@ function renderOrdersModule({ orders, incompleteOrders, customers, reviews }) {
       <div class="dc-admin-card space-y-3">
         <div class="border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-            <span>🚚</span> কুরিয়ারে / শিপিং পথে থাকা পার্সেল (In Shipping)
+            <span>🚚</span> কুরিয়ার ও শিপিং অর্ডার
           </h3>
         </div>
         <div class="space-y-2 text-xs">
@@ -8911,7 +8818,7 @@ function renderOrdersModule({ orders, incompleteOrders, customers, reviews }) {
       <div class="dc-admin-card space-y-3">
         <div class="border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-            <span>💳</span> পেমেন্ট অসম্পূর্ণ অর্ডারসমূহ (COD Unpaid)
+            <span>💳</span> পেমেন্ট অসম্পূর্ণ অর্ডার
           </h3>
         </div>
         <div class="space-y-2 text-xs">
@@ -8954,7 +8861,7 @@ function renderOrdersModule({ orders, incompleteOrders, customers, reviews }) {
     <div id="page-orders-add" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-4 max-w-xl">
         <div class="border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">➕ নতুন কাস্টমার অর্ডার এন্ট্রি (Add Order)</h3>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">➕ নতুন অর্ডার এন্ট্রি</h3>
           <p class="text-[11px] text-slate-400">ফোন বা ইনবক্স থেকে সরাসরি অর্ডার তৈরি ও ক্যাশ ভাউচার প্রিন্ট</p>
         </div>
 
@@ -9065,7 +8972,7 @@ function renderOrdersModule({ orders, incompleteOrders, customers, reviews }) {
     <div id="page-orders-customers" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">👥 কাস্টমার ডাটাবেজ (Customer CRM)</h3>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">👥 কাস্টমার ডাটাবেজ</h3>
           <div class="flex items-center gap-1.5 text-xs">
             <button class="btn-secondary py-1 px-3 text-xs" onclick="window.exportGenericCsv('Customers', ['Name', 'Phone', 'Address', 'Total Spent'], customers.map(c=>[c.name, c.phone, c.address, c.total_spent]))">CSV</button>
             <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
@@ -9193,7 +9100,7 @@ function renderPartnersModule({ resellers, wholesalers, sellers, markets, admins
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200 dark:border-emerald-800 pb-2">
             <div>
               <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                <span>⚙️</span> রিসেল প্রাইজ ও কমিশন কন্ট্রোল (Reseller Commission & Price Control)
+                <span>⚙️</span> রিসেল প্রাইজ ও কমিশন কন্ট্রোল
               </h4>
               <p class="text-[11px] text-slate-500 dark:text-slate-400">এডমিন প্যানেল থেকে রিসেলারদের মুনাফা/কমিশন শতকরা হার (%) নির্ধারণ ও নিয়ন্ত্রণ করুন</p>
             </div>
@@ -9335,7 +9242,7 @@ function renderPartnersModule({ resellers, wholesalers, sellers, markets, admins
         <div class="flex items-center justify-between border-b pb-2">
           <div>
             <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <span>🌐</span> অন্যান্য মার্কেটপ্লেস চ্যানেল (Multi-Channel Sync)
+              <span>🌐</span> অন্যান্য মার্কেটপ্লেস চ্যানেল
             </h3>
             <p class="text-[11px] text-slate-400">দারাজ, ফেসবুক শপ ও বিক্রয় ডট কম</p>
           </div>
@@ -9630,7 +9537,6 @@ function renderPartnersModule({ resellers, wholesalers, sellers, markets, admins
  * 8. Invest Report
  */
 
-
 function renderReportsModule({ sellers, resellers, wholesalers, kpi, costs, buying, invest }) {
   return `
     <!-- ================================================================= -->
@@ -9715,7 +9621,7 @@ function renderReportsModule({ sellers, resellers, wholesalers, kpi, costs, buyi
     <div id="page-report-sales" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">📊 সার্বিক রাজস্ব বিক্রয় রিপোর্ট (Sales Analytics)</h3>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">📊 সার্বিক বিক্রয় রিপোর্ট</h3>
           <div class="flex items-center gap-1.5 text-xs">
             <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
             <button class="btn-secondary py-1 px-2.5" onclick="window.exportAdminOrdersCsv()">CSV</button>
@@ -9742,7 +9648,7 @@ function renderReportsModule({ sellers, resellers, wholesalers, kpi, costs, buyi
     <div id="page-report-wholesale" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">📦 পাইকারি সেলস রিপোর্ট (WholeSale)</h3>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">📦 পাইকারি বিক্রয় রিপোর্ট</h3>
           <button class="btn-secondary py-1 px-2.5 text-xs" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
         </div>
         <p class="text-xs text-slate-400">হোলসেল ডিলারদের বাল্ক শিপমেন্ট এবং ডিস্ট্রিবিউশন হিসাব</p>
@@ -9754,7 +9660,7 @@ function renderReportsModule({ sellers, resellers, wholesalers, kpi, costs, buyi
     <div id="page-report-costs" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">💸 ব্যবসায়িক খরচ রিপোর্ট (Costs Report)</h3>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">💸 ব্যবসায়িক ব্যয় রিপোর্ট</h3>
           <button class="btn-secondary py-1 px-2.5 text-xs" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
         </div>
         <div class="text-xl font-black text-rose-500 font-mono mb-2">${formatCurrency(kpi.total_costs)}</div>
@@ -9776,7 +9682,7 @@ function renderReportsModule({ sellers, resellers, wholesalers, kpi, costs, buyi
     <div id="page-report-buying" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🛒 পাইকারি স্টক ক্রয় রিপোর্ট (Buying Report)</h3>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🛒 পাইকারি ক্রয় রিপোর্ট</h3>
           <button class="btn-secondary py-1 px-2.5 text-xs" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
         </div>
         <div class="text-xl font-black text-slate-900 dark:text-white font-mono mb-2">${formatCurrency(kpi.total_buying)}</div>
@@ -9798,7 +9704,7 @@ function renderReportsModule({ sellers, resellers, wholesalers, kpi, costs, buyi
     <div id="page-report-invest" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">💼 মূলধন ও বিনিয়োগ রিপোর্ট (Invest Report)</h3>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">💼 মূলধন ও বিনিয়োগ রিপোর্ট</h3>
           <button class="btn-secondary py-1 px-2.5 text-xs" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
         </div>
         <div class="text-xl font-black text-emerald-600 font-mono mb-2">${formatCurrency(kpi.total_invest)}</div>
@@ -9829,7 +9735,6 @@ function renderReportsModule({ sellers, resellers, wholesalers, kpi, costs, buyi
  * - Wholesale Stock Buying Invoices
  * - Equity Capital Investment Tracker
  */
-
 
 function renderInventoryModule({ costs, buying, invest }) {
   return `
@@ -10155,7 +10060,7 @@ function renderCouriersSettingsModule({ couriers, onlinePayments, offers, auditL
     <div id="page-courier-add" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-4 max-w-xl">
         <div class="border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">➕ নতুন কুরিয়ার এপিআই কনফিগারেশন (Add Courier with Webhook)</h3>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">➕ নতুন কুরিয়ার এপিআই সংযোজন</h3>
           <p class="text-[11px] text-slate-400">এপিআই কী, সিক্রেট কী ও স্বয়ংক্রিয় ওয়েবহুক আপডেট সিস্টেম</p>
         </div>
 
@@ -10192,7 +10097,7 @@ function renderCouriersSettingsModule({ couriers, onlinePayments, offers, auditL
       <div class="dc-admin-card space-y-4 max-w-xl">
         <div class="border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-            <span>🛡️</span> কাস্টমার ফ্রড চেকার (Fraud Check Tool)
+            <span>🛡️</span> কাস্টমার ফ্রড চেকার
           </h3>
           <p class="text-[11px] text-slate-400">অর্ডার লিস্ট ও সংযুক্ত কুরিয়ার এপিআই থেকে কাস্টমারের ডেলিভারি ও রিটার্ন রেট যাচাই</p>
         </div>
@@ -10269,7 +10174,7 @@ function renderCouriersSettingsModule({ couriers, onlinePayments, offers, auditL
     <div id="page-set-logs" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">📜 ব্যবহারকারী ও কর্মী অ্যাক্টিভিটি লগ (Audit Trail)</h3>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">📜 অডিট ও কর্মী অ্যাক্টিভিটি লগ</h3>
           <div class="flex items-center gap-1.5 text-xs">
             <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Audit_Logs', ['Time', 'User', 'Event', 'IP'], auditLogs.map(l=>[l.time, l.user, l.event, l.ip]))">CSV</button>
             <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
@@ -10545,13 +10450,13 @@ function renderAdminLoginView() {
   return `
     <div class="dc-admin-wrapper">
     <div class="max-w-md mx-auto py-12 px-4 space-y-6">
-      
+
       <div class="text-center space-y-2">
         <div class="w-16 h-16 rounded-3xl bg-slate-900 text-white font-black text-2xl mx-auto flex items-center justify-center shadow-xl border border-slate-700">
           ⚙️
         </div>
         <h2 class="text-2xl font-black text-slate-900 dark:text-white">
-          মাস্টার অ্যাডমিন লগইন (Admin Login)
+          অ্যাডমিন লগইন
         </h2>
         <p class="text-xs text-slate-500">
           আপনার পদবী, ইউজার নেম ও পাসওয়ার্ড দিয়ে মাস্টার প্যানেলে প্রবেশ করুন
@@ -10559,7 +10464,7 @@ function renderAdminLoginView() {
       </div>
 
       <div class="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-4 text-xs">
-        
+
         <form id="admin-login-form" class="space-y-3.5">
           <div>
             <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Worker Type (কর্মীর পদবী) *</label>
@@ -10607,12 +10512,12 @@ function renderAdminLoginView() {
                 ${captchaNum1} + ${captchaNum2} = ?
               </div>
               <input type="hidden" id="adm-captcha-expected" value="${captchaSum}" />
-              <input 
-                type="number" 
-                id="adm-captcha-input" 
-                required 
-                placeholder="যোগফল লিখুন" 
-                class="form-control text-xs flex-1 py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-900 font-bold" 
+              <input
+                type="number"
+                id="adm-captcha-input"
+                required
+                placeholder="যোগফল লিখুন"
+                class="form-control text-xs flex-1 py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-900 font-bold"
               />
             </div>
           </div>
