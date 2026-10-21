@@ -6083,7 +6083,7 @@ function renderAddProductModule({ products = [], categories = [], brands = [], v
             <div class="dc-admin-card space-y-4 max-w-5xl">
               <div class="border-b pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <h3 class="font-bold text-base text-slate-900 dark:text-white">➕ নতুন পণ্য যোগ করুন (23-Column AI Smart Product Form)</h3>
+                  <h3 class="font-bold text-base text-slate-900 dark:text-white">➕ নতুন পণ্য যোগ করুন</h3>
                   <p class="text-[11px] text-slate-400">পণ্যের নাম দিলেই AI সার্চের মাধ্যমে ক্যাটাগরি &rsaquo; সাব-ক্যাটাগরি &rsaquo; চাইল্ড ক্যাটাগরি, ব্র্যান্ড, স্লাগ ও ওজন অটো বসে যাবে এবং ক্রয় মূল্য দিলে টিয়ার ফর্মুলায় সকল মূল্য হিসাব হবে</p>
                 </div>
                 <button class="btn-secondary py-1.5 px-3 text-xs font-bold self-start" onclick="switchAdminPage('page-prod-all', 'group-products')">← সকল পণ্য তালিকায় ফিরে যান</button>
