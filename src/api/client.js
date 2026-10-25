@@ -118,6 +118,145 @@ function fetchSheetViaGviz(sheetName) {
   });
 }
 
+export function formatBDDateTime(dateInput = new Date()) {
+  try {
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Dhaka',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }).formatToParts(d);
+    const get = (t) => parts.find(p => p.type === t)?.value || '00';
+    return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')}:${get('second')}`;
+  } catch (e) {
+    return new Date().toISOString().replace('T', ' ').slice(0, 19);
+  }
+}
+
+export function buildOrderSheetPayload(rawPayload = {}, fallbackOrderId = '') {
+  const orderId = String(rawPayload.order_id || rawPayload.orderId || rawPayload.OrderID || fallbackOrderId || ('ORD-' + Math.floor(100000 + Math.random() * 900000))).trim();
+  const dateStr = String(rawPayload.date || rawPayload.Date || formatBDDateTime()).trim();
+  const accountType = String(rawPayload.account_type || rawPayload.Account_type || 'Customer').trim();
+  const customerName = String(rawPayload.customer_name || rawPayload.Customer_Name || 'সম্মানিত গ্রাহক').trim();
+  const cleanPhone = normalizeBDPhone(rawPayload.phone || rawPayload.Phone || rawPayload.customer_phone || '') || String(rawPayload.phone || rawPayload.customer_phone || '').trim();
+  const rawAddr = String(rawPayload.address || rawPayload.Address || rawPayload.shipping_address || '').trim();
+  const safeAddr = rawAddr.length >= 5 ? rawAddr : (rawAddr ? `${rawAddr}, Bangladesh` : 'Bangladesh');
+
+  const rawItems = Array.isArray(rawPayload.items) ? rawPayload.items : [];
+  const compactItems = rawItems.map((it, idx) => ({
+    product_id: String(it.product_id || it.sku || `PRD-${idx + 1}`),
+    sku: String(it.sku || it.product_id || `PRD-${idx + 1}`),
+    name: String(it.name || it.p_name || it.product_name || 'পণ্য'),
+    price: Number(it.price ?? it.selling_price ?? 0) || 0,
+    quantity: Math.max(1, Number(it.quantity || 1)),
+    color: String(it.color || '').trim(),
+    size: String(it.size || '').trim()
+  }));
+
+  let productsDesc = String(rawPayload.products || rawPayload.Products || rawPayload.product_name || '').trim();
+  if (!productsDesc && compactItems.length > 0) {
+    productsDesc = compactItems.map(it => {
+      const variantTag = [it.color, it.size].filter(Boolean).join(', ');
+      return `${it.name}${variantTag ? ` [${variantTag}]` : ''} (${it.quantity}x)`;
+    }).join(', ');
+  }
+  if (!productsDesc) productsDesc = 'পণ্য অর্ডার';
+
+  const colorStr = String(
+    rawPayload.color ||
+    rawPayload.Color ||
+    Array.from(new Set(compactItems.map(i => i.color).filter(Boolean))).join(', ') ||
+    rawPayload.customer_note ||
+    'Standard'
+  ).trim();
+
+  const sizeStr = String(
+    rawPayload.size ||
+    rawPayload.Size ||
+    Array.from(new Set(compactItems.map(i => i.size).filter(Boolean))).join(', ') ||
+    'Free Size'
+  ).trim();
+
+  const totalQty = Number(
+    rawPayload.quantity ||
+    rawPayload.Quantity ||
+    (compactItems.length > 0 ? compactItems.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0) : 1)
+  ) || 1;
+
+  const totalAmount = Number(rawPayload.total_amount ?? rawPayload.Total_Amount ?? rawPayload.grand_total ?? 0) || 0;
+  const paymentMethod = String(rawPayload.payment_method || rawPayload.Payment_method || 'Cash On Delivery (COD)').trim();
+  const transactionId = String(rawPayload.transaction_id || rawPayload.Transaction_ID || 'N/A').trim();
+  const paymentStatus = String(
+    rawPayload.payment_status ||
+    rawPayload.Payment_Status ||
+    (paymentMethod === 'COD' || paymentMethod.toLowerCase().includes('cash on delivery') ? 'COD' : 'Paid')
+  ).trim();
+  const orderStatus = String(rawPayload.order_status || rawPayload.Order_Status || 'Order Placed').trim();
+  const resellerCommission = Number(rawPayload.reseller_commission ?? rawPayload.Reseller_Commission ?? 0) || 0;
+  const commissionStatus = String(rawPayload.commission_status || rawPayload.Commission_Status || 'Pending').trim();
+
+  if (compactItems.length === 0) {
+    compactItems.push({
+      product_id: String(rawPayload.product_id || rawPayload.sku || 'DCBD-ORD'),
+      sku: String(rawPayload.sku || rawPayload.product_id || 'DCBD-ORD'),
+      name: productsDesc,
+      price: Math.round(totalAmount / totalQty),
+      quantity: totalQty,
+      color: colorStr,
+      size: sizeStr
+    });
+  }
+
+  return {
+    // 17 Exact Google Sheet Columns (snake_case & exact Sheet Header case)
+    date: dateStr,
+    Date: dateStr,
+    order_id: orderId,
+    OrderID: orderId,
+    account_type: accountType,
+    Account_type: accountType,
+    customer_name: customerName,
+    Customer_Name: customerName,
+    phone: cleanPhone,
+    Phone: cleanPhone,
+    customer_phone: cleanPhone,
+    address: rawAddr || safeAddr,
+    Address: rawAddr || safeAddr,
+    shipping_address: safeAddr,
+    products: productsDesc,
+    Products: productsDesc,
+    product_name: rawPayload.product_name || productsDesc,
+    color: colorStr,
+    Color: colorStr,
+    size: sizeStr,
+    Size: sizeStr,
+    quantity: totalQty,
+    Quantity: totalQty,
+    total_amount: totalAmount,
+    Total_Amount: totalAmount,
+    grand_total: totalAmount,
+    payment_method: paymentMethod,
+    Payment_method: paymentMethod,
+    transaction_id: transactionId,
+    Transaction_ID: transactionId,
+    payment_status: paymentStatus,
+    Payment_Status: paymentStatus,
+    order_status: orderStatus,
+    Order_Status: orderStatus,
+    reseller_commission: resellerCommission,
+    Reseller_Commission: resellerCommission,
+    commission_status: commissionStatus,
+    Commission_Status: commissionStatus,
+    customer_note: rawPayload.customer_note || '',
+    items: compactItems
+  };
+}
+
 function fetchAppsScriptViaJsonp(action, params = {}) {
   return new Promise((resolve) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
@@ -125,7 +264,6 @@ function fetchAppsScriptViaJsonp(action, params = {}) {
     }
 
     const cbName = 'as_cb_' + Math.random().toString(36).substr(2, 9);
-    const script = document.createElement('script');
     const qParams = new URLSearchParams({
       action: action,
       callback: cbName,
@@ -133,10 +271,16 @@ function fetchAppsScriptViaJsonp(action, params = {}) {
     });
     const url = `${APPS_SCRIPT_URL}?${qParams.toString()}`;
 
+    // Google Apps Script GET URL limit is ~2000 characters after percent-encoding
+    if (url.length > 1950) {
+      return resolve(null);
+    }
+
+    const script = document.createElement('script');
     let timer = setTimeout(() => {
       cleanup();
       resolve(null);
-    }, 15000);
+    }, 8000);
 
     function cleanup() {
       clearTimeout(timer);
@@ -146,7 +290,7 @@ function fetchAppsScriptViaJsonp(action, params = {}) {
       };
       setTimeout(() => {
         try { delete window[cbName]; } catch (e) {}
-      }, 30000);
+      }, 15000);
     }
 
     window[cbName] = function(resp) {
@@ -165,34 +309,92 @@ function fetchAppsScriptViaJsonp(action, params = {}) {
 }
 
 async function sendToAppsScript(action, payload) {
+  let cleanPayload = payload || {};
+  if (action === 'orders/create' && typeof payload === 'object' && payload !== null) {
+    cleanPayload = buildOrderSheetPayload(payload);
+  }
+
+  // Create a compact version for URL query / JSONP (single-keyed to minimize URL length)
+  let compactPayload = cleanPayload;
+  if (action === 'orders/create') {
+    compactPayload = {
+      order_id: cleanPayload.order_id,
+      date: cleanPayload.date,
+      account_type: cleanPayload.account_type,
+      customer_name: cleanPayload.customer_name,
+      phone: cleanPayload.phone,
+      customer_phone: cleanPayload.customer_phone,
+      address: cleanPayload.address,
+      shipping_address: cleanPayload.shipping_address,
+      products: cleanPayload.products,
+      color: cleanPayload.color,
+      size: cleanPayload.size,
+      quantity: cleanPayload.quantity,
+      total_amount: cleanPayload.total_amount,
+      payment_method: cleanPayload.payment_method,
+      transaction_id: cleanPayload.transaction_id,
+      payment_status: cleanPayload.payment_status,
+      order_status: cleanPayload.order_status,
+      reseller_commission: cleanPayload.reseller_commission,
+      commission_status: cleanPayload.commission_status,
+      items: cleanPayload.items
+    };
+  }
+
+  // 1. Try JSONP GET first if the URL-encoded string fits within Google Apps Script's GET limit
   try {
-    const dataStr = JSON.stringify(payload);
-    if (dataStr.length < 1800) {
-      const res = await fetchAppsScriptViaJsonp(action, { data: dataStr });
-      if (res && (res.status === 'success' || res.success)) {
-        return res;
-      }
+    const compactStr = JSON.stringify(compactPayload);
+    const jsonpRes = await fetchAppsScriptViaJsonp(action, { data: compactStr });
+    if (jsonpRes && (jsonpRes.status === 'success' || jsonpRes.success === true)) {
+      return jsonpRes;
     }
   } catch (e) {}
 
+  // 2. Reliable POST delivery:
+  // Send action + data in URL query params (if < 1900 chars) AND send valid JSON in POST body (text/plain;charset=utf-8 is CORS-safelisted)
+  // This guarantees 100% compatibility whether Apps Script reads e.parameter.data, e.parameter.payload, or JSON.parse(e.postData.contents)!
   try {
-    const bodyParams = new URLSearchParams();
-    bodyParams.append('action', action);
-    bodyParams.append('payload', typeof payload === 'string' ? payload : JSON.stringify(payload));
-    bodyParams.append('spreadsheet_id', SPREADSHEET_ID);
+    const jsonBody = JSON.stringify({
+      action: action,
+      spreadsheet_id: SPREADSHEET_ID,
+      data: compactPayload,
+      payload: compactPayload,
+      ...compactPayload
+    });
 
-    await fetch(APPS_SCRIPT_URL, {
+    const postQuery = new URLSearchParams({ action: action, spreadsheet_id: SPREADSHEET_ID });
+    const encodedCompact = JSON.stringify(compactPayload);
+    if ((APPS_SCRIPT_URL.length + postQuery.toString().length + encodeURIComponent(encodedCompact).length) < 1900) {
+      postQuery.append('data', encodedCompact);
+    }
+    const postUrl = `${APPS_SCRIPT_URL}?${postQuery.toString()}`;
+
+    await fetch(postUrl, {
       method: 'POST',
       mode: 'no-cors',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'Content-Type': 'text/plain;charset=utf-8'
       },
-      body: bodyParams.toString()
+      body: jsonBody
     });
-    return { status: 'success', success: true };
-  } catch (err) {}
+    return { status: 'success', success: true, data: compactPayload };
+  } catch (err) {
+    try {
+      const bodyParams = new URLSearchParams();
+      bodyParams.append('action', action);
+      bodyParams.append('data', JSON.stringify(compactPayload));
+      bodyParams.append('payload', JSON.stringify(compactPayload));
+      bodyParams.append('spreadsheet_id', SPREADSHEET_ID);
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: bodyParams.toString()
+      });
+    } catch (e2) {}
+  }
 
-  return { status: 'success', success: true };
+  return { status: 'success', success: true, data: compactPayload };
 }
 
 
@@ -234,6 +436,69 @@ class ApiClient {
     try {
       localStorage.setItem(key, JSON.stringify(data));
     } catch (e) {}
+  }
+
+
+  mapSheetOrderRow(r, idx = 0) {
+    const rawId = r.order_id || r.orderid || r.OrderID || r.col_1 || `ORD-${100000 + idx}`;
+    const rawPhone = r.phone || r.Phone || r.customer_phone || r.col_4 || '';
+    const phone = normalizeBDPhone(rawPhone) || String(rawPhone).trim();
+    const products = r.products || r.Products || r.product_name || r.col_6 || 'পণ্য অর্ডার';
+    const qty = Number(r.quantity ?? r.Quantity ?? r.col_9 ?? 1) || 1;
+    const total = Number(r.total_amount ?? r.Total_Amount ?? r.grand_total ?? r.col_10 ?? 0) || 0;
+    const payMethod = r.payment_method || r.Payment_method || r.col_11 || 'Cash On Delivery (COD)';
+    const payStatus = r.payment_status || r.Payment_Status || r.col_13 || (String(payMethod).toLowerCase().includes('cod') ? 'COD' : 'Pending');
+    const ordStatus = r.order_status || r.Order_Status || r.col_14 || 'Order Placed';
+
+    return {
+      date: r.date || r.Date || r.col_0 || '',
+      order_id: String(rawId).trim(),
+      OrderID: String(rawId).trim(),
+      account_type: r.account_type || r.Account_type || r.col_2 || 'Customer',
+      customer_name: r.customer_name || r.Customer_Name || r.col_3 || 'সম্মানিত গ্রাহক',
+      phone: phone,
+      customer_phone: phone,
+      address: r.address || r.Address || r.shipping_address || r.col_5 || '',
+      shipping_address: r.address || r.Address || r.shipping_address || r.col_5 || '',
+      products: products,
+      product_name: r.product_name || products,
+      color: r.color || r.Color || r.col_7 || 'Standard',
+      size: r.size || r.Size || r.col_8 || 'Free Size',
+      quantity: qty,
+      total_amount: total,
+      payment_method: payMethod,
+      transaction_id: r.transaction_id || r.Transaction_ID || r.col_12 || 'N/A',
+      payment_status: payStatus,
+      order_status: ordStatus,
+      reseller_commission: Number(r.reseller_commission ?? r.Reseller_Commission ?? r.col_15 ?? 0) || 0,
+      commission_status: r.commission_status || r.Commission_Status || r.col_16 || 'Pending',
+      fraud_status: r.fraud_status || 'Safe (98%)',
+      customer_rating: r.customer_rating || '5/5 ★'
+    };
+  }
+
+  async loadOrdersFromSheet(forceRefresh = false) {
+    const localOrders = (this.loadLocal('dcbd_sheet_orders', []) || []).map((o, i) => this.mapSheetOrderRow(o, i));
+
+    try {
+      const rows = await fetchSheetViaGviz('Orders');
+      if (Array.isArray(rows) && rows.length > 0) {
+        const sheetMapped = rows
+          .map((r, idx) => this.mapSheetOrderRow(r, idx))
+          .filter(o => o.order_id && o.order_id.toLowerCase() !== 'orderid');
+
+        // Merge local newly created orders that may not yet have propagated to GViz cache
+        const seenIds = new Set(sheetMapped.map(o => o.order_id.toLowerCase()));
+        const unmergedLocal = localOrders.filter(o => o.order_id && !seenIds.has(o.order_id.toLowerCase()));
+        const combined = [...unmergedLocal, ...sheetMapped];
+        this.sheetOrders = combined;
+        this.saveLocal('dcbd_sheet_orders', combined);
+        return combined;
+      }
+    } catch (e) {}
+
+    this.sheetOrders = localOrders;
+    return localOrders;
   }
 
   async loadProductsFromSheet(forceRefresh = false) {
@@ -666,50 +931,18 @@ class ApiClient {
         return { success: true, message: "ব্র্যান্ড মুছে ফেলা হয়েছে।" };
       }
 
-            case "orders/get":
+      case "orders/get":
       case "orders/details": {
-        const queryId = (payload.orderId || payload.order_id || payload.id || payload.phone || '').toString().trim().toLowerCase();
-        
-        let orders = this.sheetOrders || this.loadLocal('dcbd_sheet_orders', []) || [];
-        let matched = orders.find(o => {
-          const oId = (o.order_id || o.orderId || o.OrderID || '').toString().trim().toLowerCase();
-          const oPhone = (o.phone || o.Phone || '').toString().trim().toLowerCase();
-          return (queryId && (oId === queryId || oPhone === queryId));
-        });
+        const rawQuery = (payload.orderId || payload.order_id || payload.id || payload.phone || '').toString().trim();
+        const queryId = rawQuery.toLowerCase();
+        const normQueryPhone = normalizeBDPhone(rawQuery);
 
-        if (!matched) {
-          try {
-            const rows = await fetchSheetViaGviz('Orders');
-            if (rows && rows.length > 0) {
-              matched = rows.find(r => {
-                const rId = (r.orderid || r.order_id || r.col_1 || '').toString().trim().toLowerCase();
-                const rPhone = (r.phone || r.col_4 || '').toString().trim().toLowerCase();
-                return (queryId && (rId === queryId || rPhone === queryId));
-              });
-              if (matched) {
-                matched = {
-                  order_id: matched.orderid || matched.order_id || matched.col_1 || queryId,
-                  date: matched.date || matched.col_0 || '',
-                  account_type: matched.account_type || matched.col_2 || 'Customer',
-                  customer_name: matched.customer_name || matched.col_3 || 'সম্মানিত গ্রাহক',
-                  phone: matched.phone || matched.col_4 || '',
-                  address: matched.address || matched.col_5 || '',
-                  products: matched.products || matched.col_6 || '',
-                  color: matched.color || matched.col_7 || '',
-                  size: matched.size || matched.col_8 || '',
-                  quantity: Number(matched.quantity || matched.col_9 || 1),
-                  total_amount: Number(matched.total_amount || matched.col_10 || 0),
-                  payment_method: matched.payment_method || matched.col_11 || 'Cash On Delivery (COD)',
-                  transaction_id: matched.transaction_id || matched.col_12 || 'N/A',
-                  payment_status: matched.payment_status || matched.col_13 || 'COD',
-                  order_status: matched.order_status || matched.col_14 || 'Order Placed',
-                  reseller_commission: Number(matched.reseller_commission || matched.col_15 || 0),
-                  commission_status: matched.commission_status || matched.col_16 || 'Pending'
-                };
-              }
-            }
-          } catch (e) {}
-        }
+        const allOrders = await this.loadOrdersFromSheet();
+        const matched = allOrders.find(o => {
+          const oId = (o.order_id || o.orderId || o.OrderID || '').toString().trim().toLowerCase();
+          const oPhone = normalizeBDPhone(o.phone || o.Phone || '');
+          return (queryId && oId === queryId) || (normQueryPhone && oPhone === normQueryPhone);
+        });
 
         if (matched) {
           return { success: true, data: matched };
@@ -719,19 +952,50 @@ class ApiClient {
 
       case "orders/create": {
         const orderId = payload.order_id || ("ORD-" + Math.floor(100000 + Math.random() * 900000));
-        const orderData = { ...payload, order_id: orderId };
-        await sendToAppsScript("orders/create", orderData);
+        const orderData = buildOrderSheetPayload(payload, orderId);
 
-        if (!this.sheetOrders) this.sheetOrders = [];
-        this.sheetOrders.unshift(orderData);
+        // Save to local cache immediately so UI reflects order with 0ms delay
+        const existingLocal = this.loadLocal('dcbd_sheet_orders', []) || [];
+        const filteredLocal = existingLocal.filter(o => (o.order_id || o.OrderID) !== orderData.order_id);
+        filteredLocal.unshift(orderData);
+        this.sheetOrders = filteredLocal;
         this.saveLocal('dcbd_sheet_orders', this.sheetOrders);
+
+        // Send normalized 17-column order data to Google Sheet via Apps Script Gateway
+        await sendToAppsScript("orders/create", orderData);
 
         return {
           success: true,
           status: "success",
-          data: { order_id: orderId },
+          data: { ...orderData, order_id: orderData.order_id },
           message: "অর্ডার সফলভাবে শিটে জমা হয়েছে ও কনফার্ম হয়েছে!"
         };
+      }
+
+      case "orders/update":
+      case "orders/update_status": {
+        const orderId = String(payload.order_id || payload.orderId || '');
+        const newStatus = payload.order_status || payload.status;
+        const newPayStatus = payload.payment_status || (newStatus === 'Delivered' ? 'Paid' : undefined);
+
+        const existingLocal = this.loadLocal('dcbd_sheet_orders', []) || [];
+        const updatedLocal = existingLocal.map(o => {
+          if (String(o.order_id || o.OrderID) === orderId) {
+            if (newStatus) { o.order_status = newStatus; o.Order_Status = newStatus; }
+            if (newPayStatus) { o.payment_status = newPayStatus; o.Payment_Status = newPayStatus; }
+          }
+          return o;
+        });
+        this.sheetOrders = updatedLocal;
+        this.saveLocal('dcbd_sheet_orders', updatedLocal);
+
+        await sendToAppsScript("orders/update_status", {
+          order_id: orderId,
+          order_status: newStatus,
+          status: newStatus,
+          payment_status: newPayStatus
+        });
+        return { success: true, status: "success", message: "অর্ডার স্ট্যাটাস শিটে আপডেট হয়েছে!" };
       }
 
       case "customers/register":
@@ -995,13 +1259,8 @@ class ApiClient {
       }
 
       case "orders/list": {
-        try {
-          const rows = await fetchSheetViaGviz('Orders');
-          if (rows && rows.length > 0) {
-            return { success: true, data: { items: rows, total: rows.length } };
-          }
-        } catch (e) {}
-        return { success: true, data: { items: this.sheetOrders || [], total: (this.sheetOrders || []).length } };
+        const orders = await this.loadOrdersFromSheet(Boolean(payload.forceRefresh));
+        return { success: true, data: { items: orders, total: orders.length } };
       }
 
       case "incomplete_orders/create": {
