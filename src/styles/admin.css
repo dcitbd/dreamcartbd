@@ -4,7 +4,7 @@
    Zero harsh nested borders • Unified Slate & Emerald palette • Full Grid Suite
    ========================================================================== */
 
-:root {
+.dc-admin-wrapper {
   --adm-bg: #f1f5f9;
   --adm-surface: #ffffff;
   --adm-surface-soft: #f8fafc;
@@ -31,7 +31,7 @@
   --adm-radius-control: 10px;
 }
 
-.dark {
+.dark .dc-admin-wrapper {
   --adm-bg: #0b1120;
   --adm-surface: #111827;
   --adm-surface-soft: #1e293b;

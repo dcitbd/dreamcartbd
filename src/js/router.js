@@ -74,7 +74,8 @@ class Router {
     }
 
     try {
-      // লোডিং স্টেট বা আগের কনটেন্ট ক্লিয়ার করা
+      // লোডিং স্টেট লোগো সহ রেন্ডার করা
+      appContainer.innerHTML = `<div class="py-20 flex flex-col items-center justify-center space-y-4"><div class="relative w-16 h-16 rounded-2xl bg-white p-1.5 shadow-xl border-2 border-emerald-500/60 flex items-center justify-center"><img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Dream Cart BD Logo" class="w-full h-full object-contain rounded-xl animate-pulse" onerror="this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" /></div><div class="text-xs font-bold text-slate-600">লোড হচ্ছে...</div></div>`;
       let htmlContent = "";
       if (typeof handler === "function") {
         htmlContent = await handler(params);

@@ -1,7 +1,8 @@
 /**
  * DREAM CART BD — CLEAN PATH SPA CLIENT ROUTER (router.js)
  * Implements clean path routing: domain/products, domain/cart, domain/admin (ZERO hash '#' URLs)
- * Supports GitHub Pages, Cloudflare Pages, C-Panel Apache (.htaccess), and local preview.
+ * - Strictly decouples Admin Panel code & styles from Customer Storefront pages (lazy-loaded only on /admin/*)
+ * - Branded Dream Cart BD Logo Loader on all page transitions
  */
 
 import { renderHomePage } from './pages/storefront/HomePage.js';
@@ -24,7 +25,32 @@ import { renderPrivacyPage } from './pages/storefront/PrivacyPage.js';
 import { renderCustomerPortal } from './pages/customer/CustomerPortal.js';
 import { renderResellerPortal } from './pages/partner/ResellerPortal.js';
 import { renderWholesalePortal } from './pages/partner/WholesalePortal.js';
-import { renderAdminPortal } from './pages/admin/AdminPortal.js';
+import { renderLoadingSkeleton, renderLogoLoader } from './components/LoadingSkeleton.js';
+
+// On-demand lazy loader for Admin Portal so customer pages NEVER load or execute Admin code
+async function loadAndRenderAdmin(params = {}) {
+  const mod = await import('./pages/admin/AdminPortal.js');
+  return mod.renderAdminPortal(params);
+}
+
+// Restore customer storefront layout and remove any Admin-only styles when on non-admin routes
+function ensureStorefrontLayoutIsolation() {
+  if (typeof document === 'undefined') return;
+  const admStyle = document.getElementById('dc-admin-harmonized-css');
+  if (admStyle && admStyle.parentNode) {
+    admStyle.parentNode.removeChild(admStyle);
+  }
+  ['header-mount', 'footer-mount', 'floatingactions-mount', 'mobilenav-mount'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.style.display === 'none') {
+      el.style.display = '';
+    }
+  });
+  const appContent = document.getElementById('app-content');
+  if (appContent && !appContent.className.includes('max-w-7xl')) {
+    appContent.className = 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-20';
+  }
+}
 
 export function getAppBase() {
   const meta = document.querySelector('meta[name="app-base"]');
@@ -35,12 +61,11 @@ export function getAppBase() {
     return window.__APP_BASE__.replace(/\/$/, '');
   }
 
-  // If on github.io with a project path: https://<user>.github.io/<repo>/
   if (window.location.hostname.includes('github.io')) {
     const parts = window.location.pathname.split('/').filter(Boolean);
     const knownTopRoutes = [
       'products', 'shop', 'search', 'product', 'cart', 'favourite', 'wishlist',
-      'checkout', 'order-success', 'track', 'contact', 'offers',
+      'checkout', 'order', 'order-success', 'track', 'tracking', 'contact', 'offers',
       'categories', 'brands', 'others-market', 'chat', 'live-chat',
       'landing', 'terms', 'privacy', 'login', 'register', 'customer', 'reseller', 'wholesaler', 'admin'
     ];
@@ -51,6 +76,26 @@ export function getAppBase() {
 
   return '';
 }
+
+const ADMIN_SLUGS = [
+  'login', 'dashboard', 'products', 'addproduct', 'add-product', 'categroy', 'category', 'categories',
+  'brands', 'addbrand', 'add-brand', 'variants', 'addvariant', 'banners', 'bulk-upload', 'bulkupload',
+  'bulk-price', 'bulkprice', 'bulk-image', 'bulkimage', 'low-stock', 'out-stock', 'error-products',
+  'landing', 'orders', 'addorder', 'add-order', 'incomplete-orders', 'delivered-orders', 'shipping-orders',
+  'unpaid-orders', 'cancelled-orders', 'visitors', 'customers', 'reviews', 'resellers', 'wholesalers',
+  'sellers', 'markets', 'admins', 'workers', 'team', 'reports', 'report-sales', 'report-seller',
+  'report-reseller', 'report-wholesaler', 'report-wholesale', 'report-costs', 'report-buying',
+  'report-invest', 'payouts', 'finance', 'costs', 'buying', 'invest', 'couriers', 'addcourier',
+  'fraud', 'payments', 'settings', 'shop-info', 'logs', 'payment-methods', 'delivery', 'offers',
+  'profile', 'password', 'others'
+];
+
+const adminRouteEntries = {
+  '/admin': (params) => loadAndRenderAdmin(params)
+};
+ADMIN_SLUGS.forEach(slug => {
+  adminRouteEntries['/admin/' + slug] = (params) => loadAndRenderAdmin({ ...params, subview: slug });
+});
 
 export const router = {
   routes: {
@@ -79,7 +124,7 @@ export const router = {
     '/privacy': renderPrivacyPage,
     '/login': (params) => renderCustomerPortal({ ...params, subview: 'login' }),
     '/register': (params) => renderCustomerPortal({ ...params, subview: 'register' }),
-    
+
     // Customer Portal
     '/customer': renderCustomerPortal,
     '/customer/login': (params) => renderCustomerPortal({ ...params, subview: 'login' }),
@@ -99,82 +144,25 @@ export const router = {
     '/wholesaler/register': (params) => renderWholesalePortal({ ...params, subview: 'register' }),
     '/wholesaler/dashboard': (params) => renderWholesalePortal({ ...params, subview: 'dashboard' }),
 
-    // Admin / Worker Portal (Multi-Page Route Architecture)
-    '/admin': renderAdminPortal,
-    '/admin/login': (params) => renderAdminPortal({ ...params, subview: 'login' }),
-    '/admin/dashboard': (params) => renderAdminPortal({ ...params, subview: 'dashboard' }),
-    '/admin/products': (params) => renderAdminPortal({ ...params, subview: 'products' }),
-    '/admin/addproduct': (params) => renderAdminPortal({ ...params, subview: 'addproduct' }),
-    '/admin/add-product': (params) => renderAdminPortal({ ...params, subview: 'addproduct' }),
-    '/admin/categroy': (params) => renderAdminPortal({ ...params, subview: 'categroy' }),
-    '/admin/category': (params) => renderAdminPortal({ ...params, subview: 'category' }),
-    '/admin/categories': (params) => renderAdminPortal({ ...params, subview: 'categories' }),
-    '/admin/brands': (params) => renderAdminPortal({ ...params, subview: 'brands' }),
-    '/admin/addbrand': (params) => renderAdminPortal({ ...params, subview: 'addbrand' }),
-    '/admin/variants': (params) => renderAdminPortal({ ...params, subview: 'variants' }),
-    '/admin/addvariant': (params) => renderAdminPortal({ ...params, subview: 'addvariant' }),
-    '/admin/banners': (params) => renderAdminPortal({ ...params, subview: 'banners' }),
-    '/admin/bulk-upload': (params) => renderAdminPortal({ ...params, subview: 'bulk-upload' }),
-    '/admin/bulk-price': (params) => renderAdminPortal({ ...params, subview: 'bulk-price' }),
-    '/admin/bulk-image': (params) => renderAdminPortal({ ...params, subview: 'bulk-image' }),
-    '/admin/low-stock': (params) => renderAdminPortal({ ...params, subview: 'low-stock' }),
-    '/admin/out-stock': (params) => renderAdminPortal({ ...params, subview: 'out-stock' }),
-    '/admin/error-products': (params) => renderAdminPortal({ ...params, subview: 'error-products' }),
-    '/admin/landing': (params) => renderAdminPortal({ ...params, subview: 'landing' }),
-    '/admin/orders': (params) => renderAdminPortal({ ...params, subview: 'orders' }),
-    '/admin/addorder': (params) => renderAdminPortal({ ...params, subview: 'addorder' }),
-    '/admin/incomplete-orders': (params) => renderAdminPortal({ ...params, subview: 'incomplete-orders' }),
-    '/admin/delivered-orders': (params) => renderAdminPortal({ ...params, subview: 'delivered-orders' }),
-    '/admin/shipping-orders': (params) => renderAdminPortal({ ...params, subview: 'shipping-orders' }),
-    '/admin/unpaid-orders': (params) => renderAdminPortal({ ...params, subview: 'unpaid-orders' }),
-    '/admin/cancelled-orders': (params) => renderAdminPortal({ ...params, subview: 'cancelled-orders' }),
-    '/admin/visitors': (params) => renderAdminPortal({ ...params, subview: 'visitors' }),
-    '/admin/customers': (params) => renderAdminPortal({ ...params, subview: 'customers' }),
-    '/admin/reviews': (params) => renderAdminPortal({ ...params, subview: 'reviews' }),
-    '/admin/resellers': (params) => renderAdminPortal({ ...params, subview: 'resellers' }),
-    '/admin/wholesalers': (params) => renderAdminPortal({ ...params, subview: 'wholesalers' }),
-    '/admin/sellers': (params) => renderAdminPortal({ ...params, subview: 'sellers' }),
-    '/admin/markets': (params) => renderAdminPortal({ ...params, subview: 'markets' }),
-    '/admin/admins': (params) => renderAdminPortal({ ...params, subview: 'admins' }),
-    '/admin/workers': (params) => renderAdminPortal({ ...params, subview: 'workers' }),
-    '/admin/reports': (params) => renderAdminPortal({ ...params, subview: 'reports' }),
-    '/admin/payouts': (params) => renderAdminPortal({ ...params, subview: 'payouts' }),
-    '/admin/finance': (params) => renderAdminPortal({ ...params, subview: 'finance' }),
-    '/admin/costs': (params) => renderAdminPortal({ ...params, subview: 'costs' }),
-    '/admin/buying': (params) => renderAdminPortal({ ...params, subview: 'buying' }),
-    '/admin/invest': (params) => renderAdminPortal({ ...params, subview: 'invest' }),
-    '/admin/couriers': (params) => renderAdminPortal({ ...params, subview: 'couriers' }),
-    '/admin/addcourier': (params) => renderAdminPortal({ ...params, subview: 'addcourier' }),
-    '/admin/fraud': (params) => renderAdminPortal({ ...params, subview: 'fraud' }),
-    '/admin/payments': (params) => renderAdminPortal({ ...params, subview: 'payments' }),
-    '/admin/settings': (params) => renderAdminPortal({ ...params, subview: 'settings' }),
-    '/admin/logs': (params) => renderAdminPortal({ ...params, subview: 'logs' }),
-    '/admin/payment-methods': (params) => renderAdminPortal({ ...params, subview: 'payment-methods' }),
-    '/admin/delivery': (params) => renderAdminPortal({ ...params, subview: 'delivery' }),
-    '/admin/offers': (params) => renderAdminPortal({ ...params, subview: 'offers' }),
-    '/admin/profile': (params) => renderAdminPortal({ ...params, subview: 'profile' }),
-    '/admin/password': (params) => renderAdminPortal({ ...params, subview: 'password' }),
-    '/admin/others': (params) => renderAdminPortal({ ...params, subview: 'others' })
+    // Admin / Worker Portal (Dedicated Multi-Page Route Architecture)
+    ...adminRouteEntries
   },
 
   getCleanPath() {
     const base = getAppBase();
     let fullPath = window.location.pathname;
 
-    // Handle GitHub Pages redirect stored in sessionStorage
     const redirectPath = sessionStorage.getItem('dcbd_spa_redirect');
     if (redirectPath) {
       sessionStorage.removeItem('dcbd_spa_redirect');
       window.history.replaceState(null, '', redirectPath);
-      fullPath = redirectPath;
+      fullPath = redirectPath.split('?')[0];
     }
 
-    // Strip base if present
     if (base && fullPath.startsWith(base)) {
       fullPath = fullPath.slice(base.length);
     }
 
-    // Backward compatibility: If old URL with '#' is entered, automatically strip '#' and replaceState
     if (window.location.hash) {
       const hashContent = window.location.hash.replace(/^#\/?/, '/');
       if (hashContent && hashContent !== '/') {
@@ -186,7 +174,6 @@ export const router = {
 
     if (!fullPath || fullPath === '') fullPath = '/';
 
-    // Strip trailing slash unless root
     if (fullPath.length > 1 && fullPath.endsWith('/')) {
       fullPath = fullPath.slice(0, -1);
     }
@@ -208,8 +195,7 @@ export const router = {
   navigate(targetUrl, replace = false) {
     const base = getAppBase();
     let cleanTarget = targetUrl;
-    
-    // Strip hash if given
+
     cleanTarget = cleanTarget.replace(/^#\/?/, '/');
     if (!cleanTarget.startsWith('/')) cleanTarget = '/' + cleanTarget;
 
@@ -231,46 +217,22 @@ export const router = {
     const appContainer = document.getElementById('app-content');
     if (!appContainer) return;
 
-    // Branded Shop & Page Loader (Skipped on fast intra-admin page transitions)
-    const isIntraAdmin = path.startsWith('/admin') && !!appContainer.querySelector('.dc-admin-wrapper');
-    if (!isIntraAdmin) appContainer.innerHTML = `
-      <div class="py-16 sm:py-24 flex flex-col items-center justify-center max-w-7xl mx-auto space-y-6 px-4">
-        <!-- Center Logo Loader with Glow & Pulse -->
-        <div class="relative flex items-center justify-center">
-          <div class="absolute w-24 h-24 rounded-3xl bg-emerald-500/20 dark:bg-emerald-500/30 animate-ping"></div>
-          <div class="relative w-20 h-20 rounded-2xl bg-white dark:bg-slate-900 border-2 border-emerald-500/60 p-2 shadow-2xl shadow-emerald-500/20 flex items-center justify-center overflow-hidden">
-            <img 
-              src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" 
-              alt="Dream Cart BD Logo" 
-              class="w-full h-full object-contain rounded-xl"
-              onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';"
-            />
-          </div>
-        </div>
+    const isAdminRoute = path === '/admin' || path.startsWith('/admin/');
+    if (!isAdminRoute) {
+      ensureStorefrontLayoutIsolation();
+    }
 
-        <!-- Animated Progress / Loading Text -->
-        <div class="text-center space-y-1.5">
-          <div class="text-sm font-extrabold text-slate-800 dark:text-white flex items-center justify-center gap-2">
-            <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>পণ্য লোড হচ্ছে...</span>
-          </div>
-          <p class="text-xs text-slate-400 dark:text-slate-500 font-medium">Dream Cart BD • লাইভ ক্যাটালগ সিঙ্ক হচ্ছে</p>
-        </div>
-
-        <!-- Product Grid Skeletons -->
-        <div class="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 pt-6">
-          <div class="h-64 skeleton rounded-2xl"></div>
-          <div class="h-64 skeleton rounded-2xl"></div>
-          <div class="h-64 skeleton rounded-2xl hidden sm:block"></div>
-          <div class="h-64 skeleton rounded-2xl hidden lg:block"></div>
-        </div>
-      </div>
-    `;
+    // Branded Logo Loader on route resolution (skipped only when already inside mounted admin shell for instant 0ms tab swap)
+    const isIntraAdmin = isAdminRoute && !!appContainer.querySelector('.dc-admin-wrapper');
+    if (!isIntraAdmin) {
+      appContainer.innerHTML = isAdminRoute
+        ? renderLogoLoader('অ্যাডমিন প্যানেল লোড হচ্ছে...', 'Dream Cart BD • মাস্টার কন্ট্রোল প্যানেল')
+        : renderLoadingSkeleton();
+    }
 
     try {
       let viewHtml = "";
 
-      // Dynamic Product Detail routing: /product/<slug>
       if (path.startsWith('/product/')) {
         const rawSlug = path.replace('/product/', '');
         let slug = rawSlug;
@@ -288,15 +250,14 @@ export const router = {
         viewHtml = await renderProductDetailPage(slug);
       } else if (path === '/order-success') {
         viewHtml = await renderOrderSuccessPage(params.orderId || params.order_id || 'ORD-2609-8472');
-      } else if (path === '/track') {
+      } else if (path === '/track' || path === '/tracking') {
         viewHtml = await renderTrackOrderPage(params.orderId || params.phone || '');
+      } else if (isAdminRoute) {
+        const subview = path.replace(/^\/admin\/?/, '') || 'dashboard';
+        viewHtml = await loadAndRenderAdmin({ ...params, subview });
       } else if (this.routes[path]) {
         viewHtml = await this.routes[path](params);
-      } else if (path === '/admin' || path.startsWith('/admin/')) {
-        const subview = path.replace(/^\/admin\/?/, '') || 'dashboard';
-        viewHtml = await renderAdminPortal({ ...params, subview });
       } else {
-        // 404 Fallback
         viewHtml = `
           <div class="py-24 text-center max-w-lg mx-auto space-y-3">
             <h1 class="text-6xl font-black text-emerald-600">404</h1>

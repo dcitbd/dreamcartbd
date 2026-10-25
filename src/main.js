@@ -744,25 +744,49 @@ function attachEventListeners() {
         return;
       }
 
+      const cartItems = Array.isArray(cartStore.items) ? cartStore.items : [];
+      const productsSummary = cartItems.map(i => {
+        const vTag = [i.color, i.size].filter(Boolean).join(', ');
+        return `${i.name || i.p_name || 'পণ্য'}${vTag ? ` [${vTag}]` : ''} (${i.quantity || 1}x)`;
+      }).join(', ') || 'পণ্য অর্ডার';
+      const colorsSummary = Array.from(new Set(cartItems.map(i => i.color).filter(Boolean))).join(', ') || note || 'Standard';
+      const sizesSummary = Array.from(new Set(cartItems.map(i => i.size).filter(Boolean))).join(', ') || 'Free Size';
+      const totalQuantity = cartItems.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0) || 1;
+
       const orderPayload = {
         customer_name: name,
         phone: phone,
+        customer_phone: phone,
         address: address,
+        shipping_address: address,
         customer_note: note,
-        account_type: authStore.getAccountType(),
-        items: cartStore.items,
+        account_type: authStore.getAccountType() || 'Customer',
+        products: productsSummary,
+        color: colorsSummary,
+        size: sizesSummary,
+        quantity: totalQuantity,
+        items: cartItems.map(i => ({
+          product_id: i.product_id || i.sku || 'DCBD-PRD',
+          sku: i.sku || i.product_id || 'DCBD-PRD',
+          name: i.name || i.p_name || 'পণ্য',
+          price: Number(i.price || i.selling_price || 0),
+          quantity: Number(i.quantity || 1),
+          color: i.color || '',
+          size: i.size || ''
+        })),
         total_amount: cartStore.getGrandTotal(),
-        payment_method: cartStore.paymentMethod,
+        payment_method: cartStore.paymentMethod || 'COD',
         transaction_id: trxId,
         payment_status: cartStore.paymentMethod === 'COD' ? 'COD' : 'Paid',
         order_status: 'Order Placed',
-        reseller_commission: authStore.isReseller() ? Math.round(cartStore.getSubtotal() * 0.1) : 0
+        reseller_commission: authStore.isReseller() ? Math.round(cartStore.getSubtotal() * 0.15) : 0,
+        commission_status: 'Pending'
       };
 
       const btn = document.getElementById('btn-confirm-order');
       if (btn) {
         btn.disabled = true;
-        btn.textContent = "অর্ডার প্রসেস হচ্ছে...";
+        btn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-5 h-5 rounded-full object-contain bg-white p-0.5 animate-spin" onerror="this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" /> <span>অর্ডার শিটে জমা হচ্ছে...</span></span>`;
       }
 
       const res = await apiClient.request("orders/create", orderPayload);
@@ -857,7 +881,7 @@ function attachEventListeners() {
       const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = `<span>⏳</span> <span>${isRegister ? 'গুগল শিটে সেভ হচ্ছে...' : 'Customers তালিকায় যাচাই হচ্ছে...'}</span>`;
+        submitBtn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-4 h-4 rounded-full object-contain bg-white p-0.5 animate-spin" onerror="this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" /> <span>${isRegister ? 'গুগল শিটে সেভ হচ্ছে...' : 'Customers তালিকায় যাচাই হচ্ছে...'}</span></span>`;
       }
 
       try {
@@ -1061,18 +1085,30 @@ function attachEventListeners() {
       const orderPayload = {
         customer_name: name,
         phone: phone,
+        customer_phone: phone,
         address: address,
+        shipping_address: address,
+        account_type: authStore.getAccountType() || 'Customer',
+        products: `${productName || 'ক্যাম্পেইন পণ্য'} (1x)`,
+        color: 'Standard',
+        size: 'Free Size',
+        quantity: 1,
         items: [{
-          product_id: productSku,
-          sku: productSku,
-          name: productName,
+          product_id: productSku || 'DCBD-LP-01',
+          sku: productSku || 'DCBD-LP-01',
+          name: productName || 'ক্যাম্পেইন পণ্য',
           price: price,
-          quantity: 1
+          quantity: 1,
+          color: 'Standard',
+          size: 'Free Size'
         }],
         total_amount: price + delivery,
         payment_method: payment,
-        payment_status: payment === 'Cash On Delivery (COD)' ? 'COD' : 'Paid',
-        order_status: 'Order Placed'
+        transaction_id: 'N/A',
+        payment_status: payment === 'Cash On Delivery (COD)' || payment === 'COD' ? 'COD' : 'Paid',
+        order_status: 'Order Placed',
+        reseller_commission: 0,
+        commission_status: 'Pending'
       };
 
       const res = await apiClient.request("orders/create", orderPayload);

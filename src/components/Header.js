@@ -1085,7 +1085,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     reader.onload = function(e) {
       if (previewImg) previewImg.src = e.target.result;
       if (scanStatus) {
-        scanStatus.innerHTML = '<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> ওয়েবসাইটের প্রোডাক্টগুলোর ছবির সাথে মিলানো হচ্ছে...';
+        scanStatus.innerHTML = '<img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-4 h-4 rounded-full object-contain bg-white p-0.5 mr-1.5 animate-spin inline-block"  /> ওয়েবসাইটের প্রোডাক্টগুলোর ছবির সাথে মিলানো হচ্ছে...';
       }
 
       if (popup) popup.classList.remove('hidden');
@@ -1117,7 +1117,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     // 1. Compare uploaded image against all Sheet products with live progress
     const report = await window.__dcbdAnalyzeProductImage(dataUrl, fileName, explicitCategory, (doneCount, totalCount) => {
       if (scanStatus) {
-        scanStatus.innerHTML = `<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> প্রোডাক্টের ছবির সাথে মিলানো হচ্ছে (${doneCount}/${totalCount})...`;
+        scanStatus.innerHTML = `<img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-4 h-4 rounded-full object-contain bg-white p-0.5 mr-1.5 animate-spin inline-block"  /> প্রোডাক্টের ছবির সাথে মিলানো হচ্ছে (${doneCount}/${totalCount})...`;
       }
     });
 
@@ -1734,7 +1734,7 @@ export function renderHeader() {
               </div>
               <div class="flex items-center justify-between text-[11px]">
                 <div id="d-img-scan-status" class="text-emerald-400 font-bold flex items-center">
-                  <span class="inline-block animate-spin mr-1">⚡</span> স্ক্যান চলছে...
+                  <img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-4 h-4 rounded-full object-contain bg-white p-0.5 mr-1.5 animate-spin inline-block"  /> স্ক্যান চলছে...
                 </div>
                 <button type="button" onclick="window.__dcbdTriggerFilePick('file', false)" class="text-slate-400 hover:text-white underline cursor-pointer">
                   অন্য ছবি
@@ -1938,7 +1938,7 @@ export function renderHeader() {
               <div class="laser-scanner-line"></div>
             </div>
             <div id="m-img-scan-status" class="text-emerald-400 font-bold text-[10px] flex items-center">
-              <span class="inline-block animate-spin mr-1">⚡</span> স্ক্যান চলছে...
+              <img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-4 h-4 rounded-full object-contain bg-white p-0.5 mr-1.5 animate-spin inline-block"  /> স্ক্যান চলছে...
             </div>
           </div>
 
