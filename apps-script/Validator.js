@@ -54,11 +54,11 @@ var Validator = {
       errors.push("Customer name is required (min 2 characters).");
     }
 
-    if (!this.isValidBDPhone(payload.customer_phone)) {
+    if (!this.isValidBDPhone(payload.customer_phone || payload.phone)) {
       errors.push("Valid 11-digit Bangladesh phone number is required (e.g. 017XXXXXXXX).");
     }
 
-    if (!payload.shipping_address || String(payload.shipping_address).trim().length < 5) {
+    if (!(payload.shipping_address || payload.address) || String(payload.shipping_address || payload.address).trim().length < 2) {
       errors.push("Valid shipping delivery address is required.");
     }
 

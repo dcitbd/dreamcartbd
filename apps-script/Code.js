@@ -47,10 +47,22 @@ function handleRequest(e, method) {
     try {
       var parsed = JSON.parse(e.postData.contents);
       if (parsed.action) action = parsed.action;
-      if (parsed.payload) payload = parsed.payload;
-      else if (parsed.data) payload = parsed.data;
+      if (parsed.payload && typeof parsed.payload === "object") payload = parsed.payload;
+      else if (parsed.data && typeof parsed.data === "object") payload = parsed.data;
+      else if (typeof parsed.payload === "string") payload = JSON.parse(parsed.payload);
+      else if (typeof parsed.data === "string") payload = JSON.parse(parsed.data);
       else payload = parsed;
-    } catch (err) {}
+    } catch (err) {
+      // Handle application/x-www-form-urlencoded POST body if e.parameter didn't parse it
+      if (!payload || Object.keys(payload).length === 0) {
+        payload = e.parameter || {};
+      }
+      if (typeof payload.payload === "string") {
+        try { payload = JSON.parse(payload.payload); } catch (e2) {}
+      } else if (typeof payload.data === "string") {
+        try { payload = JSON.parse(payload.data); } catch (e3) {}
+      }
+    }
   }
 
   if (!action) action = "system/health";
@@ -304,7 +316,7 @@ function handleBrandDelete(ss, payload) {
 }
 
 function handleOrderCreation(ss, payload) {
-  var sheet = ss.getSheetByName("Orders");
+  var sheet = ss.getSheetByName("Orders") || ss.getSheetByName("Order");
   if (!sheet) {
     sheet = ss.insertSheet("Orders");
     sheet.appendRow([
@@ -312,40 +324,73 @@ function handleOrderCreation(ss, payload) {
       "Products", "Color", "Size", "Quantity", "Total_Amount", "Payment_method",
       "Transaction_ID", "Payment_Status", "Order_Status", "Reseller_Commission", "Commission_Status"
     ]);
+    sheet.setFrozenRows(1);
+  } else if (sheet.getLastRow() === 0) {
+    sheet.appendRow([
+      "Date", "OrderID", "Account_type", "Customer_Name", "Phone", "Address",
+      "Products", "Color", "Size", "Quantity", "Total_Amount", "Payment_method",
+      "Transaction_ID", "Payment_Status", "Order_Status", "Reseller_Commission", "Commission_Status"
+    ]);
+    sheet.setFrozenRows(1);
   }
 
-  var orderId = payload.order_id || ("ORD-" + Math.floor(100000 + Math.random() * 900000));
-  var dateStr = Utilities.formatDate(new Date(), "Asia/Dhaka", "yyyy-MM-dd HH:mm:ss");
+  var orderId = String(payload.order_id || payload.OrderID || payload.orderId || ("ORD-" + Math.floor(100000 + Math.random() * 900000))).trim();
+  var dateStr = payload.date || payload.Date || Utilities.formatDate(new Date(), "Asia/Dhaka", "yyyy-MM-dd HH:mm:ss");
 
-  var productsDesc = payload.products;
-  if (!productsDesc && payload.items && Array.isArray(payload.items)) {
-    productsDesc = payload.items.map(function(item) {
-      return (item.name || item.p_name) + " (" + (item.quantity || 1) + "x)";
+  var itemsArr = Array.isArray(payload.items) ? payload.items : [];
+  var productsDesc = payload.products || payload.Products || payload.product_name || "";
+  if (!productsDesc && itemsArr.length > 0) {
+    productsDesc = itemsArr.map(function(item) {
+      var v = [item.color, item.size].filter(Boolean).join(", ");
+      return (item.name || item.p_name || "পণ্য") + (v ? " [" + v + "]" : "") + " (" + (item.quantity || 1) + "x)";
     }).join(", ");
   }
   if (!productsDesc) productsDesc = "পণ্য অর্ডার";
 
+  var colorStr = payload.color || payload.Color || "";
+  if (!colorStr && itemsArr.length > 0) {
+    colorStr = itemsArr.map(function(i) { return i.color || ""; }).filter(Boolean).join(", ");
+  }
+  if (!colorStr) colorStr = "Standard";
+
+  var sizeStr = payload.size || payload.Size || "";
+  if (!sizeStr && itemsArr.length > 0) {
+    sizeStr = itemsArr.map(function(i) { return i.size || ""; }).filter(Boolean).join(", ");
+  }
+  if (!sizeStr) sizeStr = "Free Size";
+
+  var totalQty = Number(payload.quantity || payload.Quantity || 0);
+  if (!totalQty && itemsArr.length > 0) {
+    totalQty = itemsArr.reduce(function(acc, i) { return acc + (Number(i.quantity) || 1); }, 0);
+  }
+  if (!totalQty) totalQty = 1;
+
+  var rawPhone = String(payload.phone || payload.Phone || payload.customer_phone || "").trim();
+  if (rawPhone.length === 10 && rawPhone.charAt(0) === "1") rawPhone = "0" + rawPhone;
+
   var row = [
     dateStr,
     orderId,
-    payload.account_type || "Customer",
-    payload.customer_name || "গ্রাহক",
-    payload.phone || "",
-    payload.address || "",
+    payload.account_type || payload.Account_type || "Customer",
+    payload.customer_name || payload.Customer_Name || "গ্রাহক",
+    rawPhone,
+    payload.address || payload.Address || payload.shipping_address || "",
     productsDesc,
-    payload.color || "",
-    payload.size || "",
-    Number(payload.quantity || (payload.items ? payload.items.length : 1)),
-    Number(payload.total_amount || 0),
-    payload.payment_method || "Cash On Delivery (COD)",
-    payload.transaction_id || "N/A",
-    payload.payment_status || "COD",
-    payload.order_status || "Order Placed",
-    Number(payload.reseller_commission || 0),
-    payload.commission_status || "Pending"
+    colorStr,
+    sizeStr,
+    totalQty,
+    Number(payload.total_amount || payload.Total_Amount || payload.grand_total || 0),
+    payload.payment_method || payload.Payment_method || "Cash On Delivery (COD)",
+    payload.transaction_id || payload.Transaction_ID || "N/A",
+    payload.payment_status || payload.Payment_Status || "COD",
+    payload.order_status || payload.Order_Status || "Order Placed",
+    Number(payload.reseller_commission || payload.Reseller_Commission || 0),
+    payload.commission_status || payload.Commission_Status || "Pending"
   ];
 
   sheet.appendRow(row);
+  payload.products = productsDesc;
+  payload.phone = rawPhone;
   sendOrderReminderEmail(orderId, payload, dateStr);
 
   return {
@@ -357,16 +402,18 @@ function handleOrderCreation(ss, payload) {
 }
 
 function handleOrderStatusUpdate(ss, payload) {
-  var sheet = ss.getSheetByName("Orders");
+  var sheet = ss.getSheetByName("Orders") || ss.getSheetByName("Order");
   if (!sheet) return { status: "error", message: "Orders sheet not found" };
 
   var data = sheet.getDataRange().getValues();
-  var orderId = String(payload.order_id || payload.orderId);
+  var orderId = String(payload.order_id || payload.orderId || payload.OrderID || "").trim();
+  var newStatus = payload.order_status || payload.status;
 
   for (var i = 1; i < data.length; i++) {
-    if (String(data[i][1]) === orderId) {
-      if (payload.order_status) sheet.getRange(i + 1, 15).setValue(payload.order_status);
+    if (String(data[i][1]).trim() === orderId) {
+      if (newStatus) sheet.getRange(i + 1, 15).setValue(newStatus);
       if (payload.payment_status) sheet.getRange(i + 1, 14).setValue(payload.payment_status);
+      else if (newStatus === "Delivered") sheet.getRange(i + 1, 14).setValue("Paid");
       return { status: "success", success: true, message: "Order status updated" };
     }
   }
