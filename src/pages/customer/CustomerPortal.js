@@ -428,7 +428,7 @@ export async function renderCustomerPortal(params = {}) {
     }
     return `
       <div class="py-24 text-center space-y-3">
-        <div class="inline-block animate-spin text-3xl text-emerald-500">⚡</div>
+        <div class="relative w-16 h-16 mx-auto rounded-2xl bg-white dark:bg-slate-900 border-2 border-emerald-500/60 p-1.5 shadow-xl flex items-center justify-center"><div class="absolute inset-0 rounded-2xl border-2 border-emerald-500 border-t-transparent animate-spin"></div><img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Dream Cart BD Logo" class="w-full h-full object-contain rounded-xl" onerror="this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" /></div>
         <div class="text-sm font-bold text-slate-700 dark:text-slate-300">হোম পেজে নিয়ে যাওয়া হচ্ছে...</div>
       </div>
     `;

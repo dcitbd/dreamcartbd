@@ -1340,7 +1340,7 @@ if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
     const btn = document.getElementById('btn-whs-direct-order-submit');
     if (btn) {
       btn.disabled = true;
-      btn.textContent = 'পাইকারি অর্ডার প্রসেস হচ্ছে...';
+      btn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-4 h-4 rounded-full object-contain bg-white p-0.5 animate-spin" onerror="this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" /> <span>পাইকারি অর্ডার প্রসেস হচ্ছে...</span></span>`;
     }
 
     try {
