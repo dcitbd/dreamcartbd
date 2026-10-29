@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Dream Cart BD — Smart Digital Commerce & Multi-Vendor Platform</title>
+  <title>কাস্টমার রেজিস্ট্রেশন (Customer Register) — Dream Cart BD</title>
   
   <meta name="description" content="Bangladesh's premier high-reliability smart commerce platform: Smartwatches, organic health supplements, tactical lighting, and kitchen safety gas accessories." />
   <meta property="og:title" content="Dream Cart BD — Smart Digital Commerce" />
@@ -21,7 +21,7 @@
           'products', 'shop', 'product', 'cart', 'favourite', 'wishlist',
           'checkout', 'order', 'order-success', 'track', 'tracking', 'contact', 'offers',
           'categories', 'brands', 'others-market', 'chat', 'live-chat',
-          'landing', 'terms', 'privacy', 'customer', 'reseller', 'wholesaler', 'admin', 'login', 'register'
+          'landing', 'terms', 'privacy', 'customer', 'reseller', 'wholesaler', 'admin'
         ];
         if (segments.length > 0 && !knownRoutes.includes(segments[0].toLowerCase())) {
           base = '/' + segments[0] + '/';
@@ -41,25 +41,19 @@
   
   <!-- Standalone Production CSS -->
   <link rel="stylesheet" href="/src/styles/main.css" />
+  <link rel="stylesheet" href="/src/styles/admin.css" />
   <link rel="stylesheet" href="/src/styles/responsive.css" />
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen antialiased selection:bg-emerald-500 selection:text-white">
   
-  <!-- Main App Root Mount Point with Branded Logo Preloader -->
+  <!-- Main App Root Mount Point with instant preloader -->
   <div id="app-root">
     <div style="min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc;">
-      <style>
-        @keyframes dcbdLogoSpin { to { transform: rotate(360deg); } }
-        @keyframes dcbdLogoPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.06); opacity: 0.92; } }
-      </style>
-      <div style="position: relative; width: 84px; height: 84px; display: flex; align-items: center; justify-content: center; margin-bottom: 18px;">
-        <div style="position: absolute; inset: 0; border-radius: 22px; border: 3px solid rgba(16,185,129,0.22); border-top-color: #059669; animation: dcbdLogoSpin 1.1s linear infinite;"></div>
-        <div style="width: 68px; height: 68px; border-radius: 18px; overflow: hidden; background: #ffffff; padding: 5px; box-shadow: 0 10px 25px rgba(5,150,105,0.25); display: flex; align-items: center; justify-content: center; border: 1.5px solid #10b981; animation: dcbdLogoPulse 2s ease-in-out infinite;">
-          <img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Dream Cart BD Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 12px;" onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" />
-        </div>
+      <div style="width: 50px; height: 50px; border-radius: 14px; background: linear-gradient(135deg, #10b981, #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 22px; box-shadow: 0 10px 25px rgba(5,150,105,0.3); margin-bottom: 16px;">
+        DC
       </div>
       <h2 style="font-size: 20px; font-weight: 800; color: #0f172a; margin: 0;">Dream Cart BD</h2>
-      <p style="font-size: 13px; color: #64748b; margin-top: 6px;">প্ল্যাটফর্ম ও লাইভ ক্যাটালগ লোড হচ্ছে...</p>
+      <p style="font-size: 13px; color: #64748b; margin-top: 6px;">Loading platform and live catalog...</p>
     </div>
   </div>
 
