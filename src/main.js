@@ -9,7 +9,7 @@ import { SearchService } from './services/SearchService.js';
  * - Robust Auth form submissions (Customer login/register, Reseller, Wholesale, Admin, Profile edit)
  * - Dark mode toggle & theme persistence
  * - Reactive stores wiring (Cart, Favourites, Auth)
- * - Incomplete order tracking
+ * - Incomplete order tracking synced to list & Google Sheets
  */
 
 import { renderHeader } from './components/Header.js';
@@ -26,7 +26,6 @@ import { router } from './router.js';
 import { apiClient } from './api/client.js';
 import { formatCurrency } from './utils/format.js';
 
-// Auto-inject CSS for Left-side Floating Dock & Right-side Contact Sub-menus
 function injectFloatingActionStyles() {
   if (typeof document === 'undefined') return;
   if (document.getElementById('dcbd-floating-custom-styles')) return;
@@ -58,6 +57,15 @@ function injectFloatingActionStyles() {
   document.head.appendChild(style);
 }
 
+export function refreshGlobalSiteChrome() {
+  updateHeader();
+  const footerMount = document.getElementById('footer-mount');
+  if (footerMount) footerMount.innerHTML = renderFooter();
+  updateMobileNav();
+  updateCartDrawer();
+  updateFloatingActions();
+}
+
 function initApp() {
   injectFloatingActionStyles();
   try {
@@ -67,13 +75,12 @@ function initApp() {
       return;
     }
 
-    // Expose globals for debugging & compatibility
     window.router = router;
     window.authStore = authStore;
     window.cartStore = cartStore;
     window.apiClient = apiClient;
+    window.refreshGlobalSiteChrome = refreshGlobalSiteChrome;
 
-    // Apply saved theme (Dark / Light)
     const savedTheme = localStorage.getItem("dcbd_theme");
     if (savedTheme === "dark") {
       document.documentElement.classList.add("dark");
@@ -91,7 +98,6 @@ function initApp() {
       <div id="fraudmodal-mount"></div>
     `;
 
-    // Mount persistent components
     updateHeader();
     const footerMount = document.getElementById('footer-mount');
     if (footerMount) footerMount.innerHTML = renderFooter();
@@ -101,7 +107,6 @@ function initApp() {
     const fraudMount = document.getElementById('fraudmodal-mount');
     if (fraudMount) fraudMount.innerHTML = renderFraudModal();
 
-    // Subscribe to store updates
     cartStore.subscribe(() => {
       updateHeader();
       updateMobileNav();
@@ -118,28 +123,25 @@ function initApp() {
 
     authStore.subscribe(() => {
       updateHeader();
-      router.resolve();
+      updateMobileNav();
     });
 
-    // Attach global click, input & form submit event delegates
     attachEventListeners();
     attachLiveSearchHandlers();
 
-    // Pre-warm product catalogue cache in background
-    apiClient.loadProductsFromSheet().catch(() => {});
-
-    // Handle History navigation
     window.addEventListener('popstate', () => router.resolve());
-    
-    // Resolve initial URL
+
+    // Resolve initial URL (uses deduplicated loadProductsFromSheet internally)
     router.resolve();
 
-    // Log viewer activity for analytics (Viewers Sheet)
-    apiClient.request("viewers/log", {
-      time: new Date().toISOString(),
-      device: window.innerWidth < 768 ? "Mobile" : "Desktop/Laptop",
-      activity: "Site Visit"
-    });
+    // Non-blocking analytics log
+    setTimeout(() => {
+      apiClient.request("viewers/log", {
+        time: new Date().toISOString(),
+        device: window.innerWidth < 768 ? "Mobile" : "Desktop/Laptop",
+        activity: "Site Visit"
+      }).catch(() => {});
+    }, 800);
 
   } catch (err) {
     console.error("Application initialization error:", err);
@@ -186,6 +188,8 @@ function updateCheckoutSummary() {
   const grandTotalEl = document.getElementById('summary-grand-total');
   const onlineRowEl = document.getElementById('summary-online-discount-row');
   const onlineAmtEl = document.getElementById('summary-online-discount-amount');
+  const couponRowEl = document.getElementById('summary-coupon-discount-row');
+  const couponAmtEl = document.getElementById('summary-coupon-discount-amount');
   const btnTextEl = document.getElementById('btn-confirm-order-text');
   const btnEl = document.getElementById('btn-confirm-order');
 
@@ -193,6 +197,7 @@ function updateCheckoutSummary() {
   const fee = cartStore.getDeliveryCharge();
   const isFree = cartStore.isFreeDelivery();
   const onlineDiscount = cartStore.getOnlinePaymentDiscount();
+  const couponDiscount = cartStore.getCouponDiscount();
   const grandTotal = cartStore.getGrandTotal();
 
   if (subtotalEl) {
@@ -213,6 +218,15 @@ function updateCheckoutSummary() {
       if (onlineAmtEl) onlineAmtEl.textContent = `-${formatCurrency(onlineDiscount)}`;
     } else {
       onlineRowEl.classList.add('hidden');
+    }
+  }
+
+  if (couponRowEl) {
+    if (couponDiscount > 0) {
+      couponRowEl.classList.remove('hidden');
+      if (couponAmtEl) couponAmtEl.textContent = `-${formatCurrency(couponDiscount)}`;
+    } else {
+      couponRowEl.classList.add('hidden');
     }
   }
 
@@ -241,6 +255,7 @@ function updateCartPageSummary() {
   const isFree = cartStore.isFreeDelivery();
   const onlineDiscount = cartStore.getOnlinePaymentDiscount();
   const grandTotal = cartStore.getGrandTotal();
+  const freeThreshold = Number(window.__dcbdGetSiteSettings ? window.__dcbdGetSiteSettings().freeDeliveryThreshold : 2000) || 2000;
 
   if (subtotalEl) subtotalEl.textContent = formatCurrency(subtotal);
   if (feeEl) {
@@ -256,10 +271,10 @@ function updateCartPageSummary() {
   }
   if (grandTotalEl) grandTotalEl.textContent = formatCurrency(grandTotal);
   if (freeNoticeEl) {
-    freeNoticeEl.textContent = subtotal >= 2000 ? '✓ অর্জিত!' : `আরও ৳${2000 - subtotal}`;
+    freeNoticeEl.textContent = subtotal >= freeThreshold ? '✓ অর্জিত!' : `আরও ৳${freeThreshold - subtotal}`;
   }
   if (progressBarEl) {
-    progressBarEl.style.width = `${Math.min(100, (subtotal / 2000) * 100)}%`;
+    progressBarEl.style.width = `${Math.min(100, (subtotal / freeThreshold) * 100)}%`;
   }
 }
 
@@ -294,8 +309,6 @@ function attachEventListeners() {
 
   // 2. Global delegate for interactive triggers (clicks)
   document.addEventListener('click', async (e) => {
-    
-    // Toggle Dark Mode
     if (e.target.closest('#btn-toggle-darkmode')) {
       const isDark = document.documentElement.classList.toggle('dark');
       localStorage.setItem('dcbd_theme', isDark ? 'dark' : 'light');
@@ -303,7 +316,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Bottom App Navigation Menu Toggle (Opens App Menu Drawer on Mobile)
     if (e.target.closest('#btn-bottom-menu-toggle') || e.target.closest('#btn-mobile-menu-toggle')) {
       const overlay = document.getElementById('bottom-menu-overlay');
       const panel = document.getElementById('bottom-menu-panel');
@@ -314,7 +326,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Bottom App Navigation Menu Close
     if (e.target.closest('#btn-bottom-menu-close') || e.target.id === 'bottom-menu-overlay') {
       const overlay = document.getElementById('bottom-menu-overlay');
       const panel = document.getElementById('bottom-menu-panel');
@@ -323,7 +334,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Close bottom app menu on link click
     if (e.target.closest('.bottom-menu-link') || e.target.closest('.mobile-menu-link')) {
       const overlay = document.getElementById('bottom-menu-overlay');
       const panel = document.getElementById('bottom-menu-panel');
@@ -331,7 +341,6 @@ function attachEventListeners() {
       if (panel) panel.classList.add('hidden');
     }
 
-    // Close bottom menu when clicked outside
     if (!e.target.closest('#bottom-menu-panel') && !e.target.closest('#btn-bottom-menu-toggle') && !e.target.closest('#btn-mobile-menu-toggle')) {
       const overlay = document.getElementById('bottom-menu-overlay');
       const panel = document.getElementById('bottom-menu-panel');
@@ -339,7 +348,6 @@ function attachEventListeners() {
       if (panel) panel.classList.add('hidden');
     }
 
-    // Mobile Floating Launcher Toggle Button (Hides/Shows fixed buttons on mobile)
     if (e.target.closest('#btn-floating-launcher')) {
       const items = document.getElementById('floating-actions-items');
       const icon = document.getElementById('floating-launcher-icon');
@@ -358,14 +366,12 @@ function attachEventListeners() {
       return;
     }
 
-    // Auth dropdown menu
     if (e.target.closest('#btn-user-menu')) {
       const panel = document.getElementById('auth-dropdown-panel');
       if (panel) panel.classList.toggle('hidden');
       return;
     }
 
-    // Global Logout handlers
     if (e.target.closest('#btn-logout') || e.target.closest('.btn-logout') || e.target.closest('#btn-customer-logout')) {
       authStore.logout();
       toast.show({ type: "info", title: "লগআউট সম্পন্ন", message: "আপনি আপনার অ্যাকাউন্ট থেকে সফলভাবে লগআউট হয়েছেন।" });
@@ -373,7 +379,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Open/Close Cart Drawer
     if (e.target.closest('#btn-open-cart') || e.target.closest('#mobile-cart-btn') || e.target.closest('#btn-floating-cart')) {
       openCartDrawer();
       return;
@@ -383,7 +388,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Floating Call Sub-menu Toggle (Closes WhatsApp menu if open)
     if (e.target.closest('#btn-floating-call')) {
       const menu = document.getElementById('call-sub-menu');
       const waMenu = document.getElementById('wa-sub-menu');
@@ -392,7 +396,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Floating WhatsApp Sub-menu Toggle (Closes Call menu if open)
     if (e.target.closest('#btn-floating-wa')) {
       const menu = document.getElementById('wa-sub-menu');
       const callMenu = document.getElementById('call-sub-menu');
@@ -401,7 +404,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Close floating submenus when clicked outside
     if (!e.target.closest('#call-menu-group') && !e.target.closest('#wa-menu-group')) {
       const callMenu = document.getElementById('call-sub-menu');
       const waMenu = document.getElementById('wa-sub-menu');
@@ -422,7 +424,6 @@ function attachEventListeners() {
       if (authPanel) authPanel.classList.add('hidden');
     }
 
-    // Product card click to open details
     const cardClick = e.target.closest('.card-img-click');
     if (cardClick && !e.target.closest('.btn-toggle-favourite') && !e.target.closest('.btn-quick-add') && !e.target.closest('a')) {
       const slug = cardClick.getAttribute('data-slug') || cardClick.getAttribute('data-product-id');
@@ -432,7 +433,6 @@ function attachEventListeners() {
       }
     }
 
-    // Toggle Favourite / Wishlist
     const favBtn = e.target.closest('.btn-toggle-favourite');
     if (favBtn) {
       e.preventDefault();
@@ -451,7 +451,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Clear Wishlist
     if (e.target.closest('#btn-clear-wishlist') || e.target.closest('#btn-clear-wishlist-action')) {
       favouriteStore.clear();
       toast.show({
@@ -463,7 +462,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Interactive Color Chip Selection on Product Details
     const colorBtn = e.target.closest('.color-select-btn');
     if (colorBtn) {
       const selectedColor = colorBtn.getAttribute('data-color');
@@ -473,7 +471,7 @@ function attachEventListeners() {
       });
       colorBtn.classList.add('active');
       colorBtn.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
-      
+
       const hiddenInput = document.getElementById('selected-color');
       if (hiddenInput) hiddenInput.value = selectedColor;
       const label = document.getElementById('selected-color-label');
@@ -481,7 +479,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Interactive Size Chip Selection on Product Details
     const sizeBtn = e.target.closest('.size-select-btn');
     if (sizeBtn) {
       const selectedSize = sizeBtn.getAttribute('data-size');
@@ -491,7 +488,7 @@ function attachEventListeners() {
       });
       sizeBtn.classList.add('active');
       sizeBtn.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-700', 'dark:text-slate-300');
-      
+
       const hiddenInput = document.getElementById('selected-size');
       if (hiddenInput) hiddenInput.value = selectedSize;
       const label = document.getElementById('selected-size-label');
@@ -499,7 +496,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Quick Add to Cart Button (Card)
     const quickAddBtn = e.target.closest('.btn-quick-add');
     if (quickAddBtn) {
       e.preventDefault();
@@ -519,7 +515,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Detail Add to Cart Button (With Color & Size)
     if (e.target.closest('#btn-detail-add-cart')) {
       const btn = e.target.closest('#btn-detail-add-cart');
       const pId = btn.getAttribute('data-product-id');
@@ -543,7 +538,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Order Now Button (Direct checkout with Color & Size)
     const orderNowBtn = e.target.closest('.btn-order-now') || e.target.closest('#btn-detail-order-now');
     if (orderNowBtn) {
       e.preventDefault();
@@ -562,7 +556,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Pre-Order Button
     const preOrderBtn = e.target.closest('.btn-pre-order') || e.target.closest('#btn-detail-preorder');
     if (preOrderBtn) {
       e.preventDefault();
@@ -585,7 +578,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Cart Quantity Plus / Minus / Remove
     const plusBtn = e.target.closest('.btn-cart-plus');
     if (plusBtn) {
       const pId = plusBtn.getAttribute('data-product-id');
@@ -622,7 +614,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Password Eye Toggle (Show/Hide Password)
     const togglePassBtn = e.target.closest('.btn-toggle-auth-pass') || e.target.closest('#btn-toggle-auth-pass');
     if (togglePassBtn) {
       const targetId = togglePassBtn.getAttribute('data-target') || 'auth-pass';
@@ -641,7 +632,6 @@ function attachEventListeners() {
       return;
     }
 
-    // Avatar Preset Click Handler on Registration Form
     const avatarBtn = e.target.closest('.avatar-preset-btn');
     if (avatarBtn) {
       const photoUrl = avatarBtn.getAttribute('data-avatar-url') || '';
@@ -656,21 +646,18 @@ function attachEventListeners() {
       return;
     }
 
-    // Clear entire cart
     if (e.target.closest('#btn-clear-cart')) {
       cartStore.clear();
       router.resolve();
       return;
     }
 
-    // Delivery Zone Radio change
     const zoneRadio = e.target.closest('input[name="delivery_zone"]');
     if (zoneRadio) {
       cartStore.setDeliveryZone(zoneRadio.value);
       updateCheckoutSummary();
     }
 
-    // Payment Method Radio change
     const paymentRadio = e.target.closest('input[name="payment_method"]');
     if (paymentRadio) {
       cartStore.setPaymentMethod(paymentRadio.value);
@@ -681,7 +668,6 @@ function attachEventListeners() {
       }
       updateCheckoutSummary();
     }
-
   });
 
   // 3. Form Change & Input handlers (Delivery zones on Cart page)
@@ -692,32 +678,43 @@ function attachEventListeners() {
     }
   });
 
-  // 4. Incomplete Order Real-time Tracker
+  // 4. Incomplete Order Real-time Tracker (Checkout & Landing Page)
   let incTimeout = null;
   document.addEventListener('input', (e) => {
-    if (e.target.id === 'checkout-phone' || e.target.id === 'checkout-name' || e.target.id === 'checkout-address') {
+    const id = e.target.id || '';
+    if (
+      id === 'checkout-phone' || id === 'checkout-name' || id === 'checkout-address' ||
+      id === 'landing-phone' || id === 'landing-name' || id === 'landing-address'
+    ) {
       clearTimeout(incTimeout);
       incTimeout = setTimeout(() => {
-        const phone = document.getElementById('checkout-phone')?.value;
-        const name = document.getElementById('checkout-name')?.value;
-        const addr = document.getElementById('checkout-address')?.value;
+        const isLanding = id.startsWith('landing-');
+        const phone = document.getElementById(isLanding ? 'landing-phone' : 'checkout-phone')?.value?.trim();
+        const name = document.getElementById(isLanding ? 'landing-name' : 'checkout-name')?.value?.trim();
+        const addr = document.getElementById(isLanding ? 'landing-address' : 'checkout-address')?.value?.trim();
         if (phone && phone.length >= 7) {
+          const prods = isLanding
+            ? (document.getElementById('landing-product-name')?.value || 'ল্যান্ডিং পেজ অর্ডার')
+            : cartStore.items.map(i => `${i.name} [${i.color || ''} ${i.size || ''}] (${i.quantity})`).join(", ");
+          const amt = isLanding
+            ? Number(document.getElementById('landing-total-amount-val')?.value || document.getElementById('landing-price')?.value || 0)
+            : cartStore.getGrandTotal();
+
           apiClient.request("incomplete_orders/create", {
             phone,
-            customer_name: name,
-            address: addr,
-            total_amount: cartStore.getGrandTotal(),
-            products: cartStore.items.map(i => `${i.name} [${i.color || ''} ${i.size || ''}] (${i.quantity})`).join(", ")
+            customer_name: name || 'সম্ভাব্য গ্রাহক',
+            address: addr || '',
+            account_type: authStore.getAccountType(),
+            total_amount: amt,
+            products: prods || 'চেকআউট ফর্ম পূরণরত'
           });
         }
-      }, 1500);
+      }, 1200);
     }
   });
 
-  // 5. Global Delegated Form Submissions (Handles Checkout, Auth & Profile Forms)
+  // 5. Global Delegated Form Submissions
   document.addEventListener('submit', async (e) => {
-    
-    // Tracking Search Form Submission
     if (e.target.id === 'tracking-search-form') {
       e.preventDefault();
       const val = document.getElementById('track-input')?.value.trim();
@@ -744,49 +741,38 @@ function attachEventListeners() {
         return;
       }
 
-      const cartItems = Array.isArray(cartStore.items) ? cartStore.items : [];
-      const productsSummary = cartItems.map(i => {
-        const vTag = [i.color, i.size].filter(Boolean).join(', ');
-        return `${i.name || i.p_name || 'পণ্য'}${vTag ? ` [${vTag}]` : ''} (${i.quantity || 1}x)`;
-      }).join(', ') || 'পণ্য অর্ডার';
-      const colorsSummary = Array.from(new Set(cartItems.map(i => i.color).filter(Boolean))).join(', ') || note || 'Standard';
-      const sizesSummary = Array.from(new Set(cartItems.map(i => i.size).filter(Boolean))).join(', ') || 'Free Size';
-      const totalQuantity = cartItems.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0) || 1;
+      const itemsSummary = cartStore.items.map(i => {
+        const v = [i.size ? `Size: ${i.size}` : '', i.color ? `Color: ${i.color}` : ''].filter(Boolean).join(', ');
+        return `${i.name}${v ? ` (${v})` : ''} x${i.quantity}`;
+      }).join(' | ');
+      const colorsSummary = cartStore.items.map(i => i.color || 'Standard').join(', ');
+      const sizesSummary = cartStore.items.map(i => i.size || 'Free Size').join(', ');
+      const totalQty = cartStore.items.reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
 
       const orderPayload = {
         customer_name: name,
         phone: phone,
-        customer_phone: phone,
         address: address,
-        shipping_address: address,
         customer_note: note,
-        account_type: authStore.getAccountType() || 'Customer',
-        products: productsSummary,
+        account_type: authStore.getAccountType(),
+        products: itemsSummary,
+        product_name: itemsSummary,
         color: colorsSummary,
         size: sizesSummary,
-        quantity: totalQuantity,
-        items: cartItems.map(i => ({
-          product_id: i.product_id || i.sku || 'DCBD-PRD',
-          sku: i.sku || i.product_id || 'DCBD-PRD',
-          name: i.name || i.p_name || 'পণ্য',
-          price: Number(i.price || i.selling_price || 0),
-          quantity: Number(i.quantity || 1),
-          color: i.color || '',
-          size: i.size || ''
-        })),
+        quantity: totalQty,
+        items: cartStore.items,
         total_amount: cartStore.getGrandTotal(),
-        payment_method: cartStore.paymentMethod || 'COD',
+        payment_method: cartStore.paymentMethod,
         transaction_id: trxId,
-        payment_status: cartStore.paymentMethod === 'COD' ? 'COD' : 'Paid',
+        payment_status: cartStore.paymentMethod === 'COD' ? 'Pending' : 'Paid',
         order_status: 'Order Placed',
-        reseller_commission: authStore.isReseller() ? Math.round(cartStore.getSubtotal() * 0.15) : 0,
-        commission_status: 'Pending'
+        reseller_commission: authStore.isReseller() ? Math.round(cartStore.getSubtotal() * 0.1) : 0
       };
 
       const btn = document.getElementById('btn-confirm-order');
       if (btn) {
         btn.disabled = true;
-        btn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-5 h-5 rounded-full object-contain bg-white p-0.5 animate-spin" onerror="this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" /> <span>অর্ডার শিটে জমা হচ্ছে...</span></span>`;
+        btn.textContent = "অর্ডার প্রসেস হচ্ছে...";
       }
 
       const res = await apiClient.request("orders/create", orderPayload);
@@ -796,7 +782,7 @@ function attachEventListeners() {
         toast.show({
           type: "success",
           title: "অর্ডার কনফার্মড!",
-          message: `আপনার অর্ডার #${orderId} সফলভাবে গৃহীত হয়েছে।`,
+          message: `আপনার অর্ডার #${orderId} সফলভাবে গৃহীত ও শিটে সংরক্ষিত হয়েছে।`,
           duration: 5000
         });
         router.navigate('/order-success?orderId=' + orderId);
@@ -810,7 +796,7 @@ function attachEventListeners() {
       return;
     }
 
-    // B. Customer Login & Registration Form Submission (Strict Customers Sheet Authentication)
+    // B. Customer Login & Registration Form Submission
     if (e.target.id === 'customer-auth-form') {
       e.preventDefault();
       const form = e.target;
@@ -881,7 +867,7 @@ function attachEventListeners() {
       const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-4 h-4 rounded-full object-contain bg-white p-0.5 animate-spin" onerror="this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" /> <span>${isRegister ? 'গুগল শিটে সেভ হচ্ছে...' : 'Customers তালিকায় যাচাই হচ্ছে...'}</span></span>`;
+        submitBtn.innerHTML = `<span>⏳</span> <span>${isRegister ? 'গুগল শিটে সেভ হচ্ছে...' : 'Customers তালিকায় যাচাই হচ্ছে...'}</span>`;
       }
 
       try {
@@ -926,7 +912,6 @@ function attachEventListeners() {
           duration: 4000
         });
 
-        // Instant navigation to customer dashboard
         router.navigate('/customer/dashboard');
 
       } catch (err) {
@@ -1071,11 +1056,14 @@ function attachEventListeners() {
       const name = document.getElementById('landing-name')?.value.trim();
       const phone = document.getElementById('landing-phone')?.value.trim();
       const address = document.getElementById('landing-address')?.value.trim();
-      const productSku = document.getElementById('landing-product-sku')?.value;
-      const productName = document.getElementById('landing-product-name')?.value;
+      const productSku = document.getElementById('landing-product-sku')?.value || 'LP-ITEM';
+      const productName = document.getElementById('landing-product-name')?.value || 'ক্যাম্পেইন পণ্য';
+      const color = document.getElementById('landing-product-color')?.value || 'Standard';
+      const size = document.getElementById('landing-product-size')?.value || 'Free Size';
+      const qty = Number(document.getElementById('landing-product-qty')?.value || 1);
       const price = Number(document.getElementById('landing-price')?.value || 0);
       const delivery = Number(document.querySelector('input[name="landing_delivery"]:checked')?.value || 70);
-      const payment = document.querySelector('input[name="landing_payment"]:checked')?.value || 'COD';
+      const payment = document.querySelector('input[name="landing_payment"]:checked')?.value || 'Cash On Delivery (COD)';
 
       if (!name || !phone || !address) {
         alert('অনুগ্রহ করে নাম, মোবাইল নম্বর ও ঠিকানা পূরণ করুন।');
@@ -1085,30 +1073,25 @@ function attachEventListeners() {
       const orderPayload = {
         customer_name: name,
         phone: phone,
-        customer_phone: phone,
         address: address,
-        shipping_address: address,
-        account_type: authStore.getAccountType() || 'Customer',
-        products: `${productName || 'ক্যাম্পেইন পণ্য'} (1x)`,
-        color: 'Standard',
-        size: 'Free Size',
-        quantity: 1,
+        products: `${productName} (${size}, ${color}) x${qty}`,
+        product_name: `${productName} (${size}, ${color}) x${qty}`,
+        color,
+        size,
+        quantity: qty,
         items: [{
-          product_id: productSku || 'DCBD-LP-01',
-          sku: productSku || 'DCBD-LP-01',
-          name: productName || 'ক্যাম্পেইন পণ্য',
+          product_id: productSku,
+          sku: productSku,
+          name: productName,
+          color,
+          size,
           price: price,
-          quantity: 1,
-          color: 'Standard',
-          size: 'Free Size'
+          quantity: qty
         }],
-        total_amount: price + delivery,
+        total_amount: (price * qty) + delivery,
         payment_method: payment,
-        transaction_id: 'N/A',
-        payment_status: payment === 'Cash On Delivery (COD)' || payment === 'COD' ? 'COD' : 'Paid',
-        order_status: 'Order Placed',
-        reseller_commission: 0,
-        commission_status: 'Pending'
+        payment_status: payment.includes('COD') ? 'Pending' : 'Paid',
+        order_status: 'Order Placed'
       };
 
       const res = await apiClient.request("orders/create", orderPayload);
@@ -1117,21 +1100,16 @@ function attachEventListeners() {
         toast.show({
           type: "success",
           title: "ক্যাম্পেইন অর্ডার সফল!",
-          message: `আপনার অর্ডার #${orderId} কনফার্ম করা হয়েছে।`,
+          message: `আপনার অর্ডার #${orderId} কনফার্ম ও শিটে সংরক্ষিত হয়েছে।`,
           duration: 5000
         });
         router.navigate('/order-success?orderId=' + orderId);
       }
       return;
     }
-
   });
 }
 
-/**
- * Enhanced Live Predictive Search Dropdown with Instant Preview Cards & Action Triggers
- * Uses document-level event delegation so that re-rendering headers NEVER breaks search!
- */
 function attachLiveSearchHandlers() {
   let debounceTimer = null;
 
@@ -1139,7 +1117,6 @@ function attachLiveSearchHandlers() {
     if (!inputEl || !popupEl) return;
     const query = inputEl.value.trim().toLowerCase();
 
-    // Toggle clear button
     if (clearBtn) {
       if (query.length > 0) clearBtn.classList.remove('hidden');
       else clearBtn.classList.add('hidden');
@@ -1153,10 +1130,10 @@ function attachLiveSearchHandlers() {
 
     clearTimeout(debounceTimer);
     debounceTimer = setTimeout(() => {
-      const allProds = (apiClient.products && apiClient.products.length > 0) 
-        ? apiClient.products 
+      const allProds = (apiClient.products && apiClient.products.length > 0)
+        ? apiClient.products
         : (apiClient.sheetProducts || apiClient.loadLocal('dcbd_sheet_products', []) || []);
-      
+
       const searchRes = SearchService.search(allProds, query);
       const directMatches = searchRes.directMatches;
       const relatedProducts = searchRes.relatedProducts;
@@ -1211,7 +1188,6 @@ function attachLiveSearchHandlers() {
     }, 180);
   };
 
-  // Delegated input listener on document
   document.addEventListener('input', (e) => {
     if (e.target.id === 'global-search-input') {
       performSearch(
@@ -1228,7 +1204,6 @@ function attachLiveSearchHandlers() {
     }
   });
 
-  // Delegated keydown listener (Enter key)
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       if (e.target.id === 'global-search-input' || e.target.id === 'mobile-search-input') {
@@ -1244,9 +1219,7 @@ function attachLiveSearchHandlers() {
     }
   });
 
-  // Delegated click listener for search buttons, clear buttons, and preview cards
   document.addEventListener('click', (e) => {
-    // 1. Clear buttons
     if (e.target.closest('#global-search-clear-btn')) {
       const input = document.getElementById('global-search-input');
       const popup = document.getElementById('search-preview-popup');
@@ -1266,7 +1239,6 @@ function attachLiveSearchHandlers() {
       return;
     }
 
-    // 2. Search Buttons
     if (e.target.closest('#global-search-btn')) {
       const q = document.getElementById('global-search-input')?.value.trim();
       const popup = document.getElementById('search-preview-popup');
@@ -1284,7 +1256,6 @@ function attachLiveSearchHandlers() {
       return;
     }
 
-    // 3. Search Preview Item Click
     const previewItem = e.target.closest('.search-preview-item');
     if (previewItem) {
       const slug = previewItem.getAttribute('data-slug');
@@ -1296,7 +1267,6 @@ function attachLiveSearchHandlers() {
       return;
     }
 
-    // 4. Click outside search containers closes previews
     if (!e.target.closest('.search-container') && !e.target.closest('#mobile-search-input') && !e.target.closest('#mobile-search-preview-popup')) {
       const p1 = document.getElementById('search-preview-popup');
       const p2 = document.getElementById('mobile-search-preview-popup');
@@ -1306,7 +1276,6 @@ function attachLiveSearchHandlers() {
   });
 }
 
-// Auto-run initialization when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {

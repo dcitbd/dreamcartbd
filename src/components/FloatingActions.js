@@ -5,12 +5,21 @@
  * - Mobile: Collapsed under a single compact 48px floating launcher button positioned above the bottom bar.
  *   Tapping expands/collapses the speed-dial contact buttons.
  * - Contact info sub-menus (WhatsApp, Call) positioned on the RIGHT side of buttons when dock is on the left.
+ * - Dynamically synced with Admin System Settings (ওয়েবসাইট তথ্য আপডেট).
  */
 
 import { cartStore } from '../store/cartStore.js';
+import { getGlobalSiteSettings } from '../api/client.js';
 
 export function renderFloatingActions() {
   const cartCount = cartStore.getCount();
+  const siteInfo = getGlobalSiteSettings();
+  const hotline1 = siteInfo.hotline1 || '01581703822';
+  const hotline2 = siteInfo.hotline2 || '01818273838';
+  const wa1 = (siteInfo.whatsapp || hotline1).replace(/[^0-9]/g, '');
+  const wa1Full = wa1.startsWith('88') ? wa1 : '88' + wa1;
+  const wa2 = hotline2.replace(/[^0-9]/g, '');
+  const wa2Full = wa2.startsWith('88') ? wa2 : '88' + wa2;
 
   return `
     <div id="floating-actions-dock">
@@ -58,17 +67,17 @@ export function renderFloatingActions() {
               </span>
               <span style="font-size: 9px; color: #25D366; font-weight: bold; background: rgba(37, 211, 102, 0.1); padding: 2px 6px; border-radius: 4px;">সরাসরি</span>
             </div>
-            <a href="https://wa.me/8801581703822?text=Hello%20Dream%20Cart%20BD" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; text-decoration: none; color: #0f172a; font-weight: bold;" class="dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
+            <a href="https://wa.me/${wa1Full}?text=Hello%20${encodeURIComponent(siteInfo.shop_name || 'Dream Cart BD')}" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; text-decoration: none; color: #0f172a; font-weight: bold;" class="dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
               <span style="width: 26px; height: 26px; border-radius: 9999px; background: #25D366; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px;">💬</span>
               <div style="display: flex; flex-direction: column;">
-                <span style="font-size: 12px;">01581703822</span>
+                <span style="font-size: 12px;">${hotline1}</span>
                 <span style="font-size: 10px; color: #64748b; font-weight: normal;">মাস্টার হেল্পলাইন</span>
               </div>
             </a>
-            <a href="https://wa.me/8801818273838?text=Hello%20Dream%20Cart%20BD" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; text-decoration: none; color: #0f172a; font-weight: bold;" class="dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
+            <a href="https://wa.me/${wa2Full}?text=Hello%20${encodeURIComponent(siteInfo.shop_name || 'Dream Cart BD')}" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; text-decoration: none; color: #0f172a; font-weight: bold;" class="dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
               <span style="width: 26px; height: 26px; border-radius: 9999px; background: #25D366; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px;">💬</span>
               <div style="display: flex; flex-direction: column;">
-                <span style="font-size: 12px;">01818273838</span>
+                <span style="font-size: 12px;">${hotline2}</span>
                 <span style="font-size: 10px; color: #64748b; font-weight: normal;">অর্ডার ও ডেলিভারি ডেস্ক</span>
               </div>
             </a>
@@ -97,17 +106,17 @@ export function renderFloatingActions() {
               </span>
               <span style="font-size: 9px; color: #0284c7; font-weight: bold; background: rgba(2, 132, 199, 0.1); padding: 2px 6px; border-radius: 4px;">২৪/৭</span>
             </div>
-            <a href="tel:01581703822" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; text-decoration: none; color: #0f172a; font-weight: bold;" class="dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
+            <a href="tel:${hotline1}" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; text-decoration: none; color: #0f172a; font-weight: bold;" class="dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
               <span style="width: 26px; height: 26px; border-radius: 9999px; background: #0284c7; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px;">📞</span>
               <div style="display: flex; flex-direction: column;">
-                <span style="font-size: 12px;">01581703822</span>
+                <span style="font-size: 12px;">${hotline1}</span>
                 <span style="font-size: 10px; color: #64748b; font-weight: normal;">হটলাইন ১</span>
               </div>
             </a>
-            <a href="tel:01818273838" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; text-decoration: none; color: #0f172a; font-weight: bold;" class="dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
+            <a href="tel:${hotline2}" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; text-decoration: none; color: #0f172a; font-weight: bold;" class="dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800">
               <span style="width: 26px; height: 26px; border-radius: 9999px; background: #0284c7; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px;">📞</span>
               <div style="display: flex; flex-direction: column;">
-                <span style="font-size: 12px;">01818273838</span>
+                <span style="font-size: 12px;">${hotline2}</span>
                 <span style="font-size: 10px; color: #64748b; font-weight: normal;">হটলাইন ২</span>
               </div>
             </a>

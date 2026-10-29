@@ -14,7 +14,7 @@
 import { cartStore } from '../store/cartStore.js';
 import { favouriteStore } from '../store/favouriteStore.js';
 import { authStore } from '../store/authStore.js';
-import { apiClient } from '../api/client.js';
+import { apiClient, getGlobalSiteSettings } from '../api/client.js';
 import { formatCurrency } from '../utils/format.js';
 import { SearchService } from '../services/SearchService.js';
 
@@ -974,18 +974,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     setTimeout(tryInject, 100);
   };
 
-  // Pre-warm all sheet product fingerprints in background after page load
-  if (typeof setTimeout !== 'undefined') {
-    setTimeout(async () => {
-      try {
-        const prods = await window.__dcbdGetStoreCatalog();
-        for (let i = 0; i < prods.length; i += 8) {
-          const slice = prods.slice(i, i + 8);
-          await Promise.all(slice.map(p => getProductFingerprintsList(p).catch(() => [])));
-        }
-      } catch (e) {}
-    }, 1500);
-  }
+  // Fingerprints are extracted on-demand when Visual Search is used so page load stays instant & lightweight.
 
   window.__dcbdDetectImageCategory = function(dataUrl, fileName, callback) {
     window.__dcbdAnalyzeProductImage(dataUrl, fileName, '').then(report => {
@@ -1085,7 +1074,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     reader.onload = function(e) {
       if (previewImg) previewImg.src = e.target.result;
       if (scanStatus) {
-        scanStatus.innerHTML = '<img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-4 h-4 rounded-full object-contain bg-white p-0.5 mr-1.5 animate-spin inline-block"  /> ওয়েবসাইটের প্রোডাক্টগুলোর ছবির সাথে মিলানো হচ্ছে...';
+        scanStatus.innerHTML = '<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> ওয়েবসাইটের প্রোডাক্টগুলোর ছবির সাথে মিলানো হচ্ছে...';
       }
 
       if (popup) popup.classList.remove('hidden');
@@ -1117,7 +1106,7 @@ if (typeof window !== 'undefined' && !window.__dcbdVisualSearchInit) {
     // 1. Compare uploaded image against all Sheet products with live progress
     const report = await window.__dcbdAnalyzeProductImage(dataUrl, fileName, explicitCategory, (doneCount, totalCount) => {
       if (scanStatus) {
-        scanStatus.innerHTML = `<img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-4 h-4 rounded-full object-contain bg-white p-0.5 mr-1.5 animate-spin inline-block"  /> প্রোডাক্টের ছবির সাথে মিলানো হচ্ছে (${doneCount}/${totalCount})...`;
+        scanStatus.innerHTML = `<span class="inline-block animate-spin mr-1.5 text-emerald-400">⚡</span> প্রোডাক্টের ছবির সাথে মিলানো হচ্ছে (${doneCount}/${totalCount})...`;
       }
     });
 
@@ -1305,6 +1294,16 @@ export function renderHeader() {
   const favCount = favouriteStore.getCount();
   const isAuthenticated = authStore.isAuthenticated();
   const isDark = document.documentElement.classList.contains('dark');
+  const siteInfo = getGlobalSiteSettings();
+  const shopName = siteInfo.shop_name || "Dream Cart BD";
+  const shopTagline = siteInfo.tagline || "Smart Digital Commerce";
+  const shopLogo = siteInfo.logo_url || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10";
+  const hotline1 = siteInfo.hotline1 || "01581703822";
+  const hotline2 = siteInfo.hotline2 || "01818273838";
+  const wa1 = (siteInfo.whatsapp || hotline1).replace(/[^0-9]/g, "");
+  const wa1Full = wa1.startsWith("88") ? wa1 : "88" + wa1;
+  const noticeActive = String(siteInfo.notice_active || "Active").toLowerCase() !== "inactive";
+  const noticeText = siteInfo.notice_text || "৳২,০০০ বা তার বেশি অর্ডারে ফ্রি শিপিং! | অনলাইনে পেমেন্ট করলে ৫% ছাড় | পণ্য হাতে পেয়ে মূল্য পরিশোধ";
 
   return `
     <!-- Scoped Navigation Bar Styles (Prevents white/light-grey washout, guarantees high-contrast legibility & highest stacking order) -->
@@ -1581,21 +1580,22 @@ export function renderHeader() {
     </style>
 
     <!-- Top Notice Bar (Desktop only) -->
+    ${noticeActive ? `
     <div class="notice-bar hidden sm:block text-white text-xs py-2 px-4 relative z-50">
       <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2">
         <div class="flex items-center gap-2 text-center md:text-left text-[11px] sm:text-xs">
           <span class="bg-amber-400 text-slate-950 font-black px-2 py-0.5 rounded text-[10px] tracking-wider uppercase shadow-xs">নোটিশ</span>
           <span class="font-medium text-slate-100">
-            ৳২,০০০ বা তার বেশি অর্ডারে <strong class="text-amber-300 font-bold">ফ্রি শিপিং!</strong> | অনলাইনে পেমেন্ট করলে <strong class="text-emerald-300 font-bold">৫% ছাড়</strong> | পণ্য হাতে পেয়ে মূল্য পরিশোধ
+            ${noticeText}
           </span>
         </div>
         <div class="flex items-center gap-3 text-[11px] sm:text-xs text-emerald-200 flex-shrink-0">
-          <a href="https://wa.me/8801581703822" target="_blank" rel="noopener noreferrer" class="hover:text-white transition flex items-center gap-1 font-bold">
-            <span>💬</span> 01581703822
+          <a href="https://wa.me/${wa1Full}" target="_blank" rel="noopener noreferrer" class="hover:text-white transition flex items-center gap-1 font-bold">
+            <span>💬</span> ${hotline1}
           </a>
           <span class="text-emerald-500">|</span>
-          <a href="tel:01818273838" class="hover:text-white transition flex items-center gap-1">
-            <span>📞</span> 01818273838
+          <a href="tel:${hotline2}" class="hover:text-white transition flex items-center gap-1">
+            <span>📞</span> ${hotline2}
           </a>
           <span class="text-emerald-500">|</span>
           <a href="/track" class="hover:text-white transition flex items-center gap-1">
@@ -1604,27 +1604,28 @@ export function renderHeader() {
         </div>
       </div>
     </div>
+    ` : ""}
 
     <!-- Main Header -->
     <header class="site-header">
       <div class="header-inner">
         
         <!-- Brand Logo & Shop Name -->
-        <a href="/" class="header-brand" title="Dream Cart BD Home">
+        <a href="/" class="header-brand" title="${shopName} Home">
           <div class="header-logo-box">
             <img 
-              src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10" 
-              alt="Dream Cart BD Logo" 
+              src="${shopLogo}" 
+              alt="${shopName} Logo" 
               class="header-logo-img"
               onerror="this.onerror=null; this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';"
             />
           </div>
           <div class="header-brand-text">
             <span class="header-brand-title">
-              Dream Cart <span class="accent">BD</span>
+              ${shopName.replace(/\s+BD$/i, " <span class=\"accent\">BD</span>")}
             </span>
             <span class="header-brand-sub">
-              Smart Digital Commerce
+              ${shopTagline}
             </span>
           </div>
         </a>
@@ -1734,7 +1735,7 @@ export function renderHeader() {
               </div>
               <div class="flex items-center justify-between text-[11px]">
                 <div id="d-img-scan-status" class="text-emerald-400 font-bold flex items-center">
-                  <img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-4 h-4 rounded-full object-contain bg-white p-0.5 mr-1.5 animate-spin inline-block"  /> স্ক্যান চলছে...
+                  <span class="inline-block animate-spin mr-1">⚡</span> স্ক্যান চলছে...
                 </div>
                 <button type="button" onclick="window.__dcbdTriggerFilePick('file', false)" class="text-slate-400 hover:text-white underline cursor-pointer">
                   অন্য ছবি
@@ -1938,7 +1939,7 @@ export function renderHeader() {
               <div class="laser-scanner-line"></div>
             </div>
             <div id="m-img-scan-status" class="text-emerald-400 font-bold text-[10px] flex items-center">
-              <img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-4 h-4 rounded-full object-contain bg-white p-0.5 mr-1.5 animate-spin inline-block"  /> স্ক্যান চলছে...
+              <span class="inline-block animate-spin mr-1">⚡</span> স্ক্যান চলছে...
             </div>
           </div>
 

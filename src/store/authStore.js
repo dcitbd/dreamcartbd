@@ -28,7 +28,7 @@ class AuthStore {
     }
   }
 
-  save() {
+  save(silent = false) {
     try {
       if (this.user && this.token) {
         localStorage.setItem(
@@ -43,7 +43,9 @@ class AuthStore {
         localStorage.removeItem("dcbd_auth");
       }
     } catch (e) {}
-    this.notify();
+    if (!silent) {
+      this.notify();
+    }
   }
 
   subscribe(listener) {
@@ -57,18 +59,18 @@ class AuthStore {
     this.listeners.forEach(l => l(this));
   }
 
-  setUser(user, token, accountType) {
+  setUser(user, token, accountType, silent = false) {
     this.user = user;
     this.token = token || "TOKEN-" + Math.floor(Math.random() * 1000000);
     this.accountType = accountType || (user ? user.account_type || "CUSTOMER" : "GUEST");
-    this.save();
+    this.save(silent);
   }
 
-  logout() {
+  logout(silent = false) {
     this.user = null;
     this.token = null;
     this.accountType = "GUEST";
-    this.save();
+    this.save(silent);
   }
 
   isAuthenticated() {
@@ -80,15 +82,21 @@ class AuthStore {
   }
 
   isReseller() {
-    return this.isAuthenticated() && (this.accountType === "RESELLER" || this.user?.account_type === "RESELLER" || this.isAdmin());
+    return this.isAuthenticated() && (this.accountType === "RESELLER" || this.user?.account_type === "RESELLER");
   }
 
   isWholesaler() {
-    return this.isAuthenticated() && (this.accountType === "WHOLESALER" || this.user?.account_type === "WHOLESALER" || this.isAdmin());
+    return this.isAuthenticated() && (this.accountType === "WHOLESALER" || this.user?.account_type === "WHOLESALER");
   }
 
   isAdmin() {
-    return this.isAuthenticated() && (this.accountType === "ADMIN" || this.user?.account_type === "ADMIN" || this.user?.role === "Full Access" || this.user?.role === "SUPER_ADMIN" || this.user?.worker_type === "Admin");
+    return this.isAuthenticated() && (
+      this.accountType === "ADMIN" ||
+      this.user?.account_type === "ADMIN" ||
+      this.user?.role === "Full Access" ||
+      this.user?.role === "SUPER_ADMIN" ||
+      this.user?.worker_type === "Admin"
+    );
   }
 
   getAccountType() {
@@ -97,7 +105,7 @@ class AuthStore {
 
   getUserDisplayName() {
     if (!this.user) return "";
-    return this.user.name || this.user.shop_name || this.user.user_name || "সম্মানিত সদস্য";
+    return this.user.name || this.user.Name || this.user.shop_name || this.user.user_name || "সম্মানিত সদস্য";
   }
 }
 

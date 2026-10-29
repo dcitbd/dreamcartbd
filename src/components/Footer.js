@@ -10,8 +10,24 @@
  * - Clean bottom legal & developer bar with balanced mobile nav clearance
  */
 
+import { getGlobalSiteSettings } from "../api/client.js";
+
 export function renderFooter() {
   const currentYear = new Date().getFullYear();
+  const siteInfo = getGlobalSiteSettings();
+  const shopName = siteInfo.shop_name || "Dream Cart BD";
+  const shopTagline = siteInfo.tagline || "Smart Digital Commerce";
+  const shopLogo = siteInfo.logo_url || "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10";
+  const shopDesc = siteInfo.description || "আমদানিকারকদের থেকে সরাসরি সংগৃহীত প্রিমিয়াম গ্যাজেট ও ডিজিটাল লাইফস্টাইল পণ্য।";
+  const address = siteInfo.address || "চৌধুরী প্লাজা, নিচতলা, পদুয়ার বাজার বিশ্বরোড, কুমিল্লা-৩৫০০।";
+  const hotline1 = siteInfo.hotline1 || "01581703822";
+  const hotline2 = siteInfo.hotline2 || "01818273838";
+  const email = siteInfo.email || "jainal.dcitbd@gmail.com";
+  const officeHours = siteInfo.office_hours || "সকাল ৮:০০ - রাত ১০:০০";
+  const fbLink = siteInfo.facebook_url || "https://facebook.com";
+  const ytLink = siteInfo.youtube_url || "https://youtube.com";
+  const wa1 = (siteInfo.whatsapp || hotline1).replace(/[^0-9]/g, "");
+  const wa1Full = wa1.startsWith("88") ? wa1 : "88" + wa1;
 
   return `
     <!-- Scoped Styles for Compact High-Contrast Footer -->
@@ -484,20 +500,20 @@ export function renderFooter() {
             <a href="/" class="ft-logo-wrap group">
               <div class="ft-logo-box">
                 <img 
-                  src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10" 
-                  alt="Dream Cart BD Logo" 
+                  src="${shopLogo}" 
+                  alt="${shopName} Logo" 
                   class="w-full h-full object-contain rounded-md"
                   onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';"
                 />
               </div>
               <div>
-                <div class="ft-brand-title">Dream Cart <span class="ft-brand-accent">BD</span></div>
-                <div class="ft-brand-tagline">Smart Digital Commerce</div>
+                <div class="ft-brand-title">${shopName.replace(/\s+BD$/i, " <span class=\"ft-brand-accent\">BD</span>")}</div>
+                <div class="ft-brand-tagline">${shopTagline}</div>
               </div>
             </a>
 
             <p class="ft-brand-desc">
-              আমদানিকারকদের থেকে সরাসরি সংগৃহীত প্রিমিয়াম গ্যাজেট ও ডিজিটাল লাইফস্টাইল পণ্য।
+              ${shopDesc}
             </p>
 
             <div class="ft-brand-slogan">
@@ -506,19 +522,19 @@ export function renderFooter() {
 
             <!-- Animated Social Connect Icons -->
             <div class="ft-social-row">
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" class="ft-social-btn fb" title="Facebook">
+              <a href="${fbLink}" target="_blank" rel="noopener noreferrer" class="ft-social-btn fb" title="Facebook">
                 <svg class="ft-social-svg" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                 </svg>
               </a>
 
-              <a href="https://wa.me/8801581703822" target="_blank" rel="noopener noreferrer" class="ft-social-btn wa" title="WhatsApp">
+              <a href="https://wa.me/${wa1Full}" target="_blank" rel="noopener noreferrer" class="ft-social-btn wa" title="WhatsApp">
                 <svg class="ft-social-svg" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17.472 14.382c-.301-.15-1.782-.879-2.058-.979-.276-.1-.477-.15-.678.15-.201.3-.778.979-.954 1.179-.176.2-.351.226-.652.075-.301-.151-1.27-.468-2.42-1.494-.895-.798-1.5-1.784-1.676-2.085-.176-.301-.019-.464.132-.614.136-.135.301-.351.452-.527.15-.175.201-.301.301-.502.101-.201.05-.376-.025-.526-.075-.151-.678-1.633-.929-2.235-.245-.586-.494-.506-.678-.515-.175-.008-.376-.01-.577-.01s-.527.075-.803.376c-.276.301-1.054 1.029-1.054 2.509 0 1.48 1.079 2.908 1.229 3.109.151.2 2.124 3.243 5.146 4.549.719.311 1.28.497 1.718.636.723.23 1.381.197 1.901.12.579-.087 1.782-.728 2.033-1.431.251-.703.251-1.305.176-1.431-.076-.126-.277-.201-.578-.352zM12 2.163c-5.466 0-9.91 4.444-9.91 9.91 0 1.748.456 3.454 1.321 4.957l-1.403 5.125 5.244-1.376c1.448.79 3.078 1.205 4.748 1.205 5.466 0 9.91-4.444 9.91-9.91s-4.444-9.911-9.91-9.911zm0 18.064c-1.528 0-3.024-.41-4.329-1.187l-.311-.185-3.218.844.859-3.138-.203-.323c-.854-1.36-1.305-2.94-1.305-4.56 0-4.664 3.794-8.458 8.458-8.458 4.664 0 8.458 3.794 8.458 8.458 0 4.665-3.794 8.459-8.458 8.459z"/>
                 </svg>
               </a>
 
-              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" class="ft-social-btn yt" title="YouTube">
+              <a href="${ytLink}" target="_blank" rel="noopener noreferrer" class="ft-social-btn yt" title="YouTube">
                 <svg class="ft-social-svg" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                 </svg>
@@ -579,7 +595,7 @@ export function renderFooter() {
                 <div class="ft-contact-icon">📍</div>
                 <div>
                   <span class="text-white font-bold block">অফিস:</span>
-                  <span class="text-slate-300">চৌধুরী প্লাজা, নিচতলা, পদুয়ার বাজার বিশ্বরোড, কুমিল্লা-৩৫০০।</span>
+                  <span class="text-slate-300">${address}</span>
                 </div>
               </div>
 
@@ -587,8 +603,8 @@ export function renderFooter() {
                 <div class="ft-contact-icon">📞</div>
                 <div>
                   <span class="text-white font-bold block">হটলাইন:</span>
-                  <a href="tel:01581703822" class="ft-contact-link">01581703822</a>, 
-                  <a href="tel:01818273838" class="ft-contact-link">01818273838</a>
+                  <a href="tel:${hotline1}" class="ft-contact-link">${hotline1}</a>, 
+                  <a href="tel:${hotline2}" class="ft-contact-link">${hotline2}</a>
                 </div>
               </div>
 
@@ -596,7 +612,7 @@ export function renderFooter() {
                 <div class="ft-contact-icon">✉️</div>
                 <div>
                   <span class="text-white font-bold block">ইমেইল:</span>
-                  <a href="mailto:jainal.dcitbd@gmail.com" class="ft-contact-link">jainal.dcitbd@gmail.com</a>
+                  <a href="mailto:${email}" class="ft-contact-link">${email}</a>
                 </div>
               </div>
 
@@ -604,7 +620,7 @@ export function renderFooter() {
                 <div class="ft-contact-icon">⏰</div>
                 <div>
                   <span class="text-white font-bold">সময়সূচি:</span>
-                  <span class="text-slate-300">সকাল ৮:০০ - রাত ১০:০০</span>
+                  <span class="text-slate-300">${officeHours}</span>
                   <span class="inline-block bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-[9px] font-bold px-1.5 py-0.2 rounded ml-1">
                     ওপেন
                   </span>
@@ -637,7 +653,7 @@ export function renderFooter() {
         <div class="ft-bottom-bar">
           
           <div>
-            &copy; ${currentYear} <strong class="text-white font-bold">Dream Cart BD</strong>. সর্বস্বত্ব সংরক্ষিত।
+            &copy; ${currentYear} <strong class="text-white font-bold">${shopName}</strong>. সর্বস্বত্ব সংরক্ষিত।
           </div>
 
           <div class="ft-bottom-legal">
