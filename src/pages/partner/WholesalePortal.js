@@ -80,9 +80,30 @@ function getFastOrders() {
 // ============================================================================
 // WHOLESALER & RESELLER PRICE + MOQ RESOLVERS
 // ============================================================================
+function getAdminWholesaleConfig() {
+  try {
+    const raw = localStorage.getItem('dcbd_whs_settings');
+    return raw ? JSON.parse(raw) : { default_moq: 5, discount_percent: 15, credit_limit: 50000 };
+  } catch (e) {
+    return { default_moq: 5, discount_percent: 15, credit_limit: 50000 };
+  }
+}
+
+function getAdminResellerConfig() {
+  try {
+    const raw = localStorage.getItem('dcbd_res_settings');
+    return raw ? JSON.parse(raw) : { commission_percent: 10, min_withdraw: 500 };
+  } catch (e) {
+    return { commission_percent: 10, min_withdraw: 500 };
+  }
+}
+
 function findMasterProduct(prodOrId) {
-  const products = getFastProducts();
   if (!prodOrId) return null;
+  if (typeof prodOrId === 'object' && (prodOrId.selling_price || prodOrId.wholesale_price)) {
+    return prodOrId;
+  }
+  const products = getFastProducts();
   if (typeof prodOrId === 'object') {
     const id = String(prodOrId.product_id || prodOrId.sku || prodOrId.slug || '').trim().toLowerCase();
     if (!id) return prodOrId;
@@ -116,7 +137,8 @@ export function getWholesaleMOQ(prodOrId) {
     const num = Number(c);
     if (!isNaN(num) && num > 1) return Math.round(num);
   }
-  return 5; // Default minimum order quantity for wholesale if sheet cell was 1 or empty
+  const cfg = getAdminWholesaleConfig();
+  return Math.max(2, Number(cfg.default_moq) || 5);
 }
 
 export function getRetailUnitPrice(prodOrId) {
@@ -155,7 +177,8 @@ export function getWholesaleUnitPrice(prodOrId) {
     }
   }
 
-  return retail > 0 ? Math.round(retail * 0.85) : 0;
+  const discPct = Math.min(60, Math.max(5, Number(getAdminWholesaleConfig().discount_percent) || 15));
+  return retail > 0 ? Math.round(retail * (1 - discPct / 100)) : 0;
 }
 
 export function getResellerUnitPrice(prodOrId) {
@@ -177,7 +200,8 @@ export function getResellerUnitPrice(prodOrId) {
     }
   }
 
-  return retail > 0 ? Math.round(retail * 0.90) : 0;
+  const commPct = Math.min(50, Math.max(3, Number(getAdminResellerConfig().commission_percent) || 10));
+  return retail > 0 ? Math.round(retail * (1 - commPct / 100)) : 0;
 }
 
 function showWholesaleNotice(title, message, type = 'warning') {
@@ -1340,7 +1364,7 @@ if (typeof window !== 'undefined' && !window.__dcbdWholesalePortalInit) {
     const btn = document.getElementById('btn-whs-direct-order-submit');
     if (btn) {
       btn.disabled = true;
-      btn.innerHTML = `<span class="inline-flex items-center justify-center gap-2"><img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Logo" class="w-4 h-4 rounded-full object-contain bg-white p-0.5 animate-spin" onerror="this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" /> <span>পাইকারি অর্ডার প্রসেস হচ্ছে...</span></span>`;
+      btn.textContent = 'পাইকারি অর্ডার প্রসেস হচ্ছে...';
     }
 
     try {
@@ -1774,7 +1798,7 @@ export async function renderWholesalePortal(params = {}) {
   );
 
   // If already logged in as wholesaler and visiting login/register, redirect to dashboard
-  if (isLogged && authStore.isWholesaler() && (currentView === 'login' || currentView === 'register')) {
+  if (isLogged && (authStore.isWholesaler() || authStore.isAdmin()) && (currentView === 'login' || currentView === 'register')) {
     if (typeof window !== 'undefined' && window.router) {
       setTimeout(() => window.router.navigate('/wholesaler/dashboard'), 10);
     }

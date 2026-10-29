@@ -10,7 +10,26 @@
  * - Dedicated clean CSS with elegant margins, comfortable padding, balanced typography, and soft dark mode contrast.
  */
 
+import { getGlobalOffers } from "../../api/client.js";
+import { cartStore } from "../../store/cartStore.js";
+import { toast } from "../../components/Toast.js";
+
+if (typeof window !== "undefined" && !window.__dcbdOfferCopyBound) {
+  window.__dcbdOfferCopyBound = true;
+  window.copyAndApplyOfferCode = function(code) {
+    if (!code) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).catch(() => {});
+    }
+    const res = cartStore.validateAndApplyCoupon ? cartStore.validateAndApplyCoupon(code) : { valid: true };
+    if (toast && toast.success) {
+      toast.success(`কুপন কোড "${code}" কপি হয়েছে! চেকআউট পেজে এটি ব্যবহার করুন।`);
+    }
+  };
+}
+
 export function renderOffersPage() {
+  const activeCoupons = getGlobalOffers(true);
   return `
     <style id="dc-offers-styles">
       .of-wrapper {
@@ -698,6 +717,35 @@ export function renderOffersPage() {
         </div>
 
       </div>
+
+      <!-- Dynamic Active Promo & Coupon Codes from Admin System Settings -->
+      ${activeCoupons.length > 0 ? `
+      <div class="of-section">
+        <div class="of-section-header">
+          <span class="of-section-icon">🎟️</span>
+          <h2 class="of-section-title">
+            সক্রিয় প্রোমো ও ডিসকাউন্ট কুপন সমূহ (Active Coupons)
+          </h2>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          ${activeCoupons.map(c => `
+            <div class="bg-white dark:bg-slate-900 rounded-2xl border-2 border-dashed border-emerald-400 dark:border-emerald-600 p-5 flex flex-col justify-between gap-3 shadow-xs">
+              <div>
+                <div class="flex items-center justify-between gap-2 mb-2">
+                  <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-mono font-black text-xs">${c.code}</span>
+                  <span class="text-xs font-black text-amber-600 dark:text-amber-400">${String(c.type).includes("%") || String(c.type).toLowerCase().includes("percent") ? `${c.discount}% ছাড়` : `৳${c.discount} ছাড়`}</span>
+                </div>
+                <h3 class="text-sm font-black text-slate-900 dark:text-white">${c.title || c.code}</h3>
+                <p class="text-xs text-slate-500 mt-1">সর্বনিম্ন অর্ডার: ৳${c.min_order || 0} ${c.expiry ? `• মেয়াদ: ${c.expiry}` : ""}</p>
+              </div>
+              <button type="button" onclick="window.copyAndApplyOfferCode('${c.code}')" class="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition cursor-pointer">
+                📋 কোড কপি ও এপ্লাই করুন (${c.code})
+              </button>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+      ` : ""}
 
       <!-- Section: Partner Programs Grid (Reseller & Wholesaler Benefits) -->
       <div class="of-section">

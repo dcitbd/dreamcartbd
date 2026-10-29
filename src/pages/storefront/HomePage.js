@@ -189,34 +189,37 @@ export async function renderHomePage() {
 
   // 1. First populate from categories sheet (preserving order, subcategories and images)
   categories.forEach(c => {
-    const rawName = (c.category || '').trim();
+    const rawName = String(c.category || c.Category || '').trim();
     if (!rawName || rawName.toLowerCase() === 'test id') return;
 
     const key = rawName.toLowerCase();
     if (!uniqueCategoryMap.has(key)) {
       uniqueCategoryMap.set(key, {
         name: rawName,
-        category_image: c.category_image || '',
+        category_image: String(c.category_image || '').trim(),
         subCategories: new Set(),
         products: []
       });
     }
 
     const catObj = uniqueCategoryMap.get(key);
-    if (c.sub_category) {
-      c.sub_category.split(/[,|\n]/).map(s => s.trim()).filter(Boolean).forEach(s => catObj.subCategories.add(s));
+    const subStr = String(c.sub_category || '').trim();
+    if (subStr) {
+      subStr.split(/[,|\n]/).map(s => s.trim()).filter(Boolean).forEach(s => catObj.subCategories.add(s));
     }
-    if (c.chail_category || c.child_category) {
-      (c.chail_category || c.child_category).split(/[,|\n]/).map(s => s.trim()).filter(Boolean).forEach(s => catObj.subCategories.add(s));
+    const childStr = String(c.chail_category || c.child_category || '').trim();
+    if (childStr) {
+      childStr.split(/[,|\n]/).map(s => s.trim()).filter(Boolean).forEach(s => catObj.subCategories.add(s));
     }
     if (c.category_image && !catObj.category_image) {
-      catObj.category_image = c.category_image;
+      catObj.category_image = String(c.category_image).trim();
     }
   });
 
   // 2. Map all products into their respective category and collect product-level subcategories
-  products.forEach(p => {
-    const rawCat = (p.category || '').trim();
+  products.forEach((p, idx) => {
+    if (!p || typeof p !== 'object') return;
+    const rawCat = String(p.category || p.Category || 'General').trim();
     if (!rawCat || rawCat.toLowerCase() === 'test id') return;
 
     const key = rawCat.toLowerCase();
@@ -231,18 +234,19 @@ export async function renderHomePage() {
 
     const catObj = uniqueCategoryMap.get(key);
     // Ensure product is added only once to this category
-    const pId = p.product_id || p.sku || p.name;
-    const exists = catObj.products.some(it => (it.product_id && it.product_id === pId) || (it.sku && it.sku === p.sku));
+    const pId = String(p.product_id || p.sku || p.name || idx).trim();
+    const exists = catObj.products.some(it => {
+      const itId = String(it.product_id || it.sku || it.name || '').trim();
+      return itId && itId === pId;
+    });
     if (!exists) {
       catObj.products.push(p);
     }
 
-    if (p.sub_category && p.sub_category.trim()) {
-      catObj.subCategories.add(p.sub_category.trim());
-    }
-    if (p.child_category && p.child_category.trim()) {
-      catObj.subCategories.add(p.child_category.trim());
-    }
+    const pSub = String(p.sub_category || '').trim();
+    if (pSub) catObj.subCategories.add(pSub);
+    const pChild = String(p.child_category || '').trim();
+    if (pChild) catObj.subCategories.add(pChild);
   });
 
   // 3. Filter only categories that actually have products (each category appears ONLY ONCE)

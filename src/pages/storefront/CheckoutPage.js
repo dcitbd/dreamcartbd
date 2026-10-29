@@ -1,39 +1,95 @@
 /**
  * DREAM CART BD — ORDER CHECKOUT PAGE (CheckoutPage.js)
  * Implements user requirements:
- * - Compact & Fast Checkout with Dropdown Selectors:
- *   - Delivery Area Dropdown (৳70, ৳90, ৳120, Free Pickup)
- *   - Payment Method Dropdown (COD, bKash Personal, bKash Link, Nagad, Rocket, Bank)
- * - Dynamic Payment Method Panels:
- *   - Selecting bKash Personal displays ONLY bKash Personal numbers with 1-click copy & steps.
- *   - Selecting bKash Payment Link displays ONLY bKash Payment gateway button & steps.
- *   - Selecting Nagad Personal displays ONLY Nagad Personal numbers with 1-click copy & steps.
- *   - Selecting Rocket Personal displays ONLY Rocket Personal number with 1-click copy & steps.
- *   - Selecting Bank Transfer displays ONLY Bank Account details with high-contrast text.
- *   - Selecting Cash on Delivery displays ONLY COD instructions (TrxID hidden).
- * - Clean minimal UI: Eliminated nested repetitive borders for a sleek, modern look.
- * - High-contrast text & background harmony for both Light and Dark mode.
- * - Auto-calculate 2,000 BDT free shipping & 5% online prepayment discount.
- * - Full Order submission & validation.
+ * - Dynamically synced with Admin System Settings:
+ *   1. পেমেন্ট মেথড আপডেট (getGlobalPaymentMethods)
+ *   2. ডেলিভারি মেথড কনফিগ (getGlobalDeliveryMethods)
+ *   3. অফার ও কুপন ডিসকাউন্ট (getGlobalOffers & cartStore.validateAndApplyCoupon)
+ * - Auto-calculates Free Shipping threshold, 5% Online Prepayment Discount, and Coupon Discount.
+ * - Full Order submission & validation syncing with Orders & Incomplete_Orders sheets.
  */
 
 import { cartStore } from '../../store/cartStore.js';
 import { authStore } from '../../store/authStore.js';
-import { apiClient } from '../../api/client.js';
+import { apiClient, getGlobalPaymentMethods, getGlobalDeliveryMethods, getGlobalOffers, getGlobalSiteSettings } from '../../api/client.js';
 import { formatCurrency } from '../../utils/format.js';
 import { toast } from '../../components/Toast.js';
 import { router } from '../../router.js';
 
-// Attach global switcher so dropdown selection updates instantaneously
+function mapDeliveryKey(dm) {
+  const id = String(dm.id || '').toLowerCase();
+  const z = String(dm.zone || '').toLowerCase();
+  if (id === 'dhaka' || z.includes('dhaka') && !z.includes('outside')) return 'dhaka';
+  if (id === 'cumilla' || z.includes('cumilla') || z.includes('কুমিল্লা')) return 'cumilla';
+  if (id === 'outside' || z.includes('outside') || z.includes('বাইরে')) return 'outside';
+  if (id === 'pickup' || z.includes('pickup') || z.includes('পিকআপ')) return 'pickup';
+  return dm.id || 'dhaka';
+}
+
+function mapPaymentCode(pm) {
+  const code = String(pm.code || '').toUpperCase().trim();
+  if (code) return code;
+  const n = String(pm.name || '').toLowerCase();
+  const t = String(pm.type || '').toLowerCase();
+  if (n.includes('cash') || n.includes('cod') || n.includes('ক্যাশ')) return 'COD';
+  if (n.includes('bkash') || n.includes('বিকাশ')) {
+    return (t.includes('merchant') || t.includes('link') || n.includes('link') || n.includes('মার্চেন্ট')) ? 'BKASH_PAYMENT' : 'BKASH_PERSONAL';
+  }
+  if (n.includes('nagad') || n.includes('নগদ')) return 'NAGAD_PERSONAL';
+  if (n.includes('rocket') || n.includes('রকেট')) return 'ROCKET_PERSONAL';
+  if (n.includes('bank') || n.includes('ব্যাংক') || n.includes('islami')) return 'BANK';
+  return String(pm.id || 'CUSTOM_PAY').toUpperCase();
+}
+
+function refreshCheckoutTotalsDOM() {
+  const subtotal = cartStore.getSubtotal();
+  const isFree = cartStore.isFreeDelivery();
+  const delFee = cartStore.getDeliveryCharge();
+  const onlineDisc = cartStore.getOnlinePaymentDiscount();
+  const couponDisc = cartStore.getCouponDiscount ? cartStore.getCouponDiscount() : 0;
+  const grandTotal = cartStore.getGrandTotal();
+
+  const subEl = document.getElementById('summary-subtotal');
+  const delEl = document.getElementById('summary-delivery-charge');
+  const discRow = document.getElementById('summary-online-discount-row');
+  const discAmt = document.getElementById('summary-online-discount-amount');
+  const coupRow = document.getElementById('summary-coupon-discount-row');
+  const coupAmt = document.getElementById('summary-coupon-discount-amount');
+  const grandEl = document.getElementById('summary-grand-total');
+  const btnText = document.getElementById('btn-confirm-order-text');
+
+  if (subEl) subEl.textContent = formatCurrency(subtotal);
+  if (delEl) delEl.innerHTML = isFree ? '<span class="text-emerald-600 dark:text-emerald-400 font-bold">ফ্রি (৳০)</span>' : formatCurrency(delFee);
+
+  if (discRow && discAmt) {
+    if (onlineDisc > 0) {
+      discRow.classList.remove('hidden');
+      discAmt.textContent = '-' + formatCurrency(onlineDisc);
+    } else {
+      discRow.classList.add('hidden');
+    }
+  }
+
+  if (coupRow && coupAmt) {
+    if (couponDisc > 0) {
+      coupRow.classList.remove('hidden');
+      coupAmt.textContent = '-' + formatCurrency(couponDisc);
+    } else {
+      coupRow.classList.add('hidden');
+    }
+  }
+
+  if (grandEl) grandEl.textContent = formatCurrency(grandTotal);
+  if (btnText) btnText.textContent = `অর্ডার নিশ্চিত করুন (${formatCurrency(grandTotal)})`;
+}
+
 if (typeof window !== 'undefined') {
   window.switchCheckoutPayment = function(method) {
     if (!method) return;
-
     if (cartStore && cartStore.setPaymentMethod) {
       cartStore.setPaymentMethod(method);
     }
 
-    // 1. Toggle method-specific panels
     const panels = document.querySelectorAll('.payment-method-panel');
     panels.forEach(p => {
       if (p.id === 'payment-panel-' + method) {
@@ -45,7 +101,6 @@ if (typeof window !== 'undefined') {
       }
     });
 
-    // 2. Toggle TrxID input container (Hidden for COD, visible for online payments)
     const trxContainer = document.getElementById('checkout-trxid-container');
     if (trxContainer) {
       if (method === 'COD') {
@@ -57,7 +112,6 @@ if (typeof window !== 'undefined') {
       }
     }
 
-    // 3. Keep online-payment-details in sync if referenced
     const onlineBox = document.getElementById('online-payment-details');
     if (onlineBox) {
       if (method === 'COD') {
@@ -68,6 +122,8 @@ if (typeof window !== 'undefined') {
         onlineBox.style.display = 'block';
       }
     }
+
+    refreshCheckoutTotalsDOM();
   };
 
   window.switchDeliveryZone = function(zone) {
@@ -77,20 +133,43 @@ if (typeof window !== 'undefined') {
     }
     const zoneBadge = document.getElementById('delivery-zone-summary-text');
     if (zoneBadge) {
-      const zoneNames = {
-        'dhaka': 'ঢাকা সিটি (২-৩ দিন)',
-        'cumilla': 'কুমিল্লা সদর (১-২ দিন)',
-        'outside': 'ঢাকার বাইরে (৩-৫ দিন)',
-        'pickup': 'অফিস থেকে পিকআপ (কুমিল্লা)'
-      };
+      const selectEl = document.getElementById('checkout-delivery-zone');
+      const selectedLabel = selectEl?.selectedOptions?.[0]?.getAttribute('data-zone-name') || zone;
       const fee = cartStore.getDeliveryCharge();
       const isFree = cartStore.isFreeDelivery();
       const feeText = isFree ? 'ফ্রি (৳০)' : formatCurrency(fee);
-      zoneBadge.textContent = `${zoneNames[zone] || ''} — চার্জ: ${feeText}`;
+      zoneBadge.textContent = `${selectedLabel} — চার্জ: ${feeText}`;
     }
+    refreshCheckoutTotalsDOM();
   };
 
-  // Safe clipboard helper with inline button feedback
+  window.applyCheckoutCouponCode = function() {
+    const inp = document.getElementById('checkout-coupon-input');
+    const msgEl = document.getElementById('checkout-coupon-msg');
+    const code = (inp?.value || '').trim();
+    if (!code) {
+      cartStore.clearCoupon();
+      if (msgEl) {
+        msgEl.className = 'text-[11px] font-bold text-slate-500 mt-1';
+        msgEl.textContent = 'কুপন কোড মুছে ফেলা হয়েছে।';
+      }
+      refreshCheckoutTotalsDOM();
+      return;
+    }
+
+    const res = cartStore.validateAndApplyCoupon(code);
+    if (msgEl) {
+      msgEl.className = `text-[11px] font-bold mt-1 ${res.valid ? 'text-emerald-600' : 'text-rose-600'}`;
+      msgEl.textContent = res.message;
+    }
+    if (res.valid) {
+      toast.success(res.message);
+    } else {
+      toast.error(res.message);
+    }
+    refreshCheckoutTotalsDOM();
+  };
+
   window.copyCheckoutText = function(text, btn) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(() => {
@@ -139,25 +218,26 @@ export function renderCheckoutPage() {
   }
 
   const user = authStore.user || {};
-  const currentZone = cartStore.deliveryZone || 'dhaka';
-  const currentPayment = cartStore.paymentMethod || 'COD';
+  const activeDeliveryMethods = getGlobalDeliveryMethods(true);
+  const activePaymentMethods = getGlobalPaymentMethods(true);
+  const activeOffers = getGlobalOffers(true);
+  const siteSettings = getGlobalSiteSettings();
+  const onlineDiscPct = Number(siteSettings.online_payment_discount_percent || 5);
+
+  const currentZone = cartStore.deliveryZone || mapDeliveryKey(activeDeliveryMethods[0] || { id: 'dhaka' });
+  const currentPayment = cartStore.paymentMethod || mapPaymentCode(activePaymentMethods[0] || { code: 'COD' });
   const subtotal = cartStore.getSubtotal();
   const deliveryFee = cartStore.getDeliveryCharge();
   const isFreeDelivery = cartStore.isFreeDelivery();
   const onlineDiscount = cartStore.getOnlinePaymentDiscount();
+  const couponDiscount = cartStore.getCouponDiscount ? cartStore.getCouponDiscount() : 0;
   const grandTotal = cartStore.getGrandTotal();
 
-  const zoneNames = {
-    'dhaka': 'ঢাকা সিটি (২-৩ দিন)',
-    'cumilla': 'কুমিল্লা সদর (১-২ দিন)',
-    'outside': 'ঢাকার বাইরে (৩-৫ দিন)',
-    'pickup': 'অফিস থেকে পিকআপ (কুমিল্লা)'
-  };
-  const currentZoneSummary = `${zoneNames[currentZone] || ''} — চার্জ: ${isFreeDelivery ? 'ফ্রি (৳০)' : formatCurrency(deliveryFee)}`;
+  const currentZoneObj = activeDeliveryMethods.find(dm => mapDeliveryKey(dm) === currentZone) || activeDeliveryMethods[0] || { zone: 'ঢাকা সিটি', time: '২-৩ দিন' };
+  const currentZoneSummary = `${currentZoneObj.zone} (${currentZoneObj.time || '২-৩ দিন'}) — চার্জ: ${isFreeDelivery ? 'ফ্রি (৳০)' : formatCurrency(deliveryFee)}`;
 
   return `
     <style>
-      /* Clean Modern Checkout Select & Panel Styles */
       .checkout-select {
         width: 100%;
         padding: 0.75rem 1rem;
@@ -188,7 +268,6 @@ export function renderCheckoutPage() {
         color: #f8fafc;
       }
       
-      /* Method Details Card - Unified and Clean */
       .pm-detail-surface {
         background-color: #f8fafc;
         color: #0f172a;
@@ -200,7 +279,6 @@ export function renderCheckoutPage() {
         color: #f8fafc !important;
       }
 
-      /* Copyable number block */
       .pm-num-chip {
         display: flex;
         align-items: center;
@@ -216,7 +294,6 @@ export function renderCheckoutPage() {
         color: #f8fafc !important;
       }
 
-      /* Bank Table */
       .checkout-bank-grid {
         display: grid;
         grid-template-columns: 1fr;
@@ -267,7 +344,7 @@ export function renderCheckoutPage() {
           অর্ডার ও শিপিং ফর্ম (Fast Checkout)
         </h1>
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          নিচের তথ্যগুলো দিয়ে "অর্ডার কনফার্ম করুন" বাটনে ক্লিক করুন। আমাদের প্রতিনিধি আপনার সাথে দ্রুত যোগাযোগ করবেন।
+          নিচের তথ্যগুলো দিয়ে "অর্ডার নিশ্চিত করুন" বাটনে ক্লিক করুন। আমাদের প্রতিনিধি আপনার সাথে দ্রুত যোগাযোগ করবেন।
         </p>
       </div>
 
@@ -344,7 +421,7 @@ export function renderCheckoutPage() {
 
           </div>
 
-          <!-- 2. Delivery Zone Selection (Clean Modern Dropdown) -->
+          <!-- 2. Delivery Zone Selection (Synced with Admin Delivery Methods Config) -->
           <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 shadow-xs space-y-3.5">
             <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -366,29 +443,25 @@ export function renderCheckoutPage() {
                 onchange="window.switchDeliveryZone && window.switchDeliveryZone(this.value)"
                 class="checkout-select"
               >
-                <option value="dhaka" ${currentZone === 'dhaka' ? 'selected' : ''}>
-                  ঢাকা সিটি (In Dhaka) — ৳৯০ (২-৩ দিন)
-                </option>
-                <option value="cumilla" ${currentZone === 'cumilla' ? 'selected' : ''}>
-                  কুমিল্লা সদর (In Cumilla) — ৳৭০ (১-২ দিন)
-                </option>
-                <option value="outside" ${currentZone === 'outside' ? 'selected' : ''}>
-                  ঢাকার বাইরে সমগ্র বাংলাদেশ (Outside Dhaka) — ৳১২০ (৩-৫ দিন)
-                </option>
-                <option value="pickup" ${currentZone === 'pickup' ? 'selected' : ''}>
-                  অফিস থেকে পিকআপ (Office Pickup) — ফ্রি ৳০
-                </option>
+                ${activeDeliveryMethods.map(dm => {
+                  const key = mapDeliveryKey(dm);
+                  const chargeTxt = Number(dm.charge) === 0 ? 'ফ্রি ৳০' : `৳${dm.charge}`;
+                  return `
+                    <option value="${key}" data-zone-name="${dm.zone} (${dm.time || '২-৩ দিন'})" ${currentZone === key ? 'selected' : ''}>
+                      ${dm.zone} — ${chargeTxt} (${dm.time || '২-৩ দিন'})
+                    </option>
+                  `;
+                }).join('')}
               </select>
             </div>
 
-            <!-- Subtle zone detail pill -->
             <div class="text-[11px] text-slate-600 dark:text-slate-400 flex items-center gap-1.5 pt-0.5">
               <span>📍</span>
               <span id="delivery-zone-summary-text" class="font-medium">${currentZoneSummary}</span>
             </div>
           </div>
 
-          <!-- 3. Payment Method Selection (Clean Modern Dropdown) -->
+          <!-- 3. Payment Method Selection (Synced with Admin Payment Methods Config) -->
           <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 shadow-xs space-y-4">
             <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 flex-wrap gap-2">
               <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -396,14 +469,13 @@ export function renderCheckoutPage() {
                 পেমেন্ট পদ্ধতি নির্বাচন করুন (Payment Method)
               </h3>
               <span class="text-[11px] font-bold text-white bg-black px-2.5 py-0.5 rounded-full">
-                অনলাইন পেমেন্টে ৫% ছাড়
+                অনলাইন পেমেন্টে ${onlineDiscPct}% ছাড়
               </span>
             </div>
 
-            <!-- Notice for 5% prepayment discount -->
             <div class="p-2.5 bg-emerald-50/70 dark:bg-emerald-950/40 rounded-xl text-xs text-emerald-800 dark:text-emerald-300 font-semibold flex items-center gap-2">
               <span class="text-sm">🎁</span>
-              <span>বিকাশ, নগদ বা রকেটে অগ্রিম পেমেন্ট করলে পাবেন <strong class="underline font-bold">৫% তাৎক্ষণিক ছাড়!</strong></span>
+              <span>বিকাশ, নগদ, রকেট বা ব্যাংকে অগ্রিম পেমেন্ট করলে পাবেন <strong class="underline font-bold">${onlineDiscPct}% তাৎক্ষণিক ছাড়!</strong></span>
             </div>
 
             <!-- Payment Method Dropdown -->
@@ -417,217 +489,124 @@ export function renderCheckoutPage() {
                 onchange="window.switchCheckoutPayment && window.switchCheckoutPayment(this.value)"
                 class="checkout-select font-bold"
               >
-                <option value="COD" ${currentPayment === 'COD' ? 'selected' : ''}>
-                  💵 ক্যাশ অন ডেলিভারি (Cash on Delivery)
-                </option>
-                <option value="BKASH_PERSONAL" ${currentPayment === 'BKASH_PERSONAL' ? 'selected' : ''}>
-                  🌸 বিকাশ পার্সোনাল (৫% ছাড়)
-                </option>
-                <option value="BKASH_PAYMENT" ${currentPayment === 'BKASH_PAYMENT' ? 'selected' : ''}>
-                  💳 বিকাশ অনলাইন পেমেন্ট লিংক (৫% ছাড়)
-                </option>
-                <option value="NAGAD_PERSONAL" ${currentPayment === 'NAGAD_PERSONAL' ? 'selected' : ''}>
-                  🔥 নগদ পার্সোনাল (৫% ছাড়)
-                </option>
-                <option value="ROCKET_PERSONAL" ${currentPayment === 'ROCKET_PERSONAL' ? 'selected' : ''}>
-                  🚀 রকেট পার্সোনাল (৫% ছাড়)
-                </option>
-                <option value="BANK" ${currentPayment === 'BANK' ? 'selected' : ''}>
-                  🏦 ব্যাংক ট্রান্সফার (৫% ছাড়)
-                </option>
+                ${activePaymentMethods.map(pm => {
+                  const code = mapPaymentCode(pm);
+                  const isCod = code === 'COD';
+                  const discTag = !isCod && Number(pm.discount || onlineDiscPct) > 0 ? ` (${pm.discount || onlineDiscPct}% ছাড়)` : '';
+                  const icon = isCod ? '💵' : (code.includes('BKASH') ? '🌸' : (code.includes('NAGAD') ? '🔥' : (code.includes('ROCKET') ? '🚀' : '🏦')));
+                  return `<option value="${code}" ${currentPayment === code ? 'selected' : ''}>${icon} ${pm.name}${discTag}</option>`;
+                }).join('')}
               </select>
             </div>
 
-            <!-- ==========================================================================
-                 DYNAMIC METHOD-SPECIFIC PAYMENT DETAILS PANELS
-                 Only the selected method's details are shown! Clean, unified, zero nested borders.
-                 ========================================================================== -->
+            <!-- Dynamic Method-Specific Payment Details Panels -->
             <div id="payment-instruction-container" class="space-y-3 pt-1">
-              
-              <!-- PANEL 1: Cash on Delivery (COD) -->
-              <div id="payment-panel-COD" class="payment-method-panel ${currentPayment === 'COD' ? '' : 'hidden'} pm-detail-surface text-xs space-y-2">
-                <div class="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400 text-sm">
-                  <span>🚚</span>
-                  <span>ক্যাশ অন ডেলিভারি (Cash on Delivery)</span>
-                </div>
-                <p class="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
-                  পণ্য হাতে পেয়ে দেখে ডেলিভারি ম্যানের কাছে মূল্য পরিশোধ করুন। কোনো প্রকার অগ্রিম পেমেন্ট বা TrxID-এর প্রয়োজন নেই।
-                </p>
-              </div>
-
-              <!-- PANEL 2: bKash Personal -->
-              <div id="payment-panel-BKASH_PERSONAL" class="payment-method-panel ${currentPayment === 'BKASH_PERSONAL' ? '' : 'hidden'} pm-detail-surface text-xs space-y-3">
-                <div class="flex items-center justify-between pb-1.5 flex-wrap gap-1.5">
-                  <div class="flex items-center gap-2 font-bold text-pink-600 dark:text-pink-400 text-sm">
-                    <span>🌸</span>
-                    <span>বিকাশ পার্সোনাল নম্বর (Send Money)</span>
-                  </div>
-                  <span class="text-[10px] font-bold bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 px-2 py-0.5 rounded-md">৫% ছাড়</span>
-                </div>
-
-                <div class="space-y-2">
-                  <div class="pm-num-chip">
-                    <div class="flex flex-col">
-                      <span class="text-[10px] text-slate-500 dark:text-slate-400">বিকাশ পার্সোনাল নম্বর ১ (মাস্টার):</span>
-                      <span class="text-sm font-black font-mono text-pink-600 dark:text-pink-400">01879653143</span>
+              ${activePaymentMethods.map(pm => {
+                const code = mapPaymentCode(pm);
+                const isSelected = currentPayment === code;
+                if (code === 'COD') {
+                  return `
+                    <div id="payment-panel-COD" class="payment-method-panel ${isSelected ? '' : 'hidden'} pm-detail-surface text-xs space-y-2">
+                      <div class="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400 text-sm">
+                        <span>🚚</span>
+                        <span>${pm.name}</span>
+                      </div>
+                      <p class="text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+                        ${pm.instruction || 'পণ্য হাতে পেয়ে দেখে ডেলিভারি ম্যানের কাছে মূল্য পরিশোধ করুন। কোনো প্রকার অগ্রিম পেমেন্ট বা TrxID-এর প্রয়োজন নেই।'}
+                      </p>
                     </div>
-                    <button type="button" onclick="window.copyCheckoutText('01879653143', this)" class="px-3 py-1 rounded-lg bg-pink-50 hover:bg-pink-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-pink-700 dark:text-pink-300 font-bold text-xs transition cursor-pointer">
-                      📋 কপি
-                    </button>
-                  </div>
+                  `;
+                }
 
-                  <div class="pm-num-chip">
-                    <div class="flex flex-col">
-                      <span class="text-[10px] text-slate-500 dark:text-slate-400">বিকাশ পার্সোনাল নম্বর ২ (অর্ডার ডেস্ক):</span>
-                      <span class="text-sm font-black font-mono text-pink-600 dark:text-pink-400">01818273838</span>
-                    </div>
-                    <button type="button" onclick="window.copyCheckoutText('01818273838', this)" class="px-3 py-1 rounded-lg bg-pink-50 hover:bg-pink-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-pink-700 dark:text-pink-300 font-bold text-xs transition cursor-pointer">
-                      📋 কপি
-                    </button>
-                  </div>
-                </div>
-
-                <div class="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 space-y-0.5 pt-0.5">
-                  <div>১. বিকাশ অ্যাপ বা *247# ডায়াল করে <strong>Send Money</strong> করুন।</div>
-                  <div>২. টাকা পাঠানো শেষে পাওয়া <strong>TrxID</strong> নিচের বক্সে লিখুন।</div>
-                </div>
-              </div>
-
-              <!-- PANEL 3: bKash Payment Link -->
-              <div id="payment-panel-BKASH_PAYMENT" class="payment-method-panel ${currentPayment === 'BKASH_PAYMENT' ? '' : 'hidden'} pm-detail-surface text-xs space-y-3">
-                <div class="flex items-center justify-between pb-1.5 flex-wrap gap-1.5">
-                  <div class="flex items-center gap-2 font-bold text-pink-600 dark:text-pink-400 text-sm">
-                    <span>💳</span>
-                    <span>অনলাইন পেমেন্ট (Gateway)</span>
-                  </div>
-                  <span class="text-[10px] font-bold bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 px-2 py-0.5 rounded-md">৫% ছাড়</span>
-                </div>
-
-                <div class="space-y-2 text-center">
-                  <a 
-                    href="https://shop.bkash.com/j-a-sagor-computer01581703822/paymentlink" 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    class="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-black text-xs shadow-sm transition active:scale-98"
-                  >
-                    <span>👉 বিকাশ অনলাইন গেটওয়ে ওপেন করুন (Pay via bKash)</span>
-                    <span>↗</span>
-                  </a>
-                </div>
-
-                <div class="text-[11px] text-slate-600 dark:text-slate-300">
-                  পেমেন্ট সফল হওয়ার পর পাওয়া <strong>TrxID</strong> নিচের বক্সে লিখে অর্ডার কনফার্ম করুন।
-                </div>
-              </div>
-
-              <!-- PANEL 4: Nagad Personal -->
-              <div id="payment-panel-NAGAD_PERSONAL" class="payment-method-panel ${currentPayment === 'NAGAD_PERSONAL' ? '' : 'hidden'} pm-detail-surface text-xs space-y-3">
-                <div class="flex items-center justify-between pb-1.5 flex-wrap gap-1.5">
-                  <div class="flex items-center gap-2 font-bold text-orange-600 dark:text-orange-400 text-sm">
-                    <span>🔥</span>
-                    <span>নগদ পার্সোনাল নম্বর (Send Money)</span>
-                  </div>
-                  <span class="text-[10px] font-bold bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded-md">৫% ছাড়</span>
-                </div>
-
-                <div class="space-y-2">
-                  <div class="pm-num-chip">
-                    <div class="flex flex-col">
-                      <span class="text-[10px] text-slate-500 dark:text-slate-400">নগদ পার্সোনাল নম্বর ১ (মাস্টার):</span>
-                      <span class="text-sm font-black font-mono text-orange-600 dark:text-orange-400">01879653143</span>
-                    </div>
-                    <button type="button" onclick="window.copyCheckoutText('01879653143', this)" class="px-3 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-orange-700 dark:text-orange-300 font-bold text-xs transition cursor-pointer">
-                      📋 কপি
-                    </button>
-                  </div>
-
-                  <div class="pm-num-chip">
-                    <div class="flex flex-col">
-                      <span class="text-[10px] text-slate-500 dark:text-slate-400">নগদ পার্সোনাল নম্বর ২ (অর্ডার ডেস্ক):</span>
-                      <span class="text-sm font-black font-mono text-orange-600 dark:text-orange-400">01818273838</span>
-                    </div>
-                    <button type="button" onclick="window.copyCheckoutText('01818273838', this)" class="px-3 py-1 rounded-lg bg-orange-50 hover:bg-orange-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-orange-700 dark:text-orange-300 font-bold text-xs transition cursor-pointer">
-                      📋 কপি
-                    </button>
-                  </div>
-                </div>
-
-                <div class="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 space-y-0.5 pt-0.5">
-                  <div>১. নগদ অ্যাপ বা *167# ডায়াল করে <strong>Send Money</strong> করুন।</div>
-                  <div>২. টাকা পাঠানো শেষে পাওয়া <strong>TrxID</strong> নিচের বক্সে লিখুন।</div>
-                </div>
-              </div>
-
-              <!-- PANEL 5: Rocket Personal -->
-              <div id="payment-panel-ROCKET_PERSONAL" class="payment-method-panel ${currentPayment === 'ROCKET_PERSONAL' ? '' : 'hidden'} pm-detail-surface text-xs space-y-3">
-                <div class="flex items-center justify-between pb-1.5 flex-wrap gap-1.5">
-                  <div class="flex items-center gap-2 font-bold text-purple-600 dark:text-purple-400 text-sm">
-                    <span>🚀</span>
-                    <span>রকেট পার্সোনাল নম্বর (Send Money)</span>
-                  </div>
-                  <span class="text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-md">৫% ছাড়</span>
-                </div>
-
-                <div class="pm-num-chip">
-                  <div class="flex flex-col">
-                    <span class="text-[10px] text-slate-500 dark:text-slate-400">রকেট নম্বর (১২ ডিজিট):</span>
-                    <span class="text-sm font-black font-mono text-purple-600 dark:text-purple-400">01581703822-7</span>
-                  </div>
-                  <button type="button" onclick="window.copyCheckoutText('015817038227', this)" class="px-3 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-purple-700 dark:text-purple-300 font-bold text-xs transition cursor-pointer">
-                    📋 কপি
-                  </button>
-                </div>
-
-                <div class="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 pt-0.5">
-                  রকেট অ্যাপ বা *322# ডায়াল করে ১২ ডিজিটের নম্বরে Send Money করে প্রাপ্ত <strong>TrxID</strong> নিচের বক্সে লিখুন।
-                </div>
-              </div>
-
-              <!-- PANEL 6: Bank Account (High-Contrast, Zero Clutter) -->
-              <div id="payment-panel-BANK" class="payment-method-panel ${currentPayment === 'BANK' ? '' : 'hidden'} pm-detail-surface text-xs space-y-3">
-                <div class="flex items-center justify-between pb-1.5 flex-wrap gap-1.5">
-                  <div class="flex items-center gap-2 font-bold text-blue-600 dark:text-blue-400 text-sm">
-                    <span>🏦</span>
-                    <span>ইসলামী ব্যাংক বাংলাদেশ পিএলসি (IBBL) একাউন্ট বিবরণী</span>
-                  </div>
-                  <span class="text-[10px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md">৫% ছাড়</span>
-                </div>
-
-                <!-- High-Contrast Bank Details Box -->
-                <div class="bg-white dark:bg-slate-800/90 rounded-xl p-3.5 space-y-1.5">
-                  <div class="checkout-bank-grid">
-                    <div class="checkout-bank-item">
-                      <span class="checkout-bank-lbl">ব্যাংকের নাম:</span>
-                      <span class="checkout-bank-val">Islami Bank Bangladesh PLC (IBBLBDDH)</span>
-                    </div>
-                    <div class="checkout-bank-item">
-                      <span class="checkout-bank-lbl">একাউন্টের নাম:</span>
-                      <span class="checkout-bank-val">Jainal Abedin</span>
-                    </div>
-                    <div class="checkout-bank-item bg-blue-50/60 dark:bg-slate-900/60 px-2 rounded-lg">
-                      <span class="checkout-bank-lbl font-bold">একাউন্ট নম্বর:</span>
-                      <div class="flex items-center gap-2">
-                        <span class="font-black font-mono text-blue-700 dark:text-blue-400 text-sm">20508070200030208</span>
-                        <button type="button" onclick="window.copyCheckoutText('20508070200030208', this)" class="px-2.5 py-0.5 rounded bg-blue-100 hover:bg-blue-200 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-[10px] font-bold cursor-pointer">
-                          কপি
-                        </button>
+                if (code === 'BKASH_PAYMENT' || String(pm.number || '').startsWith('http')) {
+                  const payUrl = String(pm.number || 'https://shop.bkash.com/j-a-sagor-computer01581703822/paymentlink').trim();
+                  return `
+                    <div id="payment-panel-${code}" class="payment-method-panel ${isSelected ? '' : 'hidden'} pm-detail-surface text-xs space-y-3">
+                      <div class="flex items-center justify-between pb-1.5 flex-wrap gap-1.5">
+                        <div class="flex items-center gap-2 font-bold text-pink-600 dark:text-pink-400 text-sm">
+                          <span>💳</span>
+                          <span>${pm.name}</span>
+                        </div>
+                        <span class="text-[10px] font-bold bg-pink-100 dark:bg-pink-950 text-pink-700 dark:text-pink-300 px-2 py-0.5 rounded-md">${pm.discount || onlineDiscPct}% ছাড়</span>
+                      </div>
+                      <div class="space-y-2 text-center">
+                        <a href="${payUrl}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-black text-xs shadow-sm transition">
+                          <span>👉 অনলাইন পেমেন্ট গেটওয়ে ওপেন করুন (${pm.name})</span>
+                          <span>↗</span>
+                        </a>
+                      </div>
+                      <div class="text-[11px] text-slate-600 dark:text-slate-300">
+                        ${pm.instruction || 'পেমেন্ট সফল হওয়ার পর পাওয়া TrxID নিচের বক্সে লিখে অর্ডার কনফার্ম করুন।'}
                       </div>
                     </div>
-                    <div class="checkout-bank-item">
-                      <span class="checkout-bank-lbl">শাখা:</span>
-                      <span class="checkout-bank-val">Maheshkhali Sub branch</span>
+                  `;
+                }
+
+                if (code === 'BANK') {
+                  const accNum = String(pm.number || '20508070200030208').trim();
+                  return `
+                    <div id="payment-panel-BANK" class="payment-method-panel ${isSelected ? '' : 'hidden'} pm-detail-surface text-xs space-y-3">
+                      <div class="flex items-center justify-between pb-1.5 flex-wrap gap-1.5">
+                        <div class="flex items-center gap-2 font-bold text-blue-600 dark:text-blue-400 text-sm">
+                          <span>🏦</span>
+                          <span>${pm.name}</span>
+                        </div>
+                        <span class="text-[10px] font-bold bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md">${pm.discount || onlineDiscPct}% ছাড়</span>
+                      </div>
+                      <div class="bg-white dark:bg-slate-800/90 rounded-xl p-3.5 space-y-1.5">
+                        <div class="checkout-bank-grid">
+                          <div class="checkout-bank-item">
+                            <span class="checkout-bank-lbl">ব্যাংক / মেথড:</span>
+                            <span class="checkout-bank-val">${pm.name}</span>
+                          </div>
+                          <div class="checkout-bank-item bg-blue-50/60 dark:bg-slate-900/60 px-2 rounded-lg">
+                            <span class="checkout-bank-lbl font-bold">একাউন্ট নম্বর:</span>
+                            <div class="flex items-center gap-2">
+                              <span class="font-black font-mono text-blue-700 dark:text-blue-400 text-sm">${accNum}</span>
+                              <button type="button" onclick="window.copyCheckoutText('${accNum}', this)" class="px-2.5 py-0.5 rounded bg-blue-100 hover:bg-blue-200 dark:bg-blue-950 text-blue-800 dark:text-blue-200 text-[10px] font-bold cursor-pointer">
+                                কপি
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 pt-0.5">
+                        ${pm.instruction || 'টাকা পাঠিয়ে ডিপোজিট স্লিপ নম্বর বা TrxID নিচের বক্সে লিখুন।'}
+                      </div>
                     </div>
-                    <div class="checkout-bank-item">
-                      <span class="checkout-bank-lbl">রাউটিং নম্বর:</span>
-                      <span class="checkout-bank-val font-mono">125260525</span>
+                  `;
+                }
+
+                // Mobile Banking (bKash, Nagad, Rocket, or custom)
+                const numbers = String(pm.number || '01879653143').split(/[,|/]/).map(s => s.trim()).filter(Boolean);
+                return `
+                  <div id="payment-panel-${code}" class="payment-method-panel ${isSelected ? '' : 'hidden'} pm-detail-surface text-xs space-y-3">
+                    <div class="flex items-center justify-between pb-1.5 flex-wrap gap-1.5">
+                      <div class="flex items-center gap-2 font-bold text-emerald-700 dark:text-emerald-400 text-sm">
+                        <span>📱</span>
+                        <span>${pm.name} (${pm.type || 'Personal'})</span>
+                      </div>
+                      <span class="text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-md">${pm.discount || onlineDiscPct}% ছাড়</span>
+                    </div>
+                    <div class="space-y-2">
+                      ${numbers.map((num, nIdx) => `
+                        <div class="pm-num-chip">
+                          <div class="flex flex-col">
+                            <span class="text-[10px] text-slate-500 dark:text-slate-400">${pm.name} নম্বর ${numbers.length > 1 ? (nIdx + 1) : ''}:</span>
+                            <span class="text-sm font-black font-mono text-emerald-600 dark:text-emerald-400">${num}</span>
+                          </div>
+                          <button type="button" onclick="window.copyCheckoutText('${num.replace(/[^0-9]/g, '')}', this)" class="px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-slate-800 dark:hover:bg-slate-700 text-emerald-700 dark:text-emerald-300 font-bold text-xs transition cursor-pointer">
+                            📋 কপি
+                          </button>
+                        </div>
+                      `).join('')}
+                    </div>
+                    <div class="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 pt-0.5">
+                      ${pm.instruction || 'টাকা পাঠানো শেষে পাওয়া TrxID নিচের বক্সে লিখুন।'}
                     </div>
                   </div>
-                </div>
-
-                <div class="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 pt-0.5">
-                  যেকোনো ব্যাংক অ্যাপ (CellFin, i-Banking) বা শাখা থেকে টাকা পাঠিয়ে ডিপোজিট স্লিপ নম্বর বা <strong>TrxID</strong> নিচের বক্সে লিখুন।
-                </div>
-              </div>
+                `;
+              }).join('')}
 
               <!-- Transaction ID Input (Hidden for COD, visible for online payments) -->
               <div id="checkout-trxid-container" class="${currentPayment === 'COD' ? 'hidden' : ''} pt-2 space-y-1" style="${currentPayment === 'COD' ? 'display: none;' : 'display: block;'}">
@@ -642,14 +621,13 @@ export function renderCheckoutPage() {
                 />
                 <p class="text-[10px] text-slate-500 dark:text-slate-400">টাকা পাঠানোর পর প্রাপ্ত SMS থেকে TrxID টি এখানে লিখুন।</p>
               </div>
-
             </div>
 
           </div>
 
         </div>
 
-        <!-- Right: Order Summary & Confirm Button (5 cols) -->
+        <!-- Right: Order Summary, Coupon Code & Confirm Button (5 cols) -->
         <div class="lg:col-span-5 space-y-5 sticky top-20">
           <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 sm:p-7 shadow-xs space-y-4">
             
@@ -679,6 +657,32 @@ export function renderCheckoutPage() {
               `).join("")}
             </div>
 
+            <!-- Coupon / Promo Code Box (Synced with Admin অফার ও কুপন ডিসকাউন্ট) -->
+            <div class="pt-2 border-t border-slate-100 dark:border-slate-800">
+              <label class="block text-[11px] font-bold text-slate-600 dark:text-slate-400 mb-1.5">
+                🎟️ প্রোমো বা কুপন কোড (যদি থাকে):
+              </label>
+              <div class="flex gap-2">
+                <input 
+                  type="text" 
+                  id="checkout-coupon-input" 
+                  value="${cartStore.couponCode || ''}" 
+                  placeholder="যেমন: DREAM10" 
+                  class="form-control text-xs font-mono uppercase flex-1 py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 outline-none"
+                />
+                <button 
+                  type="button" 
+                  onclick="window.applyCheckoutCouponCode()" 
+                  class="px-4 py-2 rounded-xl bg-slate-900 dark:bg-emerald-600 hover:bg-emerald-600 text-white font-bold text-xs transition cursor-pointer"
+                >
+                  এপ্লাই
+                </button>
+              </div>
+              <div id="checkout-coupon-msg" class="text-[11px] font-bold mt-1 ${couponDiscount > 0 ? 'text-emerald-600' : 'text-slate-400'}">
+                ${couponDiscount > 0 ? `✓ "${cartStore.couponCode}" কুপনে ৳${couponDiscount} ছাড় যুক্ত হয়েছে!` : (activeOffers.length > 0 ? `উপলব্ধ কুপন: ${activeOffers.slice(0, 2).map(o => o.code).join(', ')}` : '')}
+              </div>
+            </div>
+
             <!-- Price Breakdown Calculation -->
             <div class="space-y-2 text-xs text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3">
               <div class="flex justify-between">
@@ -694,8 +698,13 @@ export function renderCheckoutPage() {
               </div>
 
               <div id="summary-online-discount-row" class="flex justify-between text-emerald-600 font-bold ${onlineDiscount > 0 ? '' : 'hidden'}">
-                <span>অনলাইন পেমেন্ট ৫% ছাড়:</span>
+                <span>অনলাইন পেমেন্ট ${onlineDiscPct}% ছাড়:</span>
                 <span id="summary-online-discount-amount">-${formatCurrency(onlineDiscount)}</span>
+              </div>
+
+              <div id="summary-coupon-discount-row" class="flex justify-between text-amber-600 font-bold ${couponDiscount > 0 ? '' : 'hidden'}">
+                <span>কুপন ডিসকাউন্ট:</span>
+                <span id="summary-coupon-discount-amount">-${formatCurrency(couponDiscount)}</span>
               </div>
 
               <div class="border-t border-slate-200 dark:border-slate-800 pt-3 flex justify-between items-baseline text-base font-black text-slate-900 dark:text-white">

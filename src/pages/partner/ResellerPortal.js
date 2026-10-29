@@ -984,7 +984,7 @@ export async function renderResellerPortal(params = {}) {
   );
 
   // If already logged in as reseller and visiting login/register, redirect to dashboard
-  if (isLogged && authStore.isReseller() && (currentView === 'login' || currentView === 'register')) {
+  if (isLogged && (authStore.isReseller() || authStore.isAdmin()) && (currentView === 'login' || currentView === 'register')) {
     if (typeof window !== 'undefined' && window.router) {
       setTimeout(() => window.router.navigate('/reseller/dashboard'), 10);
     }

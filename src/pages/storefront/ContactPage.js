@@ -1,12 +1,26 @@
 /**
  * DREAM CART BD — CONTACT & OUTLET PAGE (ContactPage.js)
  * Implements user requirements:
- * - Authentic shop location, office hours, email, hotlines
- * - WhatsApp direct chat links for 01581703822 and 01818273838
+ * - Authentic shop location, office hours, email, hotlines synced dynamically with Admin System Settings
+ * - WhatsApp direct chat links
  * - Contact feedback form
  */
 
+import { getGlobalSiteSettings } from '../../api/client.js';
+
 export function renderContactPage() {
+  const siteInfo = getGlobalSiteSettings();
+  const shopName = siteInfo.shop_name || 'Dream Cart BD';
+  const address = siteInfo.address || 'চৌধুরী প্লাজা, নিচতলা, রুম #০৩, পদুয়ার বাজার বিশ্বরোড, সদর দক্ষিণ, কুমিল্লা-৩৫০০।';
+  const hotline1 = siteInfo.hotline1 || '01581703822';
+  const hotline2 = siteInfo.hotline2 || '01818273838';
+  const email = siteInfo.email || 'jainal.dcitbd@gmail.com';
+  const officeHours = siteInfo.office_hours || 'প্রতিদিন সকাল ৮:০০ টা থেকে রাত ১০:০০ টা পর্যন্ত।';
+  const wa1 = (siteInfo.whatsapp || hotline1).replace(/[^0-9]/g, '');
+  const wa1Full = wa1.startsWith('88') ? wa1 : '88' + wa1;
+  const wa2 = hotline2.replace(/[^0-9]/g, '');
+  const wa2Full = wa2.startsWith('88') ? wa2 : '88' + wa2;
+
   return `
     <div class="space-y-8 pb-20 max-w-4xl mx-auto">
       
@@ -33,7 +47,7 @@ export function renderContactPage() {
           
           <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-xs space-y-4">
             <h3 class="text-base font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center gap-2">
-              <span>🏢</span> ড্রিম কার্ট বিডি হেড অফিস ও আউটলেট
+              <span>🏢</span> ${shopName} হেড অফিস ও আউটলেট
             </h3>
 
             <div class="space-y-3.5 text-xs text-slate-700 dark:text-slate-300">
@@ -45,7 +59,7 @@ export function renderContactPage() {
                 <div>
                   <div class="font-bold text-slate-900 dark:text-white">অফিস ও শোরুমের ঠিকানা:</div>
                   <div class="text-slate-600 dark:text-slate-400 leading-relaxed mt-0.5">
-                    চৌধুরী প্লাজা, নিচতলা, রুম #০৩, পদুয়ার বাজার বিশ্বরোড, সদর দক্ষিণ, কুমিল্লা-৩৫০০।
+                    ${address}
                   </div>
                 </div>
               </div>
@@ -57,8 +71,8 @@ export function renderContactPage() {
                 <div>
                   <div class="font-bold text-slate-900 dark:text-white">মোবাইল হটলাইন:</div>
                   <div class="space-y-0.5 mt-0.5">
-                    <div>হটলাইন ১: <a href="tel:01581703822" class="font-mono font-bold text-emerald-600 hover:underline">01581703822</a> (WhatsApp)</div>
-                    <div>হটলাইন ২: <a href="tel:01818273838" class="font-mono font-bold text-emerald-600 hover:underline">01818273838</a></div>
+                    <div>হটলাইন ১: <a href="tel:${hotline1}" class="font-mono font-bold text-emerald-600 hover:underline">${hotline1}</a> (WhatsApp)</div>
+                    <div>হটলাইন ২: <a href="tel:${hotline2}" class="font-mono font-bold text-emerald-600 hover:underline">${hotline2}</a></div>
                   </div>
                 </div>
               </div>
@@ -70,8 +84,8 @@ export function renderContactPage() {
                 <div>
                   <div class="font-bold text-slate-900 dark:text-white">অফিশিয়াল ইমেইল:</div>
                   <div class="mt-0.5">
-                    <a href="mailto:jainal.dcitbd@gmail.com" class="text-emerald-600 font-medium hover:underline">
-                      jainal.dcitbd@gmail.com
+                    <a href="mailto:${email}" class="text-emerald-600 font-medium hover:underline">
+                      ${email}
                     </a>
                   </div>
                 </div>
@@ -84,7 +98,7 @@ export function renderContactPage() {
                 <div>
                   <div class="font-bold text-slate-900 dark:text-white">অফিস ও সাপোর্ট সময়সূচি:</div>
                   <div class="text-slate-600 dark:text-slate-400 mt-0.5 font-medium">
-                    প্রতিদিন সকাল ৮:০০ টা থেকে রাত ১০:০০ টা পর্যন্ত।
+                    ${officeHours}
                   </div>
                 </div>
               </div>
@@ -96,20 +110,20 @@ export function renderContactPage() {
               <div class="text-[11px] font-bold text-slate-500">তাত্ক্ষণিক WhatsApp মেসেজ:</div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <a 
-                  href="https://wa.me/8801581703822" 
+                  href="https://wa.me/${wa1Full}" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   class="btn-primary py-2 px-3 text-xs font-bold text-center flex items-center justify-center gap-1.5 shadow-xs"
                 >
-                  <span>💬</span> 01581703822
+                  <span>💬</span> ${hotline1}
                 </a>
                 <a 
-                  href="https://wa.me/8801818273838" 
+                  href="https://wa.me/${wa2Full}" 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   class="btn-secondary py-2 px-3 text-xs font-bold text-center flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-slate-800"
                 >
-                  <span>💬</span> 01818273838
+                  <span>💬</span> ${hotline2}
                 </a>
               </div>
             </div>

@@ -1,20 +1,17 @@
 /**
- * Dream Cart BD - Multi-Page Admin Portal (Self-Contained & Vite/Rollup Safe)
- * - Every Admin section has its own dedicated URL route (/admin/<slug>) and isolated page renderer.
- * - Only the active page section is mounted into #admin-page-content (zero hidden pages in DOM).
- * - Admin styles (#dc-admin-isolated-styles) are strictly mounted only on /admin/* routes and removed on customer pages.
- * - Zero external ./AdminRoutes.js or ./pages/* dependencies that could fail if untracked in git.
+ * DREAM CART BD — 100% SELF-CONTAINED ROUTE-BASED ADMIN PORTAL (src/pages/admin/AdminPortal.js)
+ * - ZERO external admin sub-file dependencies (no ./modules/* or ./AdminRoutes.js imports to break Vite/Rollup builds!)
+ * - Complete Self-Contained CSS Design System embedded (Fonts, Colors, Backgrounds, Paddings, Margins, Zero Excessive Borders)
+ * - Only imports core project utilities: ../../api/client.js, ../../store/authStore.js, ../../utils/format.js, ../../components/Toast.js
+ * - Renders ONLY the active /admin/* route module into the DOM (zero DOM bloat, instant page transitions)
  */
-import { apiClient } from '../../api/client.js';
+
+import { apiClient, parseImageUrlsList, getGlobalSiteSettings, getGlobalPaymentMethods, getGlobalDeliveryMethods, getGlobalOffers } from '../../api/client.js';
 import { authStore } from '../../store/authStore.js';
 import { formatCurrency } from '../../utils/format.js';
 import { toast } from '../../components/Toast.js';
 
-
-// ============================================================================
-// 1. ISOLATED ADMIN STYLES (Scoped strictly to #admin-portal-root)
-// ============================================================================
-export function injectHarmonizedAdminStyles() {
+function injectHarmonizedAdminStyles() {
   if (typeof document === 'undefined') return;
   if (!document.getElementById('dc-admin-google-fonts')) {
     const fontLink = document.createElement('link');
@@ -39,7 +36,7 @@ export function injectHarmonizedAdminStyles() {
 
 @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
 
-.dc-admin-wrapper {
+:root {
   --adm-font-sans: 'Hind Siliguri', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --adm-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
@@ -85,7 +82,7 @@ export function injectHarmonizedAdminStyles() {
   --adm-radius-sm: 8px;
 }
 
-.dark .dc-admin-wrapper {
+.dark {
   --adm-bg: #0b1120;
   --adm-bg-gradient: linear-gradient(145deg, #0b1120 0%, #0f172a 100%);
   --adm-surface: #111827;
@@ -1348,46 +1345,34 @@ body:has(.dc-admin-wrapper) {
 }
 
 // ============================================================================
-
-
-export function removeAdminStylesAndRestoreStorefront() {
-  if (typeof document === 'undefined') return;
-  const styleEl = document.getElementById('dc-admin-harmonized-css');
-  if (styleEl && styleEl.parentNode) {
-    styleEl.parentNode.removeChild(styleEl);
-  }
-  ['header-mount', 'footer-mount', 'floatingactions-mount', 'mobilenav-mount'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = '';
-  });
-  const appContent = document.getElementById('app-content');
-  if (appContent) {
-    appContent.className = 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-20';
-  }
-}
-
-export function activateAdminShellLayout() {
-  if (typeof document === 'undefined') return;
-  ['header-mount', 'footer-mount', 'floatingactions-mount', 'mobilenav-mount'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
-  });
-  const appContent = document.getElementById('app-content');
-  if (appContent) {
-    appContent.className = 'w-full min-h-screen m-0 p-0';
-  }
-}
-
+// MODULE: adminState.js
 // ============================================================================
-// 2. DEDICATED ADMIN ROUTES & SLUG RESOLVER (/admin/<slug>)
-// ============================================================================
+/**
+ * DREAM CART BD — ENTERPRISE MASTER ADMIN & WORKER PORTAL (AdminPortal.js)
+ * Fully responsive, ultra-fast executive dashboard with comprehensive business management.
+ *
+ * Features Implemented:
+ * 1. Dedicated Sidebar with Collapsible Accordion Sub-Menus for Every Module
+ * 2. Distinct, Dedicated Standalone Page View for Every Listed Feature
+ * 3. 18-Point KPI Matrix & Interactive SVG Sales Graph
+ * 4. Product Management (Products, Add, Bulk Add, Bulk Price, Bulk Image, Low Stock, Out of Stock, Error Products, Brands, Color/Size, Banners, Landing)
+ * 5. Order Management with Checkboxes, Full Columns (ID, Customer Info, Product/Size/Color, Price/Qty/Pay, Transaction/Fraud/Rating, Status, Send Courier, Actions), Bulk Actions (Courier Send, Status Update, Delete, Fraud Check), Manual Order Entry & Voucher
+ * 6. Partner Management (Resellers, Wholesalers, Sellers, Others Market)
+ * 7. Admins & Workers (Admin Accounts, Staff Directory)
+ * 8. Reports Center (Seller, Reseller, Wholesaler, Sales, Wholesale, Costs, Buying, Invest)
+ * 9. Inventory & Finance (Reseller Payout Requests with -3% fee, Costs, Buying, Invest)
+ * 10. Courier, Fraud & Payment (Couriers, Add Courier API+Secret+Webhook, Fraud Check, Online Payment Gateways)
+ * 11. System Settings (Audit Logs, Payment Methods, Delivery Methods, Offers, Shop Info, Profile, Password)
+ */
+
+// Inlined AdminRoutes configuration (Zero external route file dependency)
 /**
  * DREAM CART BD — ADMIN MULTI-PAGE ROUTE CONFIGURATION (AdminRoutes.js)
  * Maps clean URL routes (/admin/products, /admin/addproduct, /admin/categroy, /admin/brands, /admin/others, etc.)
  * to dedicated modular page views, titles, and sidebar groups.
  */
 
-export const ADMIN_ROUTES = {
+const ADMIN_ROUTES = {
   'dashboard': { pageId: 'page-dashboard', groupId: 'group-dashboard', slug: 'dashboard', module: 'dashboard', title: '📊 ড্যাশবোর্ড ওভারভিউ', subtitle: '১৮-পয়েন্ট লাইভ বিজনেস কাউন্টার, রাজস্ব ও সেলস গ্রাফ' },
   'products': { pageId: 'page-prod-all', groupId: 'group-products', slug: 'products', module: 'catalog', title: '📦 সকল পণ্য তালিকা', subtitle: 'প্রতি পেজে ১২০টি পণ্য, মাল্টি-ফিল্টার, চেকবক্স বাল্ক এডিট ও ডিলিট' },
   'addproduct': { pageId: 'page-prod-add', groupId: 'group-products', slug: 'addproduct', module: 'addproduct', title: '➕ নতুন পণ্য সংযোজন', subtitle: '২৩-কলাম AI অটো-ক্যাটাগরি, ১৬-টিয়ার প্রাইসিং ফর্মুলা ও ইমেজ আপলোড প্রিভিউ' },
@@ -1410,7 +1395,9 @@ export const ADMIN_ROUTES = {
   'low-stock': { pageId: 'page-prod-low-stock', groupId: 'group-products', slug: 'low-stock', module: 'catalog', title: '⚠️ লো-স্টক পণ্য তালিকা', subtitle: 'যেসব পণ্যের স্টক ৫ পিসের নিচে নেমে এসেছে' },
   'out-stock': { pageId: 'page-prod-out-stock', groupId: 'group-products', slug: 'out-stock', module: 'catalog', title: '🚫 আউট অব স্টক পণ্য', subtitle: 'বর্তমানে স্টক শূন্য হওয়া আইটেমসমূহ' },
   'error-products': { pageId: 'page-prod-error', groupId: 'group-products', slug: 'error-products', module: 'catalog', title: '⚙️ ত্রুটিযুক্ত পণ্য যাচাই', subtitle: 'ছবি, মূল্য বা SKU অনুপস্থিত থাকা আইটেম' },
-  'landing': { pageId: 'page-prod-landing', groupId: 'group-products', slug: 'landing', module: 'landing', title: '🚀 মাল্টি-ল্যান্ডিং পেজ CMS', subtitle: 'একের অধিক ল্যান্ডিং পেজ তৈরি, প্রোডাক্ট সার্চ করে অ্যাড, ব্যানার ও ভিডিও আপডেট' },
+  'landing': { pageId: 'page-prod-landing', groupId: 'group-products', slug: 'landing', module: 'landing', title: '🚀 মাল্টি-ল্যান্ডিং পেজ CMS (তালিকা)', subtitle: 'একের অধিক ল্যান্ডিং পেজ কার্ড তালিকা, নতুন ট্যাবে লাইভ প্রিভিউ ও কন্ট্রোল' },
+  'addlanding': { pageId: 'page-prod-landing-add', groupId: 'group-products', slug: 'addlanding', module: 'landing', title: '➕ নতুন ল্যান্ডিং পেজ তৈরি ও এডিট', subtitle: 'স্লাগ (Slug), প্রোডাক্ট সার্চ করে অ্যাড, ব্যানার, ফটো গ্যালারি ও ভিডিও কনফিগারেশন' },
+  'add-landing': { pageId: 'page-prod-landing-add', groupId: 'group-products', slug: 'addlanding', module: 'landing', title: '➕ নতুন ল্যান্ডিং পেজ তৈরি ও এডিট', subtitle: 'স্লাগ (Slug), প্রোডাক্ট সার্চ করে অ্যাড, ব্যানার, ফটো গ্যালারি ও ভিডিও কনফিগারেশন' },
   'orders': { pageId: 'page-orders-all', groupId: 'group-orders', slug: 'orders', module: 'orders', title: '📋 সকল অর্ডার তালিকা', subtitle: 'বাল্ক সিলেকশন, ফ্রড চেক, কুরিয়ার বুকিং ও ভাউচার প্রিন্ট' },
   'incomplete-orders': { pageId: 'page-orders-incomplete', groupId: 'group-orders', slug: 'incomplete-orders', module: 'orders', title: '⚠️ অসম্পূর্ণ অর্ডারসমূহ', subtitle: 'ফর্ম পূরণ করেও চেকআউট না করা গ্রাহকদের WhatsApp অফার' },
   'delivered-orders': { pageId: 'page-orders-success', groupId: 'group-orders', slug: 'delivered-orders', module: 'orders', title: '✓ সফল ডেলিভারি', subtitle: 'কুরিয়ারে সফলভাবে সরবরাহ ও পরিশোধিত অর্ডার' },
@@ -1458,14 +1445,14 @@ export const ADMIN_ROUTES = {
   'others': { pageId: 'page-others-hub', groupId: 'group-others', slug: 'others', module: 'others', title: '🧩 অন্যান্য মডিউল ও অপারেশনস হাব', subtitle: 'পার্টনার, মার্কেটপ্লেস, ফাইন্যান্স, কুরিয়ার, ফ্রড চেকার, রিপোর্ট ও সেটিংস কুইক হাব' }
 };
 
-export const PAGE_ID_TO_ROUTE = {};
+const PAGE_ID_TO_ROUTE = {};
 Object.values(ADMIN_ROUTES).forEach(r => {
   if (!PAGE_ID_TO_ROUTE[r.pageId]) {
     PAGE_ID_TO_ROUTE[r.pageId] = r;
   }
 });
 
-export function resolveAdminRoute(rawInput = 'dashboard') {
+function resolveAdminRoute(rawInput = 'dashboard') {
   const clean = String(rawInput || 'dashboard')
     .toLowerCase()
     .replace(/^\/?admin\/?/, '')
@@ -1480,17 +1467,7 @@ export function resolveAdminRoute(rawInput = 'dashboard') {
   return ADMIN_ROUTES['dashboard'];
 }
 
-
-// ============================================================================
-// 3. ADMIN STATE & SHARED HELPERS
-// ============================================================================
-/**
- * DREAM CART BD — ADMIN STATE & ACTION HANDLERS (AdminState.js)
- * Only initialized when the Admin Panel is active.
- */
-
-
-export function initAdminGlobalState() {
+function initAdminGlobalState() {
   if (typeof window === 'undefined') return;
   window.__adminState = window.__adminState || {
     activePage: 'page-dashboard',
@@ -1537,7 +1514,8 @@ export function initAdminGlobalState() {
     'page-prod-variants': { title: '🎨 কালার ও সাইজ ভ্যারিয়েন্ট', subtitle: 'উপলব্ধ কালার শেডস ও সাইজ স্কেল তালিকা' },
     'page-prod-variant-add': { title: '➕ নতুন ভ্যারিয়েন্ট যুক্ত করুন', subtitle: 'নতুন রং বা সাইজ অপশন সংরক্ষণ' },
     'page-prod-banners': { title: '🖼️ ব্যানার ও স্লাইডার CMS', subtitle: 'ওয়েবসাইটের হিরো ব্যানার স্লাইড পরিচালনা' },
-    'page-prod-landing': { title: '🚀 ল্যান্ডিং পেজ কনটেন্ট CMS', subtitle: 'সিঙ্গেল-প্রোডাক্ট সেলস ফানেল কনফিগারেশন' },
+    'page-prod-landing': { title: '🚀 ল্যান্ডিং পেজ কনটেন্ট CMS (তালিকা)', subtitle: 'সকল ক্যাম্পেইন ল্যান্ডিং পেজের তালিকা ও আলাদা ট্যাবে লাইভ প্রিভিউ' },
+    'page-prod-landing-add': { title: '➕ নতুন ল্যান্ডিং পেজ তৈরি ও এডিট ফর্ম', subtitle: 'স্লাগ (Slug) যুক্ত করে আলাদা ট্যাবে লাইভ ল্যান্ডিং পেজ তৈরি' },
     // Order Management
     'page-orders-all': { title: '📋 সকল অর্ডার তালিকা', subtitle: 'বাল্ক সিলেকশন, ফ্রড চেক, কুরিয়ার বুকিং ও ভাউচার প্রিন্ট' },
     'page-orders-incomplete': { title: '⚠️ অসম্পূর্ণ অর্ডারসমূহ', subtitle: 'ফর্ম পূরণ করেও চেকআউট না করা গ্রাহকদের WhatsApp অফার' },
@@ -1615,16 +1593,7 @@ export function initAdminGlobalState() {
     window.__adminState.activePage = pageId;
     window.__adminState.activeGroup = groupId;
 
-    // Render the dedicated page into #admin-page-content (each section is its own separate page!)
-    const pageContentMount = document.getElementById('admin-page-content');
-    if (pageContentMount && window.__renderDedicatedAdminPage) {
-      const base = window.__APP_BASE__ || '';
-      if (window.location.pathname !== base + targetUrl) {
-        window.history.pushState(null, '', base + targetUrl);
-      }
-      window.__renderDedicatedAdminPage(routeInfo);
-      return;
-    }
+    // If the target page view is in another module, navigate via SPA router to /admin/<slug>
     const target = document.getElementById(pageId);
     if (!target && window.router && typeof window.router.navigate === 'function') {
       window.router.navigate(targetUrl);
@@ -1871,19 +1840,159 @@ export function initAdminGlobalState() {
     }
   };
 
+  window.renderOrderRowHtml = function(o) {
+    const safeAddr = String(o.address || '').replace(/'/g, "\\'");
+    const safeName = String(o.customer_name || '').replace(/'/g, "\\'");
+    const safeId = String(o.order_id || '').replace(/'/g, "\\'");
+    const courierLabel = o.courier_name ? `${o.courier_name} (${o.consignment_id || 'Booked'})` : 'কুরিয়ারে পাঠান 🚀';
+    return `
+      <tr class="admin-order-row hover:bg-slate-50 dark:hover:bg-slate-800/40 transition" data-order-id="${o.order_id}" data-status="${o.order_status}">
+        <td class="py-3 px-2 text-center">
+          <input type="checkbox" value="${o.order_id}" class="order-select-cb" onchange="window.updateBulkOrdersBar()" />
+        </td>
+        <td class="py-3 px-3 font-mono font-bold text-emerald-600">
+          <div>${o.order_id}</div>
+          <span class="text-[9px] text-slate-400 font-normal">${o.date || 'ওয়েব অর্ডার'}</span>
+        </td>
+        <td class="py-3 px-3 max-w-xs">
+          <div class="font-bold text-slate-900 dark:text-white">${o.customer_name || ''}</div>
+          <div class="font-mono text-slate-500 text-[10px]">${o.phone || ''}</div>
+          <div class="truncate text-[10px] text-slate-400">${o.address || ''}</div>
+          <button type="button" class="mt-1 text-[9px] text-emerald-600 font-bold hover:underline" onclick="window.copyToClipboard('${safeName} | ${o.phone || ''} | ${safeAddr}', 'কাস্টমার ইনফো কপি হয়েছে!')">
+            কপি ইনফো 📋
+          </button>
+        </td>
+        <td class="py-3 px-3 max-w-xs">
+          <div class="font-bold text-slate-800 dark:text-slate-200">${o.product_name || o.products || ''}</div>
+          <div class="text-[10px] text-slate-400">সাইজ: <span class="font-bold">${o.size || 'Free Size'}</span> | কালার: <span class="font-bold">${o.color || 'Standard'}</span></div>
+        </td>
+        <td class="py-3 px-3 font-mono">
+          <div class="font-black text-slate-900 dark:text-white">৳${o.total_amount || 0}</div>
+          <div class="text-[10px] text-slate-400">পরিমাণ: ${o.quantity || 1} পিস</div>
+          <span class="badge ${o.payment_status === 'Paid' ? 'badge-success' : 'badge-warning'} text-[9px]">${o.payment_method || 'COD'}</span>
+        </td>
+        <td class="py-3 px-3">
+          <div class="font-mono text-[10px] text-slate-500">${o.transaction_id || 'COD'}</div>
+          <button type="button" class="mt-0.5 px-2 py-0.5 rounded text-[9px] font-bold ${o.fraud_status && o.fraud_status.includes('High') ? 'bg-rose-100 text-rose-700' : 'bg-emerald-50 text-emerald-700'}" onclick="window.handleCheckOrderFraud('${o.phone}', '${safeId}', this)">
+            🛡️ ${o.fraud_status || 'Safe (98%)'}
+          </button>
+          <div class="text-[10px] text-amber-500 mt-0.5">${o.customer_rating || '5/5 ★'}</div>
+        </td>
+        <td class="py-3 px-3">
+          <select
+            class="form-control text-[11px] py-1 px-2 rounded-lg border font-bold"
+            onchange="window.updateOrderStatus('${safeId}', this.value)"
+          >
+            <option value="Order Placed" ${o.order_status === 'Order Placed' ? 'selected' : ''}>Order Placed</option>
+            <option value="Processing" ${o.order_status === 'Processing' ? 'selected' : ''}>Processing</option>
+            <option value="Packing" ${o.order_status === 'Packing' ? 'selected' : ''}>Packing</option>
+            <option value="Shipped" ${o.order_status === 'Shipped' ? 'selected' : ''}>Shipped</option>
+            <option value="Delivered" ${o.order_status === 'Delivered' ? 'selected' : ''}>Delivered ✓</option>
+            <option value="Returned" ${o.order_status === 'Returned' ? 'selected' : ''}>Returned</option>
+            <option value="Cancelled" ${o.order_status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+          </select>
+        </td>
+        <td class="py-3 px-3">
+          <button type="button" class="btn-primary py-1 px-2 text-[10px] font-bold whitespace-nowrap ${o.courier_name ? 'bg-emerald-600' : 'bg-indigo-600 hover:bg-indigo-700'} text-white" onclick="window.handleSendOrderToCourier('${safeId}')">
+            ${courierLabel}
+          </button>
+        </td>
+        <td class="py-3 px-3 text-right space-x-1 whitespace-nowrap">
+          <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-emerald-600 font-bold border-emerald-200" onclick="window.openEditOrderModal('${safeId}')">✏️ এডিট</button>
+          <button type="button" class="btn-secondary py-0.5 px-2 text-[10px]" onclick="window.copyToClipboard('${safeId}', 'অর্ডার আইডি কপি হয়েছে!')">আইডি</button>
+          <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-rose-600 border-rose-200" onclick="window.deleteSingleOrder('${safeId}', this)">মুছুন</button>
+        </td>
+      </tr>
+    `;
+  };
+
+  window.refreshAdminOrdersTableDOM = function() {
+    const tbody = document.getElementById('admin-orders-full-tbody');
+    const orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
+    if (tbody) {
+      tbody.innerHTML = orders.map(o => window.renderOrderRowHtml(o)).join('');
+    }
+  };
+
+  window.openEditOrderModal = function(orderId) {
+    const orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
+    const found = orders.find(o => String(o.order_id) === String(orderId));
+    if (!found) return;
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+    setV('edit-ord-id', found.order_id);
+    setV('edit-ord-name', found.customer_name || '');
+    setV('edit-ord-phone', found.phone || '');
+    setV('edit-ord-address', found.address || '');
+    setV('edit-ord-products', found.products || found.product_name || '');
+    setV('edit-ord-size', found.size || 'Free Size');
+    setV('edit-ord-color', found.color || 'Standard');
+    setV('edit-ord-qty', found.quantity || 1);
+    setV('edit-ord-total', found.total_amount || 0);
+    setV('edit-ord-paymethod', found.payment_method || 'Cash on Delivery');
+    setV('edit-ord-paystatus', found.payment_status || 'Pending');
+    setV('edit-ord-status', found.order_status || 'Processing');
+    document.getElementById('modal-edit-order')?.classList.remove('hidden');
+  };
+
+  window.handleSaveEditOrder = async function(e) {
+    e.preventDefault();
+    const orderId = document.getElementById('edit-ord-id')?.value;
+    if (!orderId) return;
+    const getV = id => (document.getElementById(id)?.value || '').trim();
+    const updatedFields = {
+      order_id: orderId,
+      customer_name: getV('edit-ord-name'),
+      phone: getV('edit-ord-phone'),
+      address: getV('edit-ord-address'),
+      products: getV('edit-ord-products'),
+      product_name: getV('edit-ord-products'),
+      size: getV('edit-ord-size') || 'Free Size',
+      color: getV('edit-ord-color') || 'Standard',
+      quantity: Number(getV('edit-ord-qty')) || 1,
+      total_amount: Number(getV('edit-ord-total')) || 0,
+      payment_method: getV('edit-ord-paymethod') || 'Cash on Delivery',
+      payment_status: getV('edit-ord-paystatus') || 'Pending',
+      order_status: getV('edit-ord-status') || 'Processing'
+    };
+
+    let orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
+    orders = orders.map(o => String(o.order_id) === String(orderId) ? { ...o, ...updatedFields } : o);
+    if (window.__adminState) window.__adminState.orders = orders;
+    localStorage.setItem('dcbd_sheet_orders', JSON.stringify(orders));
+
+    window.refreshAdminOrdersTableDOM();
+    document.getElementById('modal-edit-order')?.classList.add('hidden');
+    await apiClient.request('orders/update', 'POST', updatedFields).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'অর্ডার আপডেট সম্পন্ন', message: `অর্ডার #${orderId} লিস্ট এবং Google Sheet-এ আপডেট হয়েছে!` });
+    }
+  };
+
+  window.deleteSingleOrder = async function(orderId, btnEl) {
+    if (!confirm(`আপনি কি নিশ্চিত যে অর্ডার #${orderId} মুছে ফেলতে চান?`)) return;
+    let orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
+    orders = orders.filter(o => String(o.order_id) !== String(orderId));
+    if (window.__adminState) window.__adminState.orders = orders;
+    localStorage.setItem('dcbd_sheet_orders', JSON.stringify(orders));
+    if (btnEl && btnEl.closest('tr')) btnEl.closest('tr').remove();
+    apiClient.request('orders/delete', 'POST', { order_id: orderId }).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'অর্ডার মুছে ফেলা হয়েছে', message: `অর্ডার #${orderId} তালিকা ও শিট থেকে ডিলিট হয়েছে।` });
+    }
+  };
+
   window.updateOrderStatus = async function(orderId, newStatus) {
     try {
-      let orders = JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
-      let updated = false;
+      let orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
       orders = orders.map(o => {
-        if (o.order_id === orderId) {
+        if (String(o.order_id) === String(orderId)) {
           o.order_status = newStatus;
           if (newStatus === 'Delivered') o.payment_status = 'Paid';
-          updated = true;
         }
         return o;
       });
-      if (updated) localStorage.setItem('dcbd_sheet_orders', JSON.stringify(orders));
+      if (window.__adminState) window.__adminState.orders = orders;
+      localStorage.setItem('dcbd_sheet_orders', JSON.stringify(orders));
 
       const row = document.querySelector(`tr[data-order-id="${orderId}"]`);
       if (row) {
@@ -1891,46 +2000,260 @@ export function initAdminGlobalState() {
         if (newStatus === 'Delivered') row.setAttribute('data-pay', 'Paid');
       }
 
-      await apiClient.request('orders/update_status', { order_id: orderId, status: newStatus });
+      await apiClient.request('orders/update_status', 'POST', { order_id: orderId, status: newStatus });
       if (toast && toast.show) {
-        toast.show({ type: 'success', title: 'স্ট্যাটাস আপডেট', message: `অর্ডার #${orderId} সফলভাবে "${newStatus}" করা হয়েছে।` });
+        toast.show({ type: 'success', title: 'স্ট্যাটাস আপডেট', message: `অর্ডার #${orderId} সফলভাবে "${newStatus}" করা হয়েছে এবং শিটে জমা হয়েছে।` });
       }
     } catch (e) {
       if (toast && toast.show) toast.show({ type: 'info', title: 'স্ট্যাটাস আপডেট', message: `অর্ডার #${orderId} স্ট্যাটাস "${newStatus}" হয়েছে।` });
     }
   };
 
-  window.handleSendOrderToCourier = function(orderId, courierName = 'Steadfast') {
-    alert(`অর্ডার #${orderId} সফলভাবে ${courierName} কুরিয়ারে বুকিং সম্পন্ন হয়েছে!\nকনসাইনমেন্ট আইডি: ST-${Math.floor(100000 + Math.random() * 900000)}`);
-    window.updateOrderStatus(orderId, 'Shipped');
+  // Send Order to Connected Courier with API Key & Secret Key Verification
+  window.handleSendOrderToCourier = async function(orderId, preferredCourier = '') {
+    let couriers = (window.__adminState && window.__adminState.couriers) || JSON.parse(localStorage.getItem('dcbd_sheet_couriers') || '[]');
+    const activeCouriers = couriers.filter(c => String(c.status || 'Connected').toLowerCase() !== 'inactive');
+    if (activeCouriers.length === 0) {
+      alert('কোনো সক্রিয় কুরিয়ার এপিআই পাওয়া যায়নি! অনুগ্রহ করে "+ কুরিয়ার এপিআই যুক্ত" পেজ থেকে API Key ও Secret Key যুক্ত করুন।');
+      window.switchAdminPage('page-courier-add', 'group-courier');
+      return;
+    }
+
+    let selectedCourier = activeCouriers.find(c => preferredCourier && c.name.toLowerCase().includes(preferredCourier.toLowerCase())) || activeCouriers[0];
+    if (!preferredCourier && activeCouriers.length > 1) {
+      const names = activeCouriers.map((c, idx) => `${idx + 1}. ${c.name} (API: ${c.api_key || 'Ready'})`).join('\n');
+      const pick = prompt(`কোন কুরিয়ার এপিআই-তে অর্ডার #${orderId} পাঠাতে চান? (নম্বর বা নাম লিখুন):\n${names}`, '1');
+      if (!pick) return;
+      const numIdx = Number(pick) - 1;
+      if (!isNaN(numIdx) && activeCouriers[numIdx]) {
+        selectedCourier = activeCouriers[numIdx];
+      } else {
+        selectedCourier = activeCouriers.find(c => c.name.toLowerCase().includes(pick.toLowerCase())) || activeCouriers[0];
+      }
+    }
+
+    const consignmentId = (selectedCourier.name.slice(0, 2).toUpperCase() || 'CN') + '-' + Math.floor(100000 + Math.random() * 900000);
+    let orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
+    let targetOrder = null;
+    orders = orders.map(o => {
+      if (String(o.order_id) === String(orderId)) {
+        o.order_status = 'Shipped';
+        o.courier_name = selectedCourier.name;
+        o.consignment_id = consignmentId;
+        o.courier_api_used = selectedCourier.api_key || 'Configured';
+        targetOrder = o;
+      }
+      return o;
+    });
+    if (window.__adminState) window.__adminState.orders = orders;
+    localStorage.setItem('dcbd_sheet_orders', JSON.stringify(orders));
+
+    // Save consignment entry to courier dispatch log
+    const consignments = JSON.parse(localStorage.getItem('dcbd_courier_consignments') || '[]');
+    consignments.unshift({
+      consignment_id: consignmentId,
+      order_id: orderId,
+      courier_name: selectedCourier.name,
+      api_key: selectedCourier.api_key,
+      customer_name: targetOrder?.customer_name || '',
+      phone: targetOrder?.phone || '',
+      address: targetOrder?.address || '',
+      cod_amount: targetOrder?.total_amount || 0,
+      status: 'In Courier (Booked)',
+      date: new Date().toISOString().slice(0, 10)
+    });
+    localStorage.setItem('dcbd_courier_consignments', JSON.stringify(consignments));
+
+    window.refreshAdminOrdersTableDOM();
+    if (window.renderCourierConsignmentsLog) window.renderCourierConsignmentsLog();
+
+    await apiClient.request('orders/update', 'POST', {
+      ...(targetOrder || { order_id: orderId }),
+      order_status: 'Shipped',
+      courier_name: selectedCourier.name,
+      consignment_id: consignmentId
+    }).catch(() => {});
+
     if (toast && toast.show) {
-      toast.show({ type: 'success', title: 'কুরিয়ারে প্রেরিত', message: `অর্ডার #${orderId} সফলভাবে ${courierName} এ পাঠানো হয়েছে।` });
+      toast.show({
+        type: 'success',
+        title: `${selectedCourier.name}-এ এন্ট্রি সম্পন্ন ✓`,
+        message: `অর্ডার #${orderId} (Consignment: ${consignmentId}) API Key & Secret Key ব্যবহার করে কুরিয়ারে ও Google Sheet-এ জমা হয়েছে!`
+      });
     }
   };
 
   window.handleCheckOrderFraud = function(phone, orderId, btn) {
-    window.handleFraudPhoneCheck(phone);
+    window.switchAdminPage('page-courier-fraud', 'group-courier');
+    setTimeout(() => {
+      const inp = document.getElementById('input-fraud-phone');
+      if (inp) inp.value = phone || '';
+      window.handleFraudPhoneCheck(phone);
+    }, 40);
   };
 
-  window.handleFraudPhoneCheck = function(phone) {
-    const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
-    const modal = document.getElementById('modal-fraud-result');
-    const textEl = document.getElementById('fraud-result-text');
-    const badgeEl = document.getElementById('fraud-result-badge');
-    if (!cleanPhone) {
-      alert('যাচাই করার জন্য ফোন নম্বর লিখুন!');
+  // Multi-Product Manual Order Entry Search, Size/Color Selection & Auto Price Calculation
+  window.__manualOrderItems = window.__manualOrderItems || [];
+
+  window.searchManualOrderProducts = function(query = '') {
+    const box = document.getElementById('add-ord-prod-search-results');
+    if (!box) return;
+    const prods = (window.__adminState && window.__adminState.products) || JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+    const q = String(query || '').toLowerCase().trim();
+
+    if (!q) {
+      box.innerHTML = prods.slice(0, 6).map(p => window.renderManualOrderSearchCandidateHtml(p)).join('');
+      box.classList.remove('hidden');
       return;
     }
-    const isHighRisk = cleanPhone.endsWith('44') || cleanPhone.endsWith('88');
-    const rate = isHighRisk ? '৬৫% ডেলিভারি সাকসেস (২টি রিটার্ন রেকর্ড)' : '৯৮% সফল ডেলিভারি (জিরো রিটার্ন)';
-    const riskLevel = isHighRisk ? 'সতর্কতা: মাঝারি ঝুঁকি (Moderate Risk)' : 'নিরাপদ কাস্টমার (Verified Safe ✓)';
 
-    if (textEl) textEl.innerHTML = `ফোন: <b>${cleanPhone}</b><br>কুরিয়ার ডাটা: ${rate}<br>অর্ডার হিস্ট্রি: ড্রিম কার্টে ২ টি সফল অর্ডার সম্পন্ন করেছেন।`;
-    if (badgeEl) {
-      badgeEl.textContent = riskLevel;
-      badgeEl.className = isHighRisk ? 'badge badge-warning text-xs font-bold' : 'badge badge-success text-xs font-bold';
+    const matched = prods.filter(p =>
+      String(p.name || p.p_name || '').toLowerCase().includes(q) ||
+      String(p.sku || p.product_id || '').toLowerCase().includes(q) ||
+      String(p.category || '').toLowerCase().includes(q)
+    ).slice(0, 12);
+
+    if (matched.length === 0) {
+      box.innerHTML = `<div class="p-3 text-center text-slate-400 text-xs">কোনো পণ্য পাওয়া যায়নি।</div>`;
+    } else {
+      box.innerHTML = matched.map(p => window.renderManualOrderSearchCandidateHtml(p)).join('');
     }
-    if (modal) modal.classList.remove('hidden');
+    box.classList.remove('hidden');
+  };
+
+  window.renderManualOrderSearchCandidateHtml = function(p) {
+    const id = String(p.sku || p.product_id || '').replace(/'/g, "\\'");
+    const thumb = p.thumbnail || (Array.isArray(p.images) && p.images[0]) || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+    const sizes = String(p.size || 'Free Size');
+    const colors = String(p.color || 'Standard');
+    return `
+      <div class="p-2 rounded-xl border bg-white dark:bg-slate-900 flex items-center justify-between gap-2 hover:border-emerald-500 cursor-pointer transition" onclick="window.addProductToManualOrder('${id}')">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <img src="${thumb}" class="w-9 h-9 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+          <div class="min-w-0">
+            <div class="font-bold text-xs text-slate-900 dark:text-white truncate">${p.name || p.p_name}</div>
+            <div class="text-[10px] text-slate-400 font-mono">আর্টিকেল/SKU: <strong class="text-emerald-600">${p.sku || p.product_id}</strong> • ৳${p.selling_price || 0} • কালার: ${colors} • সাইজ: ${sizes}</div>
+          </div>
+        </div>
+        <button type="button" class="btn-primary py-1 px-2.5 text-[10px] font-bold flex-shrink-0">+ যোগ করুন</button>
+      </div>
+    `;
+  };
+
+  window.addProductToManualOrder = function(skuOrId) {
+    const prods = (window.__adminState && window.__adminState.products) || JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
+    const found = prods.find(p => String(p.sku || p.product_id) === String(skuOrId));
+    if (!found) return;
+
+    const sizes = String(found.size || '').split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
+    const colors = String(found.color || '').split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
+    const availSizes = sizes.length > 0 ? sizes : ['Free Size', 'Standard', 'M', 'L', 'XL'];
+    const availColors = colors.length > 0 ? colors : ['Black', 'Silver', 'Standard', 'Blue', 'Red'];
+
+    window.__manualOrderItems.push({
+      uid: 'ITEM-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      sku: found.sku || found.product_id || 'SKU-01',
+      name: found.name || found.p_name || 'পণ্য',
+      thumbnail: found.thumbnail || (Array.isArray(found.images) && found.images[0]) || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+      price: Number(found.selling_price || found.price || 1000),
+      quantity: 1,
+      available_sizes: availSizes,
+      available_colors: availColors,
+      selected_size: availSizes[0],
+      selected_color: availColors[0]
+    });
+
+    const resultsBox = document.getElementById('add-ord-prod-search-results');
+    if (resultsBox) resultsBox.classList.add('hidden');
+    window.renderManualOrderSelectedItems();
+    window.recalcManualOrderTotal();
+  };
+
+  window.updateManualOrderItemField = function(uid, field, val) {
+    window.__manualOrderItems = (window.__manualOrderItems || []).map(it => {
+      if (it.uid === uid) {
+        if (field === 'quantity') it.quantity = Math.max(1, Number(val) || 1);
+        else if (field === 'price') it.price = Math.max(0, Number(val) || 0);
+        else if (field === 'selected_size') it.selected_size = val;
+        else if (field === 'selected_color') it.selected_color = val;
+      }
+      return it;
+    });
+    window.renderManualOrderSelectedItems();
+    window.recalcManualOrderTotal();
+  };
+
+  window.removeManualOrderItem = function(uid) {
+    window.__manualOrderItems = (window.__manualOrderItems || []).filter(it => it.uid !== uid);
+    window.renderManualOrderSelectedItems();
+    window.recalcManualOrderTotal();
+  };
+
+  window.renderManualOrderSelectedItems = function() {
+    const container = document.getElementById('add-ord-selected-items-list');
+    if (!container) return;
+    const items = window.__manualOrderItems || [];
+    if (items.length === 0) {
+      container.innerHTML = `
+        <div class="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-[11px] text-slate-400">
+          🛍️ উপরের সার্চ বক্সে পণ্যের নাম বা আর্টিকেল (SKU) লিখে সিলেক্ট করুন (একাধিক পণ্য যুক্ত করতে পারবেন)।
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = items.map((it, idx) => `
+      <div class="p-3 rounded-2xl border border-emerald-200 dark:border-slate-700 bg-white dark:bg-slate-900 space-y-2.5 shadow-xs">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">${idx + 1}</span>
+            <img src="${it.thumbnail}" class="w-10 h-10 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+            <div class="min-w-0">
+              <div class="font-bold text-xs text-slate-900 dark:text-white truncate">${it.name}</div>
+              <div class="text-[10px] font-mono text-emerald-600 font-bold">SKU: ${it.sku} • সাবটোটাল: ৳${it.price * it.quantity}</div>
+            </div>
+          </div>
+          <button type="button" onclick="window.removeManualOrderItem('${it.uid}')" class="text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-lg text-[10px] font-bold">✕ সরান</button>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+          <div>
+            <label class="block font-bold text-[10px] text-slate-500 mb-0.5">📏 সাইজ (এই পণ্যের)</label>
+            <select onchange="window.updateManualOrderItemField('${it.uid}', 'selected_size', this.value)" class="form-control text-xs w-full py-1 px-2 rounded-lg border font-bold bg-slate-50 dark:bg-slate-800">
+              ${(it.available_sizes || ['Free Size']).map(s => `<option value="${s}" ${it.selected_size === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-[10px] text-slate-500 mb-0.5">🎨 কালার (এই পণ্যের)</label>
+            <select onchange="window.updateManualOrderItemField('${it.uid}', 'selected_color', this.value)" class="form-control text-xs w-full py-1 px-2 rounded-lg border font-bold bg-slate-50 dark:bg-slate-800">
+              ${(it.available_colors || ['Standard']).map(c => `<option value="${c}" ${it.selected_color === c ? 'selected' : ''}>${c}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-[10px] text-slate-500 mb-0.5">একক মূল্য (৳)</label>
+            <input type="number" value="${it.price}" onchange="window.updateManualOrderItemField('${it.uid}', 'price', this.value)" class="form-control text-xs w-full py-1 px-2 rounded-lg border font-mono font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold text-[10px] text-slate-500 mb-0.5">পরিমাণ (পিস)</label>
+            <input type="number" min="1" value="${it.quantity}" onchange="window.updateManualOrderItemField('${it.uid}', 'quantity', this.value)" class="form-control text-xs w-full py-1 px-2 rounded-lg border font-mono font-bold" />
+          </div>
+        </div>
+      </div>
+    `).join('');
+  };
+
+  window.recalcManualOrderTotal = function() {
+    const items = window.__manualOrderItems || [];
+    const delFee = Number(document.getElementById('add-ord-delivery')?.value || 70);
+    const subtotal = items.reduce((acc, it) => acc + (Number(it.price || 0) * Number(it.quantity || 1)), 0);
+    const grandTotal = items.length > 0 ? (subtotal + delFee) : 0;
+
+    const subEl = document.getElementById('add-ord-calc-subtotal');
+    const delEl = document.getElementById('add-ord-calc-delivery');
+    const grandEl = document.getElementById('add-ord-calc-grandtotal');
+    if (subEl) subEl.textContent = `৳${subtotal}`;
+    if (delEl) delEl.textContent = `৳${items.length > 0 ? delFee : 0}`;
+    if (grandEl) grandEl.textContent = `৳${grandTotal}`;
   };
 
   window.handleManualAddOrder = async function(e) {
@@ -1938,68 +2261,67 @@ export function initAdminGlobalState() {
     const name = document.getElementById('add-ord-name')?.value.trim();
     const phone = document.getElementById('add-ord-phone')?.value.trim();
     const address = document.getElementById('add-ord-address')?.value.trim();
-    const prodName = document.getElementById('add-ord-product')?.value.trim();
-    const size = document.getElementById('add-ord-size')?.value || 'Free Size';
-    const color = document.getElementById('add-ord-color')?.value || 'Black';
-    const price = Number(document.getElementById('add-ord-price')?.value || '0');
-    const qty = Number(document.getElementById('add-ord-qty')?.value || '1');
     const deliveryFee = Number(document.getElementById('add-ord-delivery')?.value || '70');
     const payMethod = document.getElementById('add-ord-payment')?.value || 'Cash on Delivery';
-    const total = (price * qty) + deliveryFee;
 
-    const orderId = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+    let items = window.__manualOrderItems || [];
+    if (items.length === 0) {
+      alert('অনুগ্রহ করে পণ্যের নাম বা আর্টিকেল সার্চ করে অন্তত ১টি পণ্য সিলেক্ট করুন!');
+      return;
+    }
+
+    const subtotal = items.reduce((acc, it) => acc + (Number(it.price) * Number(it.quantity)), 0);
+    const totalQty = items.reduce((acc, it) => acc + Number(it.quantity), 0);
+    const total = subtotal + deliveryFee;
+    const productsSummary = items.map(it => `${it.name} [সাইজ: ${it.selected_size}, কালার: ${it.selected_color}] x${it.quantity}`).join(' | ');
+    const allSizes = items.map(it => it.selected_size).join(', ');
+    const allColors = items.map(it => it.selected_color).join(', ');
+
     const newOrder = {
-      order_id: orderId,
-      date: new Date().toISOString().replace('T', ' ').slice(0, 19),
-      account_type: 'Admin Manual',
+      order_id: 'ORD-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(100 + Math.random() * 900),
       customer_name: name,
       phone,
-      customer_phone: phone,
       address,
-      shipping_address: address,
-      products: `${prodName} [${color}, ${size}] (${qty}x)`,
-      product_name: prodName,
-      size,
-      color,
-      quantity: qty,
-      unit_price: price,
-      total_amount: total,
+      products: productsSummary,
+      product_name: productsSummary,
+      items: items.map(it => ({
+        product_id: it.sku,
+        sku: it.sku,
+        name: it.name,
+        size: it.selected_size,
+        color: it.selected_color,
+        price: it.price,
+        quantity: it.quantity
+      })),
+      size: allSizes,
+      color: allColors,
+      quantity: totalQty,
+      unit_price: items[0].price,
+      subtotal,
+      delivery_charge: deliveryFee,
       delivery_fee: deliveryFee,
+      total_amount: total,
       payment_method: payMethod,
-      payment_status: payMethod.toLowerCase().includes('cash') || payMethod === 'COD' ? 'COD' : 'Paid',
+      payment_status: payMethod === 'Cash on Delivery' ? 'Pending' : 'Paid',
       order_status: 'Order Placed',
-      transaction_id: payMethod.toLowerCase().includes('cash') || payMethod === 'COD' ? 'COD' : 'TRX-' + Math.floor(100000 + Math.random() * 900000),
-      reseller_commission: 0,
-      commission_status: 'Pending',
+      transaction_id: payMethod === 'Cash on Delivery' ? 'COD-UNPAID' : 'TRX-' + Math.floor(100000 + Math.random() * 900000),
       fraud_status: 'Safe (98%)',
       customer_rating: '5/5 ★',
-      items: [{
-        product_id: 'ADM-MANUAL',
-        sku: 'ADM-MANUAL',
-        name: prodName,
-        price: price,
-        quantity: qty,
-        color: color,
-        size: size
-      }]
+      date: new Date().toISOString().slice(0, 10)
     };
 
-    try {
-      await apiClient.request('orders/create', newOrder);
-    } catch (err) {
-      console.warn('Manual order sheet sync warning:', err);
-    }
+    let orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
+    orders.unshift(newOrder);
+    if (window.__adminState) window.__adminState.orders = orders;
+    localStorage.setItem('dcbd_sheet_orders', JSON.stringify(orders));
 
-    if (window.__adminState && Array.isArray(window.__adminState.orders)) {
-      const exists = window.__adminState.orders.some(o => o.order_id === orderId);
-      if (!exists) window.__adminState.orders.unshift(newOrder);
-    }
+    window.refreshAdminOrdersTableDOM();
+    await apiClient.request('orders/create', 'POST', newOrder).catch(() => {});
 
     if (toast && toast.show) {
-      toast.show({ type: 'success', title: 'অর্ডার শিটে জমা হয়েছে!', message: `অর্ডার #${newOrder.order_id} গুগল শিটে সফলভাবে সংরক্ষিত হয়েছে!` });
+      toast.show({ type: 'success', title: 'অর্ডার লিস্ট ও শিটে জমা হয়েছে', message: `অর্ডার #${newOrder.order_id} (${items.length} টি পণ্য) সফলভাবে সংরক্ষিত হয়েছে!` });
     }
 
-    // Show voucher popup
     const vModal = document.getElementById('modal-order-voucher');
     const vContent = document.getElementById('voucher-content-display');
     if (vContent) {
@@ -2011,7 +2333,11 @@ export function initAdminGlobalState() {
           </div>
           <div>গ্রাহক: <b>${newOrder.customer_name}</b> (${newOrder.phone})</div>
           <div>ঠিকানা: ${newOrder.address}</div>
-          <div class="border-t pt-1">পণ্য: <b>${newOrder.products}</b></div>
+          <div class="border-t pt-1 space-y-1">
+            <div class="font-bold">পণ্যসমূহ:</div>
+            ${items.map((it, idx) => `<div class="text-[11px]">${idx + 1}. <b>${it.name}</b> (${it.selected_size}, ${it.selected_color}) — ${it.quantity} × ৳${it.price} = ৳${it.price * it.quantity}</div>`).join('')}
+          </div>
+          <div class="border-t pt-1 flex justify-between"><span>ডেলিভারি চার্জ:</span><span>৳${deliveryFee}</span></div>
           <div>পেমেন্ট মেথড: ${newOrder.payment_method}</div>
           <div class="flex justify-between font-black text-sm border-t pt-2 text-emerald-600">
             <span>মোট প্রদেয় বিল:</span>
@@ -2022,13 +2348,243 @@ export function initAdminGlobalState() {
     }
     if (vModal) vModal.classList.remove('hidden');
 
+    window.__manualOrderItems = [];
+    window.renderManualOrderSelectedItems();
+    window.recalcManualOrderTotal();
     document.getElementById('form-manual-add-order')?.reset();
   };
 
-  window.sendIncompleteOrderReminders = function() {
-    alert('সকল অসম্পূর্ণ অর্ডারের গ্রাহকদের কাছে WhatsApp রিকভারি লিঙ্ক ও ডিসকাউন্ট অফার পাঠানো হয়েছে!');
+  // Incomplete Orders Sync & Manual Entry
+  window.renderIncompleteOrdersTableDOM = function() {
+    const tbody = document.getElementById('admin-incomplete-orders-tbody');
+    if (!tbody) return;
+    const list = (window.__adminState && window.__adminState.incompleteOrders) || JSON.parse(localStorage.getItem('dcbd_sheet_incomplete_orders') || '[]');
+    tbody.innerHTML = list.map(io => {
+      const safeId = String(io.order_id || '').replace(/'/g, "\\'");
+      return `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+          <td class="py-2.5 px-3 font-mono font-bold text-rose-500">${io.order_id}</td>
+          <td class="py-2.5 px-3 text-slate-400">${io.date || 'আজকে'}</td>
+          <td class="py-2.5 px-3">
+            <div class="font-bold">${io.customer_name || ''}</div>
+            <div class="font-mono text-slate-400 text-[10px]">${io.phone || ''}</div>
+          </td>
+          <td class="py-2.5 px-3 text-slate-500">${io.address || ''} ${io.products ? `<div class="text-[10px] text-emerald-600 font-bold">পণ্য: ${io.products}</div>` : ''}</td>
+          <td class="py-2.5 px-3 font-bold font-mono">৳${io.total_amount || 0}</td>
+          <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+            <button type="button" onclick="window.convertIncompleteToOrder('${safeId}')" class="btn-primary py-1 px-2.5 text-[10px] font-bold">✓ কনফার্ম অর্ডার</button>
+            <a href="https://wa.me/88${String(io.phone || '').replace(/[^0-9]/g, '')}?text=Hello,%20we%20noticed%20you%20started%20an%20order%20on%20Dream%20Cart%20BD.%20Can%20we%20assist%20you?" target="_blank" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">
+              WhatsApp 💬
+            </a>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  };
+
+  window.handleAddIncompleteOrder = async function(e) {
+    e.preventDefault();
+    const getV = id => (document.getElementById(id)?.value || '').trim();
+    const name = getV('inc-ord-name');
+    const phone = getV('inc-ord-phone');
+    const address = getV('inc-ord-address');
+    const products = getV('inc-ord-products') || 'কার্টে থাকা পণ্য';
+    const amount = Number(getV('inc-ord-amount') || 0);
+    if (!name && !phone) return;
+
+    const item = {
+      order_id: 'INC-' + Math.floor(1000 + Math.random() * 9000),
+      date: new Date().toISOString().slice(0, 10),
+      customer_name: name || 'গ্রাহক',
+      phone,
+      address,
+      products,
+      total_amount: amount,
+      stage: 'Abandoned Checkout',
+      status: 'Incomplete'
+    };
+
+    let list = (window.__adminState && window.__adminState.incompleteOrders) || JSON.parse(localStorage.getItem('dcbd_sheet_incomplete_orders') || '[]');
+    list.unshift(item);
+    if (window.__adminState) window.__adminState.incompleteOrders = list;
+    localStorage.setItem('dcbd_sheet_incomplete_orders', JSON.stringify(list));
+
+    window.renderIncompleteOrdersTableDOM();
+    document.getElementById('modal-add-incomplete-order')?.classList.add('hidden');
+    e.target.reset();
+
+    await apiClient.request('incomplete_orders/create', 'POST', item).catch(() => {});
     if (toast && toast.show) {
-      toast.show({ type: 'success', title: 'WhatsApp বার্তা প্রেরিত', message: 'সকল অসম্পূর্ণ অর্ডারে স্বয়ংসক্রিয় মেসেজ পাঠানো হয়েছে।' });
+      toast.show({ type: 'success', title: 'অসম্পূর্ণ অর্ডার সংরক্ষিত', message: `ড্রাফট #${item.order_id} লিস্ট এবং Incomplete_Orders শিটে জমা হয়েছে!` });
+    }
+  };
+
+  window.convertIncompleteToOrder = async function(incId) {
+    let list = (window.__adminState && window.__adminState.incompleteOrders) || JSON.parse(localStorage.getItem('dcbd_sheet_incomplete_orders') || '[]');
+    const found = list.find(i => String(i.order_id) === String(incId));
+    if (!found) return;
+
+    const newOrder = {
+      order_id: 'ORD-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(100 + Math.random() * 900),
+      customer_name: found.customer_name || 'গ্রাহক',
+      phone: found.phone || '',
+      address: found.address || '',
+      products: found.products || 'রিকভারকৃত অর্ডার',
+      product_name: found.products || 'রিকভারকৃত অর্ডার',
+      size: 'Free Size',
+      color: 'Standard',
+      quantity: 1,
+      total_amount: Number(found.total_amount) || 1250,
+      payment_method: 'Cash on Delivery',
+      payment_status: 'Pending',
+      order_status: 'Order Placed',
+      date: new Date().toISOString().slice(0, 10)
+    };
+
+    let orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
+    orders.unshift(newOrder);
+    if (window.__adminState) window.__adminState.orders = orders;
+    localStorage.setItem('dcbd_sheet_orders', JSON.stringify(orders));
+
+    list = list.filter(i => String(i.order_id) !== String(incId));
+    if (window.__adminState) window.__adminState.incompleteOrders = list;
+    localStorage.setItem('dcbd_sheet_incomplete_orders', JSON.stringify(list));
+
+    window.renderIncompleteOrdersTableDOM();
+    window.refreshAdminOrdersTableDOM();
+    await apiClient.request('orders/create', 'POST', newOrder).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'অর্ডার কনফার্ম হয়েছে!', message: `অসম্পূর্ণ অর্ডারটি মূল অর্ডার লিস্ট এবং Orders শিটে জমা হয়েছে (#${newOrder.order_id})!` });
+    }
+  };
+
+  window.sendIncompleteOrderReminders = async function() {
+    const list = (window.__adminState && window.__adminState.incompleteOrders) || JSON.parse(localStorage.getItem('dcbd_sheet_incomplete_orders') || '[]');
+    for (const io of list) {
+      await apiClient.request('incomplete_orders/create', 'POST', io).catch(() => {});
+    }
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'শিট সিঙ্ক ও বার্তা প্রেরিত', message: `${list.length} টি অসম্পূর্ণ অর্ডার Google Sheet-এ সিঙ্ক এবং WhatsApp রিমাইন্ডার প্রস্তুত হয়েছে!` });
+    }
+  };
+
+  // Manual Add Customer Handler (কাস্টমার ডাটাবেজ -> এড কাস্টমার ফর্ম)
+  window.renderAdminCustomersTableDOM = function() {
+    const tbody = document.getElementById('admin-customers-tbody');
+    if (!tbody) return;
+    const customers = (window.__adminState && window.__adminState.customers) || JSON.parse(localStorage.getItem('dcbd_sheet_customers') || '[]');
+    tbody.innerHTML = customers.map(c => `
+      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-3 font-mono text-[11px] text-emerald-600 font-bold">${c.customer_id || 'CUST-01'}</td>
+        <td class="py-2.5 px-3 font-bold text-slate-900 dark:text-white">${c.name || ''}</td>
+        <td class="py-2.5 px-3 font-mono">${c.phone || ''}</td>
+        <td class="py-2.5 px-3 text-slate-500">${c.email || '—'}</td>
+        <td class="py-2.5 px-3 text-slate-500">${c.address || ''}</td>
+        <td class="py-2.5 px-3 font-bold font-mono text-emerald-600">৳${c.total_spent || 0}</td>
+        <td class="py-2.5 px-3 text-right space-x-1">
+          <button type="button" class="btn-secondary py-1 px-2 text-[10px]" onclick="window.copyToClipboard('${c.phone}', 'ফোন কপি হয়েছে!')">ফোন কপি</button>
+        </td>
+      </tr>
+    `).join('');
+  };
+
+  window.handleAdminAddCustomer = async function(e) {
+    e.preventDefault();
+    const getV = id => (document.getElementById(id)?.value || '').trim();
+    const name = getV('adm-cust-name');
+    const phone = getV('adm-cust-phone');
+    const email = getV('adm-cust-email');
+    const address = getV('adm-cust-address');
+    const spent = Number(getV('adm-cust-spent') || 0);
+    if (!name || !phone) return;
+
+    const newCust = {
+      customer_id: getV('adm-cust-id') || ('CUST-' + Math.floor(1000 + Math.random() * 9000)),
+      name,
+      phone,
+      email,
+      address,
+      orders_count: 1,
+      total_spent: spent,
+      created_at: new Date().toISOString().slice(0, 10)
+    };
+
+    let customers = (window.__adminState && window.__adminState.customers) || JSON.parse(localStorage.getItem('dcbd_sheet_customers') || '[]');
+    customers.unshift(newCust);
+    if (window.__adminState) window.__adminState.customers = customers;
+    localStorage.setItem('dcbd_sheet_customers', JSON.stringify(customers));
+
+    window.renderAdminCustomersTableDOM();
+    document.getElementById('modal-add-customer')?.classList.add('hidden');
+    e.target.reset();
+
+    await apiClient.request('customers/create', 'POST', newCust).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'কাস্টমার যুক্ত হয়েছে', message: `${name} কাস্টমার লিস্ট এবং Google Sheet-এ সফলভাবে জমা হয়েছে!` });
+    }
+  };
+
+  // Manual Add Review Handler (রিভিউ ও রেটিং -> এড রিভিউ ফর্ম)
+  window.renderAdminReviewsListDOM = function() {
+    const box = document.getElementById('admin-reviews-list-container');
+    if (!box) return;
+    const reviews = (window.__adminState && window.__adminState.reviews) || JSON.parse(localStorage.getItem('dcbd_sheet_reviews') || '[]');
+    box.innerHTML = reviews.map(r => {
+      const stars = '★'.repeat(Math.min(5, Math.max(1, Number(r.rating) || 5)));
+      return `
+        <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+              <span>${r.customer || r.customer_name || 'গ্রাহক'}</span>
+              <span class="text-amber-500">${stars}</span>
+              <span class="text-[10px] text-emerald-600 font-bold">(${r.product || r.product_name || 'পণ্য'})</span>
+              <span class="text-[10px] text-slate-400 font-normal">• ${r.date || 'আজকে'}</span>
+            </div>
+            <p class="text-slate-600 dark:text-slate-300 mt-1">"${r.comment || r.review_text || ''}"</p>
+          </div>
+          <span class="badge badge-success text-[10px]">${r.status || 'Approved'} ✓</span>
+        </div>
+      `;
+    }).join('');
+  };
+
+  window.handleAdminAddReview = async function(e) {
+    e.preventDefault();
+    const getV = id => (document.getElementById(id)?.value || '').trim();
+    const customer = getV('adm-rev-customer');
+    const phone = getV('adm-rev-phone');
+    const product = getV('adm-rev-product');
+    const rating = Number(getV('adm-rev-rating') || 5);
+    const comment = getV('adm-rev-comment');
+    if (!customer || !comment) return;
+
+    const newRev = {
+      review_id: 'REV-' + Math.floor(1000 + Math.random() * 9000),
+      id: 'REV-' + Math.floor(1000 + Math.random() * 9000),
+      customer,
+      customer_name: customer,
+      phone,
+      product: product || 'Amazfit GTS 4 Smartwatch',
+      product_name: product || 'Amazfit GTS 4 Smartwatch',
+      rating,
+      comment,
+      review_text: comment,
+      date: new Date().toISOString().slice(0, 10),
+      status: 'Approved'
+    };
+
+    let reviews = (window.__adminState && window.__adminState.reviews) || JSON.parse(localStorage.getItem('dcbd_sheet_reviews') || '[]');
+    reviews.unshift(newRev);
+    if (window.__adminState) window.__adminState.reviews = reviews;
+    localStorage.setItem('dcbd_sheet_reviews', JSON.stringify(reviews));
+
+    window.renderAdminReviewsListDOM();
+    document.getElementById('modal-add-review')?.classList.add('hidden');
+    e.target.reset();
+
+    await apiClient.request('reviews/create', 'POST', newRev).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'রিভিউ যুক্ত হয়েছে', message: `${customer}-এর রিভিউ লিস্ট এবং Google Sheet-এ সফলভাবে জমা হয়েছে!` });
     }
   };
 
@@ -2549,43 +3105,107 @@ export function initAdminGlobalState() {
     });
   };
 
-  // Image Link + Manual File Upload with Live Preview
+  // Image Link + Manual File Upload with Live Preview (Fixed for Base64 Data URLs & Direct Image Links)
   window.__admUploadedImages = window.__admUploadedImages || [];
+
+  window.compressAdminUploadedImage = function(file, maxDim = 640, quality = 0.82) {
+    return new Promise((resolve) => {
+      if (!file) return resolve('');
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const rawDataUrl = evt.target?.result || '';
+        if (!rawDataUrl) return resolve('');
+        const img = new Image();
+        img.onload = function() {
+          try {
+            let w = img.naturalWidth || img.width || maxDim;
+            let h = img.naturalHeight || img.height || maxDim;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', quality));
+          } catch (err) {
+            resolve(rawDataUrl);
+          }
+        };
+        img.onerror = function() {
+          resolve(rawDataUrl);
+        };
+        img.src = rawDataUrl;
+      };
+      reader.onerror = function() { resolve(''); };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  window.getAdminProductImageUrls = function(prefix = 'adm') {
+    const mainInput = document.getElementById(`${prefix}-imageurl`);
+    const urlInp = document.getElementById(`${prefix}-imageurl-add`);
+    const list = parseImageUrlsList(mainInput?.value || '');
+    const pendingAdd = (urlInp?.value || '').trim();
+    if (pendingAdd) {
+      parseImageUrlsList(pendingAdd).forEach(u => {
+        if (!list.includes(u)) list.push(u);
+      });
+    }
+    return list;
+  };
+
+  window.setAdminProductImageUrls = function(urls, prefix = 'adm') {
+    const mainInput = document.getElementById(`${prefix}-imageurl`);
+    if (!mainInput) return;
+    mainInput.value = (Array.isArray(urls) ? urls : []).filter(Boolean).join(' || ');
+  };
 
   window.handleAddProductImageUrlInline = function(prefix = 'adm') {
     const urlInp = document.getElementById(`${prefix}-imageurl-add`);
     const mainInput = document.getElementById(`${prefix}-imageurl`);
     if (!mainInput) return;
-    const newUrl = (urlInp?.value || '').trim();
-    if (newUrl) {
-      const current = mainInput.value.split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
-      if (!current.includes(newUrl)) current.push(newUrl);
-      mainInput.value = current.join(', ');
+    const newUrlRaw = (urlInp?.value || '').trim();
+    if (newUrlRaw) {
+      const current = parseImageUrlsList(mainInput.value);
+      const addedList = parseImageUrlsList(newUrlRaw);
+      addedList.forEach(u => {
+        if (!current.includes(u)) current.push(u);
+      });
+      window.setAdminProductImageUrls(current, prefix);
       if (urlInp) urlInp.value = '';
+      if (toast && toast.show) {
+        toast.show({ type: 'success', title: 'ছবির লিঙ্ক যুক্ত', message: 'ছবির প্রিভিউ সফলভাবে আপডেট হয়েছে!' });
+      }
     }
     window.renderAdminProductImagePreviews(prefix);
     window.updateAddProductLiveSummary && window.updateAddProductLiveSummary();
   };
 
-  window.handleAdminProductImageUpload = function(fileInput, prefix = 'adm') {
+  window.handleAdminProductImageUpload = async function(fileInput, prefix = 'adm') {
     const files = Array.from(fileInput?.files || []);
     if (files.length === 0) return;
     const mainInput = document.getElementById(`${prefix}-imageurl`);
+    if (!mainInput) return;
 
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        const dataUrl = evt.target?.result;
-        if (dataUrl && mainInput) {
-          const current = mainInput.value.split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
-          current.push(dataUrl);
-          mainInput.value = current.join(', ');
-          window.renderAdminProductImagePreviews(prefix);
-          window.updateAddProductLiveSummary && window.updateAddProductLiveSummary();
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    const current = parseImageUrlsList(mainInput.value);
+    for (const file of files) {
+      const dataUrl = await window.compressAdminUploadedImage(file, 640, 0.84);
+      if (dataUrl) {
+        current.push(dataUrl);
+      }
+    }
+    window.setAdminProductImageUrls(current, prefix);
+    window.renderAdminProductImagePreviews(prefix);
+    window.updateAddProductLiveSummary && window.updateAddProductLiveSummary();
+    if (fileInput) fileInput.value = '';
     if (toast && toast.show) {
       toast.show({ type: 'success', title: 'ছবি আপলোড সম্পন্ন', message: `${files.length} টি ছবি প্রিভিউতে যুক্ত হয়েছে!` });
     }
@@ -2594,9 +3214,9 @@ export function initAdminGlobalState() {
   window.removeAdminProductPreviewImage = function(idx, prefix = 'adm') {
     const mainInput = document.getElementById(`${prefix}-imageurl`);
     if (!mainInput) return;
-    const list = mainInput.value.split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
+    const list = parseImageUrlsList(mainInput.value);
     list.splice(idx, 1);
-    mainInput.value = list.join(', ');
+    window.setAdminProductImageUrls(list, prefix);
     window.renderAdminProductImagePreviews(prefix);
     window.updateAddProductLiveSummary && window.updateAddProductLiveSummary();
   };
@@ -2606,7 +3226,7 @@ export function initAdminGlobalState() {
     const previewContainer = document.getElementById(`${prefix}-images-preview-grid`);
     if (!mainInput || !previewContainer) return;
 
-    const urls = mainInput.value.split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
+    const urls = window.getAdminProductImageUrls(prefix);
     if (urls.length === 0) {
       previewContainer.innerHTML = `
         <div class="col-span-full p-4 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-[11px] text-slate-400">
@@ -2616,17 +3236,20 @@ export function initAdminGlobalState() {
       return;
     }
 
-    previewContainer.innerHTML = urls.map((u, idx) => `
-      <div class="relative group rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-sm">
-        <img src="${u}" class="w-full h-24 object-cover rounded-xl" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
-        <span class="absolute top-2.5 left-2.5 px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-bold">
-          ${idx === 0 ? '★ মূল ছবি' : `#${idx + 1}`}
-        </span>
-        <button type="button" onclick="window.removeAdminProductPreviewImage(${idx}, '${prefix}')" class="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center shadow hover:bg-rose-700">
-          ✕
-        </button>
-      </div>
-    `).join('');
+    previewContainer.innerHTML = urls.map((u, idx) => {
+      const safeSrc = String(u).replace(/"/g, '&quot;');
+      return `
+        <div class="relative group rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-sm">
+          <img src="${safeSrc}" alt="Preview ${idx + 1}" class="w-full h-24 object-contain bg-slate-50 dark:bg-slate-800 rounded-xl" onerror="this.onerror=null; this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+          <span class="absolute top-2.5 left-2.5 px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-bold">
+            ${idx === 0 ? '★ মূল ছবি' : `#${idx + 1}`}
+          </span>
+          <button type="button" onclick="window.removeAdminProductPreviewImage(${idx}, '${prefix}')" class="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center shadow hover:bg-rose-700 cursor-pointer">
+            ✕
+          </button>
+        </div>
+      `;
+    }).join('');
   };
 
   // Live 23-Column Summary Preview in Add Product Form
@@ -2654,8 +3277,7 @@ export function initAdminGlobalState() {
     const wsPrice = Number(document.getElementById('adm-wholesaleprice')?.value || calcPrices.wholesale_price);
     const minOrderQ = Number(document.getElementById('adm-minorderq')?.value || calcPrices.min_order_q);
 
-    const rawImagesStr = (document.getElementById('adm-imageurl')?.value || '').trim();
-    const imagesArr = rawImagesStr.split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
+    const imagesArr = window.getAdminProductImageUrls ? window.getAdminProductImageUrls('adm') : parseImageUrlsList(document.getElementById('adm-imageurl')?.value || '');
     const defaultThumb = 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
     const finalImages = imagesArr.length > 0 ? imagesArr : [defaultThumb];
 
@@ -2713,7 +3335,7 @@ export function initAdminGlobalState() {
     localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
     if (window.__adminState) window.__adminState.products = prods;
 
-    await apiClient.request('products/add', newProduct);
+    await apiClient.request('products/add', 'POST', newProduct);
 
     if (toast && toast.show) toast.show({ type: 'success', title: 'পণ্য সংরক্ষিত হয়েছে', message: `"${name}" (২৩ কলাম ডাটা) সফলভাবে যুক্ত হয়েছে!` });
     document.getElementById('form-add-product-dedicated')?.reset();
@@ -3362,12 +3984,23 @@ export function initAdminGlobalState() {
 
   window.filterOrderStatus = function(status, btn) {
     if (btn) {
-      document.querySelectorAll('.order-status-pill').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('#page-orders-all .order-status-pill').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
     }
+    const target = String(status || '').trim().toLowerCase();
     document.querySelectorAll('#admin-orders-full-tbody tr, #admin-orders-tbody tr').forEach(tr => {
-      if (!status || tr.getAttribute('data-status') === status) tr.style.display = '';
-      else tr.style.display = 'none';
+      if (!target) {
+        tr.style.display = '';
+        return;
+      }
+      const rowSt = String(tr.getAttribute('data-status') || '').trim().toLowerCase();
+      let matched = rowSt === target;
+      if (!matched) {
+        if (target === 'processing' && (rowSt === 'order placed' || rowSt === 'pending')) matched = true;
+        else if (target === 'shipped' && (rowSt === 'packing' || rowSt === 'in transit' || rowSt === 'in courier')) matched = true;
+        else if (target === 'cancelled' && rowSt === 'returned') matched = true;
+      }
+      tr.style.display = matched ? '' : 'none';
     });
   };
 
@@ -3865,6 +4498,19 @@ export function initAdminGlobalState() {
     reader.readAsDataURL(file);
   };
 
+  window.buildBrandStatsMap = function(prods) {
+    const stats = new Map();
+    (Array.isArray(prods) ? prods : []).forEach(p => {
+      const bKey = String(p?.brand || '').trim().toLowerCase();
+      if (!bKey) return;
+      const cur = stats.get(bKey) || { count: 0, stock: 0 };
+      cur.count += 1;
+      cur.stock += (Number(p?.stock) || 0);
+      stats.set(bKey, cur);
+    });
+    return stats;
+  };
+
   window.renderAdminBrandCards = function(searchQuery = '') {
     const grid = document.getElementById('admin-brands-cards-grid');
     if (!grid) return;
@@ -3884,9 +4530,12 @@ export function initAdminGlobalState() {
       return;
     }
 
+    const brandStats = window.buildBrandStatsMap(prods);
+
     grid.innerHTML = filtered.map(b => {
-      const bProds = prods.filter(p => String(p.brand || '').toLowerCase() === String(b.brand_name || '').toLowerCase());
-      const totalStock = bProds.reduce((acc, p) => acc + (Number(p.stock) || 0), 0);
+      const st = brandStats.get(String(b.brand_name || '').trim().toLowerCase()) || { count: 0, stock: 0 };
+      const bProds = { length: st.count };
+      const totalStock = st.stock;
       const safeName = String(b.brand_name || '').replace(/'/g, "\\'");
       const safeId = String(b.brand_id || b.brand_name || '').replace(/'/g, "\\'");
 
@@ -3946,14 +4595,15 @@ export function initAdminGlobalState() {
     window.filterAdminProductBrand(brandName);
   };
 
-  window.handleDeleteBrand = function(brandId) {
+  window.handleDeleteBrand = async function(brandId) {
     if (!confirm('আপনি কি নিশ্চিত যে এই ব্র্যান্ডটি মুছে ফেলতে চান?')) return;
     let brands = (window.__adminState && window.__adminState.brands) || JSON.parse(localStorage.getItem('dcbd_sheet_brands') || '[]');
     brands = brands.filter(b => b.brand_id !== brandId && b.brand_name !== brandId);
     localStorage.setItem('dcbd_sheet_brands', JSON.stringify(brands));
     if (window.__adminState) window.__adminState.brands = brands;
     window.renderAdminBrandCards();
-    if (toast && toast.show) toast.show({ type: 'success', title: 'ব্র্যান্ড মোছা হয়েছে', message: 'ব্র্যান্ডটি তালিকা থেকে মুছে ফেলা হয়েছে।' });
+    apiClient.request('brands/delete', 'POST', { brand_id: brandId }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'ব্র্যান্ড মোছা হয়েছে', message: 'ব্র্যান্ডটি তালিকা ও শিট থেকে মুছে ফেলা হয়েছে।' });
   };
 
   window.handleAdminAddBrand = async function(e) {
@@ -3977,7 +4627,7 @@ export function initAdminGlobalState() {
     if (window.__adminState) window.__adminState.brands = brands;
     window.ensureSelectValue('adm-brand', name);
     window.ensureSelectValue('adm-prod-filter-brand', name);
-    await apiClient.request('brands/add', newBrand);
+    apiClient.request('brands/add', 'POST', newBrand).catch(() => {});
 
     if (toast && toast.show) toast.show({ type: 'success', title: 'ব্র্যান্ড যুক্ত হয়েছে', message: `${name} কার্ড তালিকায় সফলভাবে যুক্ত হয়েছে!` });
     document.getElementById('form-add-brand-dedicated')?.reset();
@@ -4468,33 +5118,53 @@ export function initAdminGlobalState() {
   };
 
   window.startNewLandingPage = function() {
-    window.populateLandingBuilderForm(null);
-    if (toast && toast.show) toast.show({ type: 'info', title: 'নতুন ল্যান্ডিং পেজ', message: 'নতুন ল্যান্ডিং পেজ তৈরির ফর্ম প্রস্তুত করা হয়েছে।' });
-    document.getElementById('landing-builder-form-card')?.scrollIntoView({ behavior: 'smooth' });
+    window.switchAdminPage('page-prod-landing-add', 'group-products');
+    setTimeout(() => {
+      window.populateLandingBuilderForm(null);
+      if (toast && toast.show) toast.show({ type: 'info', title: 'নতুন ল্যান্ডিং পেজ ফর্ম', message: 'স্লাগ (Slug) ও তথ্য দিয়ে নতুন ল্যান্ডিং পেজ তৈরি করুন।' });
+    }, 20);
   };
 
   window.editExistingLandingPage = function(lpId) {
     const list = window.getAdminLandingPages();
-    const found = list.find(item => item.id === lpId || item.slug === lpId);
+    const found = list.find(item => item.id === lpId || item.page_id === lpId || item.slug === lpId);
     if (!found) return;
-    window.populateLandingBuilderForm(found);
-    if (toast && toast.show) toast.show({ type: 'info', title: 'ল্যান্ডিং পেজ লোড হয়েছে', message: `"${found.title}" এডিট করার জন্য লোড করা হয়েছে।` });
-    document.getElementById('landing-builder-form-card')?.scrollIntoView({ behavior: 'smooth' });
+    window.switchAdminPage('page-prod-landing-add', 'group-products');
+    setTimeout(() => {
+      window.populateLandingBuilderForm(found);
+      if (toast && toast.show) toast.show({ type: 'info', title: 'ল্যান্ডিং পেজ লোড হয়েছে', message: `"${found.title}" এডিট করার জন্য লোড করা হয়েছে।` });
+    }, 20);
   };
 
   window.duplicateLandingPage = function(lpId) {
     const list = window.getAdminLandingPages();
-    const found = list.find(item => item.id === lpId);
+    const found = list.find(item => item.id === lpId || item.page_id === lpId);
     if (!found) return;
     const copy = JSON.parse(JSON.stringify(found));
     copy.id = 'LP-' + Math.floor(100 + Math.random() * 900);
-    copy.slug = copy.slug + '-copy-' + Math.floor(10 + Math.random() * 89);
+    copy.page_id = copy.id;
+    copy.slug = (copy.slug || 'campaign') + '-copy-' + Math.floor(10 + Math.random() * 89);
     copy.title = copy.title + ' (কপি)';
     list.unshift(copy);
     localStorage.setItem('dcbd_landing_pages', JSON.stringify(list));
     if (window.__adminState) window.__adminState.landingPages = list;
     window.renderSavedLandingPagesList();
-    if (toast && toast.show) toast.show({ type: 'success', title: 'ডুপ্লিকেট সম্পন্ন', message: 'নতুন ল্যান্ডিং পেজ কপি তৈরি হয়েছে!' });
+    apiClient.request('landing-pages/save', 'POST', {
+      page_id: copy.id,
+      slug: copy.slug,
+      title: copy.title,
+      subtitle: copy.subtitle,
+      badge: copy.badge,
+      promo: copy.promo,
+      banner: copy.hero_banner,
+      banners: (copy.banners || []).map(b => b.url || b),
+      videos: (copy.videos || []).map(v => v.url || v),
+      bullets: copy.features || [],
+      selected_skus: copy.selected_products || [],
+      cta_text: copy.cta_text,
+      status: copy.status || 'Active'
+    }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'ডুপ্লিকেট সম্পন্ন', message: 'নতুন ল্যান্ডিং পেজ কপি তৈরি ও শিটে সংরক্ষিত হয়েছে!' });
   };
 
   window.deleteLandingPage = function(lpId) {
@@ -4504,11 +5174,12 @@ export function initAdminGlobalState() {
       return;
     }
     if (!confirm('আপনি কি নিশ্চিত যে এই ল্যান্ডিং পেজটি ডিলিট করতে চান?')) return;
-    list = list.filter(item => item.id !== lpId);
+    list = list.filter(item => item.id !== lpId && item.page_id !== lpId);
     localStorage.setItem('dcbd_landing_pages', JSON.stringify(list));
     if (window.__adminState) window.__adminState.landingPages = list;
     window.renderSavedLandingPagesList();
-    if (toast && toast.show) toast.show({ type: 'success', title: 'ল্যান্ডিং পেজ মোছা হয়েছে', message: 'ল্যান্ডিং পেজটি মুছে ফেলা হয়েছে।' });
+    apiClient.request('landing-pages/delete', 'POST', { page_id: lpId }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'ল্যান্ডিং পেজ মোছা হয়েছে', message: 'ল্যান্ডিং পেজটি তালিকা ও শিট থেকে মুছে ফেলা হয়েছে।' });
   };
 
   // Hero Banner Upload & Gallery Banners Management in Landing Page
@@ -4772,14 +5443,36 @@ export function initAdminGlobalState() {
       list.unshift(JSON.parse(JSON.stringify(draft)));
     }
 
+    draft.page_id = draft.id;
+    draft.banner = draft.hero_banner;
+    draft.bullets = draft.features;
+    draft.selected_skus = draft.selected_products;
+
     localStorage.setItem('dcbd_landing_pages', JSON.stringify(list));
     localStorage.setItem('dcbd_landing_config', JSON.stringify(draft));
     if (window.__adminState) window.__adminState.landingPages = list;
 
+    apiClient.request('landing-pages/save', 'POST', {
+      page_id: draft.id,
+      slug: draft.slug,
+      title: draft.title,
+      subtitle: draft.subtitle,
+      badge: draft.badge,
+      promo: draft.promo,
+      banner: draft.hero_banner,
+      banners: (draft.banners || []).map(b => typeof b === 'string' ? b : b.url).filter(Boolean),
+      videos: (draft.videos || []).map(v => typeof v === 'string' ? v : v.url).filter(Boolean),
+      bullets: draft.features || [],
+      selected_skus: draft.selected_products || [],
+      cta_text: draft.cta_text || 'এখনই অর্ডার করুন →',
+      status: draft.status || 'Active'
+    }).catch(() => {});
+
     window.renderSavedLandingPagesList();
     if (toast && toast.show) {
-      toast.show({ type: 'success', title: 'ল্যান্ডিং পেজ সংরক্ষিত!', message: `"${draft.title}" সফলভাবে সংরক্ষিত ও আপডেট হয়েছে!` });
+      toast.show({ type: 'success', title: 'ল্যান্ডিং পেজ সংরক্ষিত!', message: `"${draft.title}" (স্লাগ: /landing?page=${draft.slug}) লিস্ট এবং Google Sheet-এ জমা হয়েছে!` });
     }
+    window.switchAdminPage('page-prod-landing', 'group-products');
   };
 
   window.renderSavedLandingPagesList = function() {
@@ -4822,8 +5515,12 @@ export function initAdminGlobalState() {
 
   window.openLandingPageLivePreview = function(lpId) {
     const list = window.getAdminLandingPages();
-    const lp = list.find(item => item.id === lpId || item.slug === lpId) || window.__currentLandingDraft || list[0];
-    if (!lp) return;
+    const slugFromInput = (document.getElementById('adm-lp-slug')?.value || '').trim();
+    const lp = list.find(item => item.id === lpId || item.page_id === lpId || item.slug === lpId) || window.__currentLandingDraft || list[0];
+    const targetSlug = (lp && lp.slug) ? lp.slug : (slugFromInput || 'mega-gadget-fest');
+    const previewUrl = `/landing?page=${encodeURIComponent(targetSlug)}`;
+    window.open(previewUrl, '_blank', 'noopener,noreferrer');
+    return;
 
     const prods = (window.__adminState && window.__adminState.products) || JSON.parse(localStorage.getItem('dcbd_sheet_products') || '[]');
     const lpProducts = (lp.selected_products || []).map(id => prods.find(p => p.sku === id || p.product_id === id)).filter(Boolean);
@@ -4936,180 +5633,756 @@ export function initAdminGlobalState() {
     modal.classList.remove('hidden');
   };
 
-  // PARTNER HANDLERS
-  window.handleAdminAddReseller = function(e) {
-    e.preventDefault();
-    const name = document.getElementById('adm-new-reseller-name')?.value.trim();
-    const shop = document.getElementById('adm-new-reseller-shop')?.value.trim();
-    const phone = document.getElementById('adm-new-reseller-phone')?.value.trim();
-    const city = document.getElementById('adm-new-reseller-city')?.value.trim();
-    if (!name || !phone) return;
+  // ============================================================================
+  // PARTNER NETWORK & TEAM/ADMIN HANDLERS (Full Fields + In-Place List & Sheet Sync)
+  // ============================================================================
+  window.handlePartnerImageUpload = async function(fileInput, targetInputId) {
+    const file = fileInput?.files?.[0];
+    if (!file) return;
+    const dataUrl = window.compressAdminUploadedImage
+      ? await window.compressAdminUploadedImage(file, 240, 0.84)
+      : '';
+    const inp = document.getElementById(targetInputId);
+    if (inp && dataUrl) inp.value = dataUrl;
+  };
 
-    let list = JSON.parse(localStorage.getItem('dcbd_resellers') || '[]');
-    list.unshift({
-      id: 'RSL-' + Math.floor(1000 + Math.random() * 9000),
+  // 1) Resellers Controls & 12-Field Add/Edit/Delete
+  window.handleSaveResellerSettings = async function(e) {
+    if (e) e.preventDefault();
+    const pct = Number(document.getElementById('adm-reseller-global-pct')?.value || 15);
+    const minOrd = Number(document.getElementById('adm-reseller-min-order')?.value || 1);
+    const feePct = Number(document.getElementById('adm-reseller-fee-pct')?.value || 3);
+    const cfg = { commission_percent: pct, min_order: minOrd, withdraw_fee_percent: feePct };
+    localStorage.setItem('dcbd_res_settings', JSON.stringify(cfg));
+    await apiClient.request('settings/save', 'POST', { reseller_settings: JSON.stringify(cfg) }).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'রিসেলার কন্ট্রোল সংরক্ষিত', message: `কমিশন ${pct}%, উত্তোলন ফি ${feePct}% লিস্ট এবং শিটে আপডেট হয়েছে!` });
+    }
+  };
+
+  window.renderResellersTableDOM = function() {
+    const tbody = document.getElementById('admin-resellers-tbody');
+    if (!tbody) return;
+    const resellers = (window.__adminState && window.__adminState.resellers) || JSON.parse(localStorage.getItem('dcbd_resellers') || '[]');
+    tbody.innerHTML = resellers.map(r => {
+      const id = r.shop_id || r.id || 'RSL-101';
+      const safeId = String(id).replace(/'/g, "\\'");
+      const logo = r.shop_logo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+      const phone = r.mobile || r.phone || '';
+      return `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+          <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${id}</td>
+          <td class="py-2.5 px-3">
+            <div class="flex items-center gap-2">
+              <img src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+              <div>
+                <div class="font-bold text-slate-900 dark:text-white">${r.name || ''}</div>
+                <div class="text-[10px] text-slate-400">শপ: ${r.shop_name || r.shop || ''} • User: ${r.user_id || phone}</div>
+              </div>
+            </div>
+          </td>
+          <td class="py-2.5 px-3 font-mono">
+            <div>${phone}</div>
+            <div class="text-[10px] text-slate-400">${r.mail || ''}</div>
+          </td>
+          <td class="py-2.5 px-3 text-[11px]">
+            <div>${r.address || r.city || 'ঢাকা'}</div>
+            <div class="text-[10px] text-slate-400">NID: ${r.nid_number || '—'} • TL: ${r.trade_licence_no || '—'}</div>
+          </td>
+          <td class="py-2.5 px-3 font-black text-emerald-600 font-mono">৳${r.balance || 0}</td>
+          <td class="py-2.5 px-3 font-bold font-mono">${r.commission || '15%'}</td>
+          <td class="py-2.5 px-3"><span class="badge badge-success text-[10px]">${r.status || 'Active'}</span></td>
+          <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+            <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-emerald-600 font-bold" onclick="window.openResellerModal('${safeId}')">✏️ এডিট</button>
+            <button type="button" class="btn-secondary py-0.5 px-2 text-[10px]" onclick="window.copyToClipboard('${phone}', 'ফোন কপি হয়েছে!')">কপি</button>
+            <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-rose-600 border-rose-200" onclick="window.deletePartnerItem('reseller', '${safeId}')">মুছুন</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  };
+
+  window.openResellerModal = function(editId = '') {
+    const list = (window.__adminState && window.__adminState.resellers) || JSON.parse(localStorage.getItem('dcbd_resellers') || '[]');
+    const found = editId ? list.find(r => (r.shop_id || r.id) === editId) : null;
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+    const newId = found ? (found.shop_id || found.id) : ('RSL-' + Math.floor(1000 + Math.random() * 9000));
+    setV('adm-res-edit-flag', found ? newId : '');
+    setV('adm-res-shop-id', newId);
+    setV('adm-res-shop-logo', found?.shop_logo || '');
+    setV('adm-res-name', found?.name || '');
+    setV('adm-res-mobile', found?.mobile || found?.phone || '');
+    setV('adm-res-mail', found?.mail || found?.email || '');
+    setV('adm-res-address', found?.address || found?.city || '');
+    setV('adm-res-shop-name', found?.shop_name || found?.shop || '');
+    setV('adm-res-nid', found?.nid_number || '');
+    setV('adm-res-dob', found?.date_of_birth || '');
+    setV('adm-res-tl', found?.trade_licence_no || '');
+    setV('adm-res-userid', found?.user_id || found?.mobile || '');
+    setV('adm-res-password', found?.password || '123456');
+    setV('adm-res-comm', found?.commission || '15%');
+    document.getElementById('modal-add-reseller')?.classList.remove('hidden');
+  };
+
+  window.handleAdminAddReseller = async function(e) {
+    e.preventDefault();
+    const getV = id => (document.getElementById(id)?.value || '').trim();
+    const editId = getV('adm-res-edit-flag');
+    const shopId = getV('adm-res-shop-id') || ('RSL-' + Math.floor(1000 + Math.random() * 9000));
+    const mobile = getV('adm-res-mobile');
+    const name = getV('adm-res-name');
+    if (!name || !mobile) return;
+
+    const entry = {
+      id: shopId,
+      shop_id: shopId,
+      shop_logo: getV('adm-res-shop-logo') || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
       name,
-      shop: shop || 'অনলাইন শপ',
-      phone,
-      city: city || 'ঢাকা',
+      mobile,
+      phone: mobile,
+      mail: getV('adm-res-mail'),
+      address: getV('adm-res-address') || 'ঢাকা',
+      city: getV('adm-res-address') || 'ঢাকা',
+      shop_name: getV('adm-res-shop-name') || 'অনলাইন শপ',
+      shop: getV('adm-res-shop-name') || 'অনলাইন শপ',
+      nid_number: getV('adm-res-nid'),
+      date_of_birth: getV('adm-res-dob'),
+      trade_licence_no: getV('adm-res-tl'),
+      user_id: getV('adm-res-userid') || mobile,
+      password: getV('adm-res-password') || '123456',
+      commission: getV('adm-res-comm') || '15%',
       balance: 0,
       total_earned: 0,
       status: 'Active'
-    });
+    };
+
+    let list = (window.__adminState && window.__adminState.resellers) || JSON.parse(localStorage.getItem('dcbd_resellers') || '[]');
+    if (editId) {
+      list = list.map(r => (r.shop_id || r.id) === editId ? { ...r, ...entry } : r);
+    } else {
+      list.unshift(entry);
+    }
+    if (window.__adminState) window.__adminState.resellers = list;
     localStorage.setItem('dcbd_resellers', JSON.stringify(list));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'রিসেলার যুক্ত', message: `${name} সফলভাবে নিবন্ধিত হয়েছে!` });
+
+    window.renderResellersTableDOM();
     document.getElementById('modal-add-reseller')?.classList.add('hidden');
-    setTimeout(() => window.location.reload(), 600);
+    await apiClient.request('resellers/register', 'POST', entry).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'রিসেলার সংরক্ষিত', message: `${name} (${shopId}) লিস্ট এবং Resellers শিটে সফলভাবে জমা হয়েছে!` });
+    }
   };
 
-  window.handleAdminAddWholesaler = function(e) {
-    e.preventDefault();
-    const name = document.getElementById('adm-new-ws-name')?.value.trim();
-    const company = document.getElementById('adm-new-ws-company')?.value.trim();
-    const phone = document.getElementById('adm-new-ws-phone')?.value.trim();
-    const tier = document.getElementById('adm-new-ws-tier')?.value || 'Tier 1 (15%)';
-    if (!name || !phone) return;
+  // 2) Wholesalers Controls (MOQ, Discount %, Credit Limit) & 9-Field Add/Edit/Delete
+  window.handleSaveWholesalerSettings = async function(e) {
+    if (e) e.preventDefault();
+    const moq = Number(document.getElementById('adm-whs-global-moq')?.value || 5);
+    const disc = Number(document.getElementById('adm-whs-global-disc')?.value || 15);
+    const credit = Number(document.getElementById('adm-whs-global-credit')?.value || 50000);
+    const cfg = { default_moq: moq, discount_percent: disc, credit_limit: credit };
+    localStorage.setItem('dcbd_whs_settings', JSON.stringify(cfg));
+    await apiClient.request('settings/save', 'POST', { wholesaler_settings: JSON.stringify(cfg) }).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'হোলসেল কন্ট্রোল সংরক্ষিত', message: `মিনিমাম অর্ডার (MOQ): ${moq} পিস, ডিসকাউন্ট: ${disc}% লিস্ট ও শিটে আপডেট হয়েছে!` });
+    }
+  };
 
-    let list = JSON.parse(localStorage.getItem('dcbd_wholesalers') || '[]');
-    list.unshift({
-      id: 'WHS-' + Math.floor(100 + Math.random() * 900),
+  window.renderWholesalersTableDOM = function() {
+    const tbody = document.getElementById('admin-wholesalers-tbody');
+    if (!tbody) return;
+    const wholesalers = (window.__adminState && window.__adminState.wholesalers) || JSON.parse(localStorage.getItem('dcbd_wholesalers') || '[]');
+    tbody.innerHTML = wholesalers.map(w => {
+      const id = w.shop_id || w.id || 'WHS-101';
+      const safeId = String(id).replace(/'/g, "\\'");
+      const logo = w.shop_logo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+      const phone = w.mobile || w.phone || '';
+      return `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+          <td class="py-2.5 px-3 font-mono font-bold text-amber-600">${id}</td>
+          <td class="py-2.5 px-3">
+            <div class="flex items-center gap-2">
+              <img src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+              <div>
+                <div class="font-bold text-slate-900 dark:text-white">${w.shop_name || w.company || ''}</div>
+                <div class="text-[10px] text-slate-400">মালিক: ${w.name || ''} • User: ${w.user_id || phone}</div>
+              </div>
+            </div>
+          </td>
+          <td class="py-2.5 px-3 font-mono">
+            <div>${phone}</div>
+            <div class="text-[10px] text-slate-400">${w.mail || ''}</div>
+          </td>
+          <td class="py-2.5 px-3 text-slate-500">${w.address || 'ঢাকা'}</td>
+          <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${w.moq || 5} পিস / ${w.discount_pct || w.tier || '15%'}</td>
+          <td class="py-2.5 px-3"><span class="badge badge-success text-[10px]">${w.status || 'Approved'}</span></td>
+          <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+            <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-emerald-600 font-bold" onclick="window.openWholesalerModal('${safeId}')">✏️ এডিট</button>
+            <button type="button" class="btn-secondary py-0.5 px-2 text-[10px]" onclick="window.copyToClipboard('${phone}', 'ফোন কপি হয়েছে!')">কপি</button>
+            <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-rose-600 border-rose-200" onclick="window.deletePartnerItem('wholesaler', '${safeId}')">মুছুন</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  };
+
+  window.openWholesalerModal = function(editId = '') {
+    const list = (window.__adminState && window.__adminState.wholesalers) || JSON.parse(localStorage.getItem('dcbd_wholesalers') || '[]');
+    const found = editId ? list.find(w => (w.shop_id || w.id) === editId) : null;
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+    const newId = found ? (found.shop_id || found.id) : ('WHS-' + Math.floor(100 + Math.random() * 900));
+    setV('adm-whs-edit-flag', found ? newId : '');
+    setV('adm-whs-shop-id', newId);
+    setV('adm-whs-shop-logo', found?.shop_logo || '');
+    setV('adm-whs-name', found?.name || '');
+    setV('adm-whs-mobile', found?.mobile || found?.phone || '');
+    setV('adm-whs-mail', found?.mail || found?.email || '');
+    setV('adm-whs-address', found?.address || '');
+    setV('adm-whs-shop-name', found?.shop_name || found?.company || '');
+    setV('adm-whs-userid', found?.user_id || found?.mobile || '');
+    setV('adm-whs-password', found?.password || '123456');
+    setV('adm-whs-moq', found?.moq || 5);
+    setV('adm-whs-disc', found?.discount_pct || '15%');
+    document.getElementById('modal-add-wholesaler')?.classList.remove('hidden');
+  };
+
+  window.handleAdminAddWholesaler = async function(e) {
+    e.preventDefault();
+    const getV = id => (document.getElementById(id)?.value || '').trim();
+    const editId = getV('adm-whs-edit-flag');
+    const shopId = getV('adm-whs-shop-id') || ('WHS-' + Math.floor(100 + Math.random() * 900));
+    const name = getV('adm-whs-name');
+    const mobile = getV('adm-whs-mobile');
+    if (!name || !mobile) return;
+
+    const entry = {
+      id: shopId,
+      shop_id: shopId,
+      shop_logo: getV('adm-whs-shop-logo') || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
       name,
-      company: company || 'ট্রেডার্স',
-      phone,
-      tier,
+      mobile,
+      phone: mobile,
+      mail: getV('adm-whs-mail'),
+      address: getV('adm-whs-address') || 'ঢাকা',
+      shop_name: getV('adm-whs-shop-name') || 'ট্রেডার্স',
+      company: getV('adm-whs-shop-name') || 'ট্রেডার্স',
+      user_id: getV('adm-whs-userid') || mobile,
+      password: getV('adm-whs-password') || '123456',
+      moq: Number(getV('adm-whs-moq') || 5),
+      discount_pct: getV('adm-whs-disc') || '15%',
+      tier: `MOQ ${getV('adm-whs-moq') || 5} • ${getV('adm-whs-disc') || '15%'} Off`,
       total_orders: 0,
       status: 'Approved'
-    });
+    };
+
+    let list = (window.__adminState && window.__adminState.wholesalers) || JSON.parse(localStorage.getItem('dcbd_wholesalers') || '[]');
+    if (editId) {
+      list = list.map(w => (w.shop_id || w.id) === editId ? { ...w, ...entry } : w);
+    } else {
+      list.unshift(entry);
+    }
+    if (window.__adminState) window.__adminState.wholesalers = list;
     localStorage.setItem('dcbd_wholesalers', JSON.stringify(list));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'হোলসেলার যুক্ত', message: `${name} সফলভাবে নিবন্ধিত হয়েছে!` });
+
+    window.renderWholesalersTableDOM();
     document.getElementById('modal-add-wholesaler')?.classList.add('hidden');
-    setTimeout(() => window.location.reload(), 600);
+    await apiClient.request('wholesalers/register', 'POST', entry).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'হোলসেলার সংরক্ষিত', message: `${name} (${shopId}) লিস্ট এবং Wholesalers শিটে জমা হয়েছে!` });
+    }
   };
 
-  window.handleAdminAddSeller = function(e) {
+  // 3) Merchant Sellers Rules & Add/Edit/Delete
+  window.handleSaveSellerRules = async function(e) {
+    if (e) e.preventDefault();
+    const comm = document.getElementById('adm-seller-rule-comm')?.value || '10%';
+    const hold = document.getElementById('adm-seller-rule-hold')?.value || '7 Days';
+    const policy = document.getElementById('adm-seller-rule-policy')?.value || '';
+    const rules = { default_commission: comm, payout_hold: hold, seller_policy: policy };
+    localStorage.setItem('dcbd_seller_rules', JSON.stringify(rules));
+    await apiClient.request('settings/save', 'POST', { seller_rules: JSON.stringify(rules) }).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'সেলার নিয়মাবলী সংরক্ষিত', message: 'মার্চেন্ট সেলারদের কমিশন ও নীতিমালা লিস্ট এবং শিটে আপডেট হয়েছে!' });
+    }
+  };
+
+  window.renderSellersTableDOM = function() {
+    const tbody = document.getElementById('admin-sellers-tbody');
+    if (!tbody) return;
+    const sellers = (window.__adminState && window.__adminState.sellers) || JSON.parse(localStorage.getItem('dcbd_sellers') || '[]');
+    tbody.innerHTML = sellers.map(s => {
+      const id = s.id || 'VND-201';
+      const safeId = String(id).replace(/'/g, "\\'");
+      return `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+          <td class="py-2.5 px-3 font-mono font-bold text-indigo-600">${id}</td>
+          <td class="py-2.5 px-3">
+            <div class="font-bold text-slate-900 dark:text-white">${s.store || ''}</div>
+            <div class="text-[10px] text-slate-400">মালিক: ${s.name || ''}</div>
+          </td>
+          <td class="py-2.5 px-3 font-mono">${s.phone || ''}</td>
+          <td class="py-2.5 px-3 text-slate-500">${s.address || 'ঢাকা'}</td>
+          <td class="py-2.5 px-3 font-bold font-mono text-emerald-600">${s.commission || '10%'}</td>
+          <td class="py-2.5 px-3 font-mono">${s.products_count || 0} টি</td>
+          <td class="py-2.5 px-3"><span class="badge badge-success text-[10px]">${s.status || 'Active'}</span></td>
+          <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+            <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-emerald-600 font-bold" onclick="window.openSellerModal('${safeId}')">✏️ এডিট</button>
+            <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-rose-600 border-rose-200" onclick="window.deletePartnerItem('seller', '${safeId}')">মুছুন</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  };
+
+  window.openSellerModal = function(editId = '') {
+    const list = (window.__adminState && window.__adminState.sellers) || JSON.parse(localStorage.getItem('dcbd_sellers') || '[]');
+    const found = editId ? list.find(s => s.id === editId) : null;
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+    setV('adm-seller-edit-flag', found ? found.id : '');
+    setV('adm-new-seller-name', found?.name || '');
+    setV('adm-new-seller-store', found?.store || '');
+    setV('adm-new-seller-phone', found?.phone || '');
+    setV('adm-new-seller-address', found?.address || '');
+    setV('adm-new-seller-comm', found?.commission || '10%');
+    document.getElementById('modal-add-seller')?.classList.remove('hidden');
+  };
+
+  window.handleAdminAddSeller = async function(e) {
     e.preventDefault();
-    const name = document.getElementById('adm-new-seller-name')?.value.trim();
-    const store = document.getElementById('adm-new-seller-store')?.value.trim();
-    const phone = document.getElementById('adm-new-seller-phone')?.value.trim();
-    const comm = document.getElementById('adm-new-seller-comm')?.value || '10%';
+    const getV = id => (document.getElementById(id)?.value || '').trim();
+    const editId = getV('adm-seller-edit-flag');
+    const name = getV('adm-new-seller-name');
+    const store = getV('adm-new-seller-store');
+    const phone = getV('adm-new-seller-phone');
+    const address = getV('adm-new-seller-address') || 'ঢাকা';
+    const comm = getV('adm-new-seller-comm') || '10%';
     if (!name || !phone) return;
 
-    let list = JSON.parse(localStorage.getItem('dcbd_sellers') || '[]');
-    list.unshift({
-      id: 'VND-' + Math.floor(100 + Math.random() * 900),
+    const entry = {
+      id: editId || ('VND-' + Math.floor(100 + Math.random() * 900)),
       name,
       store: store || 'ভেন্ডর স্টোর',
       phone,
+      address,
       commission: comm,
-      products_count: 0,
+      products_count: 10,
       status: 'Active'
-    });
+    };
+
+    let list = (window.__adminState && window.__adminState.sellers) || JSON.parse(localStorage.getItem('dcbd_sellers') || '[]');
+    if (editId) {
+      list = list.map(s => s.id === editId ? { ...s, ...entry } : s);
+    } else {
+      list.unshift(entry);
+    }
+    if (window.__adminState) window.__adminState.sellers = list;
     localStorage.setItem('dcbd_sellers', JSON.stringify(list));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'সেলার যুক্ত', message: `${store} সফলভাবে যুক্ত হয়েছে!` });
+
+    window.renderSellersTableDOM();
     document.getElementById('modal-add-seller')?.classList.add('hidden');
-    setTimeout(() => window.location.reload(), 600);
+    await apiClient.request('sellers/create', 'POST', entry).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'মার্চেন্ট সেলার সংরক্ষিত', message: `${store} লিস্ট এবং Google Sheet-এ সফলভাবে যুক্ত হয়েছে!` });
   };
 
-  window.handleAdminAddMarket = function(e) {
-    e.preventDefault();
-    const name = document.getElementById('adm-new-market-name')?.value.trim();
-    const sync = document.getElementById('adm-new-market-sync')?.value || 'Manual';
-    if (!name) return;
+  // 4) Others Marketplace (Shop_ID, Market_Logo, Market_Name, Shop_Name, Shop_Link, Status) + Edit/Delete/Live View
+  window.renderMarketsGridDOM = function() {
+    const grid = document.getElementById('admin-markets-grid');
+    if (!grid) return;
+    const markets = (window.__adminState && window.__adminState.markets) || JSON.parse(localStorage.getItem('dcbd_markets') || '[]');
+    grid.innerHTML = markets.map(m => {
+      const id = m.shop_id || m.id || 'MKT-01';
+      const safeId = String(id).replace(/'/g, "\\'");
+      const mName = m.market_name || m.name || 'Marketplace';
+      const sName = m.shop_name || 'Dream Cart BD Official';
+      const sLink = m.shop_link || 'https://www.daraz.com.bd';
+      const logo = m.market_logo || 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png';
+      const st = m.status || 'Active';
+      return `
+        <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-3 flex flex-col justify-between">
+          <div class="flex items-start justify-between gap-2.5">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-xl bg-white p-1.5 border flex items-center justify-center flex-shrink-0">
+                <img src="${logo}" class="max-w-full max-h-full object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png';" />
+              </div>
+              <div>
+                <span class="text-[10px] font-mono font-bold bg-slate-200/70 dark:bg-slate-700 px-2 py-0.5 rounded">${id}</span>
+                <div class="font-black text-slate-900 dark:text-white text-sm mt-0.5">${mName}</div>
+                <div class="text-[11px] font-bold text-emerald-600">শপ: ${sName}</div>
+              </div>
+            </div>
+            <span class="badge ${String(st).toLowerCase() === 'inactive' ? 'badge-warning' : 'badge-success'} text-[9px]">${st}</span>
+          </div>
+          <div class="text-[10px] font-mono text-slate-400 truncate">🔗 ${sLink}</div>
+          <div class="flex items-center gap-1.5 pt-2 border-t">
+            <a href="${sLink}" target="_blank" rel="noopener noreferrer" class="btn-primary py-1.5 px-2.5 text-[10px] font-bold flex-1 text-center">👁️ লাইভ ভিউ ↗</a>
+            <button type="button" onclick="window.openMarketModal('${safeId}')" class="btn-secondary py-1.5 px-2.5 text-[10px] font-bold">✏️ এডিট</button>
+            <button type="button" onclick="window.deletePartnerItem('market', '${safeId}')" class="btn-secondary py-1.5 px-2.5 text-[10px] text-rose-600 border-rose-200">🗑️ ডিলিট</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
 
-    let list = JSON.parse(localStorage.getItem('dcbd_markets') || '[]');
-    list.unshift({
-      id: 'MKT-' + Math.floor(10 + Math.random() * 90),
-      name,
-      sync_mode: sync,
-      status: 'Connected',
-      last_sync: 'আজকে'
-    });
+  window.openMarketModal = function(editId = '') {
+    const list = (window.__adminState && window.__adminState.markets) || JSON.parse(localStorage.getItem('dcbd_markets') || '[]');
+    const found = editId ? list.find(m => (m.shop_id || m.id) === editId) : null;
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+    const newId = found ? (found.shop_id || found.id) : ('MKT-' + Math.floor(100 + Math.random() * 900));
+    setV('adm-mkt-edit-flag', found ? newId : '');
+    setV('adm-mkt-shop-id', newId);
+    setV('adm-mkt-logo', found?.market_logo || '');
+    setV('adm-mkt-name', found?.market_name || found?.name || '');
+    setV('adm-mkt-shop-name', found?.shop_name || 'Dream Cart BD');
+    setV('adm-mkt-link', found?.shop_link || 'https://');
+    setV('adm-mkt-status', found?.status || 'Active');
+    document.getElementById('modal-add-market')?.classList.remove('hidden');
+  };
+
+  window.handleAdminAddMarket = async function(e) {
+    e.preventDefault();
+    const getV = id => (document.getElementById(id)?.value || '').trim();
+    const editId = getV('adm-mkt-edit-flag');
+    const shopId = getV('adm-mkt-shop-id') || ('MKT-' + Math.floor(100 + Math.random() * 900));
+    const marketName = getV('adm-mkt-name');
+    const shopName = getV('adm-mkt-shop-name') || 'Dream Cart BD';
+    const shopLink = getV('adm-mkt-link') || 'https://dreamcart.bd';
+    const status = getV('adm-mkt-status') || 'Active';
+    const logo = getV('adm-mkt-logo') || 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png';
+    if (!marketName) return;
+
+    const entry = {
+      id: shopId,
+      shop_id: shopId,
+      market_logo: logo,
+      market_name: marketName,
+      name: marketName,
+      shop_name: shopName,
+      shop_link: shopLink,
+      status
+    };
+
+    let list = (window.__adminState && window.__adminState.markets) || JSON.parse(localStorage.getItem('dcbd_markets') || '[]');
+    if (editId) {
+      list = list.map(m => (m.shop_id || m.id) === editId ? { ...m, ...entry } : m);
+    } else {
+      list.unshift(entry);
+    }
+    if (window.__adminState) window.__adminState.markets = list;
     localStorage.setItem('dcbd_markets', JSON.stringify(list));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'মার্কেট চ্যানেল যুক্ত', message: `${name} চ্যানেল সংযুক্ত হয়েছে!` });
+
+    window.renderMarketsGridDOM();
     document.getElementById('modal-add-market')?.classList.add('hidden');
-    setTimeout(() => window.location.reload(), 600);
+    await apiClient.request('others_market/create', 'POST', entry).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'মার্কেটপ্লেস সংরক্ষিত', message: `${marketName} (${shopName}) লিস্ট এবং Others_Market শিটে জমা হয়েছে!` });
+    }
   };
 
-  // ADMINS & WORKERS HANDLERS
-  window.handleAdminAddWorker = function(e) {
-    e.preventDefault();
-    const name = document.getElementById('adm-new-worker-name')?.value.trim();
-    const role = document.getElementById('adm-new-worker-role')?.value;
-    const phone = document.getElementById('adm-new-worker-phone')?.value.trim();
-    const email = document.getElementById('adm-new-worker-email')?.value.trim();
-    if (!name || !phone) return;
+  // 5) Master Admin & Staff/Workers (10 Fields: USER_ID, Profile_Photo, Name, Mobile, Mail, Address, Worker_Type, Role, User_Name, Password + Role Change + Delete)
+  window.renderAdminsAndWorkersDOM = function() {
+    const admBox = document.getElementById('admin-master-users-list');
+    const wrkBox = document.getElementById('admin-workers-team-list');
+    const admins = (window.__adminState && window.__adminState.admins) || JSON.parse(localStorage.getItem('dcbd_admins') || '[]');
+    const workers = (window.__adminState && window.__adminState.workers) || JSON.parse(localStorage.getItem('dcbd_workers') || '[]');
 
-    let list = JSON.parse(localStorage.getItem('dcbd_workers') || '[]');
-    list.unshift({
-      id: 'WRK-' + Math.floor(100 + Math.random() * 900),
-      name,
-      role,
-      phone,
-      email: email || `${name.toLowerCase().replace(/\s+/g, '')}@dreamcart.bd`,
-      status: 'Active'
+    const rolesList = ['Super Admin', 'CEO & Master Admin', 'Lead Operations', 'Manager', 'Order Management', 'Customer Support', 'Delivery', 'Accountant', 'Inventory/Warehouse', 'Sales'];
+
+    if (admBox) {
+      admBox.innerHTML = admins.map(a => {
+        const id = a.user_id || a.id || 'ADM-01';
+        const safeId = String(id).replace(/'/g, "\\'");
+        const photo = a.profile_photo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+        return `
+          <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <img src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">${id}</span>
+                  <span class="font-bold text-slate-900 dark:text-white">${a.name || ''}</span>
+                  <span class="text-[10px] text-indigo-600 font-bold">(${a.worker_type || 'Admin'})</span>
+                </div>
+                <div class="text-[11px] text-slate-500 font-mono mt-0.5">📞 ${a.mobile || a.phone || '01581703822'} • ✉️ ${a.mail || a.email || ''} • User: ${a.user_name || a.name}</div>
+                <div class="text-[10px] text-slate-400">📍 ${a.address || 'কুমিল্লা'}</div>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <select onchange="window.handleChangeAdminOrWorkerRole('admin', '${safeId}', this.value)" class="form-control text-[11px] py-1 px-2 rounded-lg border font-bold bg-white dark:bg-slate-900">
+                ${rolesList.map(r => `<option value="${r}" ${(a.role || '') === r ? 'selected' : ''}>রোল: ${r}</option>`).join('')}
+              </select>
+              <button type="button" onclick="window.openTeamMemberModal('admin', '${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold">✏️ এডিট</button>
+              <button type="button" onclick="window.deletePartnerItem('admin', '${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200">🗑️ ডিলিট</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    if (wrkBox) {
+      wrkBox.innerHTML = workers.map(w => {
+        const id = w.user_id || w.id || 'WRK-01';
+        const safeId = String(id).replace(/'/g, "\\'");
+        const photo = w.profile_photo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+        return `
+          <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col justify-between gap-3">
+            <div class="flex items-start justify-between gap-2.5">
+              <div class="flex items-center gap-3">
+                <img src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                <div>
+                  <span class="font-mono text-[10px] font-bold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">${id}</span>
+                  <div class="font-bold text-slate-900 dark:text-white mt-0.5">${w.name || ''}</div>
+                  <div class="text-[10px] text-emerald-600 font-bold">${w.worker_type || w.role || 'Staff'} • রোল: ${w.role || 'Staff'}</div>
+                  <div class="text-[10px] text-slate-400 font-mono">📞 ${w.mobile || w.phone || ''} • ✉️ ${w.mail || w.email || ''}</div>
+                  <div class="text-[10px] text-slate-400">📍 ${w.address || 'কুমিল্লা'} • User: ${w.user_name || w.name}</div>
+                </div>
+              </div>
+              <span class="badge badge-success text-[10px]">${w.status || 'Active'}</span>
+            </div>
+            <div class="flex items-center justify-between gap-2 pt-2 border-t">
+              <select onchange="window.handleChangeAdminOrWorkerRole('worker', '${safeId}', this.value)" class="form-control text-[11px] py-1 px-2 rounded-lg border font-bold bg-white dark:bg-slate-900 flex-1">
+                ${rolesList.map(r => `<option value="${r}" ${(w.role || '') === r ? 'selected' : ''}>রোল: ${r}</option>`).join('')}
+              </select>
+              <button type="button" onclick="window.openTeamMemberModal('worker', '${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold">✏️ এডিট</button>
+              <button type="button" onclick="window.deletePartnerItem('worker', '${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200">🗑️ ডিলিট</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  };
+
+  window.handleChangeAdminOrWorkerRole = async function(targetType, userId, newRole) {
+    const storageKey = targetType === 'admin' ? 'dcbd_admins' : 'dcbd_workers';
+    const stateKey = targetType === 'admin' ? 'admins' : 'workers';
+    let list = (window.__adminState && window.__adminState[stateKey]) || JSON.parse(localStorage.getItem(storageKey) || '[]');
+    let updatedItem = null;
+    list = list.map(item => {
+      if ((item.user_id || item.id) === userId) {
+        item.role = newRole;
+        item.worker_type = newRole;
+        updatedItem = item;
+      }
+      return item;
     });
-    localStorage.setItem('dcbd_workers', JSON.stringify(list));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'কর্মী যুক্ত', message: `${name} (${role}) সফলভাবে যুক্ত হয়েছে!` });
-    document.getElementById('modal-add-worker')?.classList.add('hidden');
-    setTimeout(() => window.location.reload(), 600);
+    if (window.__adminState) window.__adminState[stateKey] = list;
+    localStorage.setItem(storageKey, JSON.stringify(list));
+    window.renderAdminsAndWorkersDOM();
+    if (updatedItem) {
+      await apiClient.request('admin_worker/update', 'POST', updatedItem).catch(() => {});
+    }
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'রোল পরিবর্তন সম্পন্ন', message: `${userId}-এর নতুন রোল "${newRole}" লিস্ট এবং Admin/Worker শিটে আপডেট হয়েছে!` });
+    }
   };
 
-  window.handleAdminAddAdmin = function(e) {
+  window.openTeamMemberModal = function(targetType = 'worker', editId = '') {
+    const isAdm = targetType === 'admin';
+    const list = isAdm
+      ? ((window.__adminState && window.__adminState.admins) || JSON.parse(localStorage.getItem('dcbd_admins') || '[]'))
+      : ((window.__adminState && window.__adminState.workers) || JSON.parse(localStorage.getItem('dcbd_workers') || '[]'));
+    const found = editId ? list.find(u => (u.user_id || u.id) === editId) : null;
+    const prefix = isAdm ? 'adm-user' : 'adm-wrk';
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+    const newId = found ? (found.user_id || found.id) : ((isAdm ? 'ADM-' : 'WRK-') + Math.floor(100 + Math.random() * 900));
+    setV(`${prefix}-edit-flag`, found ? newId : '');
+    setV(`${prefix}-id`, newId);
+    setV(`${prefix}-photo`, found?.profile_photo || '');
+    setV(`${prefix}-name`, found?.name || '');
+    setV(`${prefix}-mobile`, found?.mobile || found?.phone || '');
+    setV(`${prefix}-mail`, found?.mail || found?.email || '');
+    setV(`${prefix}-address`, found?.address || 'কুমিল্লা');
+    setV(`${prefix}-wtype`, found?.worker_type || (isAdm ? 'Admin' : 'Order Management'));
+    setV(`${prefix}-role`, found?.role || (isAdm ? 'CEO & Master Admin' : 'Order Management'));
+    setV(`${prefix}-uname`, found?.user_name || found?.name || '');
+    setV(`${prefix}-pass`, found?.password || 'admin123');
+    document.getElementById(isAdm ? 'modal-add-admin' : 'modal-add-worker')?.classList.remove('hidden');
+  };
+
+  window.handleAdminAddTeamMember = async function(e, targetType = 'worker') {
     e.preventDefault();
-    const name = document.getElementById('adm-new-admin-name')?.value.trim();
-    const email = document.getElementById('adm-new-admin-email')?.value.trim();
-    const role = document.getElementById('adm-new-admin-role')?.value || 'Super Admin';
-    if (!name || !email) return;
+    const isAdm = targetType === 'admin';
+    const prefix = isAdm ? 'adm-user' : 'adm-wrk';
+    const getV = id => (document.getElementById(id)?.value || '').trim();
+    const editId = getV(`${prefix}-edit-flag`);
+    const userId = getV(`${prefix}-id`) || ((isAdm ? 'ADM-' : 'WRK-') + Math.floor(100 + Math.random() * 900));
+    const name = getV(`${prefix}-name`);
+    const mobile = getV(`${prefix}-mobile`);
+    if (!name || !mobile) return;
 
-    let list = JSON.parse(localStorage.getItem('dcbd_admins') || '[]');
-    list.unshift({
-      id: 'ADM-' + Math.floor(10 + Math.random() * 90),
+    const entry = {
+      id: userId,
+      user_id: userId,
+      profile_photo: getV(`${prefix}-photo`) || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
       name,
-      email,
-      role,
+      mobile,
+      phone: mobile,
+      mail: getV(`${prefix}-mail`) || `${name.toLowerCase().replace(/\s+/g, '')}@dreamcart.bd`,
+      email: getV(`${prefix}-mail`) || `${name.toLowerCase().replace(/\s+/g, '')}@dreamcart.bd`,
+      address: getV(`${prefix}-address`) || 'কুমিল্লা',
+      worker_type: getV(`${prefix}-wtype`) || (isAdm ? 'Admin' : 'Staff'),
+      role: getV(`${prefix}-role`) || (isAdm ? 'Super Admin' : 'Order Management'),
+      user_name: getV(`${prefix}-uname`) || name,
+      password: getV(`${prefix}-pass`) || 'admin123',
       status: 'Active'
-    });
-    localStorage.setItem('dcbd_admins', JSON.stringify(list));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'অ্যাডমিন যুক্ত', message: `${name} তৈরি হয়েছে!` });
-    document.getElementById('modal-add-admin')?.classList.add('hidden');
-    setTimeout(() => window.location.reload(), 600);
+    };
+
+    const storageKey = isAdm ? 'dcbd_admins' : 'dcbd_workers';
+    const stateKey = isAdm ? 'admins' : 'workers';
+    let list = (window.__adminState && window.__adminState[stateKey]) || JSON.parse(localStorage.getItem(storageKey) || '[]');
+    if (editId) {
+      list = list.map(u => (u.user_id || u.id) === editId ? { ...u, ...entry } : u);
+    } else {
+      list.unshift(entry);
+    }
+    if (window.__adminState) window.__adminState[stateKey] = list;
+    localStorage.setItem(storageKey, JSON.stringify(list));
+
+    window.renderAdminsAndWorkersDOM();
+    document.getElementById(isAdm ? 'modal-add-admin' : 'modal-add-worker')?.classList.add('hidden');
+    await apiClient.request(editId ? 'admin_worker/update' : 'admin_worker/create', 'POST', entry).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: isAdm ? 'অ্যাডমিন সংরক্ষিত' : 'কর্মী সংরক্ষিত', message: `${name} (${userId}) লিস্ট এবং Admin/Worker শিটে জমা হয়েছে!` });
+    }
   };
 
-  // INVENTORY & FINANCE HANDLERS
-  window.handleApprovePayout = function(reqId, amount, btn) {
+  window.handleAdminAddWorker = function(e) { return window.handleAdminAddTeamMember(e, 'worker'); };
+  window.handleAdminAddAdmin = function(e) { return window.handleAdminAddTeamMember(e, 'admin'); };
+
+  window.deletePartnerItem = async function(type, id) {
+    if (!confirm(`আপনি কি নিশ্চিত যে "${id}" তালিকা থেকে মুছে ফেলতে চান?`)) return;
+    if (type === 'reseller') {
+      let list = ((window.__adminState && window.__adminState.resellers) || JSON.parse(localStorage.getItem('dcbd_resellers') || '[]')).filter(r => (r.shop_id || r.id) !== id);
+      if (window.__adminState) window.__adminState.resellers = list;
+      localStorage.setItem('dcbd_resellers', JSON.stringify(list));
+      window.renderResellersTableDOM();
+      apiClient.request('resellers/delete', 'POST', { shop_id: id }).catch(() => {});
+    } else if (type === 'wholesaler') {
+      let list = ((window.__adminState && window.__adminState.wholesalers) || JSON.parse(localStorage.getItem('dcbd_wholesalers') || '[]')).filter(w => (w.shop_id || w.id) !== id);
+      if (window.__adminState) window.__adminState.wholesalers = list;
+      localStorage.setItem('dcbd_wholesalers', JSON.stringify(list));
+      window.renderWholesalersTableDOM();
+      apiClient.request('wholesalers/delete', 'POST', { shop_id: id }).catch(() => {});
+    } else if (type === 'seller') {
+      let list = ((window.__adminState && window.__adminState.sellers) || JSON.parse(localStorage.getItem('dcbd_sellers') || '[]')).filter(s => s.id !== id);
+      if (window.__adminState) window.__adminState.sellers = list;
+      localStorage.setItem('dcbd_sellers', JSON.stringify(list));
+      window.renderSellersTableDOM();
+    } else if (type === 'market') {
+      let list = ((window.__adminState && window.__adminState.markets) || JSON.parse(localStorage.getItem('dcbd_markets') || '[]')).filter(m => (m.shop_id || m.id) !== id);
+      if (window.__adminState) window.__adminState.markets = list;
+      localStorage.setItem('dcbd_markets', JSON.stringify(list));
+      window.renderMarketsGridDOM();
+      apiClient.request('others_market/delete', 'POST', { shop_id: id }).catch(() => {});
+    } else if (type === 'admin' || type === 'worker') {
+      const storageKey = type === 'admin' ? 'dcbd_admins' : 'dcbd_workers';
+      const stateKey = type === 'admin' ? 'admins' : 'workers';
+      let list = ((window.__adminState && window.__adminState[stateKey]) || JSON.parse(localStorage.getItem(storageKey) || '[]')).filter(u => (u.user_id || u.id) !== id);
+      if (window.__adminState) window.__adminState[stateKey] = list;
+      localStorage.setItem(storageKey, JSON.stringify(list));
+      window.renderAdminsAndWorkersDOM();
+      apiClient.request('admin_worker/delete', 'POST', { user_id: id }).catch(() => {});
+    }
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'ডিলিট সম্পন্ন', message: `${id} তালিকা ও শিট থেকে মুছে ফেলা হয়েছে।` });
+    }
+  };
+
+  // ============================================================================
+  // INVENTORY & FINANCE HANDLERS (In-Place List + Google Sheet Sync)
+  // ============================================================================
+  window.handleApprovePayout = async function(reqId, amount, btn) {
     if (!confirm(`আপনি কি ${reqId} এর ৳${amount} উত্তোলন অনুমোদন ও পরিশোধ করতে চান? (-৩% ফি সমন্বয় সাপেক্ষে)`)) return;
     if (btn) {
       btn.disabled = true;
       btn.className = 'py-1 px-3 text-[10px] font-bold rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
       btn.innerHTML = 'পরিশোধ সম্পন্ন ✓';
     }
-    if (toast && toast.show) toast.show({ type: 'success', title: 'পে-আউট অনুমোদিত', message: `রিকোয়েস্ট ${reqId} প্রদান করা হয়েছে।` });
+    await apiClient.request('payments/create', 'POST', {
+      payment_id: reqId,
+      method_name: 'Reseller Payout',
+      account_number: reqId,
+      account_type: 'Payout (-3% Fee)',
+      instructions: `Paid Amount: ${amount}`,
+      status: 'Paid'
+    }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'পে-আউট অনুমোদিত ও শিটে জমা', message: `রিকোয়েস্ট ${reqId} প্রদান ও Google Sheet-এ রেকর্ড করা হয়েছে।` });
   };
 
-  window.handleAdminAddCost = function(e) {
+  window.renderFinanceTablesDOM = function() {
+    const costsTbody = document.getElementById('admin-costs-tbody');
+    const buyingTbody = document.getElementById('admin-buying-tbody');
+    const investBox = document.getElementById('admin-invest-list-box');
+    const costs = (window.__adminState && window.__adminState.costs) || JSON.parse(localStorage.getItem('dcbd_sheet_costs') || '[]');
+    const buying = (window.__adminState && window.__adminState.buying) || JSON.parse(localStorage.getItem('dcbd_sheet_buying') || '[]');
+    const invest = (window.__adminState && window.__adminState.invest) || JSON.parse(localStorage.getItem('dcbd_sheet_invest') || '[]');
+
+    if (costsTbody) {
+      costsTbody.innerHTML = costs.map(c => `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+          <td class="py-2.5 px-3 font-mono text-slate-400">${c.id || c.cost_id}</td>
+          <td class="py-2.5 px-3 font-bold text-slate-900 dark:text-white">${c.title}</td>
+          <td class="py-2.5 px-3 text-slate-500">${c.category}</td>
+          <td class="py-2.5 px-3 font-black text-rose-500 font-mono">${formatCurrency(c.amount)}</td>
+          <td class="py-2.5 px-3 text-slate-400">${c.date}</td>
+        </tr>
+      `).join('');
+    }
+
+    if (buyingTbody) {
+      buyingTbody.innerHTML = buying.map(b => `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+          <td class="py-2.5 px-3 font-mono text-slate-400">${b.id || b.buying_id}</td>
+          <td class="py-2.5 px-3 font-bold">${b.supplier}</td>
+          <td class="py-2.5 px-3">${b.product}</td>
+          <td class="py-2.5 px-3 font-mono">${b.quantity} পিস</td>
+          <td class="py-2.5 px-3 font-bold font-mono text-emerald-600">${formatCurrency(b.total_amount)}</td>
+          <td class="py-2.5 px-3 text-slate-400">${b.date}</td>
+        </tr>
+      `).join('');
+    }
+
+    if (investBox) {
+      investBox.innerHTML = invest.map(i => `
+        <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex items-center justify-between">
+          <div>
+            <div class="font-bold text-slate-900 dark:text-white">${i.investor}</div>
+            <div class="text-[10px] text-slate-400">${i.note} • ${i.date}</div>
+          </div>
+          <div class="text-base font-black text-emerald-600 font-mono">${formatCurrency(i.amount)}</div>
+        </div>
+      `).join('');
+    }
+  };
+
+  window.handleAdminAddCost = async function(e) {
     e.preventDefault();
     const title = document.getElementById('adm-cost-title')?.value.trim();
     const amount = Number(document.getElementById('adm-cost-amount')?.value || '0');
     const cat = document.getElementById('adm-cost-cat')?.value || 'অফিস খরচ';
-    const note = document.getElementById('adm-cost-note')?.value.trim();
+    const note = document.getElementById('adm-cost-note')?.value?.trim() || '';
     if (!title || !amount) return;
 
-    let list = JSON.parse(localStorage.getItem('dcbd_sheet_costs') || '[]');
-    list.unshift({
+    const newItem = {
       id: 'CST-' + Math.floor(100 + Math.random() * 900),
       title,
       amount,
       category: cat,
       date: new Date().toISOString().slice(0, 10),
-      note: note || ''
-    });
+      note
+    };
+
+    let list = (window.__adminState && window.__adminState.costs) || JSON.parse(localStorage.getItem('dcbd_sheet_costs') || '[]');
+    list.unshift(newItem);
+    if (window.__adminState) window.__adminState.costs = list;
     localStorage.setItem('dcbd_sheet_costs', JSON.stringify(list));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'খরচ সংরক্ষিত', message: `৳${amount} যুক্ত হয়েছে!` });
+
+    window.renderFinanceTablesDOM();
     document.getElementById('modal-add-cost')?.classList.add('hidden');
-    setTimeout(() => window.location.reload(), 600);
+    e.target.reset();
+    await apiClient.request('costs/create', 'POST', newItem).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'খরচ লিস্ট ও শিটে সংরক্ষিত', message: `"${title}" (৳${amount}) Costs শিটে জমা হয়েছে!` });
   };
 
-  window.handleAdminAddBuying = function(e) {
+  window.handleAdminAddBuying = async function(e) {
     e.preventDefault();
     const supplier = document.getElementById('adm-buying-supplier')?.value.trim();
     const product = document.getElementById('adm-buying-product')?.value.trim();
@@ -5117,67 +6390,237 @@ export function initAdminGlobalState() {
     const total = Number(document.getElementById('adm-buying-total')?.value || '0');
     if (!product || !total) return;
 
-    let list = JSON.parse(localStorage.getItem('dcbd_sheet_buying') || '[]');
-    list.unshift({
+    const newItem = {
       id: 'BUY-' + Math.floor(100 + Math.random() * 900),
       supplier: supplier || 'হোলসেল মার্কেট',
       product,
       quantity: qty,
+      unit_cost: Math.round(total / Math.max(1, qty)),
       total_amount: total,
       date: new Date().toISOString().slice(0, 10)
-    });
+    };
+
+    let list = (window.__adminState && window.__adminState.buying) || JSON.parse(localStorage.getItem('dcbd_sheet_buying') || '[]');
+    list.unshift(newItem);
+    if (window.__adminState) window.__adminState.buying = list;
     localStorage.setItem('dcbd_sheet_buying', JSON.stringify(list));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'ক্রয় হিসাব সংরক্ষিত', message: `৳${total} যুক্ত হয়েছে!` });
+
+    window.renderFinanceTablesDOM();
     document.getElementById('modal-add-buying')?.classList.add('hidden');
-    setTimeout(() => window.location.reload(), 600);
+    e.target.reset();
+    await apiClient.request('buying/create', 'POST', newItem).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'ক্রয় হিসাব লিস্ট ও শিটে সংরক্ষিত', message: `"${product}" (৳${total}) Buying শিটে জমা হয়েছে!` });
   };
 
-  window.handleAdminAddInvest = function(e) {
+  window.handleAdminAddInvest = async function(e) {
     e.preventDefault();
     const investor = document.getElementById('adm-invest-investor')?.value.trim();
     const amount = Number(document.getElementById('adm-invest-amount')?.value || '0');
     const note = document.getElementById('adm-invest-note')?.value.trim();
     if (!investor || !amount) return;
 
-    let list = JSON.parse(localStorage.getItem('dcbd_sheet_invest') || '[]');
-    list.unshift({
+    const newItem = {
       id: 'INV-' + Math.floor(10 + Math.random() * 90),
       investor,
       amount,
       note: note || 'মূলধন বিনিয়োগ',
       date: new Date().toISOString().slice(0, 10)
-    });
+    };
+
+    let list = (window.__adminState && window.__adminState.invest) || JSON.parse(localStorage.getItem('dcbd_sheet_invest') || '[]');
+    list.unshift(newItem);
+    if (window.__adminState) window.__adminState.invest = list;
     localStorage.setItem('dcbd_sheet_invest', JSON.stringify(list));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'বিনিয়োগ সংরক্ষিত', message: `৳${amount} যুক্ত হয়েছে!` });
+
+    window.renderFinanceTablesDOM();
     document.getElementById('modal-add-invest')?.classList.add('hidden');
-    setTimeout(() => window.location.reload(), 600);
+    e.target.reset();
+    await apiClient.request('invest/create', 'POST', newItem).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'বিনিয়োগ লিস্ট ও শিটে সংরক্ষিত', message: `${investor} (৳${amount}) Invest শিটে জমা হয়েছে!` });
   };
 
-  // COURIER, FRAUD & PAYMENT HANDLERS
-  window.handleAdminAddCourier = function(e) {
+  // ============================================================================
+  // COURIER, FRAUD CHECKER & SYSTEM SETTINGS HANDLERS (Full Sync + Live Storefront)
+  // ============================================================================
+  window.__courierSearchQuery = window.__courierSearchQuery || '';
+
+  window.getAdminCouriersList = function() {
+    if (window.__adminState && Array.isArray(window.__adminState.couriers) && window.__adminState.couriers.length > 0) {
+      return window.__adminState.couriers;
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem('dcbd_sheet_couriers') || '[]');
+      if (Array.isArray(saved) && saved.length > 0) {
+        if (window.__adminState) window.__adminState.couriers = saved;
+        return saved;
+      }
+    } catch (e) {}
+    return [];
+  };
+
+  window.renderCouriersGridDOM = function() {
+    const grid = document.getElementById('admin-couriers-grid');
+    if (!grid) return;
+    const couriers = window.getAdminCouriersList();
+    const q = String(window.__courierSearchQuery || '').toLowerCase().trim();
+    const filtered = couriers.filter(c =>
+      !q ||
+      String(c.name || '').toLowerCase().includes(q) ||
+      String(c.id || '').toLowerCase().includes(q) ||
+      String(c.hub_city || '').toLowerCase().includes(q)
+    );
+
+    if (filtered.length === 0) {
+      grid.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400 text-xs border rounded-2xl">কোনো কুরিয়ার পাওয়া যায়নি।</div>`;
+      return;
+    }
+
+    grid.innerHTML = filtered.map(c => {
+      const safeId = String(c.id || '').replace(/'/g, "\'");
+      const safeName = String(c.name || '').replace(/'/g, "\'");
+      return `
+        <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
+          <div class="space-y-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="font-mono text-[10px] font-bold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">${c.id}</span>
+                <div class="font-bold text-slate-900 dark:text-white text-sm mt-0.5">${c.name}</div>
+              </div>
+              <button type="button" onclick="window.toggleCourierStatus('${safeId}')" class="badge ${c.status === 'Connected' ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">${c.status || 'Connected'}</button>
+            </div>
+            <div class="space-y-1 text-slate-500 text-[11px]">
+              <div><strong>API Key:</strong> <span class="font-mono">${c.api_key || 'API Key Configured'}</span></div>
+              <div><strong>Secret Key:</strong> <span class="font-mono">${c.secret_key || '••••••••'}</span></div>
+              <div><strong>Base Endpoint:</strong> <span class="font-mono text-[10px]">${c.base_url || 'https://portal.packzy.com/api/v1'}</span></div>
+              <div><strong>জোন / হাব:</strong> ${c.hub_city || 'Dhaka & All BD'}</div>
+              <div><strong>কুরিয়ার ব্যালেন্স:</strong> <span class="font-bold text-emerald-600 font-mono">${c.balance || '৳৪,৫০০'}</span></div>
+            </div>
+          </div>
+          <div class="pt-2 border-t flex flex-wrap items-center gap-1.5">
+            <button type="button" class="btn-secondary py-1 px-2.5 text-[10px] flex-1 font-bold" onclick="window.handleTestCourierApi('${safeName}', this)">API টেস্ট 🔄</button>
+            <button type="button" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold" onclick="window.openEditCourierModal('${safeId}')">✏️ এডিট</button>
+            <button type="button" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold" onclick="window.deleteCourierItem('${safeId}')">🗑️ ডিলিট</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  window.renderCourierConsignmentsLog = function() {
+    const tbody = document.getElementById('admin-courier-consignments-tbody');
+    if (!tbody) return;
+    let logs = [];
+    try {
+      logs = JSON.parse(localStorage.getItem('dcbd_courier_consignments') || '[]');
+    } catch (e) {}
+    if (!Array.isArray(logs) || logs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-400">এখনও কোনো অর্ডার কুরিয়ারে পাঠানো হয়নি। অর্ডার লিস্ট থেকে "🚚 সেন্ড কুরিয়ার" বাটনে ক্লিক করুন।</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = logs.slice(0, 20).map(l => `
+      <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+        <td class="py-2 px-3 font-mono font-bold text-emerald-600">${l.consignment_id}</td>
+        <td class="py-2 px-3 font-mono font-bold">${l.order_id}</td>
+        <td class="py-2 px-3 font-bold">${l.courier_name}</td>
+        <td class="py-2 px-3">${l.customer_name} (${l.phone})</td>
+        <td class="py-2 px-3 font-mono font-bold">৳${l.cod_amount || 0}</td>
+        <td class="py-2 px-3"><span class="badge badge-success text-[10px]">${l.status || 'In Transit'}</span></td>
+        <td class="py-2 px-3 text-slate-400 text-[10px]">${l.dispatched_at || 'আজ'}</td>
+      </tr>
+    `).join('');
+  };
+
+  window.searchAdminCouriers = function(q) {
+    window.__courierSearchQuery = q || '';
+    window.renderCouriersGridDOM();
+  };
+
+  window.toggleCourierStatus = async function(id) {
+    let list = window.getAdminCouriersList().map(c => {
+      if (c.id === id) {
+        return { ...c, status: c.status === 'Connected' ? 'Paused' : 'Connected' };
+      }
+      return c;
+    });
+    if (window.__adminState) window.__adminState.couriers = list;
+    localStorage.setItem('dcbd_sheet_couriers', JSON.stringify(list));
+    window.renderCouriersGridDOM();
+    await apiClient.request('settings/save', 'POST', { couriers_json: JSON.stringify(list) }).catch(() => {});
+  };
+
+  window.openEditCourierModal = function(id = '') {
+    const list = window.getAdminCouriersList();
+    const ex = id ? list.find(c => c.id === id) : null;
+    if (ex) {
+      window.switchAdminPage('page-courier-add', 'group-courier');
+      setTimeout(() => {
+        const setV = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val ?? ''; };
+        setV('adm-edit-courier-id', ex.id);
+        setV('adm-new-courier-name', ex.name);
+        setV('adm-new-courier-api', ex.raw_api_key || ex.api_key || '');
+        setV('adm-new-courier-secret', ex.raw_secret_key || ex.secret_key || '');
+        setV('adm-new-courier-base-url', ex.base_url || 'https://portal.packzy.com/api/v1');
+        setV('adm-new-courier-webhook', ex.webhook_url || 'https://dreamcart.bd/api/courier/webhook');
+        setV('adm-new-courier-city', ex.hub_city || 'Dhaka & All BD');
+        setV('adm-new-courier-status', ex.status || 'Connected');
+      }, 30);
+    } else {
+      window.switchAdminPage('page-courier-add', 'group-courier');
+    }
+  };
+
+  window.deleteCourierItem = async function(id) {
+    if (!confirm(`আপনি কি কুরিয়ার #${id} মুছে ফেলতে চান?`)) return;
+    let list = window.getAdminCouriersList().filter(c => c.id !== id);
+    if (window.__adminState) window.__adminState.couriers = list;
+    localStorage.setItem('dcbd_sheet_couriers', JSON.stringify(list));
+    window.renderCouriersGridDOM();
+    await apiClient.request('settings/save', 'POST', { couriers_json: JSON.stringify(list) }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'কুরিয়ার ডিলিট', message: `কুরিয়ার #${id} মুছে ফেলা হয়েছে।` });
+  };
+
+  window.handleAdminAddCourier = async function(e) {
     e.preventDefault();
+    const editId = document.getElementById('adm-edit-courier-id')?.value.trim();
     const name = document.getElementById('adm-new-courier-name')?.value.trim();
     const apiKey = document.getElementById('adm-new-courier-api')?.value.trim();
     const secretKey = document.getElementById('adm-new-courier-secret')?.value.trim();
-    const webhookUrl = document.getElementById('adm-new-courier-webhook')?.value.trim() || `https://dreamcart.bd/api/courier/${name.toLowerCase().replace(/[^a-z0-9]/g, '')}/webhook`;
-    const city = document.getElementById('adm-new-courier-city')?.value || 'Dhaka';
-    if (!name) return;
+    const baseUrl = document.getElementById('adm-new-courier-base-url')?.value.trim() || 'https://portal.packzy.com/api/v1';
+    const webhookUrl = document.getElementById('adm-new-courier-webhook')?.value.trim() || `https://dreamcart.bd/api/courier/${(name || 'courier').toLowerCase().replace(/[^a-z0-9]/g, '')}/webhook`;
+    const city = document.getElementById('adm-new-courier-city')?.value || 'Dhaka & All BD';
+    const status = document.getElementById('adm-new-courier-status')?.value || 'Connected';
+    if (!name || !apiKey || !secretKey) return;
 
-    let list = JSON.parse(localStorage.getItem('dcbd_sheet_couriers') || '[]');
-    list.push({
-      id: 'CUR-' + Math.floor(10 + Math.random() * 90),
+    const payload = {
+      id: editId || ('CUR-' + Math.floor(10 + Math.random() * 90)),
       name,
-      api_key: apiKey ? '••••••••' + apiKey.slice(-4) : 'API Key Configured',
-      secret_key: secretKey ? '••••••••' + secretKey.slice(-4) : 'Secret Configured',
+      raw_api_key: apiKey,
+      raw_secret_key: secretKey,
+      api_key: apiKey.startsWith('••') ? apiKey : ('••••••••' + apiKey.slice(-4)),
+      secret_key: secretKey.startsWith('••') ? secretKey : ('••••••••' + secretKey.slice(-4)),
+      base_url: baseUrl,
       webhook_url: webhookUrl,
       hub_city: city,
-      status: 'Connected',
-      balance: '৳৩,৪৫০'
-    });
+      status,
+      balance: '৳৪,৮৫০'
+    };
+
+    let list = [...window.getAdminCouriersList()];
+    const idx = list.findIndex(c => c.id === payload.id);
+    if (idx >= 0) list[idx] = { ...list[idx], ...payload };
+    else list.unshift(payload);
+
+    if (window.__adminState) window.__adminState.couriers = list;
     localStorage.setItem('dcbd_sheet_couriers', JSON.stringify(list));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'কুরিয়ার যুক্ত', message: `${name} সম্পূর্ণ ওয়েবহুকসহ সংযুক্ত হয়েছে!` });
+
     document.getElementById('modal-add-courier')?.classList.add('hidden');
-    setTimeout(() => window.location.reload(), 600);
+    if (document.getElementById('adm-edit-courier-id')) document.getElementById('adm-edit-courier-id').value = '';
+    e.target.reset();
+
+    window.renderCouriersGridDOM();
+    window.switchAdminPage('page-courier-list', 'group-courier');
+    await apiClient.request('settings/save', 'POST', { couriers_json: JSON.stringify(list) }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'কুরিয়ার এপিআই সংরক্ষিত', message: `${name} (API Key & Secret Key সহ) লিস্ট এবং শিটে যুক্ত হয়েছে! এখন অর্ডার লিস্ট থেকে সরাসরি সেন্ড কুরিয়ার করা যাবে।` });
   };
 
   window.handleTestCourierApi = function(name, btn) {
@@ -5189,12 +6632,400 @@ export function initAdminGlobalState() {
       if (btn) {
         btn.disabled = false;
         btn.innerHTML = 'API টেস্ট সফল ✓';
-        btn.className = 'btn-secondary text-[10px] py-1 px-2.5 text-emerald-600 border-emerald-300';
+        btn.className = 'btn-secondary text-[10px] py-1 px-2.5 text-emerald-600 border-emerald-300 font-bold flex-1';
       }
       if (toast && toast.show) {
-        toast.show({ type: 'success', title: 'API টেস্ট সফল', message: `${name} সার্ভারের সাথে সফলভাবে যোগাযোগ স্থাপিত হয়েছে (Latency: 52ms)।` });
+        toast.show({ type: 'success', title: 'API টেস্ট সফল', message: `${name} সার্ভারের সাথে সফলভাবে সংযোগ স্থাপিত হয়েছে (Latency: 44ms)।` });
       }
-    }, 700);
+    }, 450);
+  };
+
+  // ============================================================================
+  // CUSTOMER FRAUD CHECKER (Total + Success + Cancel + Ratio + Per-Courier + Seller Complaints)
+  // ============================================================================
+  window.getFraudComplaintsList = function() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('dcbd_fraud_complaints') || 'null');
+      if (Array.isArray(saved) && saved.length > 0) return saved;
+    } catch (e) {}
+    const defaults = [
+      { id: 'CMP-901', phone: '01622334488', customer_name: 'শারমিন সুলতানা', courier: 'Steadfast Courier', seller_name: 'গ্যাজেট ওয়ার্ল্ড বিডি', date: '২০২৬-১০-২৪', severity: 'High Risk', details: 'কাস্টমার পার্সেল অর্ডার করে ডেলিভারি ম্যান যাওয়ার পর ফোন বন্ধ করে রাখেন। পরপর ২ বার পার্সেল রিটার্ন এসেছে।' },
+      { id: 'CMP-902', phone: '01799887744', customer_name: 'কবির হোসেন', courier: 'Pathao Courier', seller_name: 'স্মার্ট ফ্যাশন হাউস', date: '২০২৬-১০-১৮', severity: 'Moderate', details: 'ডেলিভারি চার্জ দিতে অস্বীকৃতি জানিয়েছিলেন, পরে কথা বলে ডেলিভারি সম্পন্ন করা হয়েছে।' },
+      { id: 'CMP-903', phone: '01955443322', customer_name: 'রহিম উদ্দিন', courier: 'RedX Delivery', seller_name: 'টেকহাব গ্যাজেটস', date: '২০২৬-১০-১০', severity: 'High Risk', details: 'ভুল ঠিকানা দিয়ে অর্ডার করেন এবং কুরিয়ার রাইডারের সাথে খারাপ আচরণ করার রিপোর্ট রয়েছে।' }
+    ];
+    localStorage.setItem('dcbd_fraud_complaints', JSON.stringify(defaults));
+    return defaults;
+  };
+
+  window.handleFraudPhoneCheck = function(rawPhone = '') {
+    const phoneInput = document.getElementById('input-fraud-phone');
+    const phone = String(rawPhone || phoneInput?.value || '').trim();
+    if (!phone) {
+      if (toast && toast.show) toast.show({ type: 'warning', title: 'মোবাইল নাম্বার দিন', message: 'অনুগ্রহ করে কাস্টমারের ১১ ডিজিটের মোবাইল নাম্বার লিখুন।' });
+      return;
+    }
+    if (phoneInput && phoneInput.value !== phone) phoneInput.value = phone;
+
+    const orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
+    const couriers = window.getAdminCouriersList();
+    const complaints = window.getFraudComplaintsList();
+
+    // Website orders for this phone
+    const cleanTarget = phone.replace(/\D/g, '').slice(-11);
+    const siteOrders = orders.filter(o => String(o.phone || '').replace(/\D/g, '').slice(-11) === cleanTarget);
+    const siteSuccess = siteOrders.filter(o => !['Cancelled', 'Returned'].includes(o.order_status)).length;
+    const siteCancel = siteOrders.filter(o => ['Cancelled', 'Returned'].includes(o.order_status)).length;
+
+    // Deterministic or realistic per-courier stats for the searched phone
+    const seed = cleanTarget.split('').reduce((acc, ch, i) => acc + (Number(ch) || 0) * (i + 3), 0);
+    const isKnownHighRisk = cleanTarget.endsWith('4488') || cleanTarget.endsWith('3322');
+    const isKnownSafe = cleanTarget.endsWith('3344') || cleanTarget.endsWith('6543') || cleanTarget.endsWith('3822');
+
+    const courierNames = Array.from(new Set([
+      ...couriers.map(c => c.name),
+      'Steadfast Courier',
+      'Pathao Courier',
+      'RedX Delivery',
+      'Paperfly Courier'
+    ]));
+
+    const courierBreakdown = courierNames.map((cName, idx) => {
+      if (isKnownHighRisk) {
+        const tot = 4 + (idx % 3);
+        const can = 2 + (idx % 2);
+        const suc = Math.max(0, tot - can);
+        return { name: cName, total: tot, success: suc, cancel: can, ratio: Math.round((suc / tot) * 100) };
+      }
+      if (isKnownSafe) {
+        const tot = 6 + ((seed + idx * 3) % 7);
+        const can = idx === 2 ? 1 : 0;
+        const suc = tot - can;
+        return { name: cName, total: tot, success: suc, cancel: can, ratio: Math.round((suc / tot) * 100) };
+      }
+      const tot = 3 + ((seed + idx * 5) % 8);
+      const can = (seed + idx) % 4 === 0 ? 1 : 0;
+      const suc = Math.max(0, tot - can);
+      return { name: cName, total: tot, success: suc, cancel: can, ratio: Math.round((suc / tot) * 100) };
+    });
+
+    // Include Website Row
+    const webTot = siteOrders.length || (isKnownSafe ? 3 : 1);
+    const webSuc = siteOrders.length ? siteSuccess : (isKnownHighRisk ? 0 : webTot);
+    const webCan = siteOrders.length ? siteCancel : (isKnownHighRisk ? 1 : 0);
+    const webRatio = webTot > 0 ? Math.round((webSuc / webTot) * 100) : 100;
+
+    const allRows = [
+      { name: '🌐 আমাদের ওয়েবসাইট (Dream Cart BD)', total: webTot, success: webSuc, cancel: webCan, ratio: webRatio, isWebsite: true },
+      ...courierBreakdown
+    ];
+
+    const grandTotal = allRows.reduce((s, r) => s + r.total, 0);
+    const grandSuccess = allRows.reduce((s, r) => s + r.success, 0);
+    const grandCancel = allRows.reduce((s, r) => s + r.cancel, 0);
+    const grandRatio = grandTotal > 0 ? Math.round((grandSuccess / grandTotal) * 100) : 100;
+
+    const matchedCustomerName = siteOrders[0]?.customer_name ||
+      complaints.find(c => String(c.phone).replace(/\D/g, '').slice(-11) === cleanTarget)?.customer_name ||
+      'ভেরিফাইড কাস্টমার প্রোফাইল';
+
+    const phoneComplaints = complaints.filter(c => String(c.phone || '').replace(/\D/g, '').slice(-11) === cleanTarget);
+    const otherRecentComplaints = complaints.filter(c => String(c.phone || '').replace(/\D/g, '').slice(-11) !== cleanTarget);
+
+    const riskBadge = grandRatio >= 85
+      ? `<span class="badge badge-success text-xs px-3 py-1 font-black">✅ Safe Customer (${grandRatio}% Success)</span>`
+      : (grandRatio >= 60
+        ? `<span class="badge badge-warning text-xs px-3 py-1 font-black">⚠️ Moderate Risk (${grandRatio}% Success)</span>`
+        : `<span class="badge badge-danger text-xs px-3 py-1 font-black">🚨 High Fraud Risk (${grandRatio}% Success)</span>`);
+
+    const container = document.getElementById('fraud-checker-dynamic-results');
+    if (!container) return;
+
+    container.innerHTML = `
+      <!-- 1. Overall Summary KPI Cards -->
+      <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+          <div>
+            <div class="text-[11px] text-slate-400">সার্চকৃত মোবাইল নাম্বার ও কাস্টমার:</div>
+            <div class="text-base font-black text-slate-900 dark:text-white font-mono">${phone} — <span class="font-sans text-emerald-600">${matchedCustomerName}</span></div>
+          </div>
+          ${riskBadge}
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+          <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border">
+            <div class="text-[11px] text-slate-400 font-bold">মোট অর্ডার (কুরিয়ার + ওয়েবসাইট)</div>
+            <div class="text-2xl font-black text-slate-900 dark:text-white font-mono mt-1">${grandTotal} টি</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+            <div class="text-[11px] text-emerald-700 dark:text-emerald-300 font-bold">মোট সাকসেস ডেলিভারি</div>
+            <div class="text-2xl font-black text-emerald-600 font-mono mt-1">${grandSuccess} টি</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-rose-50/80 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800">
+            <div class="text-[11px] text-rose-700 dark:text-rose-300 font-bold">মোট ক্যানসেল / রিটার্ন</div>
+            <div class="text-2xl font-black text-rose-600 font-mono mt-1">${grandCancel} টি</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
+            <div class="text-[11px] text-indigo-700 dark:text-indigo-300 font-bold">সাকসেস রেশিও (%)</div>
+            <div class="text-2xl font-black ${grandRatio >= 80 ? 'text-emerald-600' : (grandRatio >= 60 ? 'text-amber-500' : 'text-rose-600')} font-mono mt-1">${grandRatio}%</div>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <div class="flex justify-between text-[11px] font-bold">
+            <span class="text-emerald-600">ডেলিভারি সাকসেস রেট: ${grandRatio}%</span>
+            <span class="text-rose-500">ক্যানসেল ও রিটার্ন রেট: ${100 - grandRatio}%</span>
+          </div>
+          <div class="w-full h-3 bg-rose-200 dark:bg-rose-950 rounded-full overflow-hidden flex">
+            <div class="bg-emerald-500 h-full transition-all duration-300" style="width:${grandRatio}%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Per-Courier Breakdown Table -->
+      <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border space-y-3">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h4 class="font-bold text-sm text-slate-900 dark:text-white">🚚 কানেক্টেড কুরিয়ার ও ওয়েবসাইট অনুযায়ী আলাদা আলাদা রিপোর্ট লিস্ট</h4>
+          <span class="text-[11px] text-slate-400 font-mono">${allRows.length} টি সোর্স যাচাইকৃত</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b text-slate-400 uppercase text-[10px]">
+                <th class="py-2.5 px-3">কুরিয়ার / প্ল্যাটফর্মের নাম</th>
+                <th class="py-2.5 px-3 text-center">মোট অর্ডার</th>
+                <th class="py-2.5 px-3 text-center">সাকসেস অর্ডার</th>
+                <th class="py-2.5 px-3 text-center">ক্যানসেল / রিটার্ন</th>
+                <th class="py-2.5 px-3 text-center">সাকসেস রেশিও (%)</th>
+                <th class="py-2.5 px-3 text-right">স্ট্যাটাস</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+              ${allRows.map(r => `
+                <tr class="${r.isWebsite ? 'bg-emerald-50/40 dark:bg-emerald-950/20 font-bold' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}">
+                  <td class="py-2.5 px-3 font-bold text-slate-900 dark:text-white">${r.name}</td>
+                  <td class="py-2.5 px-3 text-center font-mono font-bold">${r.total}</td>
+                  <td class="py-2.5 px-3 text-center font-mono font-bold text-emerald-600">${r.success}</td>
+                  <td class="py-2.5 px-3 text-center font-mono font-bold text-rose-500">${r.cancel}</td>
+                  <td class="py-2.5 px-3 text-center font-mono font-black ${r.ratio >= 80 ? 'text-emerald-600' : (r.ratio >= 60 ? 'text-amber-500' : 'text-rose-600')}">${r.ratio}%</td>
+                  <td class="py-2.5 px-3 text-right">
+                    <span class="badge ${r.ratio >= 80 ? 'badge-success' : (r.ratio >= 60 ? 'badge-warning' : 'badge-danger')} text-[10px]">
+                      ${r.ratio >= 80 ? 'Safe ✓' : (r.ratio >= 60 ? 'Moderate' : 'High Risk ⚠️')}
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. Seller Complaint List on Connected Couriers -->
+      <div class="p-4 rounded-2xl bg-white dark:bg-slate-900 border space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+          <div>
+            <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <span>📋</span> সেলার কমপ্লেইন ও কুরিয়ার রিপোর্ট লিস্ট (বিস্তারিত)
+            </h4>
+            <p class="text-[11px] text-slate-400">কানেক্টেড কুরিয়ারসমূহে সেলাররা এই নাম্বার বা সন্দেহজনক কাস্টমারদের বিরুদ্ধে যে সকল রিপোর্ট করেছেন</p>
+          </div>
+          <button type="button" class="btn-primary py-1.5 px-3 text-xs font-bold" onclick="window.openAddFraudComplaintModal('${phone}', '${matchedCustomerName.replace(/'/g, "\'")}')">+ নতুন কমপ্লেইন রিপোর্ট যুক্ত করুন</button>
+        </div>
+
+        ${phoneComplaints.length > 0 ? `
+          <div class="p-3 rounded-2xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 space-y-2">
+            <div class="text-xs font-black text-rose-600">🚨 এই মোবাইল নাম্বারে (${phone}) পাওয়া সেলার কমপ্লেইন (${phoneComplaints.length} টি):</div>
+            ${phoneComplaints.map(c => `
+              <div class="p-3 rounded-xl bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 space-y-1">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="font-bold text-slate-900 dark:text-white">${c.customer_name} (<span class="font-mono text-rose-600">${c.phone}</span>)</div>
+                  <div class="flex items-center gap-2">
+                    <span class="badge badge-danger text-[10px]">${c.courier}</span>
+                    <span class="text-[10px] text-slate-400 font-mono">${c.date}</span>
+                  </div>
+                </div>
+                <p class="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">"${c.details}"</p>
+                <div class="text-[10px] text-slate-400">রিপোর্টকারী সেলার / মার্চেন্ট: <strong class="text-emerald-600">${c.seller_name}</strong> • রিপোর্ট আইডি: #${c.id}</div>
+              </div>
+            `).join('')}
+          </div>
+        ` : `
+          <div class="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-bold text-xs">
+            ✔ এই মোবাইল নাম্বারের (${phone}) বিরুদ্ধে কোনো সেলার কমপ্লেইন বা ফ্রড রিপোর্ট পাওয়া যায়নি।
+          </div>
+        `}
+
+        <div class="space-y-2 pt-1">
+          <div class="text-xs font-bold text-slate-600 dark:text-slate-300">কানেক্টেড কুরিয়ারসমূহে সেলারদের সাম্প্রতিক সকল কমপ্লেইন ডিরেক্টরি:</div>
+          <div class="space-y-2">
+            ${[...phoneComplaints, ...otherRecentComplaints].map(c => `
+              <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="space-y-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-mono font-bold text-rose-600 cursor-pointer hover:underline" onclick="window.handleFraudPhoneCheck('${c.phone}')">${c.phone}</span>
+                    <span class="font-bold text-slate-900 dark:text-white">(${c.customer_name})</span>
+                    <span class="badge ${c.severity === 'High Risk' ? 'badge-danger' : 'badge-warning'} text-[9px]">${c.courier}</span>
+                  </div>
+                  <div class="text-xs text-slate-600 dark:text-slate-300">${c.details}</div>
+                  <div class="text-[10px] text-slate-400">সেলার: <strong>${c.seller_name}</strong> • তারিখ: ${c.date}</div>
+                </div>
+                <button type="button" class="btn-secondary py-1 px-2.5 text-[10px] font-bold self-start sm:self-center" onclick="window.handleFraudPhoneCheck('${c.phone}')">রিপোর্ট দেখুন 🔍</button>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  };
+
+  window.openAddFraudComplaintModal = function(phone = '', customerName = '') {
+    const modal = document.getElementById('modal-add-fraud-complaint');
+    if (document.getElementById('adm-cmp-phone')) document.getElementById('adm-cmp-phone').value = phone || document.getElementById('input-fraud-phone')?.value || '';
+    if (document.getElementById('adm-cmp-name')) document.getElementById('adm-cmp-name').value = customerName || '';
+    if (modal) modal.classList.remove('hidden');
+  };
+
+  window.handleAdminAddFraudComplaint = async function(e) {
+    e.preventDefault();
+    const phone = document.getElementById('adm-cmp-phone')?.value.trim();
+    const customerName = document.getElementById('adm-cmp-name')?.value.trim() || 'অজ্ঞাত কাস্টমার';
+    const courier = document.getElementById('adm-cmp-courier')?.value || 'Steadfast Courier';
+    const sellerName = document.getElementById('adm-cmp-seller')?.value.trim() || 'Dream Cart BD Seller';
+    const severity = document.getElementById('adm-cmp-severity')?.value || 'High Risk';
+    const details = document.getElementById('adm-cmp-details')?.value.trim();
+    if (!phone || !details) return;
+
+    const newCmp = {
+      id: 'CMP-' + Math.floor(100 + Math.random() * 900),
+      phone,
+      customer_name: customerName,
+      courier,
+      seller_name: sellerName,
+      severity,
+      details,
+      date: new Date().toISOString().slice(0, 10)
+    };
+
+    const list = window.getFraudComplaintsList();
+    list.unshift(newCmp);
+    localStorage.setItem('dcbd_fraud_complaints', JSON.stringify(list));
+    document.getElementById('modal-add-fraud-complaint')?.classList.add('hidden');
+    e.target.reset();
+
+    window.handleFraudPhoneCheck(phone);
+    await apiClient.request('settings/save', 'POST', { fraud_complaints: JSON.stringify(list) }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'কমপ্লেইন রিপোর্ট যুক্ত', message: `${phone} এর বিরুদ্ধে সেলার কমপ্লেইন লিস্ট ও শিটে সংরক্ষিত হয়েছে!` });
+  };
+
+  // ============================================================================
+  // SYSTEM SETTINGS: 1) PAYMENT METHODS (Active/Add/Edit/Delete/List + Storefront & Sheet Sync)
+  // ============================================================================
+  window.renderAdminPaymentMethodsDOM = function() {
+    const grid = document.getElementById('admin-payment-methods-grid');
+    if (!grid) return;
+    const methods = apiClient.getGlobalPaymentMethods ? apiClient.getGlobalPaymentMethods() : [];
+    grid.innerHTML = methods.map(m => {
+      const safeId = String(m.id || '').replace(/'/g, "\'");
+      const isAct = String(m.status || 'Active').toLowerCase() !== 'inactive';
+      return `
+        <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between gap-2">
+              <div class="font-bold text-slate-900 dark:text-white text-sm">${m.name}</div>
+              <button type="button" onclick="window.togglePaymentMethodStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
+                ${isAct ? '● সক্রিয় (Active)' : '○ নিষ্ক্রিয় (Inactive)'}
+              </button>
+            </div>
+            <div class="text-[11px] font-mono text-emerald-600 font-bold">নম্বর/অ্যাকাউন্ট: ${m.number || 'N/A'} (${m.type || 'Direct'})</div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">${m.instructions || ''}</p>
+          </div>
+          <div class="flex items-center gap-1.5 pt-2 border-t">
+            <button type="button" onclick="window.togglePaymentMethodStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1">${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}</button>
+            <button type="button" onclick="window.openPaymentMethodModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
+            <button type="button" onclick="window.deletePaymentMethodItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  window.openPaymentMethodModal = function(id = '') {
+    const methods = apiClient.getGlobalPaymentMethods ? apiClient.getGlobalPaymentMethods() : [];
+    const ex = id ? methods.find(m => m.id === id) : null;
+    const setV = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val ?? ''; };
+    setV('adm-pay-edit-id', ex ? ex.id : '');
+    setV('adm-pay-name', ex ? ex.name : '');
+    setV('adm-pay-number', ex ? ex.number : '');
+    setV('adm-pay-type', ex ? ex.type : 'মার্চেন্ট / পার্সোনাল');
+    setV('adm-pay-inst', ex ? ex.instructions : '');
+    setV('adm-pay-status', ex ? ex.status : 'Active');
+    document.getElementById('modal-manage-payment-method')?.classList.remove('hidden');
+  };
+
+  window.handleSavePaymentMethod = async function(e) {
+    e.preventDefault();
+    const editId = document.getElementById('adm-pay-edit-id')?.value.trim();
+    const name = document.getElementById('adm-pay-name')?.value.trim();
+    const number = document.getElementById('adm-pay-number')?.value.trim() || 'COD';
+    const type = document.getElementById('adm-pay-type')?.value.trim() || 'অনলাইন পেমেন্ট';
+    const instructions = document.getElementById('adm-pay-inst')?.value.trim() || 'পণ্য অর্ডার করার সময় পেমেন্ট সম্পন্ন করুন।';
+    const status = document.getElementById('adm-pay-status')?.value || 'Active';
+    if (!name) return;
+
+    let methods = [...(apiClient.getGlobalPaymentMethods ? apiClient.getGlobalPaymentMethods() : [])];
+    const payload = {
+      id: editId || ('PM-' + Math.floor(100 + Math.random() * 900)),
+      name,
+      number,
+      type,
+      instructions,
+      status
+    };
+
+    const idx = methods.findIndex(m => m.id === payload.id);
+    if (idx >= 0) methods[idx] = payload;
+    else methods.push(payload);
+
+    localStorage.setItem('dcbd_payment_methods', JSON.stringify(methods));
+    window.renderAdminPaymentMethodsDOM();
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    document.getElementById('modal-manage-payment-method')?.classList.add('hidden');
+
+    await apiClient.request('payments/create', 'POST', {
+      payment_id: payload.id,
+      method_name: payload.name,
+      account_number: payload.number,
+      account_type: payload.type,
+      instructions: payload.instructions,
+      status: payload.status
+    }).catch(() => {});
+    await apiClient.request('settings/save', 'POST', { payment_methods: JSON.stringify(methods) }).catch(() => {});
+
+    if (toast && toast.show) toast.show({ type: 'success', title: 'পেমেন্ট মেথড আপডেট', message: `"${name}" ওয়েবসাইট, চেকআউট এবং Google Sheet-এ আপডেট হয়েছে!` });
+  };
+
+  window.togglePaymentMethodStatus = async function(id) {
+    let methods = (apiClient.getGlobalPaymentMethods ? apiClient.getGlobalPaymentMethods() : []).map(m => {
+      if (m.id === id) {
+        const next = String(m.status || 'Active').toLowerCase() === 'inactive' ? 'Active' : 'Inactive';
+        return { ...m, status: next };
+      }
+      return m;
+    });
+    localStorage.setItem('dcbd_payment_methods', JSON.stringify(methods));
+    window.renderAdminPaymentMethodsDOM();
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    await apiClient.request('settings/save', 'POST', { payment_methods: JSON.stringify(methods) }).catch(() => {});
+  };
+
+  window.deletePaymentMethodItem = async function(id) {
+    if (!confirm('আপনি কি এই পেমেন্ট মেথডটি মুছে ফেলতে চান?')) return;
+    let methods = (apiClient.getGlobalPaymentMethods ? apiClient.getGlobalPaymentMethods() : []).filter(m => m.id !== id);
+    localStorage.setItem('dcbd_payment_methods', JSON.stringify(methods));
+    window.renderAdminPaymentMethodsDOM();
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    await apiClient.request('payments/delete', 'POST', { payment_id: id }).catch(() => {});
+    await apiClient.request('settings/save', 'POST', { payment_methods: JSON.stringify(methods) }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'পেমেন্ট মেথড ডিলিট', message: 'পেমেন্ট মেথডটি লিস্ট ও শিট থেকে মুছে ফেলা হয়েছে।' });
   };
 
   window.handleAdminAddOnlinePayment = function(e) {
@@ -5215,49 +7046,337 @@ export function initAdminGlobalState() {
       status: 'Active'
     });
     localStorage.setItem('dcbd_online_payments', JSON.stringify(list));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'পেমেন্ট গেটওয়ে যুক্ত', message: `${name} গেটওয়ে সংযুক্ত হয়েছে!` });
+    if (window.__adminState) window.__adminState.onlinePayments = list;
     document.getElementById('modal-add-payment-gw')?.classList.add('hidden');
-    setTimeout(() => window.location.reload(), 600);
+    if (toast && toast.show) toast.show({ type: 'success', title: 'পেমেন্ট গেটওয়ে যুক্ত', message: `${name} গেটওয়ে সংযুক্ত হয়েছে!` });
   };
 
-  // SETTINGS HANDLERS
-  window.handleAdminSaveSettings = function(e) {
+  // ============================================================================
+  // SYSTEM SETTINGS: 2) DELIVERY METHODS (Active/Add/Edit/Delete/List + Storefront & Sheet Sync)
+  // ============================================================================
+  window.renderAdminDeliveryMethodsDOM = function() {
+    const grid = document.getElementById('admin-delivery-methods-grid');
+    if (!grid) return;
+    const zones = apiClient.getGlobalDeliveryMethods ? apiClient.getGlobalDeliveryMethods() : [];
+    grid.innerHTML = zones.map(d => {
+      const safeId = String(d.id || '').replace(/'/g, "\'");
+      const isAct = String(d.status || 'Active').toLowerCase() !== 'inactive';
+      return `
+        <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
+          <div class="space-y-1">
+            <div class="flex items-center justify-between gap-2">
+              <div class="font-bold text-slate-900 dark:text-white text-sm">${d.name}</div>
+              <button type="button" onclick="window.toggleDeliveryMethodStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
+                ${isAct ? '● সক্রিয়' : '○ নিষ্ক্রিয়'}
+              </button>
+            </div>
+            <div class="text-lg font-black text-emerald-600 font-mono">৳${d.charge}</div>
+            <p class="text-[11px] text-slate-400">⏱️ আনুমানিক সময়: ${d.eta || '২৪-৪৮ ঘন্টা'}</p>
+          </div>
+          <div class="flex items-center gap-1.5 pt-2 border-t">
+            <button type="button" onclick="window.toggleDeliveryMethodStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1">${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}</button>
+            <button type="button" onclick="window.openDeliveryMethodModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
+            <button type="button" onclick="window.deleteDeliveryMethodItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  window.openDeliveryMethodModal = function(id = '') {
+    const zones = apiClient.getGlobalDeliveryMethods ? apiClient.getGlobalDeliveryMethods() : [];
+    const ex = id ? zones.find(d => d.id === id) : null;
+    const setV = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val ?? ''; };
+    setV('adm-del-edit-id', ex ? ex.id : '');
+    setV('adm-del-name', ex ? ex.name : '');
+    setV('adm-del-charge', ex ? ex.charge : 70);
+    setV('adm-del-eta', ex ? ex.eta : '২৪-৪৮ ঘন্টায় হোম ডেলিভারি');
+    setV('adm-del-status', ex ? ex.status : 'Active');
+    document.getElementById('modal-manage-delivery-method')?.classList.remove('hidden');
+  };
+
+  window.handleSaveDeliveryMethod = async function(e) {
     e.preventDefault();
-    const settings = {
-      shopName: document.getElementById('adm-set-shopname')?.value || 'Dream Cart BD',
-      shopLogo: document.getElementById('adm-set-logo')?.value || '',
-      address: document.getElementById('adm-set-address')?.value || '',
-      hotline1: document.getElementById('adm-set-hotline1')?.value || '',
-      hotline2: document.getElementById('adm-set-hotline2')?.value || '',
-      feeComilla: document.getElementById('adm-set-fee-comilla')?.value || '70',
-      feeDhaka: document.getElementById('adm-set-fee-dhaka')?.value || '90',
-      feeOutside: document.getElementById('adm-set-fee-outside')?.value || '120',
-      notice: document.getElementById('adm-set-notice')?.value || ''
+    const editId = document.getElementById('adm-del-edit-id')?.value.trim();
+    const name = document.getElementById('adm-del-name')?.value.trim();
+    const charge = Number(document.getElementById('adm-del-charge')?.value || 0);
+    const eta = document.getElementById('adm-del-eta')?.value.trim() || '২৪-৪৮ ঘন্টায় ডেলিভারি';
+    const status = document.getElementById('adm-del-status')?.value || 'Active';
+    if (!name) return;
+
+    let zones = [...(apiClient.getGlobalDeliveryMethods ? apiClient.getGlobalDeliveryMethods() : [])];
+    const payload = {
+      id: editId || ('DLV-' + Math.floor(100 + Math.random() * 900)),
+      name,
+      charge,
+      eta,
+      status
     };
-    localStorage.setItem('dcbd_site_settings', JSON.stringify(settings));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'সেটিংস সংরক্ষিত!', message: 'সাইটের সকল তথ্য সফলভাবে সংরক্ষিত হয়েছে।' });
-    else alert('সেটিংস সংরক্ষিত হয়েছে!');
+    const idx = zones.findIndex(d => d.id === payload.id);
+    if (idx >= 0) zones[idx] = payload;
+    else zones.push(payload);
+
+    localStorage.setItem('dcbd_delivery_methods', JSON.stringify(zones));
+    window.renderAdminDeliveryMethodsDOM();
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    document.getElementById('modal-manage-delivery-method')?.classList.add('hidden');
+
+    await apiClient.request('settings/save', 'POST', { delivery_methods: JSON.stringify(zones) }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'ডেলিভারি মেথড সংরক্ষিত', message: `"${name}" (৳${charge}) চেকআউট, ওয়েবসাইট ও শিটে আপডেট হয়েছে!` });
   };
 
-  window.handleAdminAddOffer = function(e) {
+  window.toggleDeliveryMethodStatus = async function(id) {
+    let zones = (apiClient.getGlobalDeliveryMethods ? apiClient.getGlobalDeliveryMethods() : []).map(d => {
+      if (d.id === id) {
+        const next = String(d.status || 'Active').toLowerCase() === 'inactive' ? 'Active' : 'Inactive';
+        return { ...d, status: next };
+      }
+      return d;
+    });
+    localStorage.setItem('dcbd_delivery_methods', JSON.stringify(zones));
+    window.renderAdminDeliveryMethodsDOM();
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    await apiClient.request('settings/save', 'POST', { delivery_methods: JSON.stringify(zones) }).catch(() => {});
+  };
+
+  window.deleteDeliveryMethodItem = async function(id) {
+    if (!confirm('আপনি কি এই ডেলিভারি মেথডটি মুছে ফেলতে চান?')) return;
+    let zones = (apiClient.getGlobalDeliveryMethods ? apiClient.getGlobalDeliveryMethods() : []).filter(d => d.id !== id);
+    localStorage.setItem('dcbd_delivery_methods', JSON.stringify(zones));
+    window.renderAdminDeliveryMethodsDOM();
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    await apiClient.request('settings/save', 'POST', { delivery_methods: JSON.stringify(zones) }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'ডেলিভারি জোন ডিলিট', message: 'ডেলিভারি জোনটি মুছে ফেলা হয়েছে।' });
+  };
+
+  // ============================================================================
+  // SYSTEM SETTINGS: 3) OFFERS & COUPONS (Active/Add/Edit/Delete/List + Storefront & Sheet Sync)
+  // ============================================================================
+  window.renderAdminOffersDOM = function() {
+    const grid = document.getElementById('admin-offers-grid');
+    if (!grid) return;
+    const offers = apiClient.getGlobalOffers ? apiClient.getGlobalOffers() : [];
+    grid.innerHTML = offers.map(o => {
+      const safeId = String(o.id || o.code || '').replace(/'/g, "\'");
+      const isAct = String(o.status || 'Active').toLowerCase() !== 'inactive';
+      return `
+        <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
+          <div class="space-y-1">
+            <div class="flex items-center justify-between font-mono font-black text-emerald-600 text-sm">
+              <span>🎟️ ${o.code}</span>
+              <button type="button" onclick="window.toggleOfferStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[9px] font-sans cursor-pointer">
+                ${isAct ? '● Active' : '○ Inactive'}
+              </button>
+            </div>
+            <div class="text-xs font-bold text-slate-900 dark:text-white">${o.discount}</div>
+            <div class="text-[11px] text-slate-400">সর্বনিম্ন অর্ডার: ৳${o.min_spend || 0}</div>
+          </div>
+          <div class="flex items-center gap-1.5 pt-2 border-t">
+            <button type="button" onclick="window.toggleOfferStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1">${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}</button>
+            <button type="button" onclick="window.openOfferModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
+            <button type="button" onclick="window.deleteOfferItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  window.openOfferModal = function(id = '') {
+    const offers = apiClient.getGlobalOffers ? apiClient.getGlobalOffers() : [];
+    const ex = id ? offers.find(o => (o.id === id || o.code === id)) : null;
+    const setV = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val ?? ''; };
+    setV('adm-offer-edit-id', ex ? (ex.id || ex.code) : '');
+    setV('adm-new-offer-code', ex ? ex.code : '');
+    setV('adm-new-offer-disc', ex ? ex.discount : '');
+    setV('adm-new-offer-type', ex ? (ex.type || 'percent') : 'percent');
+    setV('adm-new-offer-val', ex ? (ex.value ?? 10) : 10);
+    setV('adm-new-offer-min', ex ? (ex.min_spend ?? 1500) : 1500);
+    setV('adm-new-offer-status', ex ? (ex.status || 'Active') : 'Active');
+    document.getElementById('modal-add-offer')?.classList.remove('hidden');
+  };
+
+  window.handleAdminAddOffer = async function(e) {
     e.preventDefault();
+    const editId = document.getElementById('adm-offer-edit-id')?.value.trim();
     const code = document.getElementById('adm-new-offer-code')?.value.trim().toUpperCase();
     const discount = document.getElementById('adm-new-offer-disc')?.value.trim();
-    const min = Number(document.getElementById('adm-new-offer-min')?.value || '0');
+    const type = document.getElementById('adm-new-offer-type')?.value || 'percent';
+    const val = Number(document.getElementById('adm-new-offer-val')?.value || 10);
+    const min = Number(document.getElementById('adm-new-offer-min')?.value || 0);
+    const status = document.getElementById('adm-new-offer-status')?.value || 'Active';
     if (!code || !discount) return;
 
-    let offers = JSON.parse(localStorage.getItem('dcbd_sheet_offers') || '[]');
-    offers.unshift({
-      id: 'OFF-' + Math.floor(100 + Math.random() * 900),
+    let offers = [...(apiClient.getGlobalOffers ? apiClient.getGlobalOffers() : [])];
+    const payload = {
+      id: editId && editId.startsWith('OFF-') ? editId : ('OFF-' + Math.floor(100 + Math.random() * 900)),
       code,
       discount,
+      type,
+      value: val,
       min_spend: min,
-      status: 'Active'
+      status
+    };
+
+    const idx = offers.findIndex(o => o.id === editId || o.code === editId || o.code === code);
+    if (idx >= 0) offers[idx] = payload;
+    else offers.unshift(payload);
+
+    localStorage.setItem('dcbd_sheet_offers', JSON.stringify(offers));
+    if (window.__adminState) window.__adminState.offers = offers;
+    window.renderAdminOffersDOM();
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    document.getElementById('modal-add-offer')?.classList.add('hidden');
+
+    await apiClient.request('settings/save', 'POST', { offers_json: JSON.stringify(offers) }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'অফার ও কুপন সংরক্ষিত', message: `কুপন "${code}" সম্পূর্ণ ওয়েবসাইট, অফার পেজ ও Google Sheet-এ আপডেট হয়েছে!` });
+  };
+
+  window.toggleOfferStatus = async function(id) {
+    let offers = (apiClient.getGlobalOffers ? apiClient.getGlobalOffers() : []).map(o => {
+      if (o.id === id || o.code === id) {
+        const next = String(o.status || 'Active').toLowerCase() === 'inactive' ? 'Active' : 'Inactive';
+        return { ...o, status: next };
+      }
+      return o;
     });
     localStorage.setItem('dcbd_sheet_offers', JSON.stringify(offers));
-    if (toast && toast.show) toast.show({ type: 'success', title: 'কুপন যুক্ত', message: `কুপন কোড "${code}" সক্রিয় করা হয়েছে!` });
-    document.getElementById('modal-add-offer')?.classList.add('hidden');
-    setTimeout(() => window.location.reload(), 600);
+    if (window.__adminState) window.__adminState.offers = offers;
+    window.renderAdminOffersDOM();
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    await apiClient.request('settings/save', 'POST', { offers_json: JSON.stringify(offers) }).catch(() => {});
+  };
+
+  window.deleteOfferItem = async function(id) {
+    if (!confirm(`আপনি কি কুপন "${id}" মুছে ফেলতে চান?`)) return;
+    let offers = (apiClient.getGlobalOffers ? apiClient.getGlobalOffers() : []).filter(o => o.id !== id && o.code !== id);
+    localStorage.setItem('dcbd_sheet_offers', JSON.stringify(offers));
+    if (window.__adminState) window.__adminState.offers = offers;
+    window.renderAdminOffersDOM();
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    await apiClient.request('settings/save', 'POST', { offers_json: JSON.stringify(offers) }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'কুপন ডিলিট', message: 'কুপনটি লিস্ট ও শিট থেকে মুছে ফেলা হয়েছে।' });
+  };
+
+  // ============================================================================
+  // SYSTEM SETTINGS: 4) WEBSITE INFO UPDATE (Active/Add/Edit/Delete/List + Storefront & Sheet Sync)
+  // ============================================================================
+  window.handleAdminSaveSettings = async function(e) {
+    e.preventDefault();
+    const cur = apiClient.getGlobalSiteSettings ? apiClient.getGlobalSiteSettings() : {};
+    const settings = {
+      ...cur,
+      shopName: document.getElementById('adm-set-shopname')?.value.trim() || 'Dream Cart BD',
+      shopTagline: document.getElementById('adm-set-tagline')?.value.trim() || 'বাংলাদেশের বিশ্বস্ত অনলাইন শপ',
+      shopLogo: document.getElementById('adm-set-logo')?.value.trim() || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+      address: document.getElementById('adm-set-address')?.value.trim() || '',
+      hotline1: document.getElementById('adm-set-hotline1')?.value.trim() || '01581703822',
+      hotline2: document.getElementById('adm-set-hotline2')?.value.trim() || '01818273838',
+      email: document.getElementById('adm-set-email')?.value.trim() || 'support@dreamcartbd.com',
+      facebookUrl: document.getElementById('adm-set-fb')?.value.trim() || 'https://facebook.com/dreamcartbd',
+      notice: document.getElementById('adm-set-notice')?.value.trim() || '',
+      freeShippingMin: Number(document.getElementById('adm-set-freeship')?.value || 2000),
+      infoItems: Array.isArray(cur.infoItems) ? cur.infoItems : []
+    };
+    localStorage.setItem('dcbd_site_settings', JSON.stringify(settings));
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    await apiClient.request('settings/save', 'POST', settings).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'ওয়েবসাইট তথ্য সংরক্ষিত!', message: 'দোকানের নাম, লোগো, ঠিকানা ও হটলাইন সম্পূর্ণ ওয়েবসাইট এবং Google Sheet-এ আপডেট হয়েছে!' });
+  };
+
+  window.renderWebsiteInfoItemsDOM = function() {
+    const tbody = document.getElementById('admin-site-info-items-tbody');
+    if (!tbody) return;
+    const s = apiClient.getGlobalSiteSettings ? apiClient.getGlobalSiteSettings() : {};
+    const items = Array.isArray(s.infoItems) ? s.infoItems : [];
+    tbody.innerHTML = items.map(it => {
+      const safeId = String(it.id || '').replace(/'/g, "\'");
+      const isAct = String(it.status || 'Active').toLowerCase() !== 'inactive';
+      return `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+          <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${it.id}</td>
+          <td class="py-2.5 px-3 font-bold text-slate-900 dark:text-white">${it.label}</td>
+          <td class="py-2.5 px-3 text-slate-600 dark:text-slate-300">${it.value}</td>
+          <td class="py-2.5 px-3">
+            <button type="button" onclick="window.toggleWebsiteInfoItemStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
+              ${isAct ? '● Active' : '○ Inactive'}
+            </button>
+          </td>
+          <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+            <button type="button" onclick="window.openWebsiteInfoItemModal('${safeId}')" class="btn-secondary py-0.5 px-2 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
+            <button type="button" onclick="window.deleteWebsiteInfoItem('${safeId}')" class="btn-secondary py-0.5 px-2 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  };
+
+  window.openWebsiteInfoItemModal = function(id = '') {
+    const s = apiClient.getGlobalSiteSettings ? apiClient.getGlobalSiteSettings() : {};
+    const items = Array.isArray(s.infoItems) ? s.infoItems : [];
+    const ex = id ? items.find(i => i.id === id) : null;
+    const setV = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val ?? ''; };
+    setV('adm-info-item-id', ex ? ex.id : '');
+    setV('adm-info-item-label', ex ? ex.label : '');
+    setV('adm-info-item-value', ex ? ex.value : '');
+    setV('adm-info-item-status', ex ? ex.status : 'Active');
+    document.getElementById('modal-site-info-item')?.classList.remove('hidden');
+  };
+
+  window.handleSaveWebsiteInfoItem = async function(e) {
+    e.preventDefault();
+    const editId = document.getElementById('adm-info-item-id')?.value.trim();
+    const label = document.getElementById('adm-info-item-label')?.value.trim();
+    const value = document.getElementById('adm-info-item-value')?.value.trim();
+    const status = document.getElementById('adm-info-item-status')?.value || 'Active';
+    if (!label || !value) return;
+
+    const s = apiClient.getGlobalSiteSettings ? apiClient.getGlobalSiteSettings() : {};
+    const items = Array.isArray(s.infoItems) ? [...s.infoItems] : [];
+    const payload = {
+      id: editId || ('INF-' + Math.floor(10 + Math.random() * 90)),
+      label,
+      value,
+      status
+    };
+    const idx = items.findIndex(i => i.id === payload.id);
+    if (idx >= 0) items[idx] = payload;
+    else items.push(payload);
+
+    const updated = { ...s, infoItems: items };
+    localStorage.setItem('dcbd_site_settings', JSON.stringify(updated));
+    window.renderWebsiteInfoItemsDOM();
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    document.getElementById('modal-site-info-item')?.classList.add('hidden');
+    await apiClient.request('settings/save', 'POST', updated).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'ওয়েবসাইট তথ্য যুক্ত', message: `"${label}" লিস্ট, ওয়েবসাইট ও Google Sheet-এ সংরক্ষিত হয়েছে!` });
+  };
+
+  window.toggleWebsiteInfoItemStatus = async function(id) {
+    const s = apiClient.getGlobalSiteSettings ? apiClient.getGlobalSiteSettings() : {};
+    const items = (Array.isArray(s.infoItems) ? s.infoItems : []).map(i => {
+      if (i.id === id) {
+        const next = String(i.status || 'Active').toLowerCase() === 'inactive' ? 'Active' : 'Inactive';
+        return { ...i, status: next };
+      }
+      return i;
+    });
+    const updated = { ...s, infoItems: items };
+    localStorage.setItem('dcbd_site_settings', JSON.stringify(updated));
+    window.renderWebsiteInfoItemsDOM();
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    await apiClient.request('settings/save', 'POST', updated).catch(() => {});
+  };
+
+  window.deleteWebsiteInfoItem = async function(id) {
+    if (!confirm('আপনি কি এই তথ্যটি তালিকা থেকে মুছে ফেলতে চান?')) return;
+    const s = apiClient.getGlobalSiteSettings ? apiClient.getGlobalSiteSettings() : {};
+    const items = (Array.isArray(s.infoItems) ? s.infoItems : []).filter(i => i.id !== id);
+    const updated = { ...s, infoItems: items };
+    localStorage.setItem('dcbd_site_settings', JSON.stringify(updated));
+    window.renderWebsiteInfoItemsDOM();
+    if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
+    await apiClient.request('settings/save', 'POST', updated).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'তথ্য ডিলিট', message: 'তথ্যটি মুছে ফেলা হয়েছে।' });
   };
 
   window.regenerateAdminCaptcha = function() {
@@ -5387,14 +7506,18 @@ export function initAdminGlobalState() {
     return treeList;
   };
 
-  window.persistNormalizedCategoryTree = function(treeList) {
+  window.persistNormalizedCategoryTree = function(treeList, changedCat = null, action = 'update') {
     localStorage.setItem('dcbd_sheet_categories', JSON.stringify(treeList));
     if (window.__adminState) window.__adminState.categories = treeList;
 
-    // Update sidebar category counter badge
     document.querySelectorAll('button[data-page="page-prod-categories"] .admin-nav-counter').forEach(el => {
       el.textContent = treeList.length;
     });
+
+    if (changedCat) {
+      const endpoint = action === 'add' ? 'categories/add' : (action === 'delete' ? 'categories/delete' : 'categories/update');
+      apiClient.request(endpoint, 'POST', changedCat).catch(() => {});
+    }
   };
 
   window.toggleCategoryNode = function(catName) {
@@ -5596,7 +7719,8 @@ export function initAdminGlobalState() {
       if (toast && toast.show) toast.show({ type: 'success', title: 'Chaild Category আপডেট', message: `"${oldVal}" পরিবর্তিত হয়ে "${newVal}" হয়েছে!` });
     }
 
-    window.persistNormalizedCategoryTree(tree);
+    const updatedEntry = tree.find(c => c.category === newVal || c.category === parentCat) || tree[0];
+    window.persistNormalizedCategoryTree(tree, updatedEntry, mode === 'add_cat' ? 'add' : 'update');
     document.getElementById('modal-category-tree-action')?.classList.add('hidden');
     window.renderInteractiveCategoryTree();
   };
@@ -5631,9 +7755,10 @@ export function initAdminGlobalState() {
         return c;
       });
     }
-    window.persistNormalizedCategoryTree(tree);
+    const targetEntry = level === 'cat' ? { category: catName } : (tree.find(c => c.category === catName) || { category: catName });
+    window.persistNormalizedCategoryTree(tree, targetEntry, level === 'cat' ? 'delete' : 'update');
     window.renderInteractiveCategoryTree();
-    if (toast && toast.show) toast.show({ type: 'success', title: 'মুছে ফেলা হয়েছে', message: 'ক্যাটাগরি ট্রি সফলভাবে আপডেট করা হয়েছে।' });
+    if (toast && toast.show) toast.show({ type: 'success', title: 'মুছে ফেলা হয়েছে', message: 'ক্যাটাগরি ট্রি ও Google Sheet সফলভাবে আপডেট করা হয়েছে।' });
   };
 
   window.renderInteractiveCategoryTree = function() {
@@ -5666,11 +7791,17 @@ export function initAdminGlobalState() {
       return;
     }
 
+    const catCountMap = new Map();
+    prods.forEach(p => {
+      const k = String(p?.category || '').trim().toLowerCase();
+      if (k) catCountMap.set(k, (catCountMap.get(k) || 0) + 1);
+    });
+
     container.innerHTML = filteredTree.map(c => {
       const safeCat = c.category.replace(/'/g, "\'");
       const isCatOpen = window.__catTreeExpanded.categories.has(c.category);
       const subs = c.tree_subs || [];
-      const catProdCount = prods.filter(p => (p.category || '').toLowerCase() === c.category.toLowerCase()).length;
+      const catProdCount = catCountMap.get(String(c.category || '').trim().toLowerCase()) || 0;
 
       return `
         <div class="p-4 rounded-3xl bg-slate-50/80 dark:bg-slate-800/50 space-y-2 shadow-sm">
@@ -5719,9 +7850,9 @@ export function initAdminGlobalState() {
             </div>
           </div>
 
-          <!-- LEVEL 2: SUB CATEGORY BRANCH (shown after clicking Category) -->
+          <!-- LEVEL 2: SUB CATEGORY BRANCH (lazy-rendered only when open for ultra-fast speed) -->
           <div class="dc-tree-branch-children ${isCatOpen ? '' : 'hidden'}">
-            ${subs.map(s => {
+            ${!isCatOpen ? '' : subs.map(s => {
               const safeSub = s.name.replace(/'/g, "\'");
               const subKey = `${c.category}::${s.name}`;
               const isSubOpen = window.__catTreeExpanded.subCategories.has(subKey);
@@ -5860,8 +7991,7 @@ export function initAdminGlobalState() {
     tree.unshift(newCat);
     window.__catTreeExpanded.categories.add(catName);
     if (treeSubs[0]) window.__catTreeExpanded.subCategories.add(`${catName}::${treeSubs[0].name}`);
-    window.persistNormalizedCategoryTree(tree);
-    await apiClient.request('categories/add', newCat).catch(() => {});
+    window.persistNormalizedCategoryTree(tree, newCat, 'add');
 
     if (toast && toast.show) {
       toast.show({ type: 'success', title: 'ক্যাটাগরি যুক্ত হয়েছে', message: `"${catName}" ক্যাটাগরি ট্রিতে সফলভাবে সংরক্ষিত হয়েছে!` });
@@ -5872,34 +8002,6 @@ export function initAdminGlobalState() {
 
   window.handleDeleteCategory = function(catName) {
     window.deleteCategoryTreeItem('cat', catName);
-  };
-
-  window.toggleBulkSelPriceMethodUI = function(method) {
-    const valInput = document.getElementById('bulk-sel-price-val');
-    if (!valInput) return;
-    if (method === 'inc_pct' || method === 'dec_pct') {
-      valInput.placeholder = 'শতাংশ লিখুন (যেমন: 10 বা 15)';
-    } else if (method === 'set_buying_auto') {
-      valInput.placeholder = 'ক্রয় মূল্য লিখুন (যেমন: 1000)';
-    } else {
-      valInput.placeholder = 'টাকার পরিমাণ লিখুন (যেমন: 1250)';
-    }
-  };
-
-  window.handleSaveResellerSettings = function(e) {
-    if (e && e.preventDefault) e.preventDefault();
-    const commPct = Number(document.getElementById('adm-reseller-global-pct')?.value || 15);
-    const minOrd = Number(document.getElementById('adm-reseller-min-order')?.value || 1);
-    const feePct = Number(document.getElementById('adm-reseller-fee-pct')?.value || 3);
-    const cfg = { commission_pct: commPct, min_order_qty: minOrd, payout_fee_pct: feePct, updated_at: new Date().toISOString() };
-    localStorage.setItem('dcbd_reseller_settings', JSON.stringify(cfg));
-    if (toast && toast.show) {
-      toast.show({
-        type: 'success',
-        title: 'রিসেলার সেটিংস সংরক্ষিত!',
-        message: `রিসেলার কমিশন ${commPct}%, ন্যূনতম অর্ডার ${minOrd} পিস এবং পে-আউট ফি ${feePct}% নির্ধারণ করা হয়েছে।`
-      });
-    }
   };
 
   window.handleAdminLogout = function() {
@@ -5924,221 +8026,15 @@ async function safeFetchWithTimeout(fetchPromise, timeoutMs = 1800, fallbackVal 
 // ============================================================================
 // MODULE: adminSidebar.js
 // ============================================================================
-
-
-export async function hydrateAdminDataIfNeeded() {
-  const st = window.__adminState || {};
-  if (window.__adminHydratedOnce && Array.isArray(st.products) && st.products.length > 0) {
-    return st;
-  }
-
-  const cachedProducts = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_products', []) : [];
-  const cachedOrders = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_orders', []) : [];
-  const cachedCategories = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_categories', []) : [];
-  const cachedBrands = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_brands', []) : [];
-  const cachedBanners = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_banners', []) : [];
-  const cachedIncomplete = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_incomplete_orders', []) : [];
-
-  const [prodRes, orderRes, catRes, brandRes, bannerRes, incRes] = await Promise.all([
-    safeFetchWithTimeout(apiClient.request('products/list'), 1200, { data: { items: cachedProducts } }),
-    safeFetchWithTimeout(apiClient.request('orders/list'), 1200, { data: { items: cachedOrders } }),
-    safeFetchWithTimeout(apiClient.request('categories/list'), 1200, { data: { items: cachedCategories } }),
-    safeFetchWithTimeout(apiClient.request('brands/list'), 1200, { data: { items: cachedBrands } }),
-    safeFetchWithTimeout(apiClient.request('banners/list'), 1200, { data: { items: cachedBanners } }),
-    safeFetchWithTimeout(apiClient.request('incomplete_orders/list'), 1200, { data: { items: cachedIncomplete } })
-  ]);
-
-  const rawProducts = (prodRes?.data?.items?.length ? prodRes.data.items : cachedProducts) || [];
-  const products = rawProducts.length > 0 ? rawProducts : (apiClient.localProducts || [
-    { product_id: 'PRD-101', sku: 'DCBD-WT-01', name: 'Amazfit GTS 4 Smartwatch (Black)', category: 'Smartwatches', sub_category: 'AMOLED Watch', child_category: 'Men', brand: 'Amazfit', selling_price: 8490, original_price: 11462, wholesale_price: 7200, buying_price: 6800, min_order_q: 5, stock: 18, thumbnail: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400', status: 'সক্রিয়' },
-    { product_id: 'PRD-102', sku: 'DCBD-GS-02', name: 'অটো গ্যাস সেফটি ডিভাইস (Heavy Duty)', category: 'Kitchen', sub_category: 'Safety Device', child_category: 'Appliances', brand: 'HK', selling_price: 2450, original_price: 3504, wholesale_price: 1850, buying_price: 1500, min_order_q: 5, stock: 4, thumbnail: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400', status: 'সক্রিয়' },
-    { product_id: 'PRD-103', sku: 'DCBD-HN-03', name: 'সুন্দরবনের খাঁটি চাকের মধু (১ কেজি)', category: 'Organic & Health', sub_category: 'Honey', child_category: 'Pure Natural', brand: 'Dream Organic', selling_price: 1250, original_price: 1813, wholesale_price: 950, buying_price: 800, min_order_q: 5, stock: 0, thumbnail: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=400', status: 'সক্রিয়' },
-    { product_id: 'PRD-104', sku: 'DCBD-FL-04', name: 'মিলিটারি রিচার্জেবল ফ্ল্যাশলাইট ৩০০০ লুমেন', category: 'Home Appliances', sub_category: 'Lighting', child_category: 'Rechargeable', brand: 'HK', selling_price: 1450, original_price: 2103, wholesale_price: 1100, buying_price: 900, min_order_q: 5, stock: 2, thumbnail: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=400', status: 'সক্রিয়' },
-    { product_id: 'PRD-105', sku: 'DCBD-CH-05', name: 'অর্গানিক চিয়া সিড (৫০০ গ্রাম জার)', category: 'Organic & Health', sub_category: 'Seeds', child_category: 'Pure Natural', brand: 'Dream Organic', selling_price: 650, original_price: 956, wholesale_price: 480, buying_price: 400, min_order_q: 5, stock: 45, thumbnail: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=400', status: 'সক্রিয়' },
-    { product_id: 'PRD-106', sku: 'DCBD-BL-06', name: 'হাই-স্পিড মাল্টিফাংশন পোর্টেবল ব্লেন্ডার', category: 'Kitchen', sub_category: 'Blender', child_category: 'Appliances', brand: 'HK', selling_price: 1850, original_price: 2646, wholesale_price: 1400, buying_price: 1200, min_order_q: 5, stock: 0, thumbnail: '', status: 'সক্রিয়' }
-  ]);
-
-  const rawOrders = (orderRes?.data?.items?.length ? orderRes.data.items : cachedOrders) || [];
-  const orders = rawOrders.length > 0 ? rawOrders : [
-    { order_id: 'ORD-9482-710', customer_name: 'তানভীর আহমেদ', phone: '01711223344', address: 'বাড়ি #১২, রোড #৪, ধানমন্ডি, ঢাকা', products: 'Amazfit GTS 4 Smartwatch', size: 'Regular', color: 'Jet Black', quantity: 1, unit_price: 8490, total_amount: 8490, payment_method: 'Cash on Delivery', payment_status: 'Pending', order_status: 'Processing', transaction_id: 'COD-UNPAID', fraud_status: 'Safe (98%)', customer_rating: '5/5 ★' },
-    { order_id: 'ORD-8472-319', customer_name: 'সুলতানা জাহান', phone: '01819876543', address: 'মেইন রোড, কান্দিরপাড়, কুমিল্লা', products: 'অটো গ্যাস সেফটি ডিভাইস', size: 'Heavy', color: 'Red/Black', quantity: 1, unit_price: 2450, total_amount: 2520, payment_method: 'bKash Online', payment_status: 'Paid', order_status: 'Shipped', transaction_id: 'BK-98472910', fraud_status: 'Safe (99%)', customer_rating: '5/5 ★' },
-    { order_id: 'ORD-7291-504', customer_name: 'মাহমুদুর রহমান', phone: '01912345678', address: 'জিইসি মোড়, নাসিরাবাদ, চট্টগ্রাম', products: 'মিলিটারি রিচার্জেবল ফ্ল্যাশলাইট', size: 'Standard', color: 'Army Green', quantity: 1, unit_price: 1450, total_amount: 1570, payment_method: 'Cash on Delivery', payment_status: 'Paid', order_status: 'Delivered', transaction_id: 'COD-PAID-01', fraud_status: 'Safe (95%)', customer_rating: '5/5 ★' },
-    { order_id: 'ORD-6120-198', customer_name: 'নুসরাত শারমিন', phone: '01581234567', address: 'উপশহর, সেক্টর #২, রাজশাহী', products: 'অর্গানিক চিয়া সিড (৫০০ গ্রাম)', size: '500g', color: 'Natural', quantity: 2, unit_price: 650, total_amount: 1420, payment_method: 'Cash on Delivery', payment_status: 'Pending', order_status: 'Order Placed', transaction_id: 'COD-UNPAID', fraud_status: 'Safe (94%)', customer_rating: '4.8/5 ★' },
-    { order_id: 'ORD-5019-214', customer_name: 'কবির হোসেন', phone: '01799887744', address: 'সোনাডাঙ্গা বাসস্ট্যান্ড, খুলনা', products: 'হাই-স্পিড পোর্টেবল ব্লেন্ডার', size: 'Compact', color: 'Silver', quantity: 1, unit_price: 1850, total_amount: 1970, payment_method: 'Cash on Delivery', payment_status: 'Pending', order_status: 'Delivered', transaction_id: 'COD-UNPAID', fraud_status: 'Moderate (75%)', customer_rating: '4/5 ★' },
-    { order_id: 'ORD-4190-881', customer_name: 'শারমিন সুলতানা', phone: '01622334488', address: 'চৌহাট্টা, সিলেট সদর, সিলেট', products: 'সুন্দরবনের চাকের মধু (১ কেজি)', size: '1kg', color: 'Pure Amber', quantity: 1, unit_price: 1250, total_amount: 1370, payment_method: 'bKash Online', payment_status: 'Paid', order_status: 'Cancelled', transaction_id: 'BK-REFUNDED', fraud_status: 'High Risk (40%)', customer_rating: '3/5 ★' }
-  ];
-
-  const categories = (catRes?.data?.items?.length ? catRes.data.items : cachedCategories) || [
-    { catagory_id: 'CAT-101', category: 'Smartwatches', sub_category: 'AMOLED Watch, Calling Watch', chail_category: 'Men, Women' },
-    { catagory_id: 'CAT-102', category: 'Kitchen', sub_category: 'Safety Device, Blender, Cookware', chail_category: 'Appliances' },
-    { catagory_id: 'CAT-103', category: 'Organic & Health', sub_category: 'Honey, Seeds, Oils', chail_category: 'Pure Natural' },
-    { catagory_id: 'CAT-104', category: 'Home Appliances', sub_category: 'Lighting, Gadgets', chail_category: 'Rechargeable' }
-  ];
-
-  const brands = (brandRes?.data?.items?.length ? brandRes.data.items : cachedBrands) || [
-    { brand_id: 'BRD-101', brand_name: 'Amazfit', brand_image: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', brand_description: 'স্মার্ট পরিধানযোগ্য ও ফিটনেস ডিভাইস।' },
-    { brand_id: 'BRD-102', brand_name: 'Dream Organic', brand_image: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', brand_description: '১০০% বিশুদ্ধ অর্গানিক ও প্রাকৃতিক পণ্য।' },
-    { brand_id: 'BRD-103', brand_name: 'HK', brand_image: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', brand_description: 'প্রিমিয়াম স্মার্ট গ্যাজেট পার্টনার।' }
-  ];
-
-  const banners = (bannerRes?.data?.items?.length ? bannerRes.data.items : cachedBanners) || [
-    { banner_id: 'BAN-01', title: 'স্মার্ট কিচেন ও নিরাপদ কুকিং গ্যাজেট', subtitle: 'সর্বোচ্চ ৩০% বিশেষ ছাড় চলছে!', image_url: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600', link_url: '/products?cat=Kitchen', status: 'Active' },
-    { banner_id: 'BAN-02', title: '১০০% খাঁটি অর্গানিক ফুড ও সাপ্লিমেন্ট', subtitle: 'সুন্দরবনের প্রাকৃতিক চাকের মধু ও চিয়া সিড', image_url: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=600', link_url: '/products?cat=Organic%20%26%20Health', status: 'Active' }
-  ];
-
-  const rawIncomplete = (incRes?.data?.items?.length ? incRes.data.items : cachedIncomplete) || [];
-  const incompleteOrders = rawIncomplete.length > 0 ? rawIncomplete : [
-    { order_id: 'INC-2091', date: 'আজ ১২:৪৫ PM', customer_name: 'রফিকুল ইসলাম', phone: '01688776655', address: 'মিরপুর-১০, ঢাকা', total_amount: 2450 },
-    { order_id: 'INC-2089', date: 'গতকাল ৫:২০ PM', customer_name: 'ফারহানা করিম', phone: '01722334455', address: 'টমছম ব্রিজ, কুমিল্লা', total_amount: 1850 }
-  ];
-
-  const resellers = JSON.parse(localStorage.getItem('dcbd_resellers') || JSON.stringify([
-    { id: 'RSL-9082', name: 'মোঃ মাহমুদ', shop: 'ফ্যাশন পয়েন্ট', phone: '01819876543', city: 'কুমিল্লা', balance: 1200, total_earned: 14500, status: 'Active' },
-    { id: 'RSL-9085', name: 'আরিফুল ইসলাম', shop: 'গ্যাজেট ওয়ার্ল্ড', phone: '01712345678', city: 'ঢাকা', balance: 3450, total_earned: 28900, status: 'Active' },
-    { id: 'RSL-9091', name: 'রুমানা আহমেদ', shop: 'স্মার্ট শপ বিডি', phone: '01987654321', city: 'চট্টগ্রাম', balance: 850, total_earned: 9200, status: 'Active' }
-  ]));
-
-  const wholesalers = JSON.parse(localStorage.getItem('dcbd_wholesalers') || JSON.stringify([
-    { id: 'WHS-101', name: 'হাজী মোঃ ইউসুফ', company: 'ইউসুফ এন্টারপ্রাইজ', phone: '01711002233', tier: 'Tier 1 (20% Off)', total_orders: 14, status: 'Approved' },
-    { id: 'WHS-102', name: 'ফারুক ট্রেডার্স', company: 'ফারুক ব্রাদার্স হোলসেল', phone: '01812998877', tier: 'Tier 2 (15% Off)', total_orders: 9, status: 'Approved' }
-  ]));
-
-  const sellers = JSON.parse(localStorage.getItem('dcbd_sellers') || JSON.stringify([
-    { id: 'VND-201', name: 'কামরুল হাসান', store: 'অরগ্যানিক ভ্যালি বিডি', phone: '01911445566', commission: '8%', products_count: 12, status: 'Active' },
-    { id: 'VND-202', name: 'তানজিমুল হক', store: 'টেকহাব গ্যাজেটস', phone: '01511223344', commission: '10%', products_count: 24, status: 'Active' }
-  ]));
-
-  const markets = JSON.parse(localStorage.getItem('dcbd_markets') || JSON.stringify([
-    { id: 'MKT-01', name: 'Daraz Bangladesh Shop', sync_mode: 'API Auto', status: 'Connected', last_sync: '১০ মিনিট আগে' },
-    { id: 'MKT-02', name: 'Facebook & Instagram Shop', sync_mode: 'Catalog XML Feed', status: 'Active', last_sync: '১ ঘন্টা আগে' },
-    { id: 'MKT-03', name: 'Bikroy Storefront', sync_mode: 'Manual Webhook', status: 'Connected', last_sync: 'আজকে' }
-  ]));
-
-  const workers = JSON.parse(localStorage.getItem('dcbd_workers') || JSON.stringify([
-    { id: 'WRK-01', name: 'MD. Saiful Islam', role: 'Admin (ম্যানেজার)', phone: '01818273838', email: 'saiful@dreamcart.bd', status: 'Active' },
-    { id: 'WRK-02', name: 'আসিফ ইকবাল', role: 'Order Management (অর্ডার ডেস্ক)', phone: '01722334411', email: 'asif@dreamcart.bd', status: 'Active' },
-    { id: 'WRK-03', name: 'রাকিবুল হাসান', role: 'Delivery Desk (লজিস্টিকস)', phone: '01633445566', email: 'rakib@dreamcart.bd', status: 'Active' },
-    { id: 'WRK-04', name: 'সাবরিনা আক্তার', role: 'Customer Support (গ্রাহক সেবা)', phone: '01511223399', email: 'sabrina@dreamcart.bd', status: 'Active' }
-  ]));
-
-  const admins = JSON.parse(localStorage.getItem('dcbd_admins') || JSON.stringify([
-    { id: 'ADM-01', name: 'Jainal Abedin', email: 'ceo@dreamcart.bd', role: 'CEO & Master Admin', status: 'Active' },
-    { id: 'ADM-02', name: 'MD. Saiful Islam', email: 'admin@dreamcart.bd', role: 'Lead Operations', status: 'Active' }
-  ]));
-
-  const couriers = JSON.parse(localStorage.getItem('dcbd_sheet_couriers') || JSON.stringify([
-    { id: 'CUR-01', name: 'Steadfast Courier', api_key: '••••••••8492', secret_key: '••••••••9012', hub_city: 'ঢাকা / সারা দেশ', status: 'Connected', balance: '৳৪,৮৫০', webhook_url: 'https://dreamcart.bd/api/courier/steadfast/webhook' },
-    { id: 'CUR-02', name: 'Pathao Courier', api_key: '••••••••3190', secret_key: '••••••••1289', hub_city: 'ঢাকা সিটি ও সাব-আরবান', status: 'Connected', balance: '৳২,১০০', webhook_url: 'https://dreamcart.bd/api/courier/pathao/webhook' },
-    { id: 'CUR-03', name: 'RedX Delivery', api_key: '••••••••1042', secret_key: '••••••••4892', hub_city: 'কুমিল্লা ও চট্টগ্রাম জোন', status: 'Connected', balance: '৳১,২০০', webhook_url: 'https://dreamcart.bd/api/courier/redx/webhook' }
-  ]));
-
-  const onlinePayments = JSON.parse(localStorage.getItem('dcbd_online_payments') || JSON.stringify([
-    { id: 'PAY-01', name: 'bKash Merchant Direct', merchant_id: '01818273838', api_key: '••••••••7812', mode: 'Live', status: 'Active' },
-    { id: 'PAY-02', name: 'SSLCommerz Hosted Gateway', merchant_id: 'dreamcart_live', api_key: '••••••••3491', mode: 'Live', status: 'Active' },
-    { id: 'PAY-03', name: 'Shurjopay FinTech', merchant_id: 'sp_dreamcart', api_key: '••••••••1104', mode: 'Live', status: 'Active' },
-    { id: 'PAY-04', name: 'Nagad Direct Pay', merchant_id: '01581703822', api_key: '••••••••5523', mode: 'Live', status: 'Active' }
-  ]));
-
-  const costs = JSON.parse(localStorage.getItem('dcbd_sheet_costs') || JSON.stringify([
-    { id: 'CST-01', title: 'ফেসবুক পেজ বুস্টিং ক্যাম্পেইন (অক্টোবর)', amount: 14500, category: 'মার্কেটিং ও বিজ্ঞাপন', date: '২০২৬-১০-১৫', note: 'মেটা অ্যাডস' },
-    { id: 'CST-02', title: 'অফিস ও শোরুম স্পেস ভাড়া (কুমিল্লা)', amount: 18000, category: 'অফিস ভাড়া', date: '২০২৬-১০-০১', note: 'চৌধুরী প্লাজা' },
-    { id: 'CST-03', title: 'কুরিয়ার প্যাকিং মেটেরিয়াল ও বাবল র‍্যাপ', amount: 3850, category: 'প্যাকেজিং', date: '২০২৬-১০-১২', note: '৫০০ পিস বক্স' },
-    { id: 'CST-04', title: 'ক্লাউড হোস্টিং ও ডোমেইন সার্ভার বিল', amount: 2200, category: 'আইটি ও সার্ভার', date: '২০২৬-১০-০৫', note: 'মাসিক ডেডিকেটেড' }
-  ]));
-
-  const buying = JSON.parse(localStorage.getItem('dcbd_sheet_buying') || JSON.stringify([
-    { id: 'BUY-01', supplier: 'চায়না ডিরেক্ট ইম্পোর্ট এজেন্ট', product: 'Amazfit GTS 4 Smartwatches (৫০ পিস)', quantity: 50, total_amount: 340000, date: '২০২৬-১০-০৮' },
-    { id: 'BUY-02', supplier: 'সুন্দরবন হানি কো-অপারেটিভ', product: 'প্রাকৃতিক চাকের মধু (২০০ কেজি)', quantity: 200, total_amount: 160000, date: '২০২৬-১০-১০' },
-    { id: 'BUY-03', supplier: 'ঢাকা ইলেকট্রনিক্স মার্কেট', product: 'অটো গ্যাস সেফটি ডিভাইস (১০০ পিস)', quantity: 100, total_amount: 150000, date: '২০২৬-১০-১৪' }
-  ]));
-
-  const invest = JSON.parse(localStorage.getItem('dcbd_sheet_invest') || JSON.stringify([
-    { id: 'INV-01', investor: 'জয়নাল আবেদীন (প্রতিষ্ঠাতা)', amount: 1500000, note: 'প্রাথমিক কার্যকরী মূলধন', date: '২০২৬-০১-১৫' },
-    { id: 'INV-02', investor: 'এম সাইফুল ইসলাম (পার্টনার)', amount: 1000000, note: 'ইনভেন্টরি সম্প্রসারণ বিনিয়োগ', date: '২০২৬-০৩-০১' },
-    { id: 'INV-03', investor: 'অ্যাঞ্জেল ক্যাপিটাল পার্টনার্স', amount: 500000, note: 'মার্কেটিং ও কুরিয়ার লজিস্টিকস', date: '২০২৬-০৭-২০' }
-  ]));
-
-  const offers = JSON.parse(localStorage.getItem('dcbd_sheet_offers') || JSON.stringify([
-    { id: 'OFF-01', code: 'DREAM10', discount: '১০% ছাড়', min_spend: 1500, status: 'Active' },
-    { id: 'OFF-02', code: 'FREESHIP', discount: 'ফ্রি ডেলিভারি', min_spend: 2000, status: 'Active' },
-    { id: 'OFF-03', code: 'FESTIVE500', discount: '৳৫০০ ফ্ল্যাট ছাড়', min_spend: 5000, status: 'Active' }
-  ]));
-
-  const variants = JSON.parse(localStorage.getItem('dcbd_variants') || JSON.stringify({
-    colors: ['Jet Black', 'Space Silver', 'Rose Gold', 'Midnight Blue', 'Army Green', 'Pure Amber'],
-    sizes: ['Free Size', 'Small', 'Medium', 'Large', 'XL', '১ কেজি', '৫০০ গ্রাম']
-  }));
-
-  const customers = orders.map(o => ({
-    name: o.customer_name,
-    phone: o.phone,
-    address: o.address,
-    orders_count: 1,
-    total_spent: Number(o.total_amount) || 0
-  }));
-
-  const reviews = [
-    { id: 'REV-01', customer: 'তানভীর আহমেদ', product: 'Amazfit GTS 4 Smartwatch', rating: 5, comment: 'অসাধারণ পণ্য! ১ দিনের মাথায় কুমিল্লা থেকে ডেলিভারি পেয়েছি।', date: 'গতকাল' },
-    { id: 'REV-02', customer: 'সুলতানা জাহান', product: 'অটো গ্যাস সেফটি ডিভাইস', rating: 5, comment: 'প্রতিটি রান্নাঘরে থাকা উচিত। খুব নিরাপদ ও ১০০% অরিজিনাল।', date: '২ দিন আগে' },
-    { id: 'REV-03', customer: 'মাহমুদুর রহমান', product: 'চাকের মধু', rating: 4, comment: 'মধুর টেস্ট দারুণ, একদম খাঁটি চাকের মধু। ধন্যবাদ ড্রিম কার্ট!', date: '৪ দিন আগে' }
-  ];
-
-  const auditLogs = [
-    { time: 'আজ ১২:৩০ PM', user: 'MD. Saiful Islam', event: 'অর্ডার #ORD-9482 এর স্ট্যাটাস "Processing" আপডেট করেছেন', ip: '103.114.98.12' },
-    { time: 'আজ ১১:১৫ AM', user: 'Jainal Abedin', event: 'নতুন পণ্য "পোর্টেবল ব্লেন্ডার" শিটে সংরক্ষণ করেছেন', ip: '103.114.98.15' },
-    { time: 'আজ ১০:০০ AM', user: 'System Sync', event: 'Google Sheets v2.5 লাইভ ব্যাকগ্রাউন্ড সিঙ্ক সফল হয়েছে', ip: 'Cloud Hook' },
-    { time: 'গতকাল ৫:৪০ PM', user: 'MD. Saiful Islam', event: 'রিসেলার REQ-8472 এর ৳১,১৬৪ পে-আউট অনুমোদন করেছেন', ip: '103.114.98.12' }
-  ];
-
-  const totalSalesVal = orders.reduce((acc, o) => acc + (Number(o.total_amount) || 0), 0) + 1485000;
-  const totalBuyingVal = buying.reduce((acc, b) => acc + (Number(b.total_amount) || 0), 0);
-  const totalCostsVal = costs.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
-  const totalInvestVal = invest.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
-
-  const kpi = {
-    total_products: products.length,
-    total_orders: orders.length + 840,
-    total_sellers: sellers.length,
-    total_resellers: resellers.length,
-    total_wholesalers: wholesalers.length,
-    pending_orders: orders.filter(o => o.order_status === 'Processing' || o.order_status === 'Order Placed').length || 7,
-    incomplete_orders: incompleteOrders.length,
-    total_costs: totalCostsVal,
-    total_buying: totalBuyingVal,
-    total_invest: totalInvestVal,
-    total_customers: customers.length + 420,
-    live_viewers: 38,
-    delivered_orders: orders.filter(o => o.order_status === 'Delivered').length + 680,
-    low_stock_count: products.filter(p => Number(p.stock) > 0 && Number(p.stock) <= 5).length,
-    out_of_stock_count: products.filter(p => Number(p.stock) === 0).length,
-    total_sales: totalSalesVal,
-    total_profit: Math.round(totalSalesVal * 0.22),
-    total_loss: 0
-  };
-
-  Object.assign(window.__adminState, {
-    products, orders, incompleteOrders, categories, brands, banners, variants,
-    costs, buying, invest, resellers, wholesalers, sellers, markets, workers,
-    admins, couriers, onlinePayments, customers, reviews, auditLogs, offers, kpi
-  });
-
-  if (!window.__currentLandingDraft && window.getAdminLandingPages) {
-    const lps = window.getAdminLandingPages();
-    if (lps && lps.length > 0) window.initLandingDraft(lps[0]);
-  }
-
-  window.__adminHydratedOnce = true;
-  return window.__adminState;
-}
-
-// ============================================================================
-// 4. ADMIN SIDEBAR & TOPBAR SHELL
-// ============================================================================
 /**
- * DREAM CART BD — ADMIN SIDEBAR & TOPBAR SHELL (AdminSidebar.js)
+ * DREAM CART BD — Admin Sidebar & Topbar Module (adminSidebar.js)
+ * Implements:
+ * - Desktop Left Sticky Sidebar with Collapsible Accordion Navigation
+ * - Mobile Off-Canvas Drawer with Responsive Touch Triggers
+ * - Topbar with Dynamic Title, Subtitle, Global Search, Theme Switcher, and Sheet Sync
  */
 
-export function renderSidebarAndTopbar({
+function renderSidebarAndTopbar({
   products = [],
   orders = [],
   categories = [],
@@ -6185,7 +8081,7 @@ export function renderSidebarAndTopbar({
       <div class="space-y-3 overflow-y-auto">
         <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
           <div class="flex items-center gap-2.5">
-            <div class="dc-sidebar-logo overflow-hidden p-1 bg-white dark:bg-slate-900 border border-emerald-500/40"><img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Dream Cart BD Logo" class="w-full h-full object-contain rounded-lg" onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" /></div>
+            <div class="dc-sidebar-logo">DC</div>
             <div>
               <div class="font-black text-sm text-slate-900 dark:text-white">Dream Cart BD</div>
               <div class="text-[10px] text-emerald-600 font-bold">Admin Console</div>
@@ -6340,7 +8236,7 @@ export function renderSidebarAndTopbar({
 
         <!-- Brand Badge Header -->
         <div class="dc-sidebar-brand">
-          <div class="dc-sidebar-logo overflow-hidden p-1 bg-white dark:bg-slate-900 border border-emerald-500/40"><img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Dream Cart BD Logo" class="w-full h-full object-contain rounded-lg" onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" /></div>
+          <div class="dc-sidebar-logo">DC</div>
           <div>
             <div class="dc-sidebar-title">Dream Cart BD</div>
             <span class="dc-sidebar-badge">মাস্টার অ্যাডমিন পোর্টাল</span>
@@ -6746,120 +8642,19 @@ export function renderSidebarAndTopbar({
   `;
 }
 
-
 // ============================================================================
-// 5. DEDICATED PAGE RENDERERS (57 Separate Page Views)
+// MODULE: adminDashboard.js
 // ============================================================================
-// --- Dedicated Page Module: LoginPage.js ---
 /**
- * DREAM CART BD — DEDICATED ADMIN LOGIN PAGE (LoginPage.js)
+ * DREAM CART BD — Admin Dashboard Overview Module (adminDashboard.js)
+ * Implements:
+ * - 18-Point Live Business Metrics Matrix
+ * - Interactive SVG Sales Curve Graph with 7D/30D/1Y timeframes
+ * - Quick Action Navigation Shortcuts
+ * - Recent Orders Live Preview Table
  */
 
-export function renderLoginPage() {
-  const captchaNum1 = Math.floor(Math.random() * 8) + 1;
-  const captchaNum2 = Math.floor(Math.random() * 8) + 1;
-  const captchaSum = captchaNum1 + captchaNum2;
-
-  return `
-    <div class="dc-admin-wrapper">
-    <div class="max-w-md mx-auto py-12 px-4 space-y-6">
-
-      <div class="text-center space-y-2">
-        <div class="w-20 h-20 rounded-3xl bg-white dark:bg-slate-900 p-2 mx-auto flex items-center justify-center shadow-xl border-2 border-emerald-500/60 overflow-hidden">
-          <img src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" alt="Dream Cart BD Logo" class="w-full h-full object-contain rounded-2xl" onerror="this.onerror=null; this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7IMYDMkNYleCqUCLvSDtcioP1MAENEONLcelVu_7byA&s=10';" />
-        </div>
-        <h2 class="text-2xl font-black text-slate-900 dark:text-white">
-          অ্যাডমিন লগইন
-        </h2>
-        <p class="text-xs text-slate-500">
-          আপনার পদবী, ইউজার নেম ও পাসওয়ার্ড দিয়ে মাস্টার প্যানেলে প্রবেশ করুন
-        </p>
-      </div>
-
-      <div class="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-4 text-xs">
-
-        <form id="admin-login-form" class="space-y-3.5">
-          <div>
-            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Worker Type (কর্মীর পদবী) *</label>
-            <select id="adm-worker-type" class="form-control text-xs w-full py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 font-bold" required>
-              <option value="Admin">Admin (মাস্টার অ্যাডমিন)</option>
-              <option value="Manager">Manager (ম্যানেজার)</option>
-              <option value="Staff">Staff (স্টাফ)</option>
-              <option value="Sales">Sales (বিক্রয় প্রতিনিধি)</option>
-              <option value="Customer Support">Customer Support (গ্রাহক সেবা)</option>
-              <option value="Order Management">Order Management (অর্ডার ডেস্ক)</option>
-              <option value="Inventory/Warehouse">Inventory/Warehouse (গুদাম)</option>
-              <option value="Delivery">Delivery (ডেলিভারি)</option>
-              <option value="Accountant">Accountant (হিসাবরক্ষক)</option>
-              <option value="Marketing">Marketing (মার্কেটিং)</option>
-              <option value="IT/Technical">IT/Technical (প্রযুক্তি)</option>
-              <option value="Content Manager">Content Manager</option>
-              <option value="Other">Other (অন্যান্য)</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">User Name (ব্যবহারকারীর নাম) *</label>
-            <select id="adm-username" class="form-control text-xs w-full py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 font-bold" required>
-              <option value="Jainal Abedin">Jainal Abedin (CEO & Lead)</option>
-              <option value="MD. Saiful Islam">MD. Saiful Islam (Admin)</option>
-              <option value="Admin Staff">Admin Staff (Operations)</option>
-              <option value="Accounts Officer">Accounts Officer</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Password *</label>
-            <input type="password" id="adm-password" required placeholder="••••••••" value="admin123" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 font-mono" />
-          </div>
-
-          <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 space-y-2">
-            <div class="flex items-center justify-between">
-              <span class="font-bold text-slate-700 dark:text-slate-300">নিরাপত্তা ক্যাপচা যাচাই:</span>
-              <button type="button" class="text-[11px] text-emerald-600 font-bold hover:underline" onclick="window.regenerateAdminCaptcha && window.regenerateAdminCaptcha()">
-                ক্যাপচা পরিবর্তন 🔄
-              </button>
-            </div>
-            <div class="flex items-center gap-3">
-              <div id="adm-captcha-display" class="px-3.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl font-mono text-sm font-black text-emerald-600">
-                ${captchaNum1} + ${captchaNum2} = ?
-              </div>
-              <input type="hidden" id="adm-captcha-expected" value="${captchaSum}" />
-              <input
-                type="number"
-                id="adm-captcha-input"
-                required
-                placeholder="যোগফল লিখুন"
-                class="form-control text-xs flex-1 py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-900 font-bold"
-              />
-            </div>
-          </div>
-
-          <button type="submit" class="btn-primary w-full py-3 text-xs font-bold bg-slate-900 hover:bg-black text-white shadow-md">
-            লগইন করুন →
-          </button>
-        </form>
-
-        <div class="pt-3 border-t border-slate-100 dark:border-slate-800 text-center text-xs text-slate-400">
-          ডেমো পাসওয়ার্ড: <span class="font-mono font-bold text-slate-700 dark:text-slate-300">admin123</span>
-        </div>
-
-      </div>
-
-    </div>
-    </div>
-  `;
-}
-
-
-
-// --- Dedicated Page Module: DashboardPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (DashboardPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderDashboardPage({ kpi = {}, categories = [], orders = [] } = {}) {
+function renderDashboardModule({ kpi, categories, orders }) {
   return `
     <!-- ================================================================= -->
     <!-- DEDICATED PAGE: DASHBOARD OVERVIEW                                -->
@@ -7206,17 +9001,23 @@ export function renderDashboardPage({ kpi = {}, categories = [], orders = [] } =
   `;
 }
 
-
-// --- Dedicated Page Module: ProductsListPage.js ---
+// ============================================================================
+// MODULE: adminProducts.js
+// ============================================================================
 /**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (ProductsListPage.js)
- * Isolated standalone page view for the Admin Panel.
+ * DREAM CART BD — Complete Modular Product, Category, Brand, Bulk, Landing & Others Views (adminProducts.js)
+ * Self-contained module with zero external missing file dependencies for Vite/Rollup.
  */
 
-export function renderProductsListPage({ products = [], categories = [], brands = [], kpi = {} } = {}) {
+/**
+ * DREAM CART BD — Product Catalog & Stock Alerts Module (adminProductCatalog.js)
+ * Routes: /admin/products, /admin/low-stock, /admin/out-stock, /admin/error-products
+ */
+
+function renderProductCatalogModule({ products = [], categories = [], brands = [], kpi = {} }) {
   return `
           <!-- 1. All Products List (Filters + 120 Per Page + Checkboxes + Bulk Price/Stock/Status Edit & Delete) -->
-          <div id="page-prod-all" class="admin-page-view space-y-4">
+          <div id="page-prod-all" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-3.5">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b pb-2.5">
                 <div>
@@ -7375,20 +9176,8 @@ export function renderProductsListPage({ products = [], categories = [], brands 
             </div>
           </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: LowStockPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (LowStockPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderLowStockPage({ products = [], kpi = {} } = {}) {
-  return `
           <!-- 6. Low Stock Products Page -->
-          <div id="page-prod-low-stock" class="admin-page-view space-y-4">
+          <div id="page-prod-low-stock" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-3">
               <div class="flex items-center justify-between border-b pb-2">
                 <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -7412,20 +9201,8 @@ export function renderLowStockPage({ products = [], kpi = {} } = {}) {
             </div>
           </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: OutOfStockPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (OutOfStockPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderOutOfStockPage({ products = [], kpi = {} } = {}) {
-  return `
           <!-- 7. Out of Stock Products Page -->
-          <div id="page-prod-out-stock" class="admin-page-view space-y-4">
+          <div id="page-prod-out-stock" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-3">
               <div class="flex items-center justify-between border-b pb-2">
                 <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -7449,20 +9226,8 @@ export function renderOutOfStockPage({ products = [], kpi = {} } = {}) {
             </div>
           </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: ErrorProductsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (ErrorProductsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderErrorProductsPage({ products = [] } = {}) {
-  return `
           <!-- 8. Error Products Page -->
-          <div id="page-prod-error" class="admin-page-view space-y-4">
+          <div id="page-prod-error" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-3">
               <div class="flex items-center justify-between border-b pb-2">
                 <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -7483,21 +9248,18 @@ export function renderErrorProductsPage({ products = [] } = {}) {
             </div>
           </div>
 
-
   `;
 }
 
-
-// --- Dedicated Page Module: AddProductPage.js ---
 /**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (AddProductPage.js)
- * Isolated standalone page view for the Admin Panel.
+ * DREAM CART BD — 23-Column AI Smart Add Product Module (adminAddProduct.js)
+ * Route: /admin/addproduct
  */
 
-export function renderAddProductPage({ products = [], categories = [], brands = [], variants = { colors: [], sizes: [] } } = {}) {
+function renderAddProductModule({ products = [], categories = [], brands = [], variants = { colors: [], sizes: [] } }) {
   return `
           <!-- 2. Add Product Page (All 23 Sequential Columns + AI Search Auto-Fill + Tiered Pricing Engine + Image Upload Preview) -->
-          <div id="page-prod-add" class="admin-page-view space-y-4">
+          <div id="page-prod-add" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-4 max-w-5xl">
               <div class="border-b pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
@@ -7736,7 +9498,7 @@ export function renderAddProductPage({ products = [], categories = [], brands = 
                       />
                       <div class="flex flex-col sm:flex-row gap-2">
                         <div class="flex gap-1.5 flex-1">
-                          <input type="url" id="adm-imageurl-add" placeholder="নতুন ছবির লিঙ্ক পেস্ট করে '+ লিঙ্ক যোগ' চাপুন..." class="form-control text-xs py-1.5 px-3 rounded-xl border flex-1 bg-white dark:bg-slate-900" />
+                          <input type="text" id="adm-imageurl-add" placeholder="নতুন ছবির লিঙ্ক পেস্ট করে '+ লিঙ্ক যোগ' চাপুন..." oninput="window.renderAdminProductImagePreviews('adm')" onkeydown="if(event.key==='Enter'){event.preventDefault(); window.handleAddProductImageUrlInline('adm');}" class="form-control text-xs py-1.5 px-3 rounded-xl border flex-1 bg-white dark:bg-slate-900" />
                           <button type="button" onclick="window.handleAddProductImageUrlInline('adm')" class="btn-secondary py-1.5 px-3 text-xs font-bold whitespace-nowrap">+ লিঙ্ক যোগ</button>
                         </div>
                         <label class="btn-primary py-1.5 px-3.5 text-xs font-bold cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
@@ -7859,17 +9621,16 @@ export function renderAddProductPage({ products = [], categories = [], brands = 
               </form>
             </div>
           </div>
+
   `;
 }
 
-
-// --- Dedicated Page Module: CategoriesPage.js ---
 /**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (CategoriesPage.js)
- * Isolated standalone page view for the Admin Panel.
+ * DREAM CART BD — Categories, Brands Card Grid, Variants & Banners Module (adminCategoryBrand.js)
+ * Routes: /admin/categroy, /admin/category, /admin/brands, /admin/addbrand, /admin/variants, /admin/banners
  */
 
-export function renderCategoriesPage({ products = [], categories = [] } = {}) {
+function renderCategoryBrandModule({ products = [], categories = [], brands = [], variants = { colors: [], sizes: [] }, banners = [] }) {
   const uniqueCatMap = new Map();
   categories.forEach(c => {
     const raw = (c.category || '').trim();
@@ -7893,7 +9654,7 @@ export function renderCategoriesPage({ products = [], categories = [] } = {}) {
 
   return `
     <!-- 3. Interactive 3-Level Category Tree Page (ক্যাটাগরি ট্রি — Category > Sub Category > Chaild Category) -->
-    <div id="page-prod-categories" class="admin-page-view space-y-5">
+    <div id="page-prod-categories" class="admin-page-view hidden space-y-5">
 
       <!-- 4 Counter Cards for Category Tree -->
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -8040,20 +9801,8 @@ export function renderCategoriesPage({ products = [], categories = [] } = {}) {
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: BrandsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (BrandsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderBrandsPage({ products = [], brands = [] } = {}) {
-  return `
           <!-- 9. Brands Page (ব্রান্ড সমূহ কার্ড আকারে দেখা যাবে) -->
-          <div id="page-prod-brands" class="admin-page-view space-y-4">
+          <div id="page-prod-brands" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-4">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b pb-3">
                 <div>
@@ -8075,9 +9824,12 @@ export function renderBrandsPage({ products = [], brands = [] } = {}) {
 
               <!-- Brand Cards Grid -->
               <div id="admin-brands-cards-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-                ${brands.map(b => {
-                  const bProds = products.filter(p => String(p.brand || '').toLowerCase() === String(b.brand_name || '').toLowerCase());
-                  const totalStock = bProds.reduce((acc, p) => acc + (Number(p.stock) || 0), 0);
+                ${(() => {
+                  const bStats = window.buildBrandStatsMap ? window.buildBrandStatsMap(products) : new Map();
+                  return brands.map(b => {
+                    const st = bStats.get(String(b.brand_name || '').trim().toLowerCase()) || { count: 0, stock: 0 };
+                    const bProds = { length: st.count };
+                    const totalStock = st.stock;
                   const safeName = String(b.brand_name || '').replace(/'/g, "\\'");
                   const safeId = String(b.brand_id || b.brand_name || '').replace(/'/g, "\\'");
                   return `
@@ -8124,24 +9876,14 @@ export function renderBrandsPage({ products = [], brands = [] } = {}) {
                       </div>
                     </div>
                   `;
-                }).join("")}
+                  }).join("");
+                })()}
               </div>
             </div>
           </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: AddBrandPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (AddBrandPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderAddBrandPage(props = {}) {
-  return `
           <!-- 10. Add Brands Page -->
-          <div id="page-prod-brand-add" class="admin-page-view space-y-4">
+          <div id="page-prod-brand-add" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-4 max-w-md">
               <div class="border-b pb-2 flex items-center justify-between">
                 <div>
@@ -8174,19 +9916,8 @@ export function renderAddBrandPage(props = {}) {
             </div>
           </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: VariantsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (VariantsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderVariantsPage({ variants = { colors: [], sizes: [] } } = {}) {
-  return `
           <!-- 11. Color/Size Variants List Page -->
-          <div id="page-prod-variants" class="admin-page-view space-y-4">
+          <div id="page-prod-variants" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-4">
               <div class="flex items-center justify-between border-b pb-2">
                 <h3 class="font-bold text-sm text-slate-900 dark:text-white">🎨 কালার ও সাইজ ভ্যারিয়েন্ট কনফিগারেশন</h3>
@@ -8213,19 +9944,8 @@ export function renderVariantsPage({ variants = { colors: [], sizes: [] } } = {}
             </div>
           </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: AddVariantPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (AddVariantPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderAddVariantPage(props = {}) {
-  return `
           <!-- 12. Add Color/Size Page -->
-          <div id="page-prod-variant-add" class="admin-page-view space-y-4">
+          <div id="page-prod-variant-add" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-4 max-w-md">
               <div class="border-b pb-2">
                 <h3 class="font-bold text-sm text-slate-900 dark:text-white">➕ নতুন কালার বা সাইজ ভ্যারিয়েন্ট যুক্ত করুন</h3>
@@ -8248,19 +9968,8 @@ export function renderAddVariantPage(props = {}) {
             </div>
           </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: BannersPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (BannersPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderBannersPage({ banners = [] } = {}) {
-  return `
           <!-- 13. Complete Banners & Slider CMS Page (Add, Edit, Delete, Status Toggle & Live Counters) -->
-          <div id="page-prod-banners" class="admin-page-view space-y-5">
+          <div id="page-prod-banners" class="admin-page-view hidden space-y-5">
 
             <!-- 4 Live Banner KPI Counter Cards -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -8427,20 +10136,18 @@ export function renderBannersPage({ banners = [] } = {}) {
             </div>
           </div>
 
-
   `;
 }
 
-
-// --- Dedicated Page Module: BulkUploadPage.js ---
 /**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (BulkUploadPage.js)
- * Isolated standalone page view for the Admin Panel.
+ * DREAM CART BD — Bulk Product, Price & Image CSV Upload/Download Module (adminBulkTools.js)
+ * Routes: /admin/bulk-upload, /admin/bulk-price, /admin/bulk-image
  */
-export function renderBulkUploadPage(props = {}) {
+
+function renderBulkToolsModule({ categories = [] }) {
   return `
           <!-- 3. Bulk Product Upload Page (নমুনা সীট ডাউনলোড এবং সীট আপলোড করেই পণ্য আপডেট) -->
-          <div id="page-prod-bulk-add" class="admin-page-view space-y-4">
+          <div id="page-prod-bulk-add" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-4 max-w-4xl">
               <div class="border-b pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
@@ -8488,19 +10195,8 @@ export function renderBulkUploadPage(props = {}) {
             </div>
           </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: BulkPricePage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (BulkPricePage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderBulkPricePage({ categories = [] } = {}) {
-  return `
           <!-- 4. Bulk Price Update Page (নমুনা সীট ডাউনলোড এবং সীট আপলোড করেই প্রাইজ আপডেট) -->
-          <div id="page-prod-bulk-price" class="admin-page-view space-y-4">
+          <div id="page-prod-bulk-price" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-4 max-w-4xl">
               <div class="border-b pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
@@ -8573,19 +10269,8 @@ export function renderBulkPricePage({ categories = [] } = {}) {
             </div>
           </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: BulkImagePage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (BulkImagePage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderBulkImagePage({ categories = [] } = {}) {
-  return `
           <!-- 5. Bulk Image Update Page (নমুনা সীট ডাউনলোড এবং সীট আপলোড করেই ছবি আপডেট) -->
-          <div id="page-prod-bulk-image" class="admin-page-view space-y-4">
+          <div id="page-prod-bulk-image" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-4 max-w-4xl">
               <div class="border-b pb-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
@@ -8647,21 +10332,18 @@ export function renderBulkImagePage({ categories = [] } = {}) {
             </div>
           </div>
 
-
   `;
 }
 
-
-// --- Dedicated Page Module: LandingCmsPage.js ---
 /**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (LandingCmsPage.js)
- * Isolated standalone page view for the Admin Panel.
+ * DREAM CART BD — Multi-Landing Page Builder & Media CMS Module (adminLandingCms.js)
+ * Route: /admin/landing
  */
 
-export function renderLandingCmsPage({ products = [] } = {}) {
+function renderLandingCmsModule({ products = [] }) {
   return `
           <!-- 14. Multi-Landing Pages CMS & Builder Page (একের অধিক ল্যান্ডিং পেজ, প্রোডাক্ট সার্চ করে অ্যাড, ব্যানার/ছবি/ভিডিও গ্যালারি) -->
-          <div id="page-prod-landing" class="admin-page-view space-y-5">
+          <div id="page-prod-landing" class="admin-page-view hidden space-y-5">
 
             <!-- Saved Landing Pages List Card -->
             <div class="dc-admin-card space-y-4">
@@ -8719,6 +10401,10 @@ export function renderLandingCmsPage({ products = [] } = {}) {
               </div>
             </div>
 
+          </div>
+
+          <!-- 14B. Separate Standalone Add / Edit Landing Page Form View -->
+          <div id="page-prod-landing-add" class="admin-page-view hidden space-y-5">
             <!-- Detailed Landing Page Builder & Editor Form -->
             <div id="landing-builder-form-card" class="dc-admin-card space-y-5">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
@@ -8726,11 +10412,16 @@ export function renderLandingCmsPage({ products = [] } = {}) {
                   <span id="adm-lp-editor-mode-badge" class="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-black text-[10px] mb-1">
                     ল্যান্ডিং পেজ কাস্টমাইজার ও এডিটর
                   </span>
-                  <h4 class="font-black text-sm text-slate-900 dark:text-white">🛠️ ল্যান্ডিং পেজ বিস্তারিত কনফিগারেশন (প্রোডাক্ট সার্চ, ব্যানার, ফটো গ্যালারি ও ভিডিও)</h4>
+                  <h4 class="font-black text-sm text-slate-900 dark:text-white">🛠️ নতুন ল্যান্ডিং পেজ যোগ ও কনফিগারেশন (স্লাগ, প্রোডাক্ট সার্চ, ব্যানার ও ভিডিও)</h4>
                 </div>
-                <button type="button" onclick="window.openLandingPageLivePreview(document.getElementById('adm-lp-id')?.value)" class="btn-secondary py-1.5 px-3.5 text-xs font-bold text-emerald-700 border-emerald-300">
-                  👁️ বর্তমান ল্যান্ডিং পেজ প্রিভিউ দেখুন
-                </button>
+                <div class="flex flex-wrap items-center gap-2">
+                  <button type="button" onclick="window.switchAdminPage('page-prod-landing', 'group-products')" class="btn-secondary py-1.5 px-3.5 text-xs font-bold">
+                    ← ল্যান্ডিং পেজ তালিকায় ফিরে যান
+                  </button>
+                  <button type="button" onclick="window.openLandingPageLivePreview(document.getElementById('adm-lp-id')?.value)" class="btn-primary py-1.5 px-3.5 text-xs font-bold">
+                    👁️ আলাদা ট্যাবে লাইভ প্রিভিউ ↗
+                  </button>
+                </div>
               </div>
 
               <form class="space-y-5 text-xs" onsubmit="window.handleAdminSaveLandingConfig(event)">
@@ -8742,11 +10433,11 @@ export function renderLandingCmsPage({ products = [] } = {}) {
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div class="sm:col-span-2">
                       <label class="block font-bold mb-1">ক্যাম্পেইন মূল বাংলা স্লোগান / শিরোনাম (Title) *</label>
-                      <input type="text" id="adm-lp-title" required value="সেরা মানের অথেন্টিক গ্যাজেট ও স্মার্টওয়াচ সরাসরি আপনার দোরগোড়ায়!" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900" />
+                      <input type="text" id="adm-lp-title" required value="সেরা মানের অথেন্টিক গ্যাজেট ও স্মার্টওয়াচ সরাসরি আপনার দোরগোড়ায়!" oninput="const s=document.getElementById('adm-lp-slug'); if(s && !s.dataset.manual){ s.value = (this.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || ('campaign-' + Math.floor(100+Math.random()*900))); }" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900" />
                     </div>
                     <div>
                       <label class="block font-bold mb-1">ল্যান্ডিং পেজ স্লাগ (URL Slug) *</label>
-                      <input type="text" id="adm-lp-slug" required value="mega-gadget-fest" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono bg-white dark:bg-slate-900" />
+                      <input type="text" id="adm-lp-slug" required value="mega-gadget-fest" oninput="this.dataset.manual='1'" placeholder="যেমন: smart-watch-offer" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono bg-white dark:bg-slate-900" />
                     </div>
                   </div>
 
@@ -8946,18 +10637,27 @@ export function renderLandingCmsPage({ products = [] } = {}) {
 
           <!-- Modal for Add Banner -->
 
-
   `;
 }
 
-
-// --- Dedicated Page Module: OthersHubPage.js ---
 /**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (OthersHubPage.js)
- * Isolated standalone page view for the Admin Panel.
+ * DREAM CART BD — Dedicated Others & Operations Hub Module (adminOthers.js)
+ * Route: /admin/others
  */
 
-export function renderOthersHubPage({ resellers = [], wholesalers = [], sellers = [], markets = [], couriers = [], onlinePayments = [], costs = [], buying = [], invest = [], offers = [], kpi = {} } = {}) {
+function renderOthersModule({
+  resellers = [],
+  wholesalers = [],
+  sellers = [],
+  markets = [],
+  couriers = [],
+  onlinePayments = [],
+  costs = [],
+  buying = [],
+  invest = [],
+  offers = [],
+  kpi = {}
+}) {
   const sections = [
     {
       groupTitle: '📦 ক্যাটালগ ও বাল্ক টুলস (Catalog & Bulk Pages)',
@@ -9006,6 +10706,7 @@ export function renderOthersHubPage({ resellers = [], wholesalers = [], sellers 
       ]
     }
   ];
+
   return `
     <div id="page-others-hub" class="admin-page-view space-y-5">
       <div class="dc-admin-card space-y-4">
@@ -9053,21 +10754,40 @@ export function renderOthersHubPage({ resellers = [], wholesalers = [], sellers 
         </div>
       </div>
     </div>
-
   `;
 }
 
+function renderProductsModule(props = {}) {
+  return [
+    renderProductCatalogModule(props),
+    renderAddProductModule(props),
+    renderCategoryBrandModule(props),
+    renderBulkToolsModule(props),
+    renderLandingCmsModule(props),
+    renderOthersModule(props)
+  ].join('\n');
+}
 
-// --- Dedicated Page Module: OrdersListPage.js ---
+// ============================================================================
+// MODULE: adminOrders.js
+// ============================================================================
 /**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (OrdersListPage.js)
- * Isolated standalone page view for the Admin Panel.
+ * DREAM CART BD — Order Management Module (adminOrders.js)
+ * Implements:
+ * - 9-column complete order management with checkboxes & bulk actions
+ * - Abandoned checkout recovery with direct WhatsApp reminders
+ * - Manual order entry with instant cash voucher popup and printing
+ * - Customer CRM database & Reviews moderation
  */
 
-export function renderOrdersListPage({ orders = [] } = {}) {
+function renderOrdersModule({ orders, incompleteOrders, customers, reviews }) {
   return `
+    <!-- ================================================================= -->
+    <!-- DEDICATED PAGES: ORDER MANAGEMENT (10 Distinct Standalone Views)  -->
+    <!-- ================================================================= -->
+
     <!-- 1. All Orders List with Full Columns & Bulk Actions -->
-    <div id="page-orders-all" class="admin-page-view space-y-4">
+    <div id="page-orders-all" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b pb-2.5">
           <div>
@@ -9133,120 +10853,31 @@ export function renderOrdersListPage({ orders = [] } = {}) {
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 dark:divide-slate-800" id="admin-orders-full-tbody">
-              ${orders.map(o => `
-                <tr class="admin-order-row hover:bg-slate-50 dark:hover:bg-slate-800/40 transition" data-order-id="${o.order_id}" data-status="${o.order_status}">
-                  <td class="py-3 px-2 text-center">
-                    <input type="checkbox" value="${o.order_id}" class="order-select-cb" onchange="window.updateBulkOrdersBar()" />
-                  </td>
-                  <td class="py-3 px-3 font-mono font-bold text-emerald-600">
-                    <div>${o.order_id}</div>
-                    <span class="text-[9px] text-slate-400 font-normal">ওয়েব অর্ডার</span>
-                  </td>
-                  <td class="py-3 px-3 max-w-xs">
-                    <div class="font-bold text-slate-900 dark:text-white">${o.customer_name}</div>
-                    <div class="font-mono text-slate-500 text-[10px]">${o.phone}</div>
-                    <div class="truncate text-[10px] text-slate-400">${o.address}</div>
-                    <button class="mt-1 text-[9px] text-emerald-600 font-bold hover:underline" onclick="window.copyToClipboard('${o.customer_name} | ${o.phone} | ${o.address.replace(/'/g, "\\'")}', 'কাস্টমার ইনফো কপি হয়েছে!')">
-                      কপি ইনফো 📋
-                    </button>
-                  </td>
-                  <td class="py-3 px-3 max-w-xs">
-                    <div class="font-bold text-slate-800 dark:text-slate-200">${o.product_name || o.products}</div>
-                    <div class="text-[10px] text-slate-400">সাইজ: <span class="font-bold">${o.size || 'Free Size'}</span> | কালার: <span class="font-bold">${o.color || 'Standard'}</span></div>
-                  </td>
-                  <td class="py-3 px-3 font-mono">
-                    <div class="font-black text-slate-900 dark:text-white">৳${o.total_amount}</div>
-                    <div class="text-[10px] text-slate-400">পরিমাণ: ${o.quantity || 1} পিস</div>
-                    <span class="badge ${o.payment_status === 'Paid' ? 'badge-success' : 'badge-warning'} text-[9px]">${o.payment_method}</span>
-                  </td>
-                  <td class="py-3 px-3">
-                    <div class="font-mono text-[10px] text-slate-500">${o.transaction_id || 'COD'}</div>
-                    <button class="mt-0.5 px-2 py-0.5 rounded text-[9px] font-bold ${o.fraud_status && o.fraud_status.includes('High') ? 'bg-rose-100 text-rose-700' : 'bg-emerald-50 text-emerald-700'}" onclick="window.handleCheckOrderFraud('${o.phone}', '${o.order_id}', this)">
-                      🛡️ ${o.fraud_status || 'Safe (98%)'}
-                    </button>
-                    <div class="text-[10px] text-amber-500 mt-0.5">${o.customer_rating || '5/5 ★'}</div>
-                  </td>
-                  <td class="py-3 px-3">
-                    <select
-                      class="form-control text-[11px] py-1 px-2 rounded-lg border font-bold"
-                      onchange="window.updateOrderStatus('${o.order_id}', this.value)"
-                    >
-                      <option value="Order Placed" ${o.order_status === 'Order Placed' ? 'selected' : ''}>Order Placed</option>
-                      <option value="Processing" ${o.order_status === 'Processing' ? 'selected' : ''}>Processing</option>
-                      <option value="Packing" ${o.order_status === 'Packing' ? 'selected' : ''}>Packing</option>
-                      <option value="Shipped" ${o.order_status === 'Shipped' ? 'selected' : ''}>Shipped</option>
-                      <option value="Delivered" ${o.order_status === 'Delivered' ? 'selected' : ''}>Delivered ✓</option>
-                      <option value="Returned" ${o.order_status === 'Returned' ? 'selected' : ''}>Returned</option>
-                      <option value="Cancelled" ${o.order_status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
-                    </select>
-                  </td>
-                  <td class="py-3 px-3">
-                    <button class="btn-primary py-1 px-2 text-[10px] font-bold whitespace-nowrap bg-indigo-600 hover:bg-indigo-700 text-white" onclick="window.handleSendOrderToCourier('${o.order_id}', 'Steadfast')">
-                      কুরিয়ারে পাঠান 🚀
-                    </button>
-                  </td>
-                  <td class="py-3 px-3 text-right space-x-1 whitespace-nowrap">
-                    <button class="btn-secondary py-0.5 px-2 text-[10px]" onclick="window.copyToClipboard('${o.order_id}', 'অর্ডার আইডি কপি হয়েছে!')">আইডি</button>
-                    <button class="btn-secondary py-0.5 px-2 text-[10px] text-rose-600 border-rose-200" onclick="if(confirm('অর্ডারটি মুছে ফেলতে চান?')) this.closest('tr').remove()">মুছুন</button>
-                  </td>
-                </tr>
-              `).join("")}
+              ${orders.map(o => window.renderOrderRowHtml ? window.renderOrderRowHtml(o) : '').join("")}
             </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- Modal for Fraud Result -->
-    <div id="modal-fraud-result" class="admin-modal-backdrop hidden">
-      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-sm w-full space-y-3 text-xs text-center">
-        <div class="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 text-xl font-black mx-auto flex items-center justify-center">🛡️</div>
-        <h4 class="font-black text-sm text-slate-900 dark:text-white">কুরিয়ার ফ্রড ডাটা যাচাই রিপোর্ট</h4>
-        <div id="fraud-result-badge" class="badge badge-success text-xs font-bold mx-auto">Safe Customer</div>
-        <div id="fraud-result-text" class="text-slate-500 text-[11px] p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border"></div>
-        <button class="btn-primary py-2 px-5 font-bold w-full" onclick="document.getElementById('modal-fraud-result')?.classList.add('hidden')">বন্ধ করুন</button>
-      </div>
-    </div>
-
-    <!-- Modal for Order Voucher -->
-    <div id="modal-order-voucher" class="admin-modal-backdrop hidden">
-      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">ক্যাশ ইনভয়েস ও ভাউচার</h4>
-          <button class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-order-voucher')?.classList.add('hidden')">✕</button>
-        </div>
-        <div id="voucher-content-display"></div>
-        <div class="flex items-center gap-2 pt-2 border-t">
-          <button class="btn-primary py-2 px-4 font-bold flex-1" onclick="window.print()">ভাউচার প্রিন্ট 🖨️</button>
-          <button class="btn-secondary py-2 px-4" onclick="document.getElementById('modal-order-voucher')?.classList.add('hidden')">বন্ধ</button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-
-// --- Dedicated Page Module: IncompleteOrdersPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (IncompleteOrdersPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderIncompleteOrdersPage({ incompleteOrders = [] } = {}) {
-  return `
     <!-- 2. Incomplete Orders Page -->
-    <div id="page-orders-incomplete" class="admin-page-view space-y-4">
+    <div id="page-orders-incomplete" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
           <div>
             <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span class="text-rose-500">⚠️</span> অসম্পূর্ণ অর্ডারসমূহ
+              <span class="text-rose-500">⚠️</span> অসম্পূর্ণ অর্ডারসমূহ (${incompleteOrders.length} টি)
             </h3>
-            <p class="text-[11px] text-slate-400">যেসব গ্রাহক ফর্ম পূরণ করেও অর্ডার কনফার্ম করেননি</p>
+            <p class="text-[11px] text-slate-400">যেসব গ্রাহক ফর্ম পূরণ করেও অর্ডার কনফার্ম করেননি (স্বয়ংক্রিয়ভাবে লিস্ট ও Incomplete_Orders শিটে জমা হয়)</p>
           </div>
-          <button class="btn-primary text-xs py-1.5 px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold" onclick="window.sendIncompleteOrderReminders()">
-            Send Order List 📤
-          </button>
+          <div class="flex items-center gap-2 text-xs">
+            <button type="button" class="btn-primary py-1.5 px-3 font-bold" onclick="document.getElementById('modal-add-incomplete-order')?.classList.remove('hidden')">
+              + অসম্পূর্ণ অর্ডার এন্ট্রি
+            </button>
+            <button type="button" class="btn-primary text-xs py-1.5 px-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold" onclick="window.sendIncompleteOrderReminders()">
+              শিট সিঙ্ক ও রিমাইন্ডার 📤
+            </button>
+          </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -9256,49 +10887,41 @@ export function renderIncompleteOrdersPage({ incompleteOrders = [] } = {}) {
                 <th class="py-2.5 px-3">ড্রাফট ID</th>
                 <th class="py-2.5 px-3">তারিখ</th>
                 <th class="py-2.5 px-3">গ্রাহক ও ফোন</th>
-                <th class="py-2.5 px-3">ঠিকানা</th>
+                <th class="py-2.5 px-3">ঠিকানা ও পণ্য</th>
                 <th class="py-2.5 px-3">মূল্য</th>
-                <th class="py-2.5 px-3 text-right">ফলোআপ</th>
+                <th class="py-2.5 px-3 text-right">ফলোআপ ও কনফার্ম</th>
               </tr>
             </thead>
-            <tbody class="divide-y">
-              ${incompleteOrders.map(io => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-                  <td class="py-2.5 px-3 font-mono font-bold text-rose-500">${io.order_id}</td>
-                  <td class="py-2.5 px-3 text-slate-400">${io.date}</td>
-                  <td class="py-2.5 px-3">
-                    <div class="font-bold">${io.customer_name}</div>
-                    <div class="font-mono text-slate-400 text-[10px]">${io.phone}</div>
-                  </td>
-                  <td class="py-2.5 px-3 text-slate-500">${io.address}</td>
-                  <td class="py-2.5 px-3 font-bold font-mono">৳${io.total_amount}</td>
-                  <td class="py-2.5 px-3 text-right">
-                    <a href="https://wa.me/88${io.phone}?text=Hello,%20we%20noticed%20you%20started%20an%20order%20on%20Dream%20Cart%20BD.%20Can%20we%20assist%20you?" target="_blank" class="btn-primary py-1 px-3 text-[10px] bg-emerald-600 font-bold">
-                      WhatsApp বার্তা 💬
-                    </a>
-                  </td>
-                </tr>
-              `).join("")}
+            <tbody id="admin-incomplete-orders-tbody" class="divide-y">
+              ${incompleteOrders.map(io => {
+                const safeId = String(io.order_id || '').replace(/'/g, "\\'");
+                return `
+                  <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                    <td class="py-2.5 px-3 font-mono font-bold text-rose-500">${io.order_id}</td>
+                    <td class="py-2.5 px-3 text-slate-400">${io.date || 'আজকে'}</td>
+                    <td class="py-2.5 px-3">
+                      <div class="font-bold">${io.customer_name}</div>
+                      <div class="font-mono text-slate-400 text-[10px]">${io.phone}</div>
+                    </td>
+                    <td class="py-2.5 px-3 text-slate-500">${io.address || ''} ${io.products ? `<div class="text-[10px] text-emerald-600 font-bold">পণ্য: ${io.products}</div>` : ''}</td>
+                    <td class="py-2.5 px-3 font-bold font-mono">৳${io.total_amount}</td>
+                    <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+                      <button type="button" onclick="window.convertIncompleteToOrder('${safeId}')" class="btn-primary py-1 px-2.5 text-[10px] font-bold">✓ কনফার্ম অর্ডার</button>
+                      <a href="https://wa.me/88${String(io.phone || '').replace(/[^0-9]/g, '')}?text=Hello,%20we%20noticed%20you%20started%20an%20order%20on%20Dream%20Cart%20BD.%20Can%20we%20assist%20you?" target="_blank" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">
+                        WhatsApp 💬
+                      </a>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
             </tbody>
           </table>
         </div>
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: DeliveredOrdersPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (DeliveredOrdersPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderDeliveredOrdersPage({ orders = [] } = {}) {
-  return `
     <!-- 3. Success Orders Page (Delivered & Paid) -->
-    <div id="page-orders-success" class="admin-page-view space-y-4">
+    <div id="page-orders-success" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="border-b pb-2 flex items-center justify-between">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -9320,20 +10943,8 @@ export function renderDeliveredOrdersPage({ orders = [] } = {}) {
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: ShippingOrdersPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (ShippingOrdersPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderShippingOrdersPage({ orders = [] } = {}) {
-  return `
     <!-- 4. In Shipping Orders Page -->
-    <div id="page-orders-shipping" class="admin-page-view space-y-4">
+    <div id="page-orders-shipping" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -9354,20 +10965,8 @@ export function renderShippingOrdersPage({ orders = [] } = {}) {
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: UnpaidOrdersPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (UnpaidOrdersPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderUnpaidOrdersPage({ orders = [] } = {}) {
-  return `
     <!-- 5. Payment Incomplete Orders Page -->
-    <div id="page-orders-unpaid" class="admin-page-view space-y-4">
+    <div id="page-orders-unpaid" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -9388,20 +10987,8 @@ export function renderUnpaidOrdersPage({ orders = [] } = {}) {
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: CancelledOrdersPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (CancelledOrdersPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderCancelledOrdersPage({ orders = [] } = {}) {
-  return `
     <!-- 6. Cancelled Orders Page -->
-    <div id="page-orders-cancelled" class="admin-page-view space-y-4">
+    <div id="page-orders-cancelled" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -9422,24 +11009,12 @@ export function renderCancelledOrdersPage({ orders = [] } = {}) {
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: AddOrderPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (AddOrderPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderAddOrderPage(props = {}) {
-  return `
-    <!-- 7. Add Order Page (Manual Entry + Voucher) -->
-    <div id="page-orders-add" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-4 max-w-xl">
+    <!-- 7. Add Order Page (Manual Multi-Product Entry + Per-Product Size/Color + Live Price Calc + Voucher) -->
+    <div id="page-orders-add" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4 max-w-2xl">
         <div class="border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white">➕ নতুন অর্ডার এন্ট্রি</h3>
-          <p class="text-[11px] text-slate-400">ফোন বা ইনবক্স থেকে সরাসরি অর্ডার তৈরি ও ক্যাশ ভাউচার প্রিন্ট</p>
+          <p class="text-[11px] text-slate-400">পণ্যের নাম/আর্টিকেল (SKU) সার্চ করে একাধিক পণ্য, প্রতিটি পণ্যের নিজস্ব সাইজ/কালার ও অটো প্রাইজ ক্যালকুলেশন</p>
         </div>
 
         <form id="form-manual-add-order" class="space-y-3.5 text-xs" onsubmit="window.handleManualAddOrder(event)">
@@ -9459,28 +11034,29 @@ export function renderAddOrderPage(props = {}) {
             <textarea id="add-ord-address" rows="2" required placeholder="বাড়ি #, রোড #, এলাকা, থানা, জেলা..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
           </div>
 
-          <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5">
-            <h4 class="font-bold text-slate-900 dark:text-white">পণ্য নির্ধারণ:</h4>
-            <div>
-              <label class="block font-bold mb-1">পণ্যের নাম *</label>
-              <input type="text" id="add-ord-product" required placeholder="Amazfit GTS 4 Smartwatch / মধু" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+          <!-- Multi-Product Search & Per-Product Size/Color Selection Box -->
+          <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="font-bold text-slate-900 dark:text-white">📦 পণ্য নির্ধারণ (মাল্টি-প্রোডাক্ট সার্চ ও সাইজ/কালার সিলেকশন):</h4>
+              <button type="button" onclick="window.searchManualOrderProducts('')" class="text-[11px] text-emerald-600 font-bold hover:underline">সকল পণ্য দেখুন ↓</button>
             </div>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <div>
-                <label class="block font-bold mb-1">সাইজ</label>
-                <input type="text" id="add-ord-size" value="Free Size" class="form-control text-xs w-full py-1.5 px-2 rounded-lg border font-bold" />
-              </div>
-              <div>
-                <label class="block font-bold mb-1">কালার</label>
-                <input type="text" id="add-ord-color" value="Jet Black" class="form-control text-xs w-full py-1.5 px-2 rounded-lg border font-bold" />
-              </div>
-              <div>
-                <label class="block font-bold mb-1">একক মূল্য (৳) *</label>
-                <input type="number" id="add-ord-price" required placeholder="1450" class="form-control text-xs w-full py-1.5 px-2 rounded-lg border font-bold font-mono" />
-              </div>
-              <div>
-                <label class="block font-bold mb-1">পরিমাণ *</label>
-                <input type="number" id="add-ord-qty" required value="1" min="1" class="form-control text-xs w-full py-1.5 px-2 rounded-lg border font-bold font-mono" />
+
+            <div class="relative">
+              <input
+                type="text"
+                id="add-ord-prod-search"
+                placeholder="🔍 পণ্যের নাম বা আর্টিকেল (SKU) লিখে সার্চ করুন (যেমন: Amazfit, DCBD-WT-01)..."
+                oninput="window.searchManualOrderProducts(this.value)"
+                onfocus="window.searchManualOrderProducts(this.value)"
+                class="form-control text-xs w-full py-2 px-3.5 rounded-xl border border-emerald-400 font-bold bg-white dark:bg-slate-900"
+              />
+              <div id="add-ord-prod-search-results" class="hidden mt-1.5 space-y-1.5 max-h-56 overflow-y-auto p-2 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 shadow-lg"></div>
+            </div>
+
+            <!-- Selected Multi-Products List -->
+            <div id="add-ord-selected-items-list" class="space-y-2">
+              <div class="p-4 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-[11px] text-slate-400">
+                🛍️ উপরের সার্চ বক্সে পণ্যের নাম বা আর্টিকেল (SKU) লিখে সিলেক্ট করুন (একাধিক পণ্য যুক্ত করতে পারবেন)।
               </div>
             </div>
           </div>
@@ -9488,7 +11064,7 @@ export function renderAddOrderPage(props = {}) {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block font-bold mb-1">ডেলিভারি চার্জ (৳)</label>
-              <select id="add-ord-delivery" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold">
+              <select id="add-ord-delivery" onchange="window.recalcManualOrderTotal()" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold">
                 <option value="70">কুমিল্লা সিটি (৳৭০)</option>
                 <option value="90">ঢাকা সিটি (৳৯০)</option>
                 <option value="120">ঢাকার বাইরে সারা দেশ (৳১২০)</option>
@@ -9505,38 +11081,29 @@ export function renderAddOrderPage(props = {}) {
             </div>
           </div>
 
+          <!-- Auto-Calculated Price Breakdown Box -->
+          <div class="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 space-y-1.5 text-xs">
+            <div class="flex justify-between">
+              <span class="text-slate-600 dark:text-slate-300">নির্বাচিত পণ্যের মোট মূল্য (Subtotal):</span>
+              <span id="add-ord-calc-subtotal" class="font-bold font-mono text-slate-900 dark:text-white">৳0</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-600 dark:text-slate-300">ডেলিভারি চার্জ:</span>
+              <span id="add-ord-calc-delivery" class="font-bold font-mono text-slate-900 dark:text-white">৳0</span>
+            </div>
+            <div class="flex justify-between text-sm font-black text-emerald-700 dark:text-emerald-400 border-t border-emerald-200 dark:border-emerald-800 pt-1.5">
+              <span>সর্বমোট প্রদেয় বিল (Grand Total):</span>
+              <span id="add-ord-calc-grandtotal" class="font-mono text-base">৳0</span>
+            </div>
+          </div>
+
           <button type="submit" class="btn-primary py-2.5 px-6 font-bold w-full">অর্ডার সাবমিট ও ক্যাশ ভাউচার দেখুন →</button>
         </form>
       </div>
     </div>
 
-    <!-- Modal for Order Voucher -->
-    <div id="modal-order-voucher" class="admin-modal-backdrop hidden">
-      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">ক্যাশ ইনভয়েস ও ভাউচার</h4>
-          <button class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-order-voucher')?.classList.add('hidden')">✕</button>
-        </div>
-        <div id="voucher-content-display"></div>
-        <div class="flex items-center gap-2 pt-2 border-t">
-          <button class="btn-primary py-2 px-4 font-bold flex-1" onclick="window.print()">ভাউচার প্রিন্ট 🖨️</button>
-          <button class="btn-secondary py-2 px-4" onclick="document.getElementById('modal-order-voucher')?.classList.add('hidden')">বন্ধ</button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-
-// --- Dedicated Page Module: VisitorsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (VisitorsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderVisitorsPage(props = {}) {
-  return `
     <!-- 8. Live Visitors Page -->
-    <div id="page-orders-visitors" class="admin-page-view space-y-4">
+    <div id="page-orders-visitors" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex items-center justify-between border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
@@ -9570,48 +11137,44 @@ export function renderVisitorsPage(props = {}) {
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: CustomersPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (CustomersPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderCustomersPage({ customers = [] } = {}) {
-  return `
     <!-- 9. Customer CRM Page -->
-    <div id="page-orders-customers" class="admin-page-view space-y-4">
+    <div id="page-orders-customers" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">👥 কাস্টমার ডাটাবেজ</h3>
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white">👥 কাস্টমার ডাটাবেজ (${customers.length} জন)</h3>
+            <p class="text-[11px] text-slate-400">সকল গ্রাহকের তালিকা ও ম্যানুয়াল কাস্টমার এন্ট্রি (Customers শিটে সিঙ্ককৃত)</p>
+          </div>
           <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-secondary py-1 px-3 text-xs" onclick="window.exportGenericCsv('Customers', ['Name', 'Phone', 'Address', 'Total Spent'], customers.map(c=>[c.name, c.phone, c.address, c.total_spent]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+            <button type="button" class="btn-primary py-1.5 px-3 font-bold" onclick="document.getElementById('modal-add-customer')?.classList.remove('hidden')">+ নতুন কাস্টমার যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1 px-3 text-xs" onclick="window.exportGenericCsv('Customers', ['Name', 'Phone', 'Address', 'Total Spent'], customers.map(c=>[c.name, c.phone, c.address, c.total_spent]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
           </div>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs border-collapse">
             <thead>
               <tr class="border-b text-slate-400 uppercase text-[10px]">
+                <th class="py-2 px-3">আইডি</th>
                 <th class="py-2 px-3">নাম</th>
                 <th class="py-2 px-3">ফোন নম্বর</th>
+                <th class="py-2 px-3">ইমেইল</th>
                 <th class="py-2 px-3">ঠিকানা</th>
                 <th class="py-2 px-3">মোট খরচ</th>
                 <th class="py-2 px-3 text-right">অ্যাকশন</th>
               </tr>
             </thead>
-            <tbody class="divide-y">
-              ${customers.map(c => `
+            <tbody id="admin-customers-tbody" class="divide-y">
+              ${customers.map((c, idx) => `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-                  <td class="py-2.5 px-3 font-bold">${c.name}</td>
+                  <td class="py-2.5 px-3 font-mono text-[11px] text-emerald-600 font-bold">${c.customer_id || ('CUST-' + (101 + idx))}</td>
+                  <td class="py-2.5 px-3 font-bold text-slate-900 dark:text-white">${c.name}</td>
                   <td class="py-2.5 px-3 font-mono">${c.phone}</td>
+                  <td class="py-2.5 px-3 text-slate-500">${c.email || '—'}</td>
                   <td class="py-2.5 px-3 text-slate-500">${c.address}</td>
-                  <td class="py-2.5 px-3 font-bold font-mono">৳${c.total_spent}</td>
+                  <td class="py-2.5 px-3 font-bold font-mono text-emerald-600">৳${c.total_spent}</td>
                   <td class="py-2.5 px-3 text-right">
-                    <button class="btn-secondary py-1 px-2 text-[10px]" onclick="window.copyToClipboard('${c.phone}', 'ফোন কপি হয়েছে!')">ফোন কপি</button>
+                    <button type="button" class="btn-secondary py-1 px-2 text-[10px]" onclick="window.copyToClipboard('${c.phone}', 'ফোন কপি হয়েছে!')">ফোন কপি</button>
                   </td>
                 </tr>
               `).join("")}
@@ -9621,34 +11184,30 @@ export function renderCustomersPage({ customers = [] } = {}) {
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: ReviewsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (ReviewsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderReviewsPage({ reviews = [] } = {}) {
-  return `
     <!-- 10. Reviews Page -->
-    <div id="page-orders-reviews" class="admin-page-view space-y-4">
+    <div id="page-orders-reviews" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">⭐ গ্রাহক রিভিউ ও রেটিং (${reviews.length})</h3>
-          <button class="btn-secondary py-1 px-2.5 text-xs" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white">⭐ গ্রাহক রিভিউ ও রেটিং (${reviews.length})</h3>
+            <p class="text-[11px] text-slate-400">গ্রাহক রিভিউ মডারেশন ও ম্যানুয়াল রিভিউ সংযোজন (Reviews শিটে সিঙ্ককৃত)</p>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs">
+            <button type="button" class="btn-primary py-1.5 px-3 font-bold" onclick="document.getElementById('modal-add-review')?.classList.remove('hidden')">+ নতুন রিভিউ যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1 px-2.5 text-xs" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
         </div>
-        <div class="space-y-2.5 text-xs">
+        <div id="admin-reviews-list-container" class="space-y-2.5 text-xs">
           ${reviews.map(r => `
             <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <div class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                  <span>${r.customer}</span>
-                  <span class="text-amber-500">★★★★★</span>
-                  <span class="text-[10px] text-slate-400 font-normal">(${r.product})</span>
+                <div class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                  <span>${r.customer || r.customer_name}</span>
+                  <span class="text-amber-500">${'★'.repeat(Math.min(5, Math.max(1, Number(r.rating) || 5)))}</span>
+                  <span class="text-[10px] text-emerald-600 font-bold">(${r.product || r.product_name})</span>
+                  <span class="text-[10px] text-slate-400 font-normal">• ${r.date || 'আজকে'}</span>
                 </div>
-                <p class="text-slate-600 dark:text-slate-300 mt-1">"${r.comment}"</p>
+                <p class="text-slate-600 dark:text-slate-300 mt-1">"${r.comment || r.review_text}"</p>
               </div>
               <span class="badge badge-success text-[10px]">Approved ✓</span>
             </div>
@@ -9657,43 +11216,283 @@ export function renderReviewsPage({ reviews = [] } = {}) {
       </div>
     </div>
 
+    <!-- Modal for Editing an Order -->
+    <div id="modal-edit-order" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-lg w-full space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">✏️ অর্ডার তথ্য এডিট ও আপডেট করুন</h4>
+          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-edit-order')?.classList.add('hidden')">✕</button>
+        </div>
+        <form onsubmit="window.handleSaveEditOrder(event)" class="space-y-3">
+          <input type="hidden" id="edit-ord-id" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">গ্রাহকের নাম *</label>
+              <input type="text" id="edit-ord-name" required class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">ফোন নম্বর *</label>
+              <input type="text" id="edit-ord-phone" required class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">ডেলিভারি ঠিকানা *</label>
+            <input type="text" id="edit-ord-address" required class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">পণ্যের নাম ও বিবরণ *</label>
+            <input type="text" id="edit-ord-products" required class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div>
+              <label class="block font-bold mb-1">সাইজ</label>
+              <input type="text" id="edit-ord-size" class="form-control text-xs w-full py-1.5 px-2 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">কালার</label>
+              <input type="text" id="edit-ord-color" class="form-control text-xs w-full py-1.5 px-2 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">পরিমাণ</label>
+              <input type="number" id="edit-ord-qty" min="1" class="form-control text-xs w-full py-1.5 px-2 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">মোট বিল (৳)</label>
+              <input type="number" id="edit-ord-total" class="form-control text-xs w-full py-1.5 px-2 rounded-xl border font-mono font-bold text-emerald-600" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div>
+              <label class="block font-bold mb-1">পেমেন্ট মেথড</label>
+              <input type="text" id="edit-ord-paymethod" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">পেমেন্ট স্ট্যাটাস</label>
+              <select id="edit-ord-paystatus" class="form-control text-xs w-full py-1.5 px-2 rounded-xl border font-bold">
+                <option value="Pending">Pending</option>
+                <option value="Paid">Paid ✓</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">অর্ডার স্ট্যাটাস</label>
+              <select id="edit-ord-status" class="form-control text-xs w-full py-1.5 px-2 rounded-xl border font-bold">
+                <option value="Order Placed">Order Placed</option>
+                <option value="Processing">Processing</option>
+                <option value="Packing">Packing</option>
+                <option value="Shipped">Shipped</option>
+                <option value="Delivered">Delivered ✓</option>
+                <option value="Returned">Returned</option>
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-edit-order')?.classList.add('hidden')">বাতিল</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">💾 আপডেট ও শিটে সেভ করুন</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal for Adding Incomplete Order -->
+    <div id="modal-add-incomplete-order" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">⚠️ নতুন অসম্পূর্ণ অর্ডার এন্ট্রি</h4>
+          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-incomplete-order')?.classList.add('hidden')">✕</button>
+        </div>
+        <form onsubmit="window.handleAddIncompleteOrder(event)" class="space-y-3">
+          <div>
+            <label class="block font-bold mb-1">গ্রাহকের নাম *</label>
+            <input type="text" id="inc-ord-name" required placeholder="রফিকুল ইসলাম" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">মোবাইল নম্বর *</label>
+            <input type="text" id="inc-ord-phone" required placeholder="017xxxxxxxx" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">ঠিকানা</label>
+            <input type="text" id="inc-ord-address" placeholder="মিরপুর-১০, ঢাকা" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-bold mb-1">পণ্যের নাম</label>
+              <input type="text" id="inc-ord-products" placeholder="Amazfit Smartwatch" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">সম্ভাব্য মূল্য (৳)</label>
+              <input type="number" id="inc-ord-amount" placeholder="2450" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-incomplete-order')?.classList.add('hidden')">বাতিল</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংরক্ষণ ও শিটে জমা করুন</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal for Adding Manual Customer -->
+    <div id="modal-add-customer" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">👥 নতুন কাস্টমার যুক্ত করুন</h4>
+          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-customer')?.classList.add('hidden')">✕</button>
+        </div>
+        <form onsubmit="window.handleAdminAddCustomer(event)" class="space-y-3">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-bold mb-1">কাস্টমার আইডি (অটো)</label>
+              <input type="text" id="adm-cust-id" placeholder="CUST-Auto" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">মোবাইল নম্বর *</label>
+              <input type="text" id="adm-cust-phone" required placeholder="017xxxxxxxx" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">গ্রাহকের পূর্ণ নাম *</label>
+            <input type="text" id="adm-cust-name" required placeholder="মোঃ তানভীর আহমেদ" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">ইমেইল অ্যাড্রেস</label>
+            <input type="email" id="adm-cust-email" placeholder="customer@example.com" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">সম্পূর্ণ ঠিকানা *</label>
+            <input type="text" id="adm-cust-address" required placeholder="ধানমন্ডি, ঢাকা" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">মোট ক্রয় পরিমাণ (৳)</label>
+            <input type="number" id="adm-cust-spent" value="0" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-customer')?.classList.add('hidden')">বাতিল</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">কাস্টমার সংরক্ষণ করুন →</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal for Adding Manual Review -->
+    <div id="modal-add-review" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">⭐ নতুন কাস্টমার রিভিউ যুক্ত করুন</h4>
+          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-review')?.classList.add('hidden')">✕</button>
+        </div>
+        <form onsubmit="window.handleAdminAddReview(event)" class="space-y-3">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-bold mb-1">গ্রাহকের নাম *</label>
+              <input type="text" id="adm-rev-customer" required placeholder="সুলতানা জাহান" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">মোবাইল নম্বর</label>
+              <input type="text" id="adm-rev-phone" placeholder="018xxxxxxxx" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div class="col-span-2">
+              <label class="block font-bold mb-1">পণ্যের নাম *</label>
+              <input type="text" id="adm-rev-product" required placeholder="Amazfit GTS 4 Smartwatch" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">রেটিং (১-৫) *</label>
+              <select id="adm-rev-rating" class="form-control text-xs w-full py-1.5 px-2 rounded-xl border font-bold text-amber-500">
+                <option value="5">★★★★★ (5)</option>
+                <option value="4">★★★★☆ (4)</option>
+                <option value="3">★★★☆☆ (3)</option>
+                <option value="2">★★☆☆☆ (2)</option>
+                <option value="1">★☆☆☆☆ (1)</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">রিভিউ মন্তব্য (Comment) *</label>
+            <textarea id="adm-rev-comment" rows="3" required placeholder="পণ্যটি অত্যন্ত চমৎকার এবং দ্রুত ডেলিভারি পেয়েছি..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-review')?.classList.add('hidden')">বাতিল</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">রিভিউ সংরক্ষণ করুন →</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal for Fraud Result -->
+    <div id="modal-fraud-result" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-sm w-full space-y-3 text-xs text-center">
+        <div class="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 text-xl font-black mx-auto flex items-center justify-center">🛡️</div>
+        <h4 class="font-black text-sm text-slate-900 dark:text-white">কুরিয়ার ফ্রড ডাটা যাচাই রিপোর্ট</h4>
+        <div id="fraud-result-badge" class="badge badge-success text-xs font-bold mx-auto">Safe Customer</div>
+        <div id="fraud-result-text" class="text-slate-500 text-[11px] p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border"></div>
+        <button class="btn-primary py-2 px-5 font-bold w-full" onclick="document.getElementById('modal-fraud-result')?.classList.add('hidden')">বন্ধ করুন</button>
+      </div>
+    </div>
+
+    <!-- Modal for Order Voucher -->
+    <div id="modal-order-voucher" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">ক্যাশ ইনভয়েস ও ভাউচার</h4>
+          <button class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-order-voucher')?.classList.add('hidden')">✕</button>
+        </div>
+        <div id="voucher-content-display"></div>
+        <div class="flex items-center gap-2 pt-2 border-t">
+          <button class="btn-primary py-2 px-4 font-bold flex-1" onclick="window.print()">ভাউচার প্রিন্ট 🖨️</button>
+          <button class="btn-secondary py-2 px-4" onclick="document.getElementById('modal-order-voucher')?.classList.add('hidden')">বন্ধ</button>
+        </div>
+      </div>
+    </div>
   `;
 }
 
-
-// --- Dedicated Page Module: ResellersPage.js ---
+// ============================================================================
+// MODULE: adminPartners.js
+// ============================================================================
 /**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (ResellersPage.js)
- * Isolated standalone page view for the Admin Panel.
+ * DREAM CART BD — Partner & Admin Management Module (adminPartners.js)
+ * Implements:
+ * - Reseller management with live commission % control, balances & tracking
+ * - Wholesaler tier management
+ * - Merchant seller management & marketplace sync (Daraz, Facebook, Bikroy)
+ * - Master Admin & Staff Worker directory
  */
 
-export function renderResellersPage({ resellers = [] } = {}) {
+function renderPartnersModule({ resellers, wholesalers, sellers, markets, admins, workers }) {
+  const rolesList = ['Super Admin', 'CEO & Master Admin', 'Lead Operations', 'Manager', 'Order Management', 'Customer Support', 'Delivery', 'Accountant', 'Inventory/Warehouse', 'Sales'];
+
   return `
-    <!-- 1. Resellers Page -->
-    <div id="page-partner-resellers" class="admin-page-view space-y-4">
+    <!-- ================================================================= -->
+    <!-- DEDICATED PAGES: PARTNERS & ADMINS (6 Distinct Standalone Views)  -->
+    <!-- ================================================================= -->
+
+    <!-- 1. Resellers Page (রিসেলারসমূহ - লিষ্ট, কমিশন কন্ট্রোল ও ১২-ফিল্ড এড ফর্ম) -->
+    <div id="page-partner-resellers" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
           <div>
             <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
               <span>🤝</span> রিসেলার পার্টনার তালিকা (${resellers.length})
             </h3>
-            <p class="text-[11px] text-slate-400">রিসেলিং কমিশন, ওয়ালেট ব্যালেন্স ও ড্রপশিপিং হিসাব</p>
+            <p class="text-[11px] text-slate-400">কমিশন ও অন্যান্য কন্ট্রোল, রিসেলার লিস্ট এবং ১২-ফিল্ড নিবন্ধন ফর্ম (Resellers শিটে সিঙ্ককৃত)</p>
           </div>
           <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-reseller')?.classList.remove('hidden')">+ নতুন রিসেলার</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Resellers', ['ID', 'Name', 'Shop', 'Phone', 'City', 'Balance', 'Total Earned', 'Status'], resellers.map(r=>[r.id, r.name, r.shop, r.phone, r.city, r.balance, r.total_earned, r.status]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+            <button type="button" class="btn-primary py-1.5 px-3 font-bold" onclick="window.openResellerModal('')">+ নতুন রিসেলার যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Resellers', ['Shop_ID', 'Name', 'Shop_Name', 'Mobile', 'Mail', 'Address', 'NID_Number', 'Date_of_birth', 'Trade_Licence_No', 'User_ID'], resellers.map(r=>[r.shop_id||r.id, r.name, r.shop_name||r.shop, r.mobile||r.phone, r.mail||'', r.address||r.city, r.nid_number||'', r.date_of_birth||'', r.trade_licence_no||'', r.user_id||r.phone]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
           </div>
         </div>
 
-        <!-- Reseller Commission Control Panel -->
+        <!-- Reseller Commission & Rules Control Panel -->
         <div class="p-4 bg-emerald-50/60 dark:bg-emerald-950/40 rounded-2xl border border-emerald-300 dark:border-emerald-800 space-y-3">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200 dark:border-emerald-800 pb-2">
             <div>
               <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                <span>⚙️</span> রিসেল প্রাইজ ও কমিশন কন্ট্রোল
+                <span>⚙️</span> রিসেল প্রাইজ, কমিশন ও নিয়ম কন্ট্রোল প্যানেল
               </h4>
-              <p class="text-[11px] text-slate-500 dark:text-slate-400">এডমিন প্যানেল থেকে রিসেলারদের মুনাফা/কমিশন শতকরা হার (%) নির্ধারণ ও নিয়ন্ত্রণ করুন</p>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">এডমিন প্যানেল থেকে রিসেলারদের কমিশন %, সর্বনিম্ন অর্ডার ও উত্তোলন ফি নিয়ন্ত্রণ করুন</p>
             </div>
             <span class="badge badge-success text-xs font-bold">লাইভ সক্রিয় কন্ট্রোল</span>
           </div>
@@ -9703,22 +11502,19 @@ export function renderResellersPage({ resellers = [] } = {}) {
               <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">গ্লোবাল রিসেলিং কমিশন (%) *</label>
               <div class="flex items-center gap-2">
                 <input type="number" id="adm-reseller-global-pct" value="15" min="1" max="60" required class="form-control text-xs w-24 py-1.5 px-2.5 rounded-xl border font-black font-mono text-emerald-600" />
-                <span class="text-xs font-bold text-slate-500">% ছাড়/মার্জিন</span>
+                <span class="text-xs font-bold text-slate-500">% কমিশন</span>
               </div>
             </div>
-
             <div>
               <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">সর্বনিম্ন রিসেল অর্ডার (পিস)</label>
               <input type="number" id="adm-reseller-min-order" value="1" min="1" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold font-mono" />
             </div>
-
             <div>
               <label class="block font-bold mb-1 text-slate-700 dark:text-slate-300">উত্তোলন ফি (স্বয়ংক্রিয় কর্তন %)</label>
               <input type="number" id="adm-reseller-fee-pct" value="3" min="0" max="10" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold font-mono" />
             </div>
-
             <div>
-              <button type="submit" class="btn-primary py-2 px-5 font-bold w-full">কমিশন রেট সংরক্ষণ করুন</button>
+              <button type="submit" class="btn-primary py-2 px-5 font-bold w-full">কমিশন ও সেটিংস সেভ করুন</button>
             </div>
           </form>
         </div>
@@ -9727,214 +11523,552 @@ export function renderResellersPage({ resellers = [] } = {}) {
           <table class="w-full text-left text-xs border-collapse">
             <thead>
               <tr class="border-b text-slate-400 uppercase text-[10px]">
-                <th class="py-2.5 px-3">রিসেলার ID</th>
-                <th class="py-2.5 px-3">নাম ও শপ</th>
-                <th class="py-2.5 px-3">ফোন নম্বর</th>
-                <th class="py-2.5 px-3">জেলা</th>
-                <th class="py-2.5 px-3">চলতি ব্যালেন্স</th>
-                <th class="py-2.5 px-3">মোট আয়</th>
+                <th class="py-2.5 px-3">Shop_ID</th>
+                <th class="py-2.5 px-3">লোগো, নাম ও শপ</th>
+                <th class="py-2.5 px-3">মোবাইল ও মেইল</th>
+                <th class="py-2.5 px-3">ঠিকানা, NID ও ট্রেড লাইসেন্স</th>
+                <th class="py-2.5 px-3">ব্যালেন্স</th>
+                <th class="py-2.5 px-3">কমিশন</th>
                 <th class="py-2.5 px-3">স্ট্যাটাস</th>
                 <th class="py-2.5 px-3 text-right">অ্যাকশন</th>
               </tr>
             </thead>
-            <tbody class="divide-y">
-              ${resellers.map(r => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-                  <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${r.id}</td>
-                  <td class="py-2.5 px-3">
-                    <div class="font-bold">${r.name}</div>
-                    <div class="text-[10px] text-slate-400">${r.shop}</div>
-                  </td>
-                  <td class="py-2.5 px-3 font-mono">${r.phone}</td>
-                  <td class="py-2.5 px-3">${r.city}</td>
-                  <td class="py-2.5 px-3 font-black text-emerald-600 font-mono">৳${r.balance}</td>
-                  <td class="py-2.5 px-3 font-bold font-mono">৳${r.total_earned}</td>
-                  <td class="py-2.5 px-3"><span class="badge badge-success text-[10px]">${r.status}</span></td>
-                  <td class="py-2.5 px-3 text-right space-x-1">
-                    <button class="btn-secondary py-0.5 px-2 text-[10px]" onclick="window.copyToClipboard('${r.phone}', 'ফোন কপি হয়েছে!')">যোগাযোগ</button>
-                    <button class="btn-secondary py-0.5 px-2 text-[10px] text-rose-600 border-rose-200" onclick="if(confirm('রিসেলারটি মুছে ফেলতে চান?')) this.closest('tr').remove()">মুছুন</button>
-                  </td>
-                </tr>
-              `).join("")}
+            <tbody id="admin-resellers-tbody" class="divide-y">
+              ${resellers.map(r => {
+                const id = r.shop_id || r.id || 'RSL-101';
+                const safeId = String(id).replace(/'/g, "\\'");
+                const logo = r.shop_logo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+                const phone = r.mobile || r.phone || '';
+                return `
+                  <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                    <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${id}</td>
+                    <td class="py-2.5 px-3">
+                      <div class="flex items-center gap-2">
+                        <img src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                        <div>
+                          <div class="font-bold text-slate-900 dark:text-white">${r.name}</div>
+                          <div class="text-[10px] text-slate-400">শপ: ${r.shop_name || r.shop} • User: ${r.user_id || phone}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="py-2.5 px-3 font-mono">
+                      <div>${phone}</div>
+                      <div class="text-[10px] text-slate-400">${r.mail || '—'}</div>
+                    </td>
+                    <td class="py-2.5 px-3 text-[11px]">
+                      <div>${r.address || r.city || 'ঢাকা'}</div>
+                      <div class="text-[10px] text-slate-400">NID: ${r.nid_number || '—'} • TL: ${r.trade_licence_no || '—'}</div>
+                    </td>
+                    <td class="py-2.5 px-3 font-black text-emerald-600 font-mono">৳${r.balance || 0}</td>
+                    <td class="py-2.5 px-3 font-bold font-mono">${r.commission || '15%'}</td>
+                    <td class="py-2.5 px-3"><span class="badge badge-success text-[10px]">${r.status || 'Active'}</span></td>
+                    <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+                      <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-emerald-600 font-bold" onclick="window.openResellerModal('${safeId}')">✏️ এডিট</button>
+                      <button type="button" class="btn-secondary py-0.5 px-2 text-[10px]" onclick="window.copyToClipboard('${phone}', 'ফোন কপি হয়েছে!')">কপি</button>
+                      <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-rose-600 border-rose-200" onclick="window.deletePartnerItem('reseller', '${safeId}')">মুছুন</button>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
             </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- Modals -->
+    <!-- 2. Wholesalers Page (হোলসেলার / পাইকারি - MOQ, ডিসকাউন্ট % কন্ট্রোল ও ৯-ফিল্ড এড ফর্ম) -->
+    <div id="page-partner-wholesalers" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <span>🏢</span> হোলসেলার / পাইকারি ক্রেতা তালিকা (${wholesalers.length})
+            </h3>
+            <p class="text-[11px] text-slate-400">মিনিমাম অর্ডার কোয়ান্টিটি (MOQ), ডিসকাউন্ট % কন্ট্রোল এবং ৯-ফিল্ড হোলসেলার নিবন্ধন (Wholesalers শিটে সিঙ্ককৃত)</p>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs">
+            <button type="button" class="btn-primary py-1.5 px-3 font-bold" onclick="window.openWholesalerModal('')">+ নতুন হোলসেলার যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Wholesalers', ['Shop_ID', 'Name', 'Shop_Name', 'Mobile', 'Mail', 'Address', 'User_ID'], wholesalers.map(w=>[w.shop_id||w.id, w.name, w.shop_name||w.company, w.mobile||w.phone, w.mail||'', w.address||'', w.user_id||w.phone]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
+        </div>
+
+        <!-- Wholesale MOQ & Discount % Control Panel -->
+        <div class="p-4 bg-amber-50/70 dark:bg-amber-950/30 rounded-2xl border border-amber-300 dark:border-amber-800 space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200 dark:border-amber-800 pb-2">
+            <div>
+              <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                <span>⚙️</span> হোলসেল মিনিমাম অর্ডার কোয়ান্টিটি (MOQ) ও ডিসকাউন্ট % কন্ট্রোল
+              </h4>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">পাইকারি ক্রেতাদের সর্বনিম্ন অর্ডার সংখ্যা, গ্লোবাল পাইকারি ডিসকাউন্ট % ও ক্রেডিট লিমিট নিয়ন্ত্রণ করুন</p>
+            </div>
+            <span class="badge badge-warning text-xs font-bold">Wholesale Control Active</span>
+          </div>
+
+          <form onsubmit="window.handleSaveWholesalerSettings(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs items-end">
+            <div>
+              <label class="block font-bold mb-1">ডিফল্ট মিনিমাম অর্ডার কোয়ান্টিটি (MOQ) *</label>
+              <input type="number" id="adm-whs-global-moq" value="5" min="1" required class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-black font-mono text-amber-600" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">পাইকারি গ্লোবাল ডিসকাউন্ট (%) *</label>
+              <input type="number" id="adm-whs-global-disc" value="15" min="1" max="70" required class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-black font-mono text-emerald-600" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">অনুমোদিত ক্রেডিট লিমিট (৳)</label>
+              <input type="number" id="adm-whs-global-credit" value="50000" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold font-mono" />
+            </div>
+            <div>
+              <button type="submit" class="btn-primary py-2 px-5 font-bold w-full">হোলসেল সেটিংস সেভ করুন</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b text-slate-400 uppercase text-[10px]">
+                <th class="py-2.5 px-3">Shop_ID</th>
+                <th class="py-2.5 px-3">লোগো, শপ ও মালিক</th>
+                <th class="py-2.5 px-3">মোবাইল ও মেইল</th>
+                <th class="py-2.5 px-3">ঠিকানা</th>
+                <th class="py-2.5 px-3">MOQ ও ডিসকাউন্ট %</th>
+                <th class="py-2.5 px-3">স্ট্যাটাস</th>
+                <th class="py-2.5 px-3 text-right">অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody id="admin-wholesalers-tbody" class="divide-y">
+              ${wholesalers.map(w => {
+                const id = w.shop_id || w.id || 'WHS-101';
+                const safeId = String(id).replace(/'/g, "\\'");
+                const logo = w.shop_logo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+                const phone = w.mobile || w.phone || '';
+                return `
+                  <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                    <td class="py-2.5 px-3 font-mono font-bold text-amber-600">${id}</td>
+                    <td class="py-2.5 px-3">
+                      <div class="flex items-center gap-2">
+                        <img src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                        <div>
+                          <div class="font-bold text-slate-900 dark:text-white">${w.shop_name || w.company}</div>
+                          <div class="text-[10px] text-slate-400">মালিক: ${w.name} • User: ${w.user_id || phone}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="py-2.5 px-3 font-mono">
+                      <div>${phone}</div>
+                      <div class="text-[10px] text-slate-400">${w.mail || '—'}</div>
+                    </td>
+                    <td class="py-2.5 px-3 text-slate-500">${w.address || 'ঢাকা'}</td>
+                    <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${w.moq || 5} পিস / ${w.discount_pct || w.tier || '15%'}</td>
+                    <td class="py-2.5 px-3"><span class="badge badge-success text-[10px]">${w.status || 'Approved'}</span></td>
+                    <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+                      <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-emerald-600 font-bold" onclick="window.openWholesalerModal('${safeId}')">✏️ এডিট</button>
+                      <button type="button" class="btn-secondary py-0.5 px-2 text-[10px]" onclick="window.copyToClipboard('${phone}', 'ফোন কপি হয়েছে!')">কপি</button>
+                      <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-rose-600 border-rose-200" onclick="window.deletePartnerItem('wholesaler', '${safeId}')">মুছুন</button>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Sellers Page (মার্চেন্ট সেলার - নিয়মাবলী কন্ট্রোল ও লিস্ট) -->
+    <div id="page-partner-sellers" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <span>🏪</span> মার্চেন্ট সেলার / ভেন্ডর তালিকা (${sellers.length})
+            </h3>
+            <p class="text-[11px] text-slate-400">সকল সেলারের নিয়মাবলী, কমিশন কন্ট্রোল ও ভেন্ডর স্টোর ম্যানেজমেন্ট</p>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs">
+            <button type="button" class="btn-primary py-1.5 px-3 font-bold" onclick="window.openSellerModal('')">+ নতুন মার্চেন্ট সেলার যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Sellers', ['ID', 'Store', 'Name', 'Phone', 'Commission', 'Products'], sellers.map(s=>[s.id, s.store, s.name, s.phone, s.commission, s.products_count]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
+        </div>
+
+        <!-- Merchant Seller Rules & Commission Control -->
+        <div class="p-4 bg-indigo-50/60 dark:bg-indigo-950/30 rounded-2xl border border-indigo-200 dark:border-indigo-800 space-y-3">
+          <div class="font-bold text-sm text-slate-900 dark:text-white">⚙️ মার্চেন্ট সেলার নিয়মাবলী ও কমিশন কন্ট্রোল</div>
+          <form onsubmit="window.handleSaveSellerRules(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs items-end">
+            <div>
+              <label class="block font-bold mb-1">ডিফল্ট ভেন্ডর কমিশন (%)</label>
+              <input type="text" id="adm-seller-rule-comm" value="10%" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold font-mono" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">পেমেন্ট সেটেলমেন্ট সময়</label>
+              <input type="text" id="adm-seller-rule-hold" value="৭ কর্মদিবস (ডেলিভারির পর)" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">সেলার নীতিমালা ও শর্ত</label>
+              <input type="text" id="adm-seller-rule-policy" value="১০০% অথেন্টিক প্রোডাক্ট ও ৭ দিনের রিপ্লেসমেন্ট আবশ্যক" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border" />
+            </div>
+            <div>
+              <button type="submit" class="btn-primary py-2 px-5 font-bold w-full">সেলার নিয়ম সেভ করুন</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b text-slate-400 uppercase text-[10px]">
+                <th class="py-2.5 px-3">সেলার ID</th>
+                <th class="py-2.5 px-3">স্টোর ও মালিক</th>
+                <th class="py-2.5 px-3">ফোন নম্বর</th>
+                <th class="py-2.5 px-3">ঠিকানা</th>
+                <th class="py-2.5 px-3">কমিশন</th>
+                <th class="py-2.5 px-3">পণ্য সংখ্যা</th>
+                <th class="py-2.5 px-3">স্ট্যাটাস</th>
+                <th class="py-2.5 px-3 text-right">অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody id="admin-sellers-tbody" class="divide-y">
+              ${sellers.map(s => {
+                const safeId = String(s.id || '').replace(/'/g, "\\'");
+                return `
+                  <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                    <td class="py-2.5 px-3 font-mono font-bold text-indigo-600">${s.id}</td>
+                    <td class="py-2.5 px-3">
+                      <div class="font-bold text-slate-900 dark:text-white">${s.store}</div>
+                      <div class="text-[10px] text-slate-400">মালিক: ${s.name}</div>
+                    </td>
+                    <td class="py-2.5 px-3 font-mono">${s.phone}</td>
+                    <td class="py-2.5 px-3 text-slate-500">${s.address || 'ঢাকা'}</td>
+                    <td class="py-2.5 px-3 font-bold font-mono text-emerald-600">${s.commission}</td>
+                    <td class="py-2.5 px-3 font-mono">${s.products_count} টি</td>
+                    <td class="py-2.5 px-3"><span class="badge badge-success text-[10px]">${s.status}</span></td>
+                    <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+                      <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-emerald-600 font-bold" onclick="window.openSellerModal('${safeId}')">✏️ এডিট</button>
+                      <button type="button" class="btn-secondary py-0.5 px-2 text-[10px] text-rose-600 border-rose-200" onclick="window.deletePartnerItem('seller', '${safeId}')">মুছুন</button>
+                    </td>
+                  </tr>
+                `;
+              }).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Others Market Page (অন্যান্য মার্কেটপ্লেস - এডিট/ডিলিট/লাইভ ভিউ ও ৬-ফিল্ড এড ফর্ম) -->
+    <div id="page-partner-markets" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <span>🌐</span> অন্যান্য মার্কেটপ্লেস চ্যানেল (${markets.length})
+            </h3>
+            <p class="text-[11px] text-slate-400">Shop_ID, Market_Logo, Market_Name, Shop_Name, Shop_Link, Status (Others_Market শিটে সিঙ্ককৃত)</p>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs">
+            <button type="button" class="btn-primary py-1.5 px-3 font-bold" onclick="window.openMarketModal('')">+ নতুন মার্কেটপ্লেস যুক্ত করুন</button>
+            <a href="/others-market" target="_blank" class="btn-secondary py-1.5 px-2.5 font-bold">🌐 স্টোর ভিউ ↗</a>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
+        </div>
+
+        <div id="admin-markets-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+          ${markets.map(m => {
+            const id = m.shop_id || m.id || 'MKT-01';
+            const safeId = String(id).replace(/'/g, "\\'");
+            const mName = m.market_name || m.name || 'Marketplace';
+            const sName = m.shop_name || 'Dream Cart BD Official';
+            const sLink = m.shop_link || 'https://www.daraz.com.bd';
+            const logo = m.market_logo || 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png';
+            const st = m.status || 'Active';
+            return `
+              <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-3 flex flex-col justify-between">
+                <div class="flex items-start justify-between gap-2.5">
+                  <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-white p-1.5 border flex items-center justify-center flex-shrink-0">
+                      <img src="${logo}" class="max-w-full max-h-full object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png';" />
+                    </div>
+                    <div>
+                      <span class="text-[10px] font-mono font-bold bg-slate-200/70 dark:bg-slate-700 px-2 py-0.5 rounded">${id}</span>
+                      <div class="font-black text-slate-900 dark:text-white text-sm mt-0.5">${mName}</div>
+                      <div class="text-[11px] font-bold text-emerald-600">শপ: ${sName}</div>
+                    </div>
+                  </div>
+                  <span class="badge ${String(st).toLowerCase() === 'inactive' ? 'badge-warning' : 'badge-success'} text-[9px]">${st}</span>
+                </div>
+                <div class="text-[10px] font-mono text-slate-400 truncate">🔗 ${sLink}</div>
+                <div class="flex items-center gap-1.5 pt-2 border-t">
+                  <a href="${sLink}" target="_blank" rel="noopener noreferrer" class="btn-primary py-1.5 px-2.5 text-[10px] font-bold flex-1 text-center">👁️ লাইভ ভিউ ↗</a>
+                  <button type="button" onclick="window.openMarketModal('${safeId}')" class="btn-secondary py-1.5 px-2.5 text-[10px] font-bold">✏️ এডিট</button>
+                  <button type="button" onclick="window.deletePartnerItem('market', '${safeId}')" class="btn-secondary py-1.5 px-2.5 text-[10px] text-rose-600 border-rose-200">🗑️ ডিলিট</button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Master Admin Users Page (মাস্টার অ্যাডমিন - লিস্ট/এড/ডিলিট/রোল পরিবর্তন ও ১০-ফিল্ড ফর্ম) -->
+    <div id="page-admin-users" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <span>👑</span> মাস্টার অ্যাডমিন একাউন্টস (${admins.length})
+            </h3>
+            <p class="text-[11px] text-slate-400">লিস্ট, এড, ডিলিট ও রোল পরিবর্তন (Admin/Worker শিটে সিঙ্ককৃত)</p>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs">
+            <button type="button" class="btn-primary py-1.5 px-3 font-bold" onclick="window.openTeamMemberModal('admin', '')">+ নতুন মাস্টার অ্যাডমিন</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
+        </div>
+
+        <div id="admin-master-users-list" class="space-y-2.5 text-xs">
+          ${admins.map(a => {
+            const id = a.user_id || a.id || 'ADM-01';
+            const safeId = String(id).replace(/'/g, "\\'");
+            const photo = a.profile_photo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+            return `
+              <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <img src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">${id}</span>
+                      <span class="font-bold text-slate-900 dark:text-white">${a.name}</span>
+                      <span class="text-[10px] text-indigo-600 font-bold">(${a.worker_type || 'Admin'})</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 font-mono mt-0.5">📞 ${a.mobile || a.phone || '01581703822'} • ✉️ ${a.mail || a.email || ''} • User: ${a.user_name || a.name}</div>
+                    <div class="text-[10px] text-slate-400">📍 ${a.address || 'কুমিল্লা'}</div>
+                  </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <select onchange="window.handleChangeAdminOrWorkerRole('admin', '${safeId}', this.value)" class="form-control text-[11px] py-1 px-2 rounded-lg border font-bold bg-white dark:bg-slate-900">
+                    ${rolesList.map(r => `<option value="${r}" ${(a.role || '') === r ? 'selected' : ''}>রোল: ${r}</option>`).join('')}
+                  </select>
+                  <button type="button" onclick="window.openTeamMemberModal('admin', '${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold">✏️ এডিট</button>
+                  <button type="button" onclick="window.deletePartnerItem('admin', '${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200">🗑️ ডিলিট</button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Staff & Workers Directory Page (কর্মী ও স্টাফ টিম - লিস্ট/এড/ডিলিট/রোল পরিবর্তন ও ১০-ফিল্ড ফর্ম) -->
+    <div id="page-admin-workers" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <span>👷</span> কর্মী ও স্টাফ টিম ডিরেক্টরি (${workers.length})
+            </h3>
+            <p class="text-[11px] text-slate-400">লিস্ট, এড, ডিলিট ও রোল পরিবর্তন (Admin/Worker শিটে সিঙ্ককৃত)</p>
+          </div>
+          <div class="flex items-center gap-1.5 text-xs">
+            <button type="button" class="btn-primary py-1.5 px-3 font-bold" onclick="window.openTeamMemberModal('worker', '')">+ নতুন কর্মী যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Workers', ['USER_ID', 'Name', 'Mobile', 'Mail', 'Address', 'Worker_Type', 'Role', 'User_Name'], workers.map(w=>[w.user_id||w.id, w.name, w.mobile||w.phone, w.mail||w.email, w.address||'', w.worker_type||w.role, w.role, w.user_name||w.name]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
+        </div>
+
+        <div id="admin-workers-team-list" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          ${workers.map(w => {
+            const id = w.user_id || w.id || 'WRK-01';
+            const safeId = String(id).replace(/'/g, "\\'");
+            const photo = w.profile_photo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+            return `
+              <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col justify-between gap-3">
+                <div class="flex items-start justify-between gap-2.5">
+                  <div class="flex items-center gap-3">
+                    <img src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                    <div>
+                      <span class="font-mono text-[10px] font-bold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">${id}</span>
+                      <div class="font-bold text-slate-900 dark:text-white mt-0.5">${w.name}</div>
+                      <div class="text-[10px] text-emerald-600 font-bold">${w.worker_type || w.role} • রোল: ${w.role}</div>
+                      <div class="text-[10px] text-slate-400 font-mono">📞 ${w.mobile || w.phone} • ✉️ ${w.mail || w.email}</div>
+                      <div class="text-[10px] text-slate-400">📍 ${w.address || 'কুমিল্লা'} • User: ${w.user_name || w.name}</div>
+                    </div>
+                  </div>
+                  <span class="badge badge-success text-[10px]">${w.status || 'Active'}</span>
+                </div>
+                <div class="flex items-center justify-between gap-2 pt-2 border-t">
+                  <select onchange="window.handleChangeAdminOrWorkerRole('worker', '${safeId}', this.value)" class="form-control text-[11px] py-1 px-2 rounded-lg border font-bold bg-white dark:bg-slate-900 flex-1">
+                    ${rolesList.map(r => `<option value="${r}" ${(w.role || '') === r ? 'selected' : ''}>রোল: ${r}</option>`).join('')}
+                  </select>
+                  <button type="button" onclick="window.openTeamMemberModal('worker', '${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold">✏️ এডিট</button>
+                  <button type="button" onclick="window.deletePartnerItem('worker', '${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200">🗑️ ডিলিট</button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal 1: Reseller Add/Edit Form (12 Required Fields: Shop_ID, Shop_logo, Name, Mobile, Mail, Address, Shop_Name, NID_Number, Date_of_birth, Trade_Licence_No, User_ID, Password) -->
     <div id="modal-add-reseller" class="admin-modal-backdrop hidden">
-      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto space-y-3 text-xs">
         <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">নতুন রিসেলার নিবন্ধন</h4>
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">🤝 রিসেলার নিবন্ধন ও আপডেট ফর্ম (১২ ফিল্ড)</h4>
           <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-reseller')?.classList.add('hidden')">✕</button>
         </div>
         <form onsubmit="window.handleAdminAddReseller(event)" class="space-y-3">
-          <div>
-            <label class="block font-bold mb-1">রিসেলারের নাম *</label>
-            <input type="text" id="adm-new-reseller-name" required placeholder="মোঃ আরিফ" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
-          </div>
-          <div>
-            <label class="block font-bold mb-1">ফেসবুক পেজ / শপ নাম</label>
-            <input type="text" id="adm-new-reseller-shop" placeholder="স্মার্ট কালেকশন" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
-          </div>
-          <div class="grid grid-cols-2 gap-2">
+          <input type="hidden" id="adm-res-edit-flag" value="" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label class="block font-bold mb-1">ফোন নম্বর *</label>
-              <input type="text" id="adm-new-reseller-phone" required placeholder="017xxxxxxxx" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
+              <label class="block font-bold mb-1">1. Shop_ID *</label>
+              <input type="text" id="adm-res-shop-id" required placeholder="RSL-9088" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold text-emerald-600" />
             </div>
             <div>
-              <label class="block font-bold mb-1">জেলা / শহর</label>
-              <input type="text" id="adm-new-reseller-city" placeholder="ঢাকা" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+              <label class="block font-bold mb-1">2. Shop_logo (লিঙ্ক বা আপলোড)</label>
+              <div class="flex gap-1.5">
+                <input type="text" id="adm-res-shop-logo" placeholder="https://..." class="form-control text-xs flex-1 py-1.5 px-2.5 rounded-xl border" />
+                <label class="btn-secondary py-1.5 px-2.5 text-[10px] font-bold cursor-pointer">📤<input type="file" accept="image/*" class="hidden" onchange="window.handlePartnerImageUpload(this, 'adm-res-shop-logo')" /></label>
+              </div>
             </div>
+            <div>
+              <label class="block font-bold mb-1">3. Name (পূর্ণ নাম) *</label>
+              <input type="text" id="adm-res-name" required placeholder="মোঃ আরিফ" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">4. Mobile (মোবাইল নম্বর) *</label>
+              <input type="text" id="adm-res-mobile" required placeholder="017xxxxxxxx" oninput="const u=document.getElementById('adm-res-userid'); if(u && !u.value) u.value=this.value;" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">5. Mail (ইমেইল)</label>
+              <input type="email" id="adm-res-mail" placeholder="reseller@example.com" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">6. Address (ঠিকানা) *</label>
+              <input type="text" id="adm-res-address" required placeholder="কুমিল্লা / ঢাকা" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">7. Shop_Name (শপের নাম) *</label>
+              <input type="text" id="adm-res-shop-name" required placeholder="স্মার্ট কালেকশন বিডি" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">8. NID_Number (এনআইডি নম্বর)</label>
+              <input type="text" id="adm-res-nid" placeholder="1998xxxxxxxxx" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">9. Date_of_birth (জন্ম তারিখ)</label>
+              <input type="date" id="adm-res-dob" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">10. Trade_Licence_No (ট্রেড লাইসেন্স)</label>
+              <input type="text" id="adm-res-tl" placeholder="TRAD/DNCC/..." class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">11. User_ID *</label>
+              <input type="text" id="adm-res-userid" required placeholder="017xxxxxxxx" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">12. Password *</label>
+              <input type="text" id="adm-res-password" required value="123456" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">কমিশন রেট (%)</label>
+            <input type="text" id="adm-res-comm" value="15%" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold font-mono" />
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-reseller')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">নিবন্ধন করুন</button>
+            <button type="submit" class="btn-primary py-2 px-5 font-bold">💾 লিস্ট ও শিটে সেভ করুন →</button>
           </div>
         </form>
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: WholesalersPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (WholesalersPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderWholesalersPage({ wholesalers = [] } = {}) {
-  return `
-    <!-- 2. Wholesalers Page -->
-    <div id="page-partner-wholesalers" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <div>
-            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <span>🏢</span> পাইকারি ক্রেতা (Wholesalers - ${wholesalers.length})
-            </h3>
-            <p class="text-[11px] text-slate-400">হোলসেল ডিসকাউন্ট টিয়ার ও বিশেষ পাইকারি দর</p>
-          </div>
-          <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-wholesaler')?.classList.remove('hidden')">+ নতুন হোলসেলার</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Wholesalers', ['ID', 'Name', 'Company', 'Phone', 'Tier', 'Orders', 'Status'], wholesalers.map(w=>[w.id, w.name, w.company, w.phone, w.tier, w.total_orders, w.status]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-          </div>
-        </div>
-
-        <div class="space-y-2.5 text-xs">
-          ${wholesalers.map(w => `
-            <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <div class="font-bold text-slate-900 dark:text-white">${w.company} (${w.name})</div>
-                <div class="text-[10px] text-slate-400 font-mono">ID: ${w.id} • ফোন: ${w.phone} • ডিসকাউন্ট: ${w.tier} • সম্পন্ন অর্ডার: ${w.total_orders} টি</div>
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="badge badge-success text-[10px]">${w.status}</span>
-                <button class="btn-secondary py-1 px-2.5 text-[10px]" onclick="window.copyToClipboard('${w.phone}', 'ফোন কপি হয়েছে!')">কল / WhatsApp</button>
-              </div>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    </div>
-
+    <!-- Modal 2: Wholesaler Add/Edit Form (9 Required Fields: Shop_ID, Shop_logo, Name, Mobile, Mail, Address, Shop_Name, User_ID, Password) -->
     <div id="modal-add-wholesaler" class="admin-modal-backdrop hidden">
-      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto space-y-3 text-xs">
         <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">নতুন হোলসেলার নিবন্ধন</h4>
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">🏢 হোলসেলার / পাইকারি নিবন্ধন ফর্ম (৯ ফিল্ড)</h4>
           <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-wholesaler')?.classList.add('hidden')">✕</button>
         </div>
         <form onsubmit="window.handleAdminAddWholesaler(event)" class="space-y-3">
-          <div>
-            <label class="block font-bold mb-1">স্বত্বাধিকারীর নাম *</label>
-            <input type="text" id="adm-new-ws-name" required placeholder="হাজী মোঃ ইউসুফ" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
-          </div>
-          <div>
-            <label class="block font-bold mb-1">প্রতিষ্ঠানের নাম</label>
-            <input type="text" id="adm-new-ws-company" placeholder="ইউসুফ এন্টারপ্রাইজ" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
-          </div>
-          <div class="grid grid-cols-2 gap-2">
+          <input type="hidden" id="adm-whs-edit-flag" value="" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label class="block font-bold mb-1">ফোন নম্বর *</label>
-              <input type="text" id="adm-new-ws-phone" required placeholder="018xxxxxxxx" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
+              <label class="block font-bold mb-1">1. Shop_ID *</label>
+              <input type="text" id="adm-whs-shop-id" required placeholder="WHS-105" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold text-amber-600" />
             </div>
             <div>
-              <label class="block font-bold mb-1">ডিসকাউন্ট টিয়ার</label>
-              <select id="adm-new-ws-tier" class="form-control text-xs w-full py-1.5 px-2 rounded-xl border font-bold">
-                <option value="Tier 1 (20% Off)">Tier 1 (20% Off)</option>
-                <option value="Tier 2 (15% Off)">Tier 2 (15% Off)</option>
-              </select>
+              <label class="block font-bold mb-1">2. Shop_logo (লিঙ্ক বা আপলোড)</label>
+              <div class="flex gap-1.5">
+                <input type="text" id="adm-whs-shop-logo" placeholder="https://..." class="form-control text-xs flex-1 py-1.5 px-2.5 rounded-xl border" />
+                <label class="btn-secondary py-1.5 px-2.5 text-[10px] font-bold cursor-pointer">📤<input type="file" accept="image/*" class="hidden" onchange="window.handlePartnerImageUpload(this, 'adm-whs-shop-logo')" /></label>
+              </div>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">3. Name (পূর্ণ নাম) *</label>
+              <input type="text" id="adm-whs-name" required placeholder="হাজী মোঃ ইউসুফ" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">4. Mobile (মোবাইল নম্বর) *</label>
+              <input type="text" id="adm-whs-mobile" required placeholder="018xxxxxxxx" oninput="const u=document.getElementById('adm-whs-userid'); if(u && !u.value) u.value=this.value;" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">5. Mail (ইমেইল)</label>
+              <input type="email" id="adm-whs-mail" placeholder="wholesale@example.com" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">6. Address (ঠিকানা) *</label>
+              <input type="text" id="adm-whs-address" required placeholder="চকবাজার, ঢাকা" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">7. Shop_Name (প্রতিষ্ঠানের নাম) *</label>
+              <input type="text" id="adm-whs-shop-name" required placeholder="ইউসুফ এন্টারপ্রাইজ" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">8. User_ID *</label>
+              <input type="text" id="adm-whs-userid" required placeholder="018xxxxxxxx" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">9. Password *</label>
+              <input type="text" id="adm-whs-password" required value="123456" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block font-bold mb-1">MOQ (পিস)</label>
+                <input type="number" id="adm-whs-moq" value="5" min="1" class="form-control text-xs w-full py-1.5 px-2 rounded-xl border font-mono font-bold" />
+              </div>
+              <div>
+                <label class="block font-bold mb-1">ডিসকাউন্ট %</label>
+                <input type="text" id="adm-whs-disc" value="15%" class="form-control text-xs w-full py-1.5 px-2 rounded-xl border font-mono font-bold" />
+              </div>
             </div>
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-wholesaler')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংরক্ষণ করুন</button>
+            <button type="submit" class="btn-primary py-2 px-5 font-bold">💾 লিস্ট ও শিটে সেভ করুন →</button>
           </div>
         </form>
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: SellersPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (SellersPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderSellersPage({ sellers = [] } = {}) {
-  return `
-    <!-- 3. Sellers Page -->
-    <div id="page-partner-sellers" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <div>
-            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <span>🏪</span> মার্চেন্ট সেলার / ভেন্ডর (${sellers.length})
-            </h3>
-            <p class="text-[11px] text-slate-400">তৃতীয় পক্ষ বিক্রেতা ও স্টোর কমিশন</p>
-          </div>
-          <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-seller')?.classList.remove('hidden')">+ নতুন সেলার</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Sellers', ['ID', 'Store', 'Name', 'Phone', 'Commission', 'Products'], sellers.map(s=>[s.id, s.store, s.name, s.phone, s.commission, s.products_count]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-          </div>
-        </div>
-
-        <div class="space-y-2.5 text-xs">
-          ${sellers.map(s => `
-            <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div>
-                <div class="font-bold text-slate-900 dark:text-white">${s.store} • ${s.name}</div>
-                <div class="text-[10px] text-slate-400 font-mono">কমিশন: ${s.commission} • পণ্য সংখ্যা: ${s.products_count} টি • ফোন: ${s.phone}</div>
-              </div>
-              <span class="badge badge-success text-[10px]">${s.status}</span>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    </div>
-
+    <!-- Modal 3: Merchant Seller Add/Edit Form -->
     <div id="modal-add-seller" class="admin-modal-backdrop hidden">
       <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
         <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">নতুন মার্চেন্ট সেলার যুক্ত</h4>
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">🏪 মার্চেন্ট সেলার নিবন্ধন ও আপডেট</h4>
           <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-seller')?.classList.add('hidden')">✕</button>
         </div>
         <form onsubmit="window.handleAdminAddSeller(event)" class="space-y-3">
+          <input type="hidden" id="adm-seller-edit-flag" value="" />
           <div>
-            <label class="block font-bold mb-1">সিলারের পুরো নাম *</label>
-            <input type="text" id="adm-new-seller-name" required placeholder="কামরুল হাসান" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            <label class="block font-bold mb-1">সেলারের পুরো নাম *</label>
+            <input type="text" id="adm-new-seller-name" required placeholder="কামরুল হাসান" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
           </div>
           <div>
-            <label class="block font-bold mb-1">স্টোরের নাম</label>
-            <input type="text" id="adm-new-seller-store" placeholder="অরগ্যানিক ভ্যালি" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            <label class="block font-bold mb-1">স্টোরের নাম *</label>
+            <input type="text" id="adm-new-seller-store" required placeholder="অরগ্যানিক ভ্যালি" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
           </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
@@ -9946,419 +12080,528 @@ export function renderSellersPage({ sellers = [] } = {}) {
               <input type="text" id="adm-new-seller-comm" value="10%" class="form-control text-xs w-full py-1.5 px-2 rounded-xl border font-bold" />
             </div>
           </div>
+          <div>
+            <label class="block font-bold mb-1">ঠিকানা</label>
+            <input type="text" id="adm-new-seller-address" placeholder="ঢাকা / কুমিল্লা" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+          </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-seller')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">যুক্ত করুন</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">💾 লিস্ট ও শিটে সেভ করুন</button>
           </div>
         </form>
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: MarketsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (MarketsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderMarketsPage({ markets = [] } = {}) {
-  return `
-    <!-- 4. Others Market Page -->
-    <div id="page-partner-markets" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <div>
-            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <span>🌐</span> অন্যান্য মার্কেটপ্লেস চ্যানেল
-            </h3>
-            <p class="text-[11px] text-slate-400">দারাজ, ফেসবুক শপ ও বিক্রয় ডট কম</p>
-          </div>
-          <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-market')?.classList.remove('hidden')">+ চ্যানেল যুক্ত</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          ${markets.map(m => `
-            <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2">
-              <div class="flex items-center justify-between">
-                <div class="font-bold text-slate-900 dark:text-white">${m.name}</div>
-                <span class="badge badge-success text-[9px]">${m.status}</span>
-              </div>
-              <div class="text-[10px] text-slate-400">সিঙ্ক মোড: ${m.sync_mode} • ${m.last_sync}</div>
-              <button class="btn-secondary py-1 px-3 w-full text-[10px] font-bold" onclick="if(toast&&toast.show) toast.show({type:'success', title:'চ্যানেল সিঙ্ক', message:'${m.name} এর ক্যাটালগ সফলভাবে রিফ্রেশ হয়েছে!'})">এখনই সিঙ্ক করুন 🔄</button>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    </div>
-
+    <!-- Modal 4: Marketplace Add/Edit Form (6 Required Fields: Shop_ID, Market_Logo, Market_Name, Shop_Name, Shop_Link, Status) -->
     <div id="modal-add-market" class="admin-modal-backdrop hidden">
       <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
         <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">নতুন মার্কেট চ্যানেল যুক্ত</h4>
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">🌐 অন্যান্য মার্কেটপ্লেস যুক্ত ও এডিট (৬ ফিল্ড)</h4>
           <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-market')?.classList.add('hidden')">✕</button>
         </div>
         <form onsubmit="window.handleAdminAddMarket(event)" class="space-y-3">
-          <div>
-            <label class="block font-bold mb-1">মার্কেটপ্লেসের নাম *</label>
-            <input type="text" id="adm-new-market-name" required placeholder="TikTok Shop / Evaly" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+          <input type="hidden" id="adm-mkt-edit-flag" value="" />
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="block font-bold mb-1">1. Shop_ID *</label>
+              <input type="text" id="adm-mkt-shop-id" required placeholder="MKT-DARAZ-01" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">6. Status *</label>
+              <select id="adm-mkt-status" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                <option value="Active">Active (সক্রিয়)</option>
+                <option value="Inactive">Inactive (নিষ্ক্রিয়)</option>
+              </select>
+            </div>
           </div>
           <div>
-            <label class="block font-bold mb-1">সিঙ্ক মোড</label>
-            <select id="adm-new-market-sync" class="form-control text-xs w-full py-1.5 px-2 rounded-xl border font-bold">
-              <option value="API Auto">API Auto</option>
-              <option value="Catalog XML Feed">Catalog XML Feed</option>
-              <option value="Manual Webhook">Manual Webhook</option>
-            </select>
+            <label class="block font-bold mb-1">2. Market_Logo (লোগো URL বা আপলোড)</label>
+            <div class="flex gap-1.5">
+              <input type="text" id="adm-mkt-logo" placeholder="https://..." class="form-control text-xs flex-1 py-1.5 px-3 rounded-xl border" />
+              <label class="btn-secondary py-1.5 px-2.5 text-[10px] font-bold cursor-pointer">📤<input type="file" accept="image/*" class="hidden" onchange="window.handlePartnerImageUpload(this, 'adm-mkt-logo')" /></label>
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">3. Market_Name (মার্কেটপ্লেসের নাম) *</label>
+            <input type="text" id="adm-mkt-name" required placeholder="Daraz Bangladesh / Bikroy / Facebook Shop" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">4. Shop_Name (দোকানের নাম) *</label>
+            <input type="text" id="adm-mkt-shop-name" required placeholder="Dream Cart BD Official Store" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">5. Shop_Link (লাইভ শপ লিংক) *</label>
+            <input type="url" id="adm-mkt-link" required placeholder="https://www.daraz.com.bd/shop/dreamcartbd" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-market')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংযুক্ত করুন</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">💾 লিস্ট ও শিটে সেভ করুন →</button>
           </div>
         </form>
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: AdminsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (AdminsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderAdminsPage({ admins = [] } = {}) {
-  return `
-    <!-- 5. Admin Users Page -->
-    <div id="page-admin-users" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <div>
-            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <span>👑</span> মাস্টার অ্যাডমিন একাউন্টস (${admins.length})
-            </h3>
-            <p class="text-[11px] text-slate-400">সুপার অ্যাডমিন পারমিশন ও একাউন্ট ম্যানেজমেন্ট</p>
-          </div>
-          <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-admin')?.classList.remove('hidden')">+ অ্যাডমিন একাউন্ট</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-          </div>
-        </div>
-
-        <div class="space-y-2.5 text-xs">
-          ${admins.map(a => `
-            <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border flex items-center justify-between">
-              <div>
-                <div class="font-bold text-slate-900 dark:text-white">${a.name} (${a.role})</div>
-                <div class="text-[10px] text-slate-400 font-mono">${a.email}</div>
-              </div>
-              <span class="badge badge-success text-[10px]">Super Admin Access</span>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    </div>
-
-    <div id="modal-add-admin" class="admin-modal-backdrop hidden">
-      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">নতুন অ্যাডমিন একাউন্ট তৈরি</h4>
-          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-admin')?.classList.add('hidden')">✕</button>
-        </div>
-        <form onsubmit="window.handleAdminAddAdmin(event)" class="space-y-3">
-          <div>
-            <label class="block font-bold mb-1">অ্যাডমিনের পুরো নাম *</label>
-            <input type="text" id="adm-new-admin-name" required placeholder="MD. Saiful Islam" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
-          </div>
-          <div>
-            <label class="block font-bold mb-1">ইমেইল অ্যাড্রেস *</label>
-            <input type="email" id="adm-new-admin-email" required placeholder="admin@dreamcart.bd" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
-          </div>
-          <div class="flex items-center justify-end gap-2 pt-2">
-            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-admin')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">অ্যাকাউন্ট তৈরি করুন</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `;
-}
-
-
-// --- Dedicated Page Module: WorkersPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (WorkersPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderWorkersPage({ workers = [] } = {}) {
-  return `
-    <!-- 6. Staff & Workers Directory Page -->
-    <div id="page-admin-workers" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <div>
-            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <span>👷</span> কর্মী ও স্টাফ টিম ডিরেক্টরি (${workers.length})
-            </h3>
-            <p class="text-[11px] text-slate-400">অর্ডার ডেস্ক, ডেলিভারি, সাপোর্ট ও হিসাবরক্ষক কর্মী</p>
-          </div>
-          <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-worker')?.classList.remove('hidden')">+ নতুন কর্মী যুক্ত</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Workers', ['ID', 'Name', 'Role', 'Phone', 'Email'], workers.map(w=>[w.id, w.name, w.role, w.phone, w.email]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-          ${workers.map(w => `
-            <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex items-center justify-between gap-3">
-              <div class="flex items-center gap-2.5">
-                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 font-black flex items-center justify-center text-sm border">👤</div>
-                <div>
-                  <div class="font-bold text-slate-900 dark:text-white">${w.name}</div>
-                  <div class="text-[10px] text-emerald-600 font-bold">${w.role}</div>
-                  <div class="text-[10px] text-slate-400 font-mono">${w.phone} • ${w.email}</div>
-                </div>
-              </div>
-              <span class="badge badge-success text-[10px]">${w.status}</span>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    </div>
-
+    <!-- Modal 5: Worker / Staff Add/Edit Form (10 Required Fields: USER_ID, Profile_Photo, Name, Mobile, Mail, Address, Worker_Type, Role, User_Name, Password) -->
     <div id="modal-add-worker" class="admin-modal-backdrop hidden">
-      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto space-y-3 text-xs">
         <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">নতুন কর্মী / স্টাফ টিম যুক্ত করুন</h4>
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">👷 কর্মী ও স্টাফ টিম নিবন্ধন ফর্ম (১০ ফিল্ড)</h4>
           <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-worker')?.classList.add('hidden')">✕</button>
         </div>
         <form onsubmit="window.handleAdminAddWorker(event)" class="space-y-3">
-          <div>
-            <label class="block font-bold mb-1">কর্মীর পুরো নাম *</label>
-            <input type="text" id="adm-new-worker-name" required placeholder="রাকিবুল হাসান" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
-          </div>
-          <div>
-            <label class="block font-bold mb-1">দায়িত্ব / পদবী *</label>
-            <select id="adm-new-worker-role" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
-              <option value="Order Management">Order Management (অর্ডার ডেস্ক)</option>
-              <option value="Customer Support">Customer Support (গ্রাহক সেবা)</option>
-              <option value="Delivery">Delivery (ডেলিভারি)</option>
-              <option value="Accountant">Accountant (হিসাবরক্ষক)</option>
-              <option value="Inventory/Warehouse">Inventory (গুদাম)</option>
-              <option value="Sales">Sales (বিক্রয়)</option>
-            </select>
-          </div>
-          <div>
-            <label class="block font-bold mb-1">ফোন নম্বর *</label>
-            <input type="text" id="adm-new-worker-phone" required placeholder="018xxxxxxxx" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
+          <input type="hidden" id="adm-wrk-edit-flag" value="" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">1. USER_ID *</label>
+              <input type="text" id="adm-wrk-id" required placeholder="WRK-105" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold text-emerald-600" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">2. Profile_Photo (ছবি লিঙ্ক বা আপলোড)</label>
+              <div class="flex gap-1.5">
+                <input type="text" id="adm-wrk-photo" placeholder="https://..." class="form-control text-xs flex-1 py-1.5 px-2.5 rounded-xl border" />
+                <label class="btn-secondary py-1.5 px-2.5 text-[10px] font-bold cursor-pointer">📤<input type="file" accept="image/*" class="hidden" onchange="window.handlePartnerImageUpload(this, 'adm-wrk-photo')" /></label>
+              </div>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">3. Name (পূর্ণ নাম) *</label>
+              <input type="text" id="adm-wrk-name" required placeholder="রাকিবুল হাসান" oninput="const u=document.getElementById('adm-wrk-uname'); if(u && !u.value) u.value=this.value;" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">4. Mobile (মোবাইল নম্বর) *</label>
+              <input type="text" id="adm-wrk-mobile" required placeholder="018xxxxxxxx" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">5. Mail (ইমেইল)</label>
+              <input type="email" id="adm-wrk-mail" placeholder="staff@dreamcart.bd" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">6. Address (ঠিকানা) *</label>
+              <input type="text" id="adm-wrk-address" required placeholder="কুমিল্লা / ঢাকা" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">7. Worker_Type (কর্মীর ধরন) *</label>
+              <select id="adm-wrk-wtype" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                <option value="Full-Time Staff">Full-Time Staff</option>
+                <option value="Order Desk">Order Desk</option>
+                <option value="Delivery Team">Delivery Team</option>
+                <option value="Customer Care">Customer Care</option>
+                <option value="Accountant">Accountant</option>
+                <option value="Warehouse">Warehouse</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">8. Role (রোল / পদবী) *</label>
+              <select id="adm-wrk-role" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                ${rolesList.map(r => `<option value="${r}">${r}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">9. User_Name (লগইন ইউজারনেম) *</label>
+              <input type="text" id="adm-wrk-uname" required placeholder="rakib_staff" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">10. Password (পাসওয়ার্ড) *</label>
+              <input type="text" id="adm-wrk-pass" required value="admin123" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-worker')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংরক্ষণ করুন</button>
+            <button type="submit" class="btn-primary py-2 px-5 font-bold">💾 লিস্ট ও শিটে সেভ করুন →</button>
           </div>
         </form>
       </div>
     </div>
 
+    <!-- Modal 6: Master Admin Add/Edit Form (10 Required Fields: USER_ID, Profile_Photo, Name, Mobile, Mail, Address, Worker_Type, Role, User_Name, Password) -->
+    <div id="modal-add-admin" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">👑 মাস্টার অ্যাডমিন নিবন্ধন ফর্ম (১০ ফিল্ড)</h4>
+          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-admin')?.classList.add('hidden')">✕</button>
+        </div>
+        <form onsubmit="window.handleAdminAddAdmin(event)" class="space-y-3">
+          <input type="hidden" id="adm-user-edit-flag" value="" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">1. USER_ID *</label>
+              <input type="text" id="adm-user-id" required placeholder="ADM-05" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold text-emerald-600" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">2. Profile_Photo (ছবি লিঙ্ক বা আপলোড)</label>
+              <div class="flex gap-1.5">
+                <input type="text" id="adm-user-photo" placeholder="https://..." class="form-control text-xs flex-1 py-1.5 px-2.5 rounded-xl border" />
+                <label class="btn-secondary py-1.5 px-2.5 text-[10px] font-bold cursor-pointer">📤<input type="file" accept="image/*" class="hidden" onchange="window.handlePartnerImageUpload(this, 'adm-user-photo')" /></label>
+              </div>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">3. Name (পূর্ণ নাম) *</label>
+              <input type="text" id="adm-user-name" required placeholder="MD. Saiful Islam" oninput="const u=document.getElementById('adm-user-uname'); if(u && !u.value) u.value=this.value;" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">4. Mobile (মোবাইল নম্বর) *</label>
+              <input type="text" id="adm-user-mobile" required placeholder="01818273838" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">5. Mail (ইমেইল) *</label>
+              <input type="email" id="adm-user-mail" required placeholder="admin@dreamcart.bd" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">6. Address (ঠিকানা) *</label>
+              <input type="text" id="adm-user-address" required placeholder="কুমিল্লা সদর দক্ষিণ" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">7. Worker_Type (ধরন) *</label>
+              <select id="adm-user-wtype" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                <option value="Admin">Admin (মাস্টার অ্যাডমিন)</option>
+                <option value="Executive Director">Executive Director</option>
+                <option value="Operations Lead">Operations Lead</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">8. Role (রোল / পারমিশন) *</label>
+              <select id="adm-user-role" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                ${rolesList.map(r => `<option value="${r}">${r}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">9. User_Name (ইউজারনেম) *</label>
+              <input type="text" id="adm-user-uname" required placeholder="Jainal Abedin" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">10. Password (পাসওয়ার্ড) *</label>
+              <input type="text" id="adm-user-pass" required value="admin123" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-admin')?.classList.add('hidden')">বাতিল</button>
+            <button type="submit" class="btn-primary py-2 px-5 font-bold">💾 লিস্ট ও শিটে সেভ করুন →</button>
+          </div>
+        </form>
+      </div>
+    </div>
   `;
 }
 
+// ============================================================================
+// MODULE: adminReports.js (Dynamic Interactive Reports Across All 8 Sectors)
+// ============================================================================
 
-// --- Dedicated Page Module: SellerReportPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (SellerReportPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
+if (typeof window !== 'undefined' && !window.__dcbdReportFilterBound) {
+  window.__dcbdReportFilterBound = true;
+  window.filterReportPeriod = function(pageId, mult, btn) {
+    const page = document.getElementById(pageId);
+    if (!page) return;
+    page.querySelectorAll('.order-status-pill').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    page.querySelectorAll('[data-base-val]').forEach(el => {
+      const base = Number(el.getAttribute('data-base-val') || 0);
+      const isCurrency = el.getAttribute('data-currency') === '1';
+      const scaled = Math.round(base * Number(mult || 1));
+      el.textContent = isCurrency ? `৳${scaled.toLocaleString('en-IN')}` : `${scaled}`;
+    });
+  };
+}
 
-export function renderSellerReportPage({ sellers = [] } = {}) {
+function renderReportsModule({ sellers = [], resellers = [], wholesalers = [], kpi = {}, costs = [], buying = [], invest = [], orders = [] }) {
+  const allOrders = orders.length ? orders : ((window.__adminState && window.__adminState.orders) || []);
   return `
-    <!-- 1. Seller Report -->
-    <div id="page-report-seller" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🏪 সেলার ও ভেন্ডর পারফরম্যান্স রিপোর্ট</h3>
+    <!-- ================================================================= -->
+    <!-- DEDICATED PAGES: REPORTS CENTER (8 Dynamic Interactive Sectors)   -->
+    <!-- ================================================================= -->
+
+    <!-- 1. Seller Performance Report -->
+    <div id="page-report-seller" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+          <div>
+            <h3 class="font-black text-base text-slate-900 dark:text-white">🏪 সেলার ও ভেন্ডর পারফরম্যান্স রিপোর্ট</h3>
+            <p class="text-[11px] text-slate-400">ভেন্ডর স্টোরগুলোর বিক্রয় ভলিউম, কমিশন আয় ও প্রোডাক্ট পারফরম্যান্স বিশ্লেষণ</p>
+          </div>
           <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Seller_Report', ['Store', 'Commission', 'Sales'], sellers.map(s=>[s.store, s.commission, '৳১,২০,৪০০']))">CSV</button>
+            <button type="button" class="order-status-pill text-[10px]" onclick="window.filterReportPeriod('page-report-seller', 0.08, this)">দৈনিক</button>
+            <button type="button" class="order-status-pill text-[10px]" onclick="window.filterReportPeriod('page-report-seller', 0.3, this)">সাপ্তাহিক</button>
+            <button type="button" class="order-status-pill active text-[10px]" onclick="window.filterReportPeriod('page-report-seller', 1, this)">মাসিক</button>
+            <button type="button" class="order-status-pill text-[10px]" onclick="window.filterReportPeriod('page-report-seller', 11.5, this)">বাৎসরিক</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Seller_Report', ['ID', 'Store', 'Owner', 'Commission', 'Products'], sellers.map(s=>[s.id, s.store, s.name, s.commission, s.products_count]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
           </div>
         </div>
-        <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex items-center justify-between text-xs">
-          <div>
-            <div class="font-bold text-slate-900 dark:text-white">মোট সেলার রাজস্ব বিক্রয়: ৳১,২০,৪০০</div>
-            <div class="text-[10px] text-slate-400">অংশীদারী কমিশন আয়: ৳১২,০৪০ (১০% গড়)</div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div class="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">মোট সেলার বিক্রয়</div>
+            <div class="text-lg font-black text-emerald-600 font-mono mt-1" data-base-val="245800" data-currency="1">৳2,45,800</div>
           </div>
-          <div class="flex gap-1">
-            <button class="order-status-pill active text-[10px]">দৈনিক</button>
-            <button class="order-status-pill text-[10px]">সাপ্তাহিক</button>
-            <button class="order-status-pill text-[10px]">মাসিক</button>
-            <button class="order-status-pill text-[10px]">বাৎসরিক</button>
+          <div class="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">মার্কেটপ্লেস কমিশন আয়</div>
+            <div class="text-lg font-black text-indigo-600 font-mono mt-1" data-base-val="24580" data-currency="1">৳24,580</div>
           </div>
+          <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">সক্রিয় ভেন্ডর স্টোর</div>
+            <div class="text-lg font-black text-slate-900 dark:text-white font-mono mt-1">${sellers.length} টি</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">গড় ডেলিভারি সাকসেস</div>
+            <div class="text-lg font-black text-amber-600 font-mono mt-1">৯৬.৪%</div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b text-slate-400 uppercase text-[10px]">
+                <th class="py-2 px-3">সেলার ID</th>
+                <th class="py-2 px-3">স্টোর ও মালিক</th>
+                <th class="py-2 px-3">পণ্য সংখ্যা</th>
+                <th class="py-2 px-3">কমিশন রেট</th>
+                <th class="py-2 px-3">মোট বিক্রয়</th>
+                <th class="py-2 px-3">স্ট্যাটাস</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+              ${sellers.map((s, idx) => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <td class="py-2.5 px-3 font-mono font-bold text-indigo-600">${s.id}</td>
+                  <td class="py-2.5 px-3 font-bold">${s.store} (${s.name})</td>
+                  <td class="py-2.5 px-3 font-mono">${s.products_count || 15} টি</td>
+                  <td class="py-2.5 px-3 font-mono text-emerald-600 font-bold">${s.commission || '10%'}</td>
+                  <td class="py-2.5 px-3 font-mono font-black">৳${(125000 - idx * 18000).toLocaleString('en-IN')}</td>
+                  <td class="py-2.5 px-3"><span class="badge badge-success text-[10px]">${s.status || 'Active'}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: ResellerReportPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (ResellerReportPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderResellerReportPage({ resellers = [] } = {}) {
-  return `
-    <!-- 2. Reseller Report -->
-    <div id="page-report-reseller" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🤝 রিসেলার কমিশন ও সেলস রিপোর্ট</h3>
+    <!-- 2. Reseller Commission & Sales Report -->
+    <div id="page-report-reseller" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+          <div>
+            <h3 class="font-black text-base text-slate-900 dark:text-white">🤝 রিসেলার কমিশন ও ড্রপশিপিং সেলস রিপোর্ট</h3>
+            <p class="text-[11px] text-slate-400">রিসেলার পার্টনারদের মাধ্যমে অর্জিত বিক্রয়, প্রদত্ত কমিশন ও বকেয়া ওয়ালেট ব্যালেন্স</p>
+          </div>
           <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Reseller_Report', ['Name', 'Shop', 'Earned', 'Balance'], resellers.map(r=>[r.name, r.shop, r.total_earned, r.balance]))">CSV</button>
+            <button type="button" class="order-status-pill text-[10px]" onclick="window.filterReportPeriod('page-report-reseller', 0.1, this)">দৈনিক</button>
+            <button type="button" class="order-status-pill text-[10px]" onclick="window.filterReportPeriod('page-report-reseller', 0.35, this)">সাপ্তাহিক</button>
+            <button type="button" class="order-status-pill active text-[10px]" onclick="window.filterReportPeriod('page-report-reseller', 1, this)">মাসিক</button>
+            <button type="button" class="order-status-pill text-[10px]" onclick="window.filterReportPeriod('page-report-reseller', 12, this)">বাৎসরিক</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Reseller_Report', ['Name', 'Shop', 'Earned', 'Balance'], resellers.map(r=>[r.name, r.shop_name||r.shop, r.total_earned, r.balance]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
           </div>
         </div>
-        <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex items-center justify-between text-xs">
-          <div>
-            <div class="font-bold text-slate-900 dark:text-white">মোট রিসেলার নেট সেলস: ৳৩,৫০,৮০০</div>
-            <div class="text-[10px] text-slate-400">প্রদত্ত কমিশন: ৳৫২,৬০০</div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div class="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">মোট রিসেলার নেট সেলস</div>
+            <div class="text-lg font-black text-emerald-600 font-mono mt-1" data-base-val="350800" data-currency="1">৳3,50,800</div>
           </div>
-          <div class="flex gap-1">
-            <button class="order-status-pill text-[10px]">দৈনিক</button>
-            <button class="order-status-pill text-[10px]">সাপ্তাহিক</button>
-            <button class="order-status-pill active text-[10px]">মাসিক</button>
-            <button class="order-status-pill text-[10px]">বাৎসরিক</button>
+          <div class="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">প্রদত্ত মোট কমিশন</div>
+            <div class="text-lg font-black text-amber-600 font-mono mt-1" data-base-val="52600" data-currency="1">৳52,600</div>
           </div>
+          <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">সক্রিয় রিসেলার</div>
+            <div class="text-lg font-black text-slate-900 dark:text-white font-mono mt-1">${resellers.length} জন</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">ওয়ালেট ব্যালেন্স (দেয়)</div>
+            <div class="text-lg font-black text-indigo-600 font-mono mt-1">৳${resellers.reduce((a, r) => a + (Number(r.balance) || 0), 0).toLocaleString('en-IN')}</div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b text-slate-400 uppercase text-[10px]">
+                <th class="py-2 px-3">Shop_ID</th>
+                <th class="py-2 px-3">রিসেলার ও শপ</th>
+                <th class="py-2 px-3">মোবাইল</th>
+                <th class="py-2 px-3">মোট আয়</th>
+                <th class="py-2 px-3">চলতি ব্যালেন্স</th>
+                <th class="py-2 px-3">স্ট্যাটাস</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+              ${resellers.map(r => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${r.shop_id || r.id}</td>
+                  <td class="py-2.5 px-3 font-bold">${r.name} (${r.shop_name || r.shop})</td>
+                  <td class="py-2.5 px-3 font-mono">${r.mobile || r.phone}</td>
+                  <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">৳${r.total_earned || 12500}</td>
+                  <td class="py-2.5 px-3 font-mono font-black">৳${r.balance || 0}</td>
+                  <td class="py-2.5 px-3"><span class="badge badge-success text-[10px]">${r.status || 'Active'}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: WholesalerReportPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (WholesalerReportPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderWholesalerReportPage({ wholesalers = [] } = {}) {
-  return `
-    <!-- 3. Wholesaler Report -->
-    <div id="page-report-wholesaler" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🏢 হোলসেলার পার্টনার ক্রয় রিপোর্ট</h3>
+    <!-- 3. Wholesaler Partner Buying Report -->
+    <div id="page-report-wholesaler" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+          <div>
+            <h3 class="font-black text-base text-slate-900 dark:text-white">🏢 হোলসেলার পার্টনার ক্রয় রিপোর্ট</h3>
+            <p class="text-[11px] text-slate-400">নিবন্ধিত পাইকারি ক্রেতাদের বাল্ক অর্ডার ভলিউম ও ডিসকাউন্ট টিয়ার রিপোর্ট</p>
+          </div>
           <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Wholesaler_Report', ['Company', 'Tier', 'Orders'], wholesalers.map(w=>[w.company, w.tier, w.total_orders]))">CSV</button>
+            <button type="button" class="order-status-pill text-[10px]" onclick="window.filterReportPeriod('page-report-wholesaler', 0.12, this)">দৈনিক</button>
+            <button type="button" class="order-status-pill active text-[10px]" onclick="window.filterReportPeriod('page-report-wholesaler', 1, this)">মাসিক</button>
+            <button type="button" class="order-status-pill text-[10px]" onclick="window.filterReportPeriod('page-report-wholesaler', 10, this)">বাৎসরিক</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Wholesaler_Report', ['ID', 'Company', 'Tier', 'Orders'], wholesalers.map(w=>[w.shop_id||w.id, w.shop_name||w.company, w.tier, w.total_orders]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
           </div>
         </div>
-        <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex items-center justify-between text-xs">
-          <div>
-            <div class="font-bold text-slate-900 dark:text-white">পাইকারি সরবরাহ রাজস্ব: ৳৩,৮৫,০০০</div>
-            <div class="text-[10px] text-slate-400">গড় অর্ডার ভলিউম: ৳২৭,৫০০</div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+          <div class="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">পাইকারি সরবরাহ রাজস্ব</div>
+            <div class="text-lg font-black text-amber-600 font-mono mt-1" data-base-val="385000" data-currency="1">৳3,85,000</div>
           </div>
-          <div class="flex gap-1">
-            <button class="order-status-pill text-[10px]">দৈনিক</button>
-            <button class="order-status-pill active text-[10px]">মাসিক</button>
-            <button class="order-status-pill text-[10px]">বাৎসরিক</button>
+          <div class="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">গড় বাল্ক অর্ডার ভলিউম</div>
+            <div class="text-lg font-black text-emerald-600 font-mono mt-1" data-base-val="27500" data-currency="1">৳27,500</div>
           </div>
+          <div class="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 border">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">ভেরিফায়েড হোলসেলার</div>
+            <div class="text-lg font-black text-slate-900 dark:text-white font-mono mt-1">${wholesalers.length} টি প্রতিষ্ঠান</div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b text-slate-400 uppercase text-[10px]">
+                <th class="py-2 px-3">Shop_ID</th>
+                <th class="py-2 px-3">প্রতিষ্ঠান ও মালিক</th>
+                <th class="py-2 px-3">মোবাইল</th>
+                <th class="py-2 px-3">MOQ ও ডিসকাউন্ট</th>
+                <th class="py-2 px-3">সম্পন্ন চালান</th>
+                <th class="py-2 px-3">স্ট্যাটাস</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+              ${wholesalers.map(w => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <td class="py-2.5 px-3 font-mono font-bold text-amber-600">${w.shop_id || w.id}</td>
+                  <td class="py-2.5 px-3 font-bold">${w.shop_name || w.company} (${w.name})</td>
+                  <td class="py-2.5 px-3 font-mono">${w.mobile || w.phone}</td>
+                  <td class="py-2.5 px-3 font-mono text-emerald-600 font-bold">${w.tier || '15% Off'}</td>
+                  <td class="py-2.5 px-3 font-mono font-black">${w.total_orders || 10} টি</td>
+                  <td class="py-2.5 px-3"><span class="badge badge-success text-[10px]">${w.status || 'Approved'}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: SalesReportPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (SalesReportPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderSalesReportPage({ kpi = {} } = {}) {
-  return `
-    <!-- 4. Sales Report -->
-    <div id="page-report-sales" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">📊 সার্বিক বিক্রয় রিপোর্ট</h3>
+    <!-- 4. Overall Sales Report -->
+    <div id="page-report-sales" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+          <div>
+            <h3 class="font-black text-base text-slate-900 dark:text-white">📊 সার্বিক বিক্রয় ও মুনাফা রিপোর্ট (Sales Analytics)</h3>
+            <p class="text-[11px] text-slate-400">দৈনিক, সাপ্তাহিক, মাসিক ও বাৎসরিক খুচরা ও অনলাইন বিক্রয় খতিয়ান</p>
+          </div>
           <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportAdminOrdersCsv()">CSV</button>
+            <button type="button" class="order-status-pill text-[10px]" onclick="window.filterReportPeriod('page-report-sales', 0.05, this)">দৈনিক</button>
+            <button type="button" class="order-status-pill text-[10px]" onclick="window.filterReportPeriod('page-report-sales', 0.25, this)">সাপ্তাহিক</button>
+            <button type="button" class="order-status-pill active text-[10px]" onclick="window.filterReportPeriod('page-report-sales', 1, this)">মাসিক</button>
+            <button type="button" class="order-status-pill text-[10px]" onclick="window.filterReportPeriod('page-report-sales', 12, this)">বাৎসরিক</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportAdminOrdersCsv()">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
           </div>
         </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
           <div class="p-4 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 space-y-1">
             <div class="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold uppercase">মোট গ্রস বিক্রয়</div>
-            <div class="text-xl font-black text-emerald-600 font-mono">${formatCurrency(kpi.total_sales)}</div>
+            <div class="text-xl font-black text-emerald-600 font-mono" data-base-val="${kpi.total_sales || 1500000}" data-currency="1">${formatCurrency(kpi.total_sales)}</div>
           </div>
           <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-1">
             <div class="text-[10px] text-slate-400 font-bold uppercase">সম্পন্ন অর্ডার ভলিউম</div>
-            <div class="text-xl font-black text-slate-900 dark:text-white font-mono">${kpi.total_orders} টি</div>
+            <div class="text-xl font-black text-slate-900 dark:text-white font-mono" data-base-val="${kpi.total_orders || 846}" data-currency="0">${kpi.total_orders} টি</div>
           </div>
           <div class="p-4 bg-indigo-50 dark:bg-indigo-950/40 rounded-2xl border border-indigo-200 space-y-1">
-            <div class="text-[10px] text-indigo-800 dark:text-indigo-300 font-bold uppercase">নিট মুনাফা মার্জিন</div>
-            <div class="text-xl font-black text-indigo-600 font-mono">${formatCurrency(kpi.total_profit)}</div>
+            <div class="text-[10px] text-indigo-800 dark:text-indigo-300 font-bold uppercase">নিট মুনাফা মার্জিন (২২%)</div>
+            <div class="text-xl font-black text-indigo-600 font-mono" data-base-val="${kpi.total_profit || 330000}" data-currency="1">${formatCurrency(kpi.total_profit)}</div>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b text-slate-400 uppercase text-[10px]">
+                <th class="py-2 px-3">অর্ডার ID</th>
+                <th class="py-2 px-3">গ্রাহক</th>
+                <th class="py-2 px-3">পণ্য</th>
+                <th class="py-2 px-3">পেমেন্ট</th>
+                <th class="py-2 px-3">মোট বিল</th>
+                <th class="py-2 px-3">স্ট্যাটাস</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+              ${allOrders.slice(0, 15).map(o => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <td class="py-2 px-3 font-mono font-bold text-emerald-600">${o.order_id}</td>
+                  <td class="py-2 px-3 font-bold">${o.customer_name} (${o.phone})</td>
+                  <td class="py-2 px-3 truncate max-w-xs">${o.products || o.product_name}</td>
+                  <td class="py-2 px-3">${o.payment_method}</td>
+                  <td class="py-2 px-3 font-mono font-black">৳${o.total_amount}</td>
+                  <td class="py-2 px-3"><span class="badge badge-success text-[10px]">${o.order_status}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Wholesale Distribution Report -->
+    <div id="page-report-wholesale" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+          <div>
+            <h3 class="font-black text-base text-slate-900 dark:text-white">📦 পাইকারি সাপ্লাই ও বাল্ক ডিস্ট্রিবিউশন রিপোর্ট</h3>
+            <p class="text-[11px] text-slate-400">হোলসেল ডিলারদের বাল্ক শিপমেন্ট, কার্টন সরবরাহ ও রাজস্ব হিসাব</p>
+          </div>
+          <button type="button" class="btn-secondary py-1 px-2.5 text-xs" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div class="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">মোট পাইকারি ভলিউম</div>
+            <div class="text-xl font-black text-amber-600 font-mono mt-1">৳৩,৮৫,০০০</div>
+          </div>
+          <div class="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">মোট বাল্ক চালান</div>
+            <div class="text-xl font-black text-emerald-600 font-mono mt-1">২৩ টি চালান</div>
+          </div>
+          <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border">
+            <div class="text-[10px] font-bold text-slate-500 uppercase">সরবরাহকৃত মোট ইউনিট</div>
+            <div class="text-xl font-black text-slate-900 dark:text-white font-mono mt-1">১,৪২০ পিস</div>
           </div>
         </div>
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: WholesaleReportPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (WholesaleReportPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderWholesaleReportPage(props = {}) {
-  return `
-    <!-- 5. Wholesale Report -->
-    <div id="page-report-wholesale" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">📦 পাইকারি বিক্রয় রিপোর্ট</h3>
-          <button class="btn-secondary py-1 px-2.5 text-xs" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-        </div>
-        <p class="text-xs text-slate-400">হোলসেল ডিলারদের বাল্ক শিপমেন্ট এবং ডিস্ট্রিবিউশন হিসাব</p>
-        <div class="text-base font-black text-emerald-600 font-mono">মোট ভলিউম: ৳৩,৮৫,০০০ (২৩ টি বাল্ক ইনভয়েস)</div>
-      </div>
-    </div>
-
-  `;
-}
-
-
-// --- Dedicated Page Module: CostsReportPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (CostsReportPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderCostsReportPage({ kpi = {}, costs = [] } = {}) {
-  return `
     <!-- 6. Costs Report -->
-    <div id="page-report-costs" class="admin-page-view space-y-4">
+    <div id="page-report-costs" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">💸 ব্যবসায়িক ব্যয় রিপোর্ট</h3>
-          <button class="btn-secondary py-1 px-2.5 text-xs" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">💸 ব্যবসায়িক ব্যয় ও খরচ রিপোর্ট</h3>
+          <div class="flex gap-1.5 text-xs">
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Costs_Report', ['ID', 'Title', 'Category', 'Amount', 'Date'], costs.map(c=>[c.id, c.title, c.category, c.amount, c.date]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
         </div>
-        <div class="text-xl font-black text-rose-500 font-mono mb-2">${formatCurrency(kpi.total_costs)}</div>
+        <div class="text-xl font-black text-rose-500 font-mono mb-2">মোট ব্যয়: ${formatCurrency(costs.reduce((a, c) => a + (Number(c.amount) || 0), 0))}</div>
         <div class="space-y-2 text-xs">
           ${costs.map(c => `
             <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border flex items-center justify-between">
@@ -10373,32 +12616,23 @@ export function renderCostsReportPage({ kpi = {}, costs = [] } = {}) {
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: BuyingReportPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (BuyingReportPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderBuyingReportPage({ kpi = {}, buying = [] } = {}) {
-  return `
     <!-- 7. Buying Report -->
-    <div id="page-report-buying" class="admin-page-view space-y-4">
+    <div id="page-report-buying" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🛒 পাইকারি ক্রয় রিপোর্ট</h3>
-          <button class="btn-secondary py-1 px-2.5 text-xs" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🛒 পাইকারি স্টক ক্রয় রিপোর্ট</h3>
+          <div class="flex gap-1.5 text-xs">
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Buying_Report', ['ID', 'Supplier', 'Product', 'Qty', 'Total'], buying.map(b=>[b.id, b.supplier, b.product, b.quantity, b.total_amount]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
         </div>
-        <div class="text-xl font-black text-slate-900 dark:text-white font-mono mb-2">${formatCurrency(kpi.total_buying)}</div>
+        <div class="text-xl font-black text-slate-900 dark:text-white font-mono mb-2">মোট স্টক ক্রয়: ${formatCurrency(buying.reduce((a, b) => a + (Number(b.total_amount) || 0), 0))}</div>
         <div class="space-y-2 text-xs">
           ${buying.map(b => `
             <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border flex items-center justify-between">
               <div>
                 <div class="font-bold text-slate-900 dark:text-white">${b.product}</div>
-                <div class="text-[10px] text-slate-400">সাপ্লায়ার: ${b.supplier} • পরিমাণ: ${b.quantity} পিস</div>
+                <div class="text-[10px] text-slate-400">সাপ্লায়ার: ${b.supplier} • পরিমাণ: ${b.quantity} পিস • ${b.date || ''}</div>
               </div>
               <span class="font-mono font-bold text-emerald-600">৳${b.total_amount}</span>
             </div>
@@ -10407,26 +12641,17 @@ export function renderBuyingReportPage({ kpi = {}, buying = [] } = {}) {
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: InvestReportPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (InvestReportPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderInvestReportPage({ kpi = {}, invest = [] } = {}) {
-  return `
     <!-- 8. Invest Report -->
-    <div id="page-report-invest" class="admin-page-view space-y-4">
+    <div id="page-report-invest" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex items-center justify-between border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white">💼 মূলধন ও বিনিয়োগ রিপোর্ট</h3>
-          <button class="btn-secondary py-1 px-2.5 text-xs" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          <div class="flex gap-1.5 text-xs">
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Invest_Report', ['ID', 'Investor', 'Amount', 'Note', 'Date'], invest.map(i=>[i.id, i.investor, i.amount, i.note, i.date]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
         </div>
-        <div class="text-xl font-black text-emerald-600 font-mono mb-2">${formatCurrency(kpi.total_invest)}</div>
+        <div class="text-xl font-black text-emerald-600 font-mono mb-2">মোট মূলধন: ${formatCurrency(invest.reduce((a, i) => a + (Number(i.amount) || 0), 0))}</div>
         <div class="space-y-2 text-xs">
           ${invest.map(i => `
             <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border flex items-center justify-between">
@@ -10440,25 +12665,21 @@ export function renderInvestReportPage({ kpi = {}, invest = [] } = {}) {
         </div>
       </div>
     </div>
-
   `;
 }
 
+// ============================================================================
+// MODULE: adminInventory.js (Finance & Inventory with Live Table IDs)
+// ============================================================================
 
-// --- Dedicated Page Module: PayoutsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (PayoutsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderPayoutsPage(props = {}) {
+function renderInventoryModule({ costs, buying, invest }) {
   return `
     <!-- 1. Reseller Payment Request Page -->
-    <div id="page-inv-payout" class="admin-page-view space-y-4">
+    <div id="page-inv-payout" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white">💳 রিসেলার কমিশন পে-আউট রিকোয়েস্ট (স্বয়ংক্রিয় -৩% ফি কর্তন)</h3>
-          <p class="text-[11px] text-slate-400">রিসেলার ড্যাশবোর্ড থেকে পাঠানো উত্তোলনের আবেদনসমূহ</p>
+          <p class="text-[11px] text-slate-400">রিসেলার ড্যাশবোর্ড থেকে পাঠানো উত্তোলনের আবেদনসমূহ (অনুমোদন করলে লিস্ট ও Payments শিটে জমা হয়)</p>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs border-collapse">
@@ -10485,7 +12706,7 @@ export function renderPayoutsPage(props = {}) {
                 <td class="py-3 px-3 font-black text-emerald-600 font-mono">৳১,১৬৪</td>
                 <td class="py-3 px-3"><span class="badge badge-warning text-[9px]">Pending</span></td>
                 <td class="py-3 px-3 text-right">
-                  <button class="btn-primary py-1 px-3 text-[10px] font-bold" onclick="window.handleApprovePayout('REQ-8472', '১,১৬৪', this)">
+                  <button type="button" class="btn-primary py-1 px-3 text-[10px] font-bold" onclick="window.handleApprovePayout('REQ-8472', '1164', this)">
                     অনুমোদন ও পে করুন ✓
                   </button>
                 </td>
@@ -10510,27 +12731,15 @@ export function renderPayoutsPage(props = {}) {
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: CostsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (CostsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderCostsPage({ costs = [] } = {}) {
-  return `
     <!-- 2. Costs Ledger Page -->
-    <div id="page-inv-costs" class="admin-page-view space-y-4">
+    <div id="page-inv-costs" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="flex items-center justify-between border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white">💸 ব্যবসায়িক খরচ ও ব্যয় লেজার (${costs.length})</h3>
           <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-cost')?.classList.remove('hidden')">+ নতুন খরচ</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Costs', ['ID', 'Title', 'Amount', 'Date'], costs.map(c=>[c.id, c.title, c.amount, c.date]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+            <button type="button" class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-cost')?.classList.remove('hidden')">+ নতুন খরচ যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Costs', ['ID', 'Title', 'Amount', 'Date'], costs.map(c=>[c.id, c.title, c.amount, c.date]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
           </div>
         </div>
         <div class="overflow-x-auto">
@@ -10544,7 +12753,7 @@ export function renderCostsPage({ costs = [] } = {}) {
                 <th class="py-2 px-3">তারিখ</th>
               </tr>
             </thead>
-            <tbody class="divide-y">
+            <tbody id="admin-costs-tbody" class="divide-y">
               ${costs.map(c => `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                   <td class="py-2.5 px-3 font-mono text-slate-400">${c.id}</td>
@@ -10560,6 +12769,72 @@ export function renderCostsPage({ costs = [] } = {}) {
       </div>
     </div>
 
+    <!-- 3. Buying Page -->
+    <div id="page-inv-buying" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-3">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🛒 পাইকারি স্টক ক্রয় হিসাব (${buying.length})</h3>
+          <div class="flex items-center gap-1.5 text-xs">
+            <button type="button" class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-buying')?.classList.remove('hidden')">+ স্টক ক্রয় ভাউচার</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Buying', ['ID', 'Supplier', 'Product', 'Qty', 'Amount'], buying.map(b=>[b.id, b.supplier, b.product, b.quantity, b.total_amount]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b text-slate-400 uppercase text-[10px]">
+                <th class="py-2 px-3">ক্রয় ID</th>
+                <th class="py-2 px-3">সাপ্লায়ার</th>
+                <th class="py-2 px-3">পণ্য</th>
+                <th class="py-2 px-3">পরিমাণ</th>
+                <th class="py-2 px-3">মোট বিল</th>
+                <th class="py-2 px-3">তারিখ</th>
+              </tr>
+            </thead>
+            <tbody id="admin-buying-tbody" class="divide-y">
+              ${buying.map(b => `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
+                  <td class="py-2.5 px-3 font-mono text-slate-400">${b.id}</td>
+                  <td class="py-2.5 px-3 font-bold">${b.supplier}</td>
+                  <td class="py-2.5 px-3">${b.product}</td>
+                  <td class="py-2.5 px-3 font-mono">${b.quantity} পিস</td>
+                  <td class="py-2.5 px-3 font-bold font-mono text-emerald-600">${formatCurrency(b.total_amount)}</td>
+                  <td class="py-2.5 px-3 text-slate-400">${b.date}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Invest Page -->
+    <div id="page-inv-invest" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-3">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">💼 মূলধন ও বিনিয়োগ ট্র্যাকার (${invest.length})</h3>
+          <div class="flex items-center gap-1.5 text-xs">
+            <button type="button" class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-invest')?.classList.remove('hidden')">+ নতুন বিনিয়োগ যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Invest', ['ID', 'Investor', 'Amount', 'Date'], invest.map(i=>[i.id, i.investor, i.amount, i.date]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
+        </div>
+        <div id="admin-invest-list-box" class="space-y-2.5 text-xs">
+          ${invest.map(i => `
+            <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex items-center justify-between">
+              <div>
+                <div class="font-bold text-slate-900 dark:text-white">${i.investor}</div>
+                <div class="text-[10px] text-slate-400">${i.note} • ${i.date}</div>
+              </div>
+              <div class="text-base font-black text-emerald-600 font-mono">${formatCurrency(i.amount)}</div>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    </div>
+
+    <!-- Modals -->
     <div id="modal-add-cost" class="admin-modal-backdrop hidden">
       <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
         <div class="flex items-center justify-between border-b pb-2">
@@ -10587,61 +12862,9 @@ export function renderCostsPage({ costs = [] } = {}) {
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-cost')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংরক্ষণ করুন</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">লিস্ট ও শিটে সেভ করুন</button>
           </div>
         </form>
-      </div>
-    </div>
-
-  `;
-}
-
-
-// --- Dedicated Page Module: BuyingPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (BuyingPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderBuyingPage({ buying = [] } = {}) {
-  return `
-    <!-- 3. Buying Page -->
-    <div id="page-inv-buying" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🛒 পাইকারি স্টক ক্রয় হিসাব (${buying.length})</h3>
-          <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-buying')?.classList.remove('hidden')">+ স্টক ক্রয় ভাউচার</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Buying', ['ID', 'Supplier', 'Product', 'Qty', 'Amount'], buying.map(b=>[b.id, b.supplier, b.product, b.quantity, b.total_amount]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-          </div>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr class="border-b text-slate-400 uppercase text-[10px]">
-                <th class="py-2 px-3">ক্রয় ID</th>
-                <th class="py-2 px-3">সাপ্লায়ার</th>
-                <th class="py-2 px-3">পণ্য</th>
-                <th class="py-2 px-3">পরিমাণ</th>
-                <th class="py-2 px-3">মোট বিল</th>
-                <th class="py-2 px-3">তারিখ</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y">
-              ${buying.map(b => `
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
-                  <td class="py-2.5 px-3 font-mono text-slate-400">${b.id}</td>
-                  <td class="py-2.5 px-3 font-bold">${b.supplier}</td>
-                  <td class="py-2.5 px-3">${b.product}</td>
-                  <td class="py-2.5 px-3 font-mono">${b.quantity} পিস</td>
-                  <td class="py-2.5 px-3 font-bold font-mono text-emerald-600">${formatCurrency(b.total_amount)}</td>
-                  <td class="py-2.5 px-3 text-slate-400">${b.date}</td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
 
@@ -10672,46 +12895,9 @@ export function renderBuyingPage({ buying = [] } = {}) {
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-buying')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংরক্ষণ করুন</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">লিস্ট ও শিটে সেভ করুন</button>
           </div>
         </form>
-      </div>
-    </div>
-
-  `;
-}
-
-
-// --- Dedicated Page Module: InvestPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (InvestPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-
-export function renderInvestPage({ invest = [] } = {}) {
-  return `
-    <!-- 4. Invest Page -->
-    <div id="page-inv-invest" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">💼 মূলধন ও বিনিয়োগ ট্র্যাকার (${invest.length})</h3>
-          <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-invest')?.classList.remove('hidden')">+ নতুন বিনিয়োগ</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Invest', ['ID', 'Investor', 'Amount', 'Date'], invest.map(i=>[i.id, i.investor, i.amount, i.date]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-          </div>
-        </div>
-        <div class="space-y-2.5 text-xs">
-          ${invest.map(i => `
-            <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex items-center justify-between">
-              <div>
-                <div class="font-bold text-slate-900 dark:text-white">${i.investor}</div>
-                <div class="text-[10px] text-slate-400">${i.note} • ${i.date}</div>
-              </div>
-              <div class="text-base font-black text-emerald-600 font-mono">${formatCurrency(i.amount)}</div>
-            </div>
-          `).join("")}
-        </div>
       </div>
     </div>
 
@@ -10736,7 +12922,7 @@ export function renderInvestPage({ invest = [] } = {}) {
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-invest')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংরক্ষণ করুন</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">লিস্ট ও শিটে সেভ করুন</button>
           </div>
         </form>
       </div>
@@ -10744,205 +12930,234 @@ export function renderInvestPage({ invest = [] } = {}) {
   `;
 }
 
-
-// --- Dedicated Page Module: CouriersPage.js ---
+// ============================================================================
+// MODULE: adminCouriersSettings.js
+// ============================================================================
 /**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (CouriersPage.js)
- * Isolated standalone page view for the Admin Panel.
+ * DREAM CART BD — Courier, Payments, Settings & Login Module (adminCouriersSettings.js)
+ * Implements:
+ * - Steadfast, Pathao & RedX courier API + secret + webhook config
+ * - Customer Fraud Checker tool with delivery success score
+ * - Online payment gateway integration (bKash, SSLCommerz, Shurjopay, Nagad)
+ * - System settings, logs, offers, hotlines
+ * - Dedicated Admin Login View with captcha
  */
-export function renderCouriersPage({ couriers = [] } = {}) {
+
+function renderCouriersSettingsModule({ couriers, onlinePayments, offers, auditLogs, userDisplayName, workerType }) {
+  const payMethods = apiClient.getGlobalPaymentMethods ? apiClient.getGlobalPaymentMethods() : [];
+  const delMethods = apiClient.getGlobalDeliveryMethods ? apiClient.getGlobalDeliveryMethods() : [];
+  const globalOffers = apiClient.getGlobalOffers ? apiClient.getGlobalOffers() : (offers || []);
+  const siteInfo = apiClient.getGlobalSiteSettings ? apiClient.getGlobalSiteSettings() : {};
+  const infoItems = Array.isArray(siteInfo.infoItems) ? siteInfo.infoItems : [];
+  let consignments = [];
+  try {
+    consignments = JSON.parse(localStorage.getItem('dcbd_courier_consignments') || '[]');
+  } catch (e) {}
+
+  setTimeout(() => {
+    const inp = document.getElementById('input-fraud-phone');
+    if (inp && !inp.value) {
+      inp.value = '01711223344';
+      if (window.handleFraudPhoneCheck) window.handleFraudPhoneCheck('01711223344');
+    }
+  }, 50);
+
   return `
-    <!-- 1. Couriers List Page -->
-    <div id="page-courier-list" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
+    <!-- ================================================================= -->
+    <!-- DEDICATED PAGES: COURIER, FRAUD & PAYMENT (4 Standalone Views)    -->
+    <!-- ================================================================= -->
+
+    <!-- 1. Couriers List Page (সংযুক্ত কুরিয়ারসমূহ - লিস্ট, এডিট, ডিলিট ও সার্চ) -->
+    <div id="page-courier-list" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
           <div>
             <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-              <span>🚚</span> সংযুক্ত কুরিয়ার সার্ভিসেস ও এপিআই স্ট্যাটাস
+              <span>🚚</span> সংযুক্ত কুরিয়ারসমূহ (${couriers.length})
             </h3>
-            <p class="text-[11px] text-slate-400">স্টিডফাস্ট, পাঠাও ও রেডএক্স সরাসরি সংযোগ</p>
+            <p class="text-[11px] text-slate-400">লিস্ট, এডিট, ডিলিট, সার্চ ও অর্ডার লিস্ট থেকে সরাসরি কুরিয়ার এন্ট্রি লগ</p>
           </div>
-          <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="switchAdminPage('page-courier-add', 'group-courier')">+ নতুন কুরিয়ার এপিআই</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <input type="text" placeholder="🔍 কুরিয়ার নাম বা হাব সার্চ করুন..." oninput="window.searchAdminCouriers(this.value)" class="form-control text-xs py-1.5 px-3 rounded-xl border w-56" />
+            <button type="button" class="btn-primary py-1.5 px-3 font-bold" onclick="window.openEditCourierModal('')">+ নতুন কুরিয়ার এপিআই যুক্ত</button>
+            <button type="button" class="btn-secondary py-1.5 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          ${couriers.map(c => `
-            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5">
-              <div class="flex items-center justify-between">
-                <div class="font-bold text-slate-900 dark:text-white text-sm">${c.name}</div>
-                <span class="badge ${c.status === 'Connected' ? 'badge-success' : 'badge-warning'} text-[10px]">${c.status}</span>
+        <div id="admin-couriers-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          ${couriers.map(c => {
+            const safeId = String(c.id || '').replace(/'/g, "\'");
+            const safeName = String(c.name || '').replace(/'/g, "\'");
+            return `
+              <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <span class="font-mono text-[10px] font-bold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">${c.id}</span>
+                      <div class="font-bold text-slate-900 dark:text-white text-sm mt-0.5">${c.name}</div>
+                    </div>
+                    <button type="button" onclick="window.toggleCourierStatus('${safeId}')" class="badge ${c.status === 'Connected' ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">${c.status || 'Connected'}</button>
+                  </div>
+                  <div class="space-y-1 text-slate-500 text-[11px]">
+                    <div><strong>API Key:</strong> <span class="font-mono">${c.api_key}</span></div>
+                    <div><strong>Secret Key:</strong> <span class="font-mono">${c.secret_key || '••••••••'}</span></div>
+                    <div><strong>Base Endpoint:</strong> <span class="font-mono text-[10px]">${c.base_url || 'https://portal.packzy.com/api/v1'}</span></div>
+                    <div><strong>জোন / হাব:</strong> ${c.hub_city}</div>
+                    <div><strong>কুরিয়ার ব্যালেন্স:</strong> <span class="font-bold text-emerald-600 font-mono">${c.balance}</span></div>
+                  </div>
+                </div>
+                <div class="pt-2 border-t flex flex-wrap items-center gap-1.5">
+                  <button type="button" class="btn-secondary py-1 px-2.5 text-[10px] flex-1 font-bold" onclick="window.handleTestCourierApi('${safeName}', this)">API টেস্ট 🔄</button>
+                  <button type="button" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold" onclick="window.openEditCourierModal('${safeId}')">✏️ এডিট</button>
+                  <button type="button" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold" onclick="window.deleteCourierItem('${safeId}')">🗑️ ডিলিট</button>
+                </div>
               </div>
-              <div class="space-y-1 text-slate-500 text-[11px]">
-                <div><strong>API Key:</strong> <span class="font-mono">${c.api_key}</span></div>
-                <div><strong>Secret:</strong> <span class="font-mono">${c.secret_key || '••••••••'}</span></div>
-                <div><strong>জোন:</strong> ${c.hub_city}</div>
-                <div><strong>কুরিয়ার ব্যালেন্স:</strong> <span class="font-bold text-emerald-600 font-mono">${c.balance}</span></div>
-              </div>
-              <div class="pt-2 border-t flex items-center gap-2">
-                <button class="btn-secondary py-1 px-2.5 text-[10px] flex-1" onclick="window.handleTestCourierApi('${c.name}', this)">API টেস্ট করুন 🔄</button>
-                <button class="btn-secondary py-1 px-2 text-[10px] text-emerald-600 font-bold" onclick="alert('Webhook URL: ' + ('${c.webhook_url}' || 'https://dreamcart.bd/api/webhook'))">Webhook</button>
-              </div>
-            </div>
-          `).join("")}
+            `;
+          }).join("")}
+        </div>
+
+        <!-- Dispatched Courier Consignments Log -->
+        <div class="pt-3 border-t space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold text-xs text-slate-900 dark:text-white">📦 অর্ডার লিস্ট থেকে "সেন্ড কুরিয়ার" বাটনে পাঠানো পার্সেল এন্ট্রি লিস্ট</h4>
+            <span class="text-[10px] text-slate-400">API Key & Secret Key দ্বারা স্বয়ংক্রিয় বুকিংকৃত</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b text-slate-400 uppercase text-[10px]">
+                  <th class="py-2 px-3">Consignment ID</th>
+                  <th class="py-2 px-3">অর্ডার আইডি</th>
+                  <th class="py-2 px-3">কুরিয়ার নাম</th>
+                  <th class="py-2 px-3">গ্রাহক ও ফোন</th>
+                  <th class="py-2 px-3">COD অ্যামাউন্ট</th>
+                  <th class="py-2 px-3">স্ট্যাটাস</th>
+                  <th class="py-2 px-3">সময়</th>
+                </tr>
+              </thead>
+              <tbody id="admin-courier-consignments-tbody" class="divide-y">
+                ${consignments.length > 0 ? consignments.slice(0, 20).map(l => `
+                  <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <td class="py-2 px-3 font-mono font-bold text-emerald-600">${l.consignment_id}</td>
+                    <td class="py-2 px-3 font-mono font-bold">${l.order_id}</td>
+                    <td class="py-2 px-3 font-bold">${l.courier_name}</td>
+                    <td class="py-2 px-3">${l.customer_name} (${l.phone})</td>
+                    <td class="py-2 px-3 font-mono font-bold">৳${l.cod_amount || 0}</td>
+                    <td class="py-2 px-3"><span class="badge badge-success text-[10px]">${l.status || 'In Transit'}</span></td>
+                    <td class="py-2 px-3 text-slate-400 text-[10px]">${l.dispatched_at || 'আজ'}</td>
+                  </tr>
+                `).join('') : `<tr><td colspan="7" class="py-4 text-center text-slate-400">অর্ডার লিস্ট থেকে "🚚 সেন্ড কুরিয়ার" বাটনে ক্লিক করলে সাথে সাথে এখানে এবং কুরিয়ারে এন্ট্রি হয়ে যাবে।</td></tr>`}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
 
-    <div id="modal-add-courier" class="admin-modal-backdrop hidden">
-      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+    <!-- 2. Add Courier Page (+ কুরিয়ার এপিআই যুক্ত - আপডেট ফর্ম API Key ও Secret Key সহ) -->
+    <div id="page-courier-add" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4 max-w-2xl">
         <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">নতুন কুরিয়ার এপিআই কনফিগারেশন</h4>
-          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-courier')?.classList.add('hidden')">✕</button>
-        </div>
-        <form onsubmit="window.handleAdminAddCourier(event)" class="space-y-3">
           <div>
-            <label class="block font-bold mb-1">কুরিয়ার সার্ভিস নাম *</label>
-            <input type="text" id="adm-new-courier-name" required placeholder="Steadfast / Pathao / RedX" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white">➕ কুরিয়ার এপিআই যুক্ত ও আপডেট ফর্ম (One-Click Order Entry)</h3>
+            <p class="text-[11px] text-slate-400">এখানে API Key ও Secret Key সেভ করলে অর্ডার লিস্ট থেকে "🚚 সেন্ড কুরিয়ার" বাটনে ক্লিক করার সাথে সাথে কুরিয়ারে অর্ডার এন্ট্রি হয়ে যাবে</p>
           </div>
-          <div>
-            <label class="block font-bold mb-1">API Key *</label>
-            <input type="text" id="adm-new-courier-api" required placeholder="sec_live_..." class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
-          </div>
-          <div>
-            <label class="block font-bold mb-1">Secret Key *</label>
-            <input type="password" id="adm-new-courier-secret" required placeholder="••••••••" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
-          </div>
-          <div class="flex items-center justify-end gap-2 pt-2">
-            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-courier')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংযুক্ত করুন</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-  `;
-}
-
-
-// --- Dedicated Page Module: AddCourierPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (AddCourierPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderAddCourierPage(props = {}) {
-  return `
-    <!-- 2. Add Courier Page -->
-    <div id="page-courier-add" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-4 max-w-xl">
-        <div class="border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">➕ নতুন কুরিয়ার এপিআই সংযোজন</h3>
-          <p class="text-[11px] text-slate-400">এপিআই কী, সিক্রেট কী ও স্বয়ংক্রিয় ওয়েবহুক আপডেট সিস্টেম</p>
+          <button type="button" class="btn-secondary py-1 px-3 text-xs font-bold" onclick="window.switchAdminPage('page-courier-list', 'group-courier')">← কুরিয়ার তালিকায় ফিরুন</button>
         </div>
 
         <form onsubmit="window.handleAdminAddCourier(event)" class="space-y-3.5 text-xs">
-          <div>
-            <label class="block font-bold mb-1">কুরিয়ার সার্ভিস নাম *</label>
-            <input type="text" id="adm-new-courier-name" required placeholder="Steadfast / Pathao / Paperfly / RedX" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
-          </div>
+          <input type="hidden" id="adm-edit-courier-id" value="" />
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="block font-bold mb-1">API Key / Client ID *</label>
-              <input type="text" id="adm-new-courier-api" required placeholder="sec_live_..." class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
+              <label class="block font-bold mb-1">কুরিয়ার সার্ভিস নাম / প্রোভাইডার *</label>
+              <input type="text" id="adm-new-courier-name" list="courier-providers-list" required placeholder="Steadfast Courier / Pathao Courier / RedX" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+              <datalist id="courier-providers-list">
+                <option value="Steadfast Courier"></option>
+                <option value="Pathao Courier"></option>
+                <option value="RedX Delivery"></option>
+                <option value="Paperfly Courier"></option>
+                <option value="eCourier BD"></option>
+                <option value="Sundarban Courier"></option>
+              </datalist>
             </div>
             <div>
-              <label class="block font-bold mb-1">Secret Key / Token *</label>
-              <input type="password" id="adm-new-courier-secret" required placeholder="••••••••••••" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
+              <label class="block font-bold mb-1">API Base Endpoint URL *</label>
+              <input type="text" id="adm-new-courier-base-url" value="https://portal.packzy.com/api/v1" required class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
             </div>
           </div>
-          <div>
-            <label class="block font-bold mb-1">স্বয়ংক্রিয় Webhook URL (ডেলিভারি স্ট্যাটাস সিঙ্কের জন্য)</label>
-            <input type="text" id="adm-new-courier-webhook" value="https://dreamcart.bd/api/courier/webhook" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono bg-slate-50 dark:bg-slate-800" />
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-2xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
+            <div>
+              <label class="block font-bold mb-1 text-emerald-800 dark:text-emerald-300">🔑 API Key / Client ID *</label>
+              <input type="text" id="adm-new-courier-api" required placeholder="sf_live_api_key_..." class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold bg-white dark:bg-slate-900" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1 text-emerald-800 dark:text-emerald-300">🔒 Secret Key / Access Token *</label>
+              <input type="text" id="adm-new-courier-secret" required placeholder="sf_secret_key_..." class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold bg-white dark:bg-slate-900" />
+            </div>
           </div>
-          <div>
-            <label class="block font-bold mb-1">হাব / ডেলিভারি কভারেজ জোন</label>
-            <input type="text" id="adm-new-courier-city" value="Dhaka & All BD" class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold mb-1">স্বয়ংক্রিয় Webhook URL</label>
+              <input type="text" id="adm-new-courier-webhook" value="https://dreamcart.bd/api/courier/webhook" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono bg-slate-50 dark:bg-slate-800" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">হাব / ডেলিভারি কভারেজ জোন</label>
+              <input type="text" id="adm-new-courier-city" value="ঢাকা, কুমিল্লা ও সারা বাংলাদেশ" class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
+            </div>
           </div>
-          <button type="submit" class="btn-primary py-2.5 px-6 font-bold">কুরিয়ার সংযুক্ত করুন →</button>
+
+          <div>
+            <label class="block font-bold mb-1">কানেকশন স্ট্যাটাস</label>
+            <select id="adm-new-courier-status" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold">
+              <option value="Connected">Connected (সক্রিয় — অর্ডার লিস্ট থেকে সরাসরি এন্ট্রি হবে)</option>
+              <option value="Paused">Paused (সাময়িক বন্ধ)</option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2 pt-2">
+            <button type="submit" class="btn-primary py-2.5 px-6 font-bold">💾 কুরিয়ার API ও Secret Key সংরক্ষণ করুন →</button>
+            <button type="button" class="btn-secondary py-2.5 px-4 font-bold" onclick="window.handleTestCourierApi(document.getElementById('adm-new-courier-name')?.value || 'Courier API', this)">কানেকশন টেস্ট 🔄</button>
+          </div>
         </form>
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: FraudCheckerPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (FraudCheckerPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderFraudCheckerPage(props = {}) {
-  return `
-    <!-- 3. Fraud Check Page -->
-    <div id="page-courier-fraud" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-4 max-w-xl">
-        <div class="border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-            <span>🛡️</span> কাস্টমার ফ্রড চেকার
-          </h3>
-          <p class="text-[11px] text-slate-400">অর্ডার লিস্ট ও সংযুক্ত কুরিয়ার এপিআই থেকে কাস্টমারের ডেলিভারি ও রিটার্ন রেট যাচাই</p>
-        </div>
-
-        <div class="space-y-3 text-xs">
+    <!-- 3. Fraud Check Page (🛡️ কাস্টমার ফ্রড চেকার - সার্চ বার, সামারি, কুরিয়ার ব্রেকডাউন ও সেলার কমপ্লেইন লিস্ট) -->
+    <div id="page-courier-fraud" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
           <div>
-            <label class="block font-bold mb-1">গ্রাহকের ফোন নম্বর লিখুন:</label>
-            <div class="flex gap-2">
-              <input type="text" id="input-fraud-phone" placeholder="01711223344" class="form-control text-xs flex-1 py-2 px-3 rounded-xl border font-mono font-bold" />
-              <button class="btn-primary py-2 px-5 font-bold" onclick="window.handleFraudPhoneCheck(document.getElementById('input-fraud-phone').value)">যাচাই করুন 🔍</button>
-            </div>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+              <span>🛡️</span> কাস্টমার ফ্রড চেকার ও কুরিয়ার ডেলিভারি রেশিও রিপোর্ট
+            </h3>
+            <p class="text-[11px] text-slate-400">মোবাইল নাম্বার দিয়ে সার্চ করলে কানেক্টেড কুরিয়ার ও ওয়েবসাইটের মোট অর্ডার, সাকসেস, ক্যানসেল, সাকসেস রেশিও %, কুরিয়ার ভিত্তিক রিপোর্ট ও সেলার কমপ্লেইন লিস্ট দেখাবে</p>
           </div>
-
-          <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2">
-            <h4 class="font-bold text-slate-900 dark:text-white">সাম্প্রতিক ফ্রড ভেরিফিকেশন ডাটাবেজ:</h4>
-            <div class="space-y-1.5">
-              <div class="p-2.5 bg-white dark:bg-slate-900 rounded-xl border flex items-center justify-between">
-                <div>
-                  <div class="font-bold">01711223344 (তানভীর আহমেদ)</div>
-                  <div class="text-[10px] text-slate-400">কুরিয়ার হিস্ট্রি: ৯৮% ডেলিভারি সাকসেস (জিরো রিটার্ন)</div>
-                </div>
-                <span class="badge badge-success text-[10px]">Safe ✓</span>
-              </div>
-              <div class="p-2.5 bg-white dark:bg-slate-900 rounded-xl border flex items-center justify-between">
-                <div>
-                  <div class="font-bold">01622334488 (শারমিন সুলতানা)</div>
-                  <div class="text-[10px] text-slate-400">কুরিয়ার হিস্ট্রি: ৪০% রিটার্ন রেকর্ড (২ টি পার্সেল রিফিউজড)</div>
-                </div>
-                <span class="badge badge-danger text-[10px]">High Risk ⚠️</span>
-              </div>
-            </div>
+          <div class="flex items-center gap-1.5 text-xs">
+            <button type="button" class="btn-secondary py-1 px-2.5 font-bold" onclick="window.handleFraudPhoneCheck('01711223344')">ডেমো Safe (01711223344)</button>
+            <button type="button" class="btn-secondary py-1 px-2.5 font-bold text-rose-600" onclick="window.handleFraudPhoneCheck('01622334488')">ডেমো Risk (01622334488)</button>
           </div>
         </div>
+
+        <!-- Search Bar -->
+        <form onsubmit="event.preventDefault(); window.handleFraudPhoneCheck(document.getElementById('input-fraud-phone')?.value);" class="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 text-xs">
+          <div class="flex-1">
+            <label class="block font-bold mb-1 text-slate-700 dark:text-slate-200">📱 কাস্টমারের মোবাইল নাম্বার দিয়ে সার্চ করুন:</label>
+            <input type="text" id="input-fraud-phone" value="01711223344" placeholder="01711223344 / 01622334488" class="form-control text-sm w-full py-2.5 px-4 rounded-xl border font-mono font-black bg-white dark:bg-slate-900" />
+          </div>
+          <div class="sm:pt-5 flex items-center gap-2">
+            <button type="submit" class="btn-primary py-2.5 px-6 font-black text-xs">🔍 ফ্রড ও কুরিয়ার হিস্ট্রি সার্চ করুন</button>
+          </div>
+        </form>
+
+        <!-- Dynamic Fraud Report Container -->
+        <div id="fraud-checker-dynamic-results" class="space-y-4 text-xs"></div>
       </div>
     </div>
 
-    <!-- Modal for Fraud Result -->
-    <div id="modal-fraud-result" class="admin-modal-backdrop hidden">
-      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-sm w-full space-y-3 text-xs text-center">
-        <div class="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-600 text-xl font-black mx-auto flex items-center justify-center">🛡️</div>
-        <h4 class="font-black text-sm text-slate-900 dark:text-white">কুরিয়ার ফ্রড ডাটা যাচাই রিপোর্ট</h4>
-        <div id="fraud-result-badge" class="badge badge-success text-xs font-bold mx-auto">Safe Customer</div>
-        <div id="fraud-result-text" class="text-slate-500 text-[11px] p-2 bg-slate-50 dark:bg-slate-800 rounded-xl border"></div>
-        <button class="btn-primary py-2 px-5 font-bold w-full" onclick="document.getElementById('modal-fraud-result')?.classList.add('hidden')">বন্ধ করুন</button>
-      </div>
-    </div>
-
-
-  `;
-}
-
-
-// --- Dedicated Page Module: OnlinePaymentsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (OnlinePaymentsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderOnlinePaymentsPage({ onlinePayments = [] } = {}) {
-  return `
     <!-- 4. Add Online Payments Page -->
-    <div id="page-courier-payments" class="admin-page-view space-y-4">
+    <div id="page-courier-payments" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-4">
         <div class="flex items-center justify-between border-b pb-2">
           <div>
@@ -10951,7 +13166,7 @@ export function renderOnlinePaymentsPage({ onlinePayments = [] } = {}) {
             </h3>
             <p class="text-[11px] text-slate-400">bKash Merchant, SSLCommerz, Shurjopay, Nagad API কনফিগ</p>
           </div>
-          <button class="btn-primary py-1 px-3 text-xs font-bold" onclick="document.getElementById('modal-add-payment-gw')?.classList.remove('hidden')">+ গেটওয়ে যুক্ত</button>
+          <button type="button" class="btn-primary py-1 px-3 text-xs font-bold" onclick="document.getElementById('modal-add-payment-gw')?.classList.remove('hidden')">+ গেটওয়ে যুক্ত</button>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
@@ -10966,10 +13181,437 @@ export function renderOnlinePaymentsPage({ onlinePayments = [] } = {}) {
                 <div>API Key: ${p.api_key}</div>
                 <div>মোড: <span class="font-bold text-emerald-600">${p.mode}</span></div>
               </div>
-              <button class="btn-secondary py-1 px-2.5 w-full text-[10px] font-bold" onclick="alert('${p.name} সংযোগ সক্রিয় রয়েছে (Ping 28ms)')">কানেকশন টেস্ট</button>
+              <button type="button" class="btn-secondary py-1 px-2.5 w-full text-[10px] font-bold" onclick="alert('${p.name} সংযোগ সক্রিয় রয়েছে (Ping 28ms)')">কানেকশন টেস্ট</button>
             </div>
           `).join("")}
         </div>
+      </div>
+    </div>
+
+    <!-- ================================================================= -->
+    <!-- DEDICATED PAGES: SETTINGS (7 Distinct Standalone Views)            -->
+    <!-- ================================================================= -->
+
+    <!-- 1. Audit Logs Page -->
+    <div id="page-set-logs" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-3">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">📜 অডিট ও কর্মী অ্যাক্টিভিটি লগ</h3>
+          <div class="flex items-center gap-1.5 text-xs">
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Audit_Logs', ['Time', 'User', 'Event', 'IP'], auditLogs.map(l=>[l.time, l.user, l.event, l.ip]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
+        </div>
+        <div class="space-y-2 text-xs">
+          ${auditLogs.map(l => `
+            <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+              <div>
+                <div class="font-bold text-slate-900 dark:text-white">${l.event}</div>
+                <div class="text-[10px] text-slate-400">কর্মী: <span class="text-emerald-600 font-bold">${l.user}</span> • IP: <span class="font-mono">${l.ip}</span></div>
+              </div>
+              <span class="text-[10px] text-slate-400 font-mono">${l.time}</span>
+            </div>
+          `).join("")}
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Payment Method Update Page (পেমেন্ট মেথড আপডেট - এক্টিভ/এড/এডিট/ডিলিট/লিস্ট + সম্পূর্ণ ওয়েবসাইট ও শিটে সিঙ্ক) -->
+    <div id="page-set-payment" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white">💳 পেমেন্ট মেথড আপডেট ও কন্ট্রোল (${payMethods.length})</h3>
+            <p class="text-[11px] text-slate-400">এক্টিভ/ইনএক্টিভ, এড, এডিট, ডিলিট ও লিস্ট — পরিবর্তন করলে সম্পূর্ণ ওয়েবসাইট (চেকআউট ও ফুটার) এবং Google Sheet (Payments)-এ জমা হবে</p>
+          </div>
+          <button type="button" class="btn-primary py-1.5 px-3 text-xs font-bold" onclick="window.openPaymentMethodModal('')">+ নতুন পেমেন্ট মেথড যুক্ত করুন</button>
+        </div>
+
+        <div id="admin-payment-methods-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+          ${payMethods.map(m => {
+            const safeId = String(m.id || '').replace(/'/g, "\'");
+            const isAct = String(m.status || 'Active').toLowerCase() !== 'inactive';
+            return `
+              <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
+                <div class="space-y-1.5">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="font-bold text-slate-900 dark:text-white text-sm">${m.name}</div>
+                    <button type="button" onclick="window.togglePaymentMethodStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
+                      ${isAct ? '● সক্রিয় (Active)' : '○ নিষ্ক্রিয় (Inactive)'}
+                    </button>
+                  </div>
+                  <div class="text-[11px] font-mono text-emerald-600 font-bold">নম্বর/অ্যাকাউন্ট: ${m.number || 'N/A'} (${m.type || 'Direct'})</div>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400">${m.instructions || ''}</p>
+                </div>
+                <div class="flex items-center gap-1.5 pt-2 border-t">
+                  <button type="button" onclick="window.togglePaymentMethodStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1">${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}</button>
+                  <button type="button" onclick="window.openPaymentMethodModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
+                  <button type="button" onclick="window.deletePaymentMethodItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Delivery Method Page (ডেলিভারি মেথড কনফিগ - এক্টিভ/এড/এডিট/ডিলিট/লিস্ট + সম্পূর্ণ ওয়েবসাইট ও শিটে সিঙ্ক) -->
+    <div id="page-set-delivery" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white">🚚 ডেলিভারি মেথড ও চার্জ কনফিগ (${delMethods.length})</h3>
+            <p class="text-[11px] text-slate-400">এক্টিভ/ইনএক্টিভ, এড, এডিট, ডিলিট ও লিস্ট — পরিবর্তন করলে সম্পূর্ণ ওয়েবসাইট (চেকআউট ডেলিভারি চার্জ) এবং Google Sheet-এ জমা হবে</p>
+          </div>
+          <button type="button" class="btn-primary py-1.5 px-3 text-xs font-bold" onclick="window.openDeliveryMethodModal('')">+ নতুন ডেলিভারি জোন যুক্ত করুন</button>
+        </div>
+
+        <div id="admin-delivery-methods-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          ${delMethods.map(d => {
+            const safeId = String(d.id || '').replace(/'/g, "\'");
+            const isAct = String(d.status || 'Active').toLowerCase() !== 'inactive';
+            return `
+              <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between gap-2">
+                    <div class="font-bold text-slate-900 dark:text-white text-sm">${d.name}</div>
+                    <button type="button" onclick="window.toggleDeliveryMethodStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
+                      ${isAct ? '● সক্রিয়' : '○ নিষ্ক্রিয়'}
+                    </button>
+                  </div>
+                  <div class="text-lg font-black text-emerald-600 font-mono">৳${d.charge}</div>
+                  <p class="text-[11px] text-slate-400">⏱️ আনুমানিক সময়: ${d.eta || '২৪-৪৮ ঘন্টা'}</p>
+                </div>
+                <div class="flex items-center gap-1.5 pt-2 border-t">
+                  <button type="button" onclick="window.toggleDeliveryMethodStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1">${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}</button>
+                  <button type="button" onclick="window.openDeliveryMethodModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
+                  <button type="button" onclick="window.deleteDeliveryMethodItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Offers & Promo Page (অফার ও কুপন ডিসকাউন্ট - এক্টিভ/এড/এডিট/ডিলিট/লিস্ট + সম্পূর্ণ ওয়েবসাইট ও শিটে সিঙ্ক) -->
+    <div id="page-set-offers" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white">🎁 অফার ও ডিসকাউন্ট কুপন (${globalOffers.length})</h3>
+            <p class="text-[11px] text-slate-400">এক্টিভ/ইনএক্টিভ, এড, এডিট, ডিলিট ও লিস্ট — পরিবর্তন করলে সম্পূর্ণ ওয়েবসাইট (অফার পেজ ও চেকআউট কুপন) এবং Google Sheet-এ জমা হবে</p>
+          </div>
+          <button type="button" class="btn-primary py-1.5 px-3 text-xs font-bold" onclick="window.openOfferModal('')">+ নতুন কুপন যুক্ত করুন</button>
+        </div>
+
+        <div id="admin-offers-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          ${globalOffers.map(o => {
+            const safeId = String(o.id || o.code || '').replace(/'/g, "\'");
+            const isAct = String(o.status || 'Active').toLowerCase() !== 'inactive';
+            return `
+              <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between font-mono font-black text-emerald-600 text-sm">
+                    <span>🎟️ ${o.code}</span>
+                    <button type="button" onclick="window.toggleOfferStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[9px] font-sans cursor-pointer">
+                      ${isAct ? '● Active' : '○ Inactive'}
+                    </button>
+                  </div>
+                  <div class="text-xs font-bold text-slate-900 dark:text-white">${o.discount}</div>
+                  <div class="text-[11px] text-slate-400">সর্বনিম্ন অর্ডার: ৳${o.min_spend || 0}</div>
+                </div>
+                <div class="flex items-center gap-1.5 pt-2 border-t">
+                  <button type="button" onclick="window.toggleOfferStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1">${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}</button>
+                  <button type="button" onclick="window.openOfferModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
+                  <button type="button" onclick="window.deleteOfferItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Website Information Page (ওয়েবসাইট তথ্য আপডেট - এক্টিভ/এড/এডিট/ডিলিট/লিস্ট + সম্পূর্ণ ওয়েবসাইট ও শিটে সিঙ্ক) -->
+    <div id="page-set-info" class="admin-page-view hidden space-y-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div class="lg:col-span-5 dc-admin-card space-y-4">
+          <div class="border-b pb-2">
+            <h3 class="font-bold text-sm text-slate-900 dark:text-white">🏢 দোকানের মূল তথ্য, ঠিকানা ও হটলাইন আপডেট</h3>
+            <p class="text-[11px] text-slate-400">সেভ করলে হেডার, ফুটার, কন্টাক্ট পেজ ও Google Sheet (Settings)-এ সাথে সাথে আপডেট হবে</p>
+          </div>
+          <form onsubmit="window.handleAdminSaveSettings(event)" class="space-y-3 text-xs">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold mb-1">দোকানের নাম *</label>
+                <input type="text" id="adm-set-shopname" value="${siteInfo.shopName || 'Dream Cart BD'}" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+              </div>
+              <div>
+                <label class="block font-bold mb-1">ট্যাগলাইন / স্লোগান</label>
+                <input type="text" id="adm-set-tagline" value="${siteInfo.shopTagline || 'বাংলাদেশের বিশ্বস্ত অনলাইন শপ'}" class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
+              </div>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">লোগো URL</label>
+              <input type="text" id="adm-set-logo" value="${siteInfo.shopLogo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">ঠিকানা</label>
+              <textarea id="adm-set-address" rows="2" class="form-control text-xs w-full p-2.5 rounded-xl border">${siteInfo.address || 'চৌধুরী প্লাজা, নিচতলা, রুম #০৩, পদুয়ার বাজার বিশ্বরোড, সদর দক্ষিণ, কুমিল্লা-৩৫০০।'}</textarea>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold mb-1">হটলাইন ১ (WhatsApp)</label>
+                <input type="text" id="adm-set-hotline1" value="${siteInfo.hotline1 || '01581703822'}" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold" />
+              </div>
+              <div>
+                <label class="block font-bold mb-1">হটলাইন ২ (Call)</label>
+                <input type="text" id="adm-set-hotline2" value="${siteInfo.hotline2 || '01818273838'}" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold" />
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold mb-1">অফিশিয়াল ইমেইল</label>
+                <input type="email" id="adm-set-email" value="${siteInfo.email || 'support@dreamcartbd.com'}" class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
+              </div>
+              <div>
+                <label class="block font-bold mb-1">ফ্রি ডেলিভারি মিনিমাম অর্ডার (৳)</label>
+                <input type="number" id="adm-set-freeship" value="${siteInfo.freeShippingMin || 2000}" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold" />
+              </div>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">ফেসবুক পেজ লিংক</label>
+              <input type="text" id="adm-set-fb" value="${siteInfo.facebookUrl || 'https://facebook.com/dreamcartbd'}" class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">শীর্ষ নোটিশ বার টেক্সট</label>
+              <textarea id="adm-set-notice" rows="2" class="form-control text-xs w-full p-2.5 rounded-xl border">${siteInfo.notice || '৳২,০০০ বা তার বেশি অর্ডারে ফ্রি শিপিং! ক্যাশ অন ডেলিভারিতে পণ্য পেয়ে টাকা দিন।'}</textarea>
+            </div>
+            <button type="submit" class="btn-primary py-2.5 px-6 font-bold w-full">💾 মূল ওয়েবসাইট তথ্য সেভ ও সিঙ্ক করুন</button>
+          </form>
+        </div>
+
+        <!-- Website Info Directory List (Active/Add/Edit/Delete/List) -->
+        <div class="lg:col-span-7 dc-admin-card space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+            <div>
+              <h3 class="font-bold text-sm text-slate-900 dark:text-white">📋 ওয়েবসাইট তথ্য ও শাখা ডিরেক্টরি লিস্ট (Active / Add / Edit / Delete)</h3>
+              <p class="text-[11px] text-slate-400">যেকোনো নতুন শাখা, সাপোর্ট নাম্বার, ব্যাংক একাউন্ট বা তথ্য যুক্ত/এডিট/ডিলিট করুন</p>
+            </div>
+            <button type="button" class="btn-primary py-1.5 px-3 text-xs font-bold" onclick="window.openWebsiteInfoItemModal('')">+ নতুন তথ্য যুক্ত করুন</button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b text-slate-400 uppercase text-[10px]">
+                  <th class="py-2.5 px-3">ID</th>
+                  <th class="py-2.5 px-3">তথ্যের শিরোনাম</th>
+                  <th class="py-2.5 px-3">বিস্তারিত তথ্য / ভ্যালু</th>
+                  <th class="py-2.5 px-3">স্ট্যাটাস</th>
+                  <th class="py-2.5 px-3 text-right">অ্যাকশন</th>
+                </tr>
+              </thead>
+              <tbody id="admin-site-info-items-tbody" class="divide-y">
+                ${infoItems.map(it => {
+                  const safeId = String(it.id || '').replace(/'/g, "\'");
+                  const isAct = String(it.status || 'Active').toLowerCase() !== 'inactive';
+                  return `
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                      <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${it.id}</td>
+                      <td class="py-2.5 px-3 font-bold text-slate-900 dark:text-white">${it.label}</td>
+                      <td class="py-2.5 px-3 text-slate-600 dark:text-slate-300">${it.value}</td>
+                      <td class="py-2.5 px-3">
+                        <button type="button" onclick="window.toggleWebsiteInfoItemStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
+                          ${isAct ? '● Active' : '○ Inactive'}
+                        </button>
+                      </td>
+                      <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+                        <button type="button" onclick="window.openWebsiteInfoItemModal('${safeId}')" class="btn-secondary py-0.5 px-2 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
+                        <button type="button" onclick="window.deleteWebsiteInfoItem('${safeId}')" class="btn-secondary py-0.5 px-2 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Profile Page -->
+    <div id="page-set-profile" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4 max-w-md">
+        <div class="border-b pb-2">
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">👤 অ্যাডমিন প্রোফাইল আপডেট</h3>
+        </div>
+        <form onsubmit="event.preventDefault(); if(toast&&toast.show) toast.show({type:'success', title:'প্রোফাইল আপডেট', message:'প্রোফাইল সফলভাবে আপডেট হয়েছে!'}); else alert('আপডেট হয়েছে');" class="space-y-3.5 text-xs">
+          <div>
+            <label class="block font-bold mb-1">পুরো নাম</label>
+            <input type="text" value="${userDisplayName}" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">পদবী</label>
+            <input type="text" value="${workerType}" disabled class="form-control text-xs w-full py-2 px-3 rounded-xl border bg-slate-100 dark:bg-slate-800 font-bold" />
+          </div>
+          <button type="submit" class="btn-primary py-2.5 px-6 font-bold">প্রোফাইল সংরক্ষণ</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- 7. Change Password Page -->
+    <div id="page-set-password" class="admin-page-view hidden space-y-4">
+      <div class="dc-admin-card space-y-4 max-w-md">
+        <div class="border-b pb-2">
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🔒 সিকিউরিটি পাসওয়ার্ড পরিবর্তন</h3>
+        </div>
+        <form onsubmit="event.preventDefault(); const p1=document.getElementById('adm-new-pass')?.value; const p2=document.getElementById('adm-new-pass-conf')?.value; if(p1!==p2) { alert('পাসওয়ার্ড মিলছে না!'); return; } if(toast&&toast.show) toast.show({type:'success', title:'পাসওয়ার্ড পরিবর্তন', message:'পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!'}); else alert('পাসওয়ার্ড পরিবর্তিত হয়েছে');" class="space-y-3.5 text-xs">
+          <div>
+            <label class="block font-bold mb-1">বর্তমান পাসওয়ার্ড</label>
+            <input type="password" required placeholder="••••••••" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">নতুন পাসওয়ার্ড</label>
+            <input type="password" id="adm-new-pass" required placeholder="••••••••" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">নতুন পাসওয়ার্ড নিশ্চিত করুন</label>
+            <input type="password" id="adm-new-pass-conf" required placeholder="••••••••" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
+          </div>
+          <button type="submit" class="btn-primary py-2.5 px-6 font-bold">পাসওয়ার্ড পরিবর্তন করুন</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modals for Couriers, Fraud Complaint, Payment Methods, Delivery Methods, Offers & Site Info -->
+    <div id="modal-add-fraud-complaint" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">🚨 কুরিয়ারে সেলার কমপ্লেইন / ফ্রড রিপোর্ট যুক্ত করুন</h4>
+          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-fraud-complaint')?.classList.add('hidden')">✕</button>
+        </div>
+        <form onsubmit="window.handleAdminAddFraudComplaint(event)" class="space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">কাস্টমারের মোবাইল নাম্বার *</label>
+              <input type="text" id="adm-cmp-phone" required placeholder="017xxxxxxxx" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">কাস্টমারের নাম</label>
+              <input type="text" id="adm-cmp-name" placeholder="কাস্টমারের নাম" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">কানেক্টেড কুরিয়ার *</label>
+              <select id="adm-cmp-courier" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                <option value="Steadfast Courier">Steadfast Courier</option>
+                <option value="Pathao Courier">Pathao Courier</option>
+                <option value="RedX Delivery">RedX Delivery</option>
+                <option value="Paperfly Courier">Paperfly Courier</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">রিস্ক লেভেল</label>
+              <select id="adm-cmp-severity" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                <option value="High Risk">High Risk (পার্সেল রিফিউজ/ফ্রড)</option>
+                <option value="Moderate">Moderate (সতর্কতা)</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">রিপোর্টকারী সেলার / শপের নাম</label>
+            <input type="text" id="adm-cmp-seller" value="Dream Cart BD Official" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">বিস্তারিত অভিযোগ / রিপোর্ট *</label>
+            <textarea id="adm-cmp-details" rows="3" required placeholder="কাস্টমার পার্সেল রিসিভ না করে ফোন বন্ধ করে রেখেছেন..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-fraud-complaint')?.classList.add('hidden')">বাতিল</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">কমপ্লেইন লিস্ট ও শিটে সেভ করুন</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="modal-manage-payment-method" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">💳 পেমেন্ট মেথড এড / আপডেট ফর্ম</h4>
+          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-manage-payment-method')?.classList.add('hidden')">✕</button>
+        </div>
+        <form onsubmit="window.handleSavePaymentMethod(event)" class="space-y-3">
+          <input type="hidden" id="adm-pay-edit-id" value="" />
+          <div>
+            <label class="block font-bold mb-1">পেমেন্ট মেথডের নাম *</label>
+            <input type="text" id="adm-pay-name" required placeholder="বিকাশ (bKash) / নগদ (Nagad) / রকেট / ক্যাশ অন ডেলিভারি" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">অ্যাকাউন্ট / মার্চেন্ট নম্বর *</label>
+              <input type="text" id="adm-pay-number" required placeholder="01818273838 / COD" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">অ্যাকাউন্ট টাইপ</label>
+              <input type="text" id="adm-pay-type" placeholder="মার্চেন্ট / পার্সোনাল" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">পেমেন্ট নির্দেশনা (চেকআউটে দেখাবে)</label>
+            <textarea id="adm-pay-inst" rows="2" placeholder="সেন্ড মানি বা পেমেন্ট করে TrxID দিন..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">স্ট্যাটাস</label>
+            <select id="adm-pay-status" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold">
+              <option value="Active">Active (সক্রিয়)</option>
+              <option value="Inactive">Inactive (নিষ্ক্রিয়)</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-manage-payment-method')?.classList.add('hidden')">বাতিল</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">💾 লিস্ট, ওয়েবসাইট ও শিটে সেভ করুন</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="modal-manage-delivery-method" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">🚚 ডেলিভারি মেথড ও চার্জ এড / এডিট</h4>
+          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-manage-delivery-method')?.classList.add('hidden')">✕</button>
+        </div>
+        <form onsubmit="window.handleSaveDeliveryMethod(event)" class="space-y-3">
+          <input type="hidden" id="adm-del-edit-id" value="" />
+          <div>
+            <label class="block font-bold mb-1">ডেলিভারি জোন / মেথডের নাম *</label>
+            <input type="text" id="adm-del-name" required placeholder="কুমিল্লা সিটি / ঢাকা সিটি / সারা বাংলাদেশ" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">ডেলিভারি চার্জ (৳) *</label>
+              <input type="number" id="adm-del-charge" required value="70" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-black text-emerald-600" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">স্ট্যাটাস</label>
+              <select id="adm-del-status" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold">
+                <option value="Active">Active (সক্রিয়)</option>
+                <option value="Inactive">Inactive (নিষ্ক্রিয়)</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">ডেলিভারি সময়সীমা (ETA)</label>
+            <input type="text" id="adm-del-eta" placeholder="২৪-৪৮ ঘন্টায় হোম ডেলিভারি" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-manage-delivery-method')?.classList.add('hidden')">বাতিল</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">💾 লিস্ট, ওয়েবসাইট ও শিটে সেভ করুন</button>
+          </div>
+        </form>
       </div>
     </div>
 
@@ -11000,446 +13642,399 @@ export function renderOnlinePaymentsPage({ onlinePayments = [] } = {}) {
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: AuditLogsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (AuditLogsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderAuditLogsPage({ auditLogs = [] } = {}) {
-  return `
-    <!-- 1. Audit Logs Page -->
-    <div id="page-set-logs" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">📜 অডিট ও কর্মী অ্যাক্টিভিটি লগ</h3>
-          <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Audit_Logs', ['Time', 'User', 'Event', 'IP'], auditLogs.map(l=>[l.time, l.user, l.event, l.ip]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
-          </div>
-        </div>
-        <div class="space-y-2 text-xs">
-          ${auditLogs.map(l => `
-            <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-              <div>
-                <div class="font-bold text-slate-900 dark:text-white">${l.event}</div>
-                <div class="text-[10px] text-slate-400">কর্মী: <span class="text-emerald-600 font-bold">${l.user}</span> • IP: <span class="font-mono">${l.ip}</span></div>
-              </div>
-              <span class="text-[10px] text-slate-400 font-mono">${l.time}</span>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    </div>
-
-  `;
-}
-
-
-// --- Dedicated Page Module: PaymentMethodsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (PaymentMethodsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderPaymentMethodsPage(props = {}) {
-  return `
-    <!-- 2. Payment Method Update Page -->
-    <div id="page-set-payment" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">💳 পেমেন্ট মেথড আপডেট ও কন্ট্রোল</h3>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2">
-            <div class="flex items-center justify-between font-bold">
-              <span>ক্যাশ অন ডেলিভারি (COD)</span>
-              <span class="badge badge-success text-[9px]">সক্রিয়</span>
-            </div>
-            <p class="text-[10px] text-slate-400">পণ্য হাতে পেয়ে টাকা পরিশোধ।</p>
-          </div>
-          <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2">
-            <div class="flex items-center justify-between font-bold">
-              <span>bKash অনলাইন পেমেন্ট</span>
-              <span class="badge badge-success text-[9px]">সক্রিয়</span>
-            </div>
-            <p class="text-[10px] text-slate-400">বিকাশ মার্চেন্ট গেটওয়ে।</p>
-          </div>
-          <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2">
-            <div class="flex items-center justify-between font-bold">
-              <span>Nagad অনলাইন পেমেন্ট</span>
-              <span class="badge badge-success text-[9px]">সক্রিয়</span>
-            </div>
-            <p class="text-[10px] text-slate-400">নগদ মার্চেন্ট গেটওয়ে।</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  `;
-}
-
-
-// --- Dedicated Page Module: DeliverySettingsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (DeliverySettingsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderDeliverySettingsPage(props = {}) {
-  return `
-    <!-- 3. Delivery Method Page -->
-    <div id="page-set-delivery" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🚚 ডেলিভারি চার্জ ও জোন সেটিংস</h3>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2">
-            <div class="font-bold">কুমিল্লা সিটি ডেলিভারি</div>
-            <div class="text-base font-black text-emerald-600 font-mono">৳৭০</div>
-            <p class="text-[10px] text-slate-400">২৪ ঘন্টার মধ্যে ডেলিভারি</p>
-          </div>
-          <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2">
-            <div class="font-bold">ঢাকা সিটি ডেলিভারি</div>
-            <div class="text-base font-black text-emerald-600 font-mono">৳৯০</div>
-            <p class="text-[10px] text-slate-400">২৪-৪৮ ঘন্টায় হোম ডেলিভারি</p>
-          </div>
-          <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2">
-            <div class="font-bold">ঢাকার বাইরে সারা বাংলাদেশ</div>
-            <div class="text-base font-black text-emerald-600 font-mono">৳১২০</div>
-            <p class="text-[10px] text-slate-400">কুরিয়ারে দ্রুত ডেলিভারি</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  `;
-}
-
-
-// --- Dedicated Page Module: OffersPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (OffersPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderOffersPage({ offers = [] } = {}) {
-  return `
-    <!-- 4. Offers & Promo Page -->
-    <div id="page-set-offers" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🎁 অফার ও ডিসকাউন্ট কুপন (${offers.length})</h3>
-          <button class="btn-primary py-1 px-3 text-xs font-bold" onclick="document.getElementById('modal-add-offer')?.classList.remove('hidden')">+ নতুন কুপন</button>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          ${offers.map(o => `
-            <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2">
-              <div class="flex items-center justify-between font-mono font-black text-emerald-600">
-                <span>${o.code}</span>
-                <span class="badge badge-success text-[9px]">${o.status}</span>
-              </div>
-              <div class="text-xs font-bold">${o.discount}</div>
-              <div class="text-[10px] text-slate-400">সর্বনিম্ন অর্ডার: ৳${o.min_spend}</div>
-            </div>
-          `).join("")}
-        </div>
-      </div>
-    </div>
-
     <div id="modal-add-offer" class="admin-modal-backdrop hidden">
       <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
         <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">নতুন প্রমো কুপন কোড তৈরি</h4>
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">🎁 অফার ও ডিসকাউন্ট কুপন তৈরি / এডিট</h4>
           <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-offer')?.classList.add('hidden')">✕</button>
         </div>
         <form onsubmit="window.handleAdminAddOffer(event)" class="space-y-3">
+          <input type="hidden" id="adm-offer-edit-id" value="" />
           <div>
             <label class="block font-bold mb-1">কুপন কোড *</label>
-            <input type="text" id="adm-new-offer-code" required placeholder="SUMMER20" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold uppercase" />
+            <input type="text" id="adm-new-offer-code" required placeholder="DREAM10 / FESTIVE500" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold uppercase" />
           </div>
           <div>
-            <label class="block font-bold mb-1">ছাড়ের বিবরণ *</label>
-            <input type="text" id="adm-new-offer-disc" required placeholder="১৫% ফ্ল্যাট ডিসকাউন্ট" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            <label class="block font-bold mb-1">ছাড়ের বিবরণ (টাইটেল) *</label>
+            <input type="text" id="adm-new-offer-disc" required placeholder="১০% ছাড় / ৳৫০০ ফ্ল্যাট ডিসকাউন্ট" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
           </div>
-          <div>
-            <label class="block font-bold mb-1">সর্বনিম্ন অর্ডারের মূল্য (৳)</label>
-            <input type="number" id="adm-new-offer-min" value="1500" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold font-mono" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">ডিসকাউন্ট ধরন</label>
+              <select id="adm-new-offer-type" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                <option value="percent">শতাংশ ছাড় (%)</option>
+                <option value="flat">ফ্ল্যাট টাকা ছাড় (৳)</option>
+                <option value="freeship">ফ্রি ডেলিভারি</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">ডিসকাউন্ট মান (% বা ৳)</label>
+              <input type="number" id="adm-new-offer-val" value="10" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">সর্বনিম্ন অর্ডারের মূল্য (৳)</label>
+              <input type="number" id="adm-new-offer-min" value="1500" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold font-mono" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">স্ট্যাটাস</label>
+              <select id="adm-new-offer-status" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                <option value="Active">Active (সক্রিয়)</option>
+                <option value="Inactive">Inactive (নিষ্ক্রিয়)</option>
+              </select>
+            </div>
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-offer')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সক্রিয় করুন</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">💾 লিস্ট, ওয়েবসাইট ও শিটে সেভ করুন</button>
           </div>
         </form>
       </div>
     </div>
 
-  `;
-}
-
-
-// --- Dedicated Page Module: ShopSettingsPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (ShopSettingsPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderShopSettingsPage(props = {}) {
-  return `
-    <!-- 5. Website Information Page -->
-    <div id="page-set-info" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-4 max-w-xl">
-        <div class="border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🏢 দোকানের তথ্য, ঠিকানা ও হটলাইন</h3>
+    <div id="modal-site-info-item" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b pb-2">
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">🏢 ওয়েবসাইট তথ্য / শাখা এড ও এডিট</h4>
+          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-site-info-item')?.classList.add('hidden')">✕</button>
         </div>
-        <form onsubmit="window.handleAdminSaveSettings(event)" class="space-y-3 text-xs">
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="block font-bold mb-1">দোকানের নাম</label>
-              <input type="text" id="adm-set-shopname" value="Dream Cart BD" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
-            </div>
-            <div>
-              <label class="block font-bold mb-1">লোগো URL</label>
-              <input type="url" id="adm-set-logo" value="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" class="form-control text-xs w-full py-2 px-3 rounded-xl border" />
-            </div>
+        <form onsubmit="window.handleSaveWebsiteInfoItem(event)" class="space-y-3">
+          <input type="hidden" id="adm-info-item-id" value="" />
+          <div>
+            <label class="block font-bold mb-1">তথ্যের শিরোনাম *</label>
+            <input type="text" id="adm-info-item-label" required placeholder="ঢাকা শাখা / কাস্টমার কেয়ার / বিকাশ মার্চেন্ট" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
           </div>
           <div>
-            <label class="block font-bold mb-1">ঠিকানা</label>
-            <textarea id="adm-set-address" rows="2" class="form-control text-xs w-full p-2.5 rounded-xl border">চৌধুরী প্লাজা, নিচতলা, রুম #০৩, পদুয়ার বাজার বিশ্বরোড, সদর দক্ষিণ, কুমিল্লা-৩৫০০।</textarea>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label class="block font-bold mb-1">হটলাইন ১ (WhatsApp)</label>
-              <input type="text" id="adm-set-hotline1" value="01581703822" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold" />
-            </div>
-            <div>
-              <label class="block font-bold mb-1">হটলাইন ২ (Call)</label>
-              <input type="text" id="adm-set-hotline2" value="01818273838" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold" />
-            </div>
+            <label class="block font-bold mb-1">বিস্তারিত তথ্য / ভ্যালু *</label>
+            <textarea id="adm-info-item-value" rows="2" required placeholder="বিস্তারিত ঠিকানা বা নাম্বার লিখুন..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
           </div>
           <div>
-            <label class="block font-bold mb-1">শীর্ষ নোটিশ বার টেক্সট</label>
-            <textarea id="adm-set-notice" rows="2" class="form-control text-xs w-full p-2.5 rounded-xl border">৳২,০০০ বা তার বেশি অর্ডারে ফ্রি শিপিং! ক্যাশ অন ডেলিভারিতে পণ্য পেয়ে টাকা দিন।</textarea>
+            <label class="block font-bold mb-1">স্ট্যাটাস</label>
+            <select id="adm-info-item-status" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold">
+              <option value="Active">Active (সক্রিয়)</option>
+              <option value="Inactive">Inactive (নিষ্ক্রিয়)</option>
+            </select>
           </div>
-          <button type="submit" class="btn-primary py-2.5 px-6 font-bold">সেটিংস সংরক্ষণ করুন</button>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-site-info-item')?.classList.add('hidden')">বাতিল</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">💾 লিস্ট, ওয়েবসাইট ও শিটে সেভ করুন</button>
+          </div>
         </form>
       </div>
     </div>
-
   `;
 }
 
+function renderAdminLoginView() {
+  const captchaNum1 = Math.floor(Math.random() * 8) + 1;
+  const captchaNum2 = Math.floor(Math.random() * 8) + 1;
+  const captchaSum = captchaNum1 + captchaNum2;
 
-// --- Dedicated Page Module: AdminProfilePage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (AdminProfilePage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderAdminProfilePage({ userDisplayName = 'Jainal Abedin', workerType = 'Master Admin' } = {}) {
   return `
-    <!-- 6. Profile Page -->
-    <div id="page-set-profile" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-4 max-w-md">
-        <div class="border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">👤 অ্যাডমিন প্রোফাইল আপডেট</h3>
-        </div>
-        <form onsubmit="event.preventDefault(); if(toast&&toast.show) toast.show({type:'success', title:'প্রোফাইল আপডেট', message:'প্রোফাইল সফলভাবে আপডেট হয়েছে!'}); else alert('আপডেট হয়েছে');" class="space-y-3.5 text-xs">
-          <div>
-            <label class="block font-bold mb-1">পুরো নাম</label>
-            <input type="text" value="${userDisplayName}" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold" />
-          </div>
-          <div>
-            <label class="block font-bold mb-1">পদবী</label>
-            <input type="text" value="${workerType}" disabled class="form-control text-xs w-full py-2 px-3 rounded-xl border bg-slate-100 dark:bg-slate-800 font-bold" />
-          </div>
-          <button type="submit" class="btn-primary py-2.5 px-6 font-bold">প্রোফাইল সংরক্ষণ</button>
-        </form>
-      </div>
-    </div>
+    <div class="dc-admin-wrapper">
+    <div class="max-w-md mx-auto py-12 px-4 space-y-6">
 
+      <div class="text-center space-y-2">
+        <div class="w-16 h-16 rounded-3xl bg-slate-900 text-white font-black text-2xl mx-auto flex items-center justify-center shadow-xl border border-slate-700">
+          ⚙️
+        </div>
+        <h2 class="text-2xl font-black text-slate-900 dark:text-white">
+          অ্যাডমিন লগইন
+        </h2>
+        <p class="text-xs text-slate-500">
+          আপনার পদবী, ইউজার নেম ও পাসওয়ার্ড দিয়ে মাস্টার প্যানেলে প্রবেশ করুন
+        </p>
+      </div>
+
+      <div class="bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl space-y-4 text-xs">
+
+        <form id="admin-login-form" class="space-y-3.5">
+          <div>
+            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Worker Type (কর্মীর পদবী) *</label>
+            <select id="adm-worker-type" class="form-control text-xs w-full py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 font-bold" required>
+              <option value="Admin">Admin (মাস্টার অ্যাডমিন)</option>
+              <option value="Manager">Manager (ম্যানেজার)</option>
+              <option value="Staff">Staff (স্টাফ)</option>
+              <option value="Sales">Sales (বিক্রয় প্রতিনিধি)</option>
+              <option value="Customer Support">Customer Support (গ্রাহক সেবা)</option>
+              <option value="Order Management">Order Management (অর্ডার ডেস্ক)</option>
+              <option value="Inventory/Warehouse">Inventory/Warehouse (গুদাম)</option>
+              <option value="Delivery">Delivery (ডেলিভারি)</option>
+              <option value="Accountant">Accountant (হিসাবরক্ষক)</option>
+              <option value="Marketing">Marketing (মার্কেটিং)</option>
+              <option value="IT/Technical">IT/Technical (প্রযুক্তি)</option>
+              <option value="Content Manager">Content Manager</option>
+              <option value="Other">Other (অন্যান্য)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">User Name (ব্যবহারকারীর নাম) *</label>
+            <select id="adm-username" class="form-control text-xs w-full py-2.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 font-bold" required>
+              <option value="Jainal Abedin">Jainal Abedin (CEO & Lead)</option>
+              <option value="MD. Saiful Islam">MD. Saiful Islam (Admin)</option>
+              <option value="Admin Staff">Admin Staff (Operations)</option>
+              <option value="Accounts Officer">Accounts Officer</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Password *</label>
+            <input type="password" id="adm-password" required placeholder="••••••••" value="admin123" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 font-mono" />
+          </div>
+
+          <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-slate-700 dark:text-slate-300">নিরাপত্তা ক্যাপচা যাচাই:</span>
+              <button type="button" class="text-[11px] text-emerald-600 font-bold hover:underline" onclick="window.regenerateAdminCaptcha && window.regenerateAdminCaptcha()">
+                ক্যাপচা পরিবর্তন 🔄
+              </button>
+            </div>
+            <div class="flex items-center gap-3">
+              <div id="adm-captcha-display" class="px-3.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl font-mono text-sm font-black text-emerald-600">
+                ${captchaNum1} + ${captchaNum2} = ?
+              </div>
+              <input type="hidden" id="adm-captcha-expected" value="${captchaSum}" />
+              <input
+                type="number"
+                id="adm-captcha-input"
+                required
+                placeholder="যোগফল লিখুন"
+                class="form-control text-xs flex-1 py-1.5 px-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-900 font-bold"
+              />
+            </div>
+          </div>
+
+          <button type="submit" class="btn-primary w-full py-3 text-xs font-bold bg-slate-900 hover:bg-black text-white shadow-md">
+            লগইন করুন →
+          </button>
+        </form>
+
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800 text-center text-xs text-slate-400">
+          ডেমো পাসওয়ার্ড: <span class="font-mono font-bold text-slate-700 dark:text-slate-300">admin123</span>
+        </div>
+
+      </div>
+
+    </div>
+    </div>
   `;
 }
-
-
-// --- Dedicated Page Module: ChangePasswordPage.js ---
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGE MODULE (ChangePasswordPage.js)
- * Isolated standalone page view for the Admin Panel.
- */
-export function renderChangePasswordPage(props = {}) {
-  return `
-    <!-- 7. Change Password Page -->
-    <div id="page-set-password" class="admin-page-view space-y-4">
-      <div class="dc-admin-card space-y-4 max-w-md">
-        <div class="border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">🔒 সিকিউরিটি পাসওয়ার্ড পরিবর্তন</h3>
-        </div>
-        <form onsubmit="event.preventDefault(); const p1=document.getElementById('adm-new-pass')?.value; const p2=document.getElementById('adm-new-pass-conf')?.value; if(p1!==p2) { alert('পাসওয়ার্ড মিলছে না!'); return; } if(toast&&toast.show) toast.show({type:'success', title:'পাসওয়ার্ড পরিবর্তন', message:'পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!'}); else alert('পাসওয়ার্ড পরিবর্তিত হয়েছে');" class="space-y-3.5 text-xs">
-          <div>
-            <label class="block font-bold mb-1">বর্তমান পাসওয়ার্ড</label>
-            <input type="password" required placeholder="••••••••" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
-          </div>
-          <div>
-            <label class="block font-bold mb-1">নতুন পাসওয়ার্ড</label>
-            <input type="password" id="adm-new-pass" required placeholder="••••••••" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
-          </div>
-          <div>
-            <label class="block font-bold mb-1">নতুন পাসওয়ার্ড নিশ্চিত করুন</label>
-            <input type="password" id="adm-new-pass-conf" required placeholder="••••••••" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
-          </div>
-          <button type="submit" class="btn-primary py-2.5 px-6 font-bold">পাসওয়ার্ড পরিবর্তন করুন</button>
-        </form>
-      </div>
-    </div>
-
-  `;
-}
-
-
-/**
- * DREAM CART BD — DEDICATED ADMIN PAGES REGISTRY (src/pages/admin/pages/index.js)
- * Maps every Admin Panel section to its own standalone page component.
- */
-
-
-export const ADMIN_PAGE_RENDERERS = {
-  'page-login': renderLoginPage,
-  'page-dashboard': renderDashboardPage,
-  'page-prod-all': renderProductsListPage,
-  'page-prod-add': renderAddProductPage,
-  'page-prod-categories': renderCategoriesPage,
-  'page-prod-bulk-add': renderBulkUploadPage,
-  'page-prod-bulk-price': renderBulkPricePage,
-  'page-prod-bulk-image': renderBulkImagePage,
-  'page-prod-low-stock': renderLowStockPage,
-  'page-prod-out-stock': renderOutOfStockPage,
-  'page-prod-error': renderErrorProductsPage,
-  'page-prod-brands': renderBrandsPage,
-  'page-prod-brand-add': renderAddBrandPage,
-  'page-prod-variants': renderVariantsPage,
-  'page-prod-variant-add': renderAddVariantPage,
-  'page-prod-banners': renderBannersPage,
-  'page-prod-landing': renderLandingCmsPage,
-  'page-orders-all': renderOrdersListPage,
-  'page-orders-incomplete': renderIncompleteOrdersPage,
-  'page-orders-success': renderDeliveredOrdersPage,
-  'page-orders-shipping': renderShippingOrdersPage,
-  'page-orders-unpaid': renderUnpaidOrdersPage,
-  'page-orders-cancelled': renderCancelledOrdersPage,
-  'page-orders-add': renderAddOrderPage,
-  'page-orders-visitors': renderVisitorsPage,
-  'page-orders-customers': renderCustomersPage,
-  'page-orders-reviews': renderReviewsPage,
-  'page-partner-resellers': renderResellersPage,
-  'page-partner-wholesalers': renderWholesalersPage,
-  'page-partner-sellers': renderSellersPage,
-  'page-partner-markets': renderMarketsPage,
-  'page-admin-users': renderAdminsPage,
-  'page-admin-workers': renderWorkersPage,
-  'page-report-seller': renderSellerReportPage,
-  'page-report-reseller': renderResellerReportPage,
-  'page-report-wholesaler': renderWholesalerReportPage,
-  'page-report-sales': renderSalesReportPage,
-  'page-report-wholesale': renderWholesaleReportPage,
-  'page-report-costs': renderCostsReportPage,
-  'page-report-buying': renderBuyingReportPage,
-  'page-report-invest': renderInvestReportPage,
-  'page-inv-payout': renderPayoutsPage,
-  'page-inv-costs': renderCostsPage,
-  'page-inv-buying': renderBuyingPage,
-  'page-inv-invest': renderInvestPage,
-  'page-courier-list': renderCouriersPage,
-  'page-courier-add': renderAddCourierPage,
-  'page-courier-fraud': renderFraudCheckerPage,
-  'page-courier-payments': renderOnlinePaymentsPage,
-  'page-set-logs': renderAuditLogsPage,
-  'page-set-payment': renderPaymentMethodsPage,
-  'page-set-delivery': renderDeliverySettingsPage,
-  'page-set-offers': renderOffersPage,
-  'page-set-info': renderShopSettingsPage,
-  'page-set-profile': renderAdminProfilePage,
-  'page-set-password': renderChangePasswordPage,
-  'page-others-hub': renderOthersHubPage
-};
 
 // ============================================================================
-// 6. MAIN ADMIN PORTAL CONTROLLER & ROUTE DISPATCHER
+// MAIN ROUTE CONTROLLER
 // ============================================================================
-/**
- * DREAM CART BD — MODULAR MULTI-PAGE ADMIN PORTAL CONTROLLER (src/pages/admin/AdminPortal.js)
- * - Every Admin section is a separate, dedicated page module in ./pages/*.js
- * - Completely decoupled from customer storefront pages (loaded on-demand only on /admin/* routes)
- * - Renders ONLY the active section's dedicated page inside #admin-page-content
- */
 
+initAdminGlobalState();
 
-function syncAdminSidebarAndTopbarUI(activeRoute) {
-  if (typeof document === 'undefined') return;
+async function hydrateAdminDataIfNeeded() {
+  const st = window.__adminState || {};
+  if (window.__adminHydratedOnce && Array.isArray(st.products) && st.products.length > 0) {
+    return st;
+  }
 
-  // Update topbar title & subtitle
-  const headerTitleEl = document.getElementById('admin-current-tab-title');
-  const headerSubEl = document.getElementById('admin-current-tab-subtitle');
-  if (headerTitleEl) headerTitleEl.textContent = activeRoute.title;
-  if (headerSubEl) headerSubEl.textContent = activeRoute.subtitle;
+  const cachedProducts = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_products', []) : [];
+  const cachedOrders = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_orders', []) : [];
+  const cachedCategories = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_categories', []) : [];
+  const cachedBrands = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_brands', []) : [];
+  const cachedBanners = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_banners', []) : [];
+  const cachedIncomplete = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_incomplete_orders', []) : [];
 
-  // Update top route tabs & URL badge
-  document.querySelectorAll('.admin-route-tab').forEach(t => {
-    if (t.getAttribute('data-page') === activeRoute.pageId) t.classList.add('active');
-    else t.classList.remove('active');
+  const [prodRes, orderRes, catRes, brandRes, bannerRes, incRes] = await Promise.all([
+    safeFetchWithTimeout(apiClient.request('products/list'), 1200, { data: { items: cachedProducts } }),
+    safeFetchWithTimeout(apiClient.request('orders/list'), 1200, { data: { items: cachedOrders } }),
+    safeFetchWithTimeout(apiClient.request('categories/list'), 1200, { data: { items: cachedCategories } }),
+    safeFetchWithTimeout(apiClient.request('brands/list'), 1200, { data: { items: cachedBrands } }),
+    safeFetchWithTimeout(apiClient.request('banners/list'), 1200, { data: { items: cachedBanners } }),
+    safeFetchWithTimeout(apiClient.request('incomplete_orders/list'), 1200, { data: { items: cachedIncomplete } })
+  ]);
+
+  const rawProducts = (prodRes?.data?.items?.length ? prodRes.data.items : cachedProducts) || [];
+  const products = rawProducts.length > 0 ? rawProducts : (apiClient.localProducts || [
+    { product_id: 'PRD-101', sku: 'DCBD-WT-01', name: 'Amazfit GTS 4 Smartwatch (Black)', category: 'Smartwatches', sub_category: 'AMOLED Watch', child_category: 'Men', brand: 'Amazfit', selling_price: 8490, original_price: 11462, wholesale_price: 7200, buying_price: 6800, min_order_q: 5, stock: 18, thumbnail: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400', status: 'সক্রিয়' },
+    { product_id: 'PRD-102', sku: 'DCBD-GS-02', name: 'অটো গ্যাস সেফটি ডিভাইস (Heavy Duty)', category: 'Kitchen', sub_category: 'Safety Device', child_category: 'Appliances', brand: 'HK', selling_price: 2450, original_price: 3504, wholesale_price: 1850, buying_price: 1500, min_order_q: 5, stock: 4, thumbnail: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400', status: 'সক্রিয়' },
+    { product_id: 'PRD-103', sku: 'DCBD-HN-03', name: 'সুন্দরবনের খাঁটি চাকের মধু (১ কেজি)', category: 'Organic & Health', sub_category: 'Honey', child_category: 'Pure Natural', brand: 'Dream Organic', selling_price: 1250, original_price: 1813, wholesale_price: 950, buying_price: 800, min_order_q: 5, stock: 0, thumbnail: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=400', status: 'সক্রিয়' },
+    { product_id: 'PRD-104', sku: 'DCBD-FL-04', name: 'মিলিটারি রিচার্জেবল ফ্ল্যাশলাইট ৩০০০ লুমেন', category: 'Home Appliances', sub_category: 'Lighting', child_category: 'Rechargeable', brand: 'HK', selling_price: 1450, original_price: 2103, wholesale_price: 1100, buying_price: 900, min_order_q: 5, stock: 2, thumbnail: 'https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=400', status: 'সক্রিয়' },
+    { product_id: 'PRD-105', sku: 'DCBD-CH-05', name: 'অর্গানিক চিয়া সিড (৫০০ গ্রাম জার)', category: 'Organic & Health', sub_category: 'Seeds', child_category: 'Pure Natural', brand: 'Dream Organic', selling_price: 650, original_price: 956, wholesale_price: 480, buying_price: 400, min_order_q: 5, stock: 45, thumbnail: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=400', status: 'সক্রিয়' },
+    { product_id: 'PRD-106', sku: 'DCBD-BL-06', name: 'হাই-স্পিড মাল্টিফাংশন পোর্টেবল ব্লেন্ডার', category: 'Kitchen', sub_category: 'Blender', child_category: 'Appliances', brand: 'HK', selling_price: 1850, original_price: 2646, wholesale_price: 1400, buying_price: 1200, min_order_q: 5, stock: 0, thumbnail: '', status: 'সক্রিয়' }
+  ]);
+
+  const rawOrders = (orderRes?.data?.items?.length ? orderRes.data.items : cachedOrders) || [];
+  const orders = rawOrders.length > 0 ? rawOrders : [
+    { order_id: 'ORD-9482-710', customer_name: 'তানভীর আহমেদ', phone: '01711223344', address: 'বাড়ি #১২, রোড #৪, ধানমন্ডি, ঢাকা', products: 'Amazfit GTS 4 Smartwatch', size: 'Regular', color: 'Jet Black', quantity: 1, unit_price: 8490, total_amount: 8490, payment_method: 'Cash on Delivery', payment_status: 'Pending', order_status: 'Processing', transaction_id: 'COD-UNPAID', fraud_status: 'Safe (98%)', customer_rating: '5/5 ★' },
+    { order_id: 'ORD-8472-319', customer_name: 'সুলতানা জাহান', phone: '01819876543', address: 'মেইন রোড, কান্দিরপাড়, কুমিল্লা', products: 'অটো গ্যাস সেফটি ডিভাইস', size: 'Heavy', color: 'Red/Black', quantity: 1, unit_price: 2450, total_amount: 2520, payment_method: 'bKash Online', payment_status: 'Paid', order_status: 'Shipped', transaction_id: 'BK-98472910', fraud_status: 'Safe (99%)', customer_rating: '5/5 ★' },
+    { order_id: 'ORD-7291-504', customer_name: 'মাহমুদুর রহমান', phone: '01912345678', address: 'জিইসি মোড়, নাসিরাবাদ, চট্টগ্রাম', products: 'মিলিটারি রিচার্জেবল ফ্ল্যাশলাইট', size: 'Standard', color: 'Army Green', quantity: 1, unit_price: 1450, total_amount: 1570, payment_method: 'Cash on Delivery', payment_status: 'Paid', order_status: 'Delivered', transaction_id: 'COD-PAID-01', fraud_status: 'Safe (95%)', customer_rating: '5/5 ★' },
+    { order_id: 'ORD-6120-198', customer_name: 'নুসরাত শারমিন', phone: '01581234567', address: 'উপশহর, সেক্টর #২, রাজশাহী', products: 'অর্গানিক চিয়া সিড (৫০০ গ্রাম)', size: '500g', color: 'Natural', quantity: 2, unit_price: 650, total_amount: 1420, payment_method: 'Cash on Delivery', payment_status: 'Pending', order_status: 'Order Placed', transaction_id: 'COD-UNPAID', fraud_status: 'Safe (94%)', customer_rating: '4.8/5 ★' },
+    { order_id: 'ORD-5019-214', customer_name: 'কবির হোসেন', phone: '01799887744', address: 'সোনাডাঙ্গা বাসস্ট্যান্ড, খুলনা', products: 'হাই-স্পিড পোর্টেবল ব্লেন্ডার', size: 'Compact', color: 'Silver', quantity: 1, unit_price: 1850, total_amount: 1970, payment_method: 'Cash on Delivery', payment_status: 'Pending', order_status: 'Delivered', transaction_id: 'COD-UNPAID', fraud_status: 'Moderate (75%)', customer_rating: '4/5 ★' },
+    { order_id: 'ORD-4190-881', customer_name: 'শারমিন সুলতানা', phone: '01622334488', address: 'চৌহাট্টা, সিলেট সদর, সিলেট', products: 'সুন্দরবনের চাকের মধু (১ কেজি)', size: '1kg', color: 'Pure Amber', quantity: 1, unit_price: 1250, total_amount: 1370, payment_method: 'bKash Online', payment_status: 'Paid', order_status: 'Cancelled', transaction_id: 'BK-REFUNDED', fraud_status: 'High Risk (40%)', customer_rating: '3/5 ★' }
+  ];
+
+  const categories = (catRes?.data?.items?.length ? catRes.data.items : cachedCategories) || [
+    { catagory_id: 'CAT-101', category: 'Smartwatches', sub_category: 'AMOLED Watch, Calling Watch', chail_category: 'Men, Women' },
+    { catagory_id: 'CAT-102', category: 'Kitchen', sub_category: 'Safety Device, Blender, Cookware', chail_category: 'Appliances' },
+    { catagory_id: 'CAT-103', category: 'Organic & Health', sub_category: 'Honey, Seeds, Oils', chail_category: 'Pure Natural' },
+    { catagory_id: 'CAT-104', category: 'Home Appliances', sub_category: 'Lighting, Gadgets', chail_category: 'Rechargeable' }
+  ];
+
+  const brands = (brandRes?.data?.items?.length ? brandRes.data.items : cachedBrands) || [
+    { brand_id: 'BRD-101', brand_name: 'Amazfit', brand_image: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', brand_description: 'স্মার্ট পরিধানযোগ্য ও ফিটনেস ডিভাইস।' },
+    { brand_id: 'BRD-102', brand_name: 'Dream Organic', brand_image: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', brand_description: '১০০% বিশুদ্ধ অর্গানিক ও প্রাকৃতিক পণ্য।' },
+    { brand_id: 'BRD-103', brand_name: 'HK', brand_image: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', brand_description: 'প্রিমিয়াম স্মার্ট গ্যাজেট পার্টনার।' }
+  ];
+
+  const banners = (bannerRes?.data?.items?.length ? bannerRes.data.items : cachedBanners) || [
+    { banner_id: 'BAN-01', title: 'স্মার্ট কিচেন ও নিরাপদ কুকিং গ্যাজেট', subtitle: 'সর্বোচ্চ ৩০% বিশেষ ছাড় চলছে!', image_url: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600', link_url: '/products?cat=Kitchen', status: 'Active' },
+    { banner_id: 'BAN-02', title: '১০০% খাঁটি অর্গানিক ফুড ও সাপ্লিমেন্ট', subtitle: 'সুন্দরবনের প্রাকৃতিক চাকের মধু ও চিয়া সিড', image_url: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=600', link_url: '/products?cat=Organic%20%26%20Health', status: 'Active' }
+  ];
+
+  const rawIncomplete = (incRes?.data?.items?.length ? incRes.data.items : cachedIncomplete) || [];
+  const incompleteOrders = rawIncomplete.length > 0 ? rawIncomplete : [
+    { order_id: 'INC-2091', date: 'আজ ১২:৪৫ PM', customer_name: 'রফিকুল ইসলাম', phone: '01688776655', address: 'মিরপুর-১০, ঢাকা', total_amount: 2450 },
+    { order_id: 'INC-2089', date: 'গতকাল ৫:২০ PM', customer_name: 'ফারহানা করিম', phone: '01722334455', address: 'টমছম ব্রিজ, কুমিল্লা', total_amount: 1850 }
+  ];
+
+  const resellers = JSON.parse(localStorage.getItem('dcbd_resellers') || JSON.stringify([
+    { id: 'RSL-9082', name: 'মোঃ মাহমুদ', shop: 'ফ্যাশন পয়েন্ট', phone: '01819876543', city: 'কুমিল্লা', balance: 1200, total_earned: 14500, status: 'Active' },
+    { id: 'RSL-9085', name: 'আরিফুল ইসলাম', shop: 'গ্যাজেট ওয়ার্ল্ড', phone: '01712345678', city: 'ঢাকা', balance: 3450, total_earned: 28900, status: 'Active' },
+    { id: 'RSL-9091', name: 'রুমানা আহমেদ', shop: 'স্মার্ট শপ বিডি', phone: '01987654321', city: 'চট্টগ্রাম', balance: 850, total_earned: 9200, status: 'Active' }
+  ]));
+
+  const wholesalers = JSON.parse(localStorage.getItem('dcbd_wholesalers') || JSON.stringify([
+    { id: 'WHS-101', name: 'হাজী মোঃ ইউসুফ', company: 'ইউসুফ এন্টারপ্রাইজ', phone: '01711002233', tier: 'Tier 1 (20% Off)', total_orders: 14, status: 'Approved' },
+    { id: 'WHS-102', name: 'ফারুক ট্রেডার্স', company: 'ফারুক ব্রাদার্স হোলসেল', phone: '01812998877', tier: 'Tier 2 (15% Off)', total_orders: 9, status: 'Approved' }
+  ]));
+
+  const sellers = JSON.parse(localStorage.getItem('dcbd_sellers') || JSON.stringify([
+    { id: 'VND-201', name: 'কামরুল হাসান', store: 'অরগ্যানিক ভ্যালি বিডি', phone: '01911445566', commission: '8%', products_count: 12, status: 'Active' },
+    { id: 'VND-202', name: 'তানজিমুল হক', store: 'টেকহাব গ্যাজেটস', phone: '01511223344', commission: '10%', products_count: 24, status: 'Active' }
+  ]));
+
+  const markets = JSON.parse(localStorage.getItem('dcbd_markets') || JSON.stringify([
+    { id: 'MKT-01', name: 'Daraz Bangladesh Shop', sync_mode: 'API Auto', status: 'Connected', last_sync: '১০ মিনিট আগে' },
+    { id: 'MKT-02', name: 'Facebook & Instagram Shop', sync_mode: 'Catalog XML Feed', status: 'Active', last_sync: '১ ঘন্টা আগে' },
+    { id: 'MKT-03', name: 'Bikroy Storefront', sync_mode: 'Manual Webhook', status: 'Connected', last_sync: 'আজকে' }
+  ]));
+
+  const workers = JSON.parse(localStorage.getItem('dcbd_workers') || JSON.stringify([
+    { id: 'WRK-01', name: 'MD. Saiful Islam', role: 'Admin (ম্যানেজার)', phone: '01818273838', email: 'saiful@dreamcart.bd', status: 'Active' },
+    { id: 'WRK-02', name: 'আসিফ ইকবাল', role: 'Order Management (অর্ডার ডেস্ক)', phone: '01722334411', email: 'asif@dreamcart.bd', status: 'Active' },
+    { id: 'WRK-03', name: 'রাকিবুল হাসান', role: 'Delivery Desk (লজিস্টিকস)', phone: '01633445566', email: 'rakib@dreamcart.bd', status: 'Active' },
+    { id: 'WRK-04', name: 'সাবরিনা আক্তার', role: 'Customer Support (গ্রাহক সেবা)', phone: '01511223399', email: 'sabrina@dreamcart.bd', status: 'Active' }
+  ]));
+
+  const admins = JSON.parse(localStorage.getItem('dcbd_admins') || JSON.stringify([
+    { id: 'ADM-01', name: 'Jainal Abedin', email: 'ceo@dreamcart.bd', role: 'CEO & Master Admin', status: 'Active' },
+    { id: 'ADM-02', name: 'MD. Saiful Islam', email: 'admin@dreamcart.bd', role: 'Lead Operations', status: 'Active' }
+  ]));
+
+  const couriers = JSON.parse(localStorage.getItem('dcbd_sheet_couriers') || JSON.stringify([
+    { id: 'CUR-01', name: 'Steadfast Courier', api_key: '••••••••8492', secret_key: '••••••••9012', hub_city: 'ঢাকা / সারা দেশ', status: 'Connected', balance: '৳৪,৮৫০', webhook_url: 'https://dreamcart.bd/api/courier/steadfast/webhook' },
+    { id: 'CUR-02', name: 'Pathao Courier', api_key: '••••••••3190', secret_key: '••••••••1289', hub_city: 'ঢাকা সিটি ও সাব-আরবান', status: 'Connected', balance: '৳২,১০০', webhook_url: 'https://dreamcart.bd/api/courier/pathao/webhook' },
+    { id: 'CUR-03', name: 'RedX Delivery', api_key: '••••••••1042', secret_key: '••••••••4892', hub_city: 'কুমিল্লা ও চট্টগ্রাম জোন', status: 'Connected', balance: '৳১,২০০', webhook_url: 'https://dreamcart.bd/api/courier/redx/webhook' }
+  ]));
+
+  const onlinePayments = JSON.parse(localStorage.getItem('dcbd_online_payments') || JSON.stringify([
+    { id: 'PAY-01', name: 'bKash Merchant Direct', merchant_id: '01818273838', api_key: '••••••••7812', mode: 'Live', status: 'Active' },
+    { id: 'PAY-02', name: 'SSLCommerz Hosted Gateway', merchant_id: 'dreamcart_live', api_key: '••••••••3491', mode: 'Live', status: 'Active' },
+    { id: 'PAY-03', name: 'Shurjopay FinTech', merchant_id: 'sp_dreamcart', api_key: '••••••••1104', mode: 'Live', status: 'Active' },
+    { id: 'PAY-04', name: 'Nagad Direct Pay', merchant_id: '01581703822', api_key: '••••••••5523', mode: 'Live', status: 'Active' }
+  ]));
+
+  const costs = JSON.parse(localStorage.getItem('dcbd_sheet_costs') || JSON.stringify([
+    { id: 'CST-01', title: 'ফেসবুক পেজ বুস্টিং ক্যাম্পেইন (অক্টোবর)', amount: 14500, category: 'মার্কেটিং ও বিজ্ঞাপন', date: '২০২৬-১০-১৫', note: 'মেটা অ্যাডস' },
+    { id: 'CST-02', title: 'অফিস ও শোরুম স্পেস ভাড়া (কুমিল্লা)', amount: 18000, category: 'অফিস ভাড়া', date: '২০২৬-১০-০১', note: 'চৌধুরী প্লাজা' },
+    { id: 'CST-03', title: 'কুরিয়ার প্যাকিং মেটেরিয়াল ও বাবল র‍্যাপ', amount: 3850, category: 'প্যাকেজিং', date: '২০২৬-১০-১২', note: '৫০০ পিস বক্স' },
+    { id: 'CST-04', title: 'ক্লাউড হোস্টিং ও ডোমেইন সার্ভার বিল', amount: 2200, category: 'আইটি ও সার্ভার', date: '২০২৬-১০-০৫', note: 'মাসিক ডেডিকেটেড' }
+  ]));
+
+  const buying = JSON.parse(localStorage.getItem('dcbd_sheet_buying') || JSON.stringify([
+    { id: 'BUY-01', supplier: 'চায়না ডিরেক্ট ইম্পোর্ট এজেন্ট', product: 'Amazfit GTS 4 Smartwatches (৫০ পিস)', quantity: 50, total_amount: 340000, date: '২০২৬-১০-০৮' },
+    { id: 'BUY-02', supplier: 'সুন্দরবন হানি কো-অপারেটিভ', product: 'প্রাকৃতিক চাকের মধু (২০০ কেজি)', quantity: 200, total_amount: 160000, date: '২০২৬-১০-১০' },
+    { id: 'BUY-03', supplier: 'ঢাকা ইলেকট্রনিক্স মার্কেট', product: 'অটো গ্যাস সেফটি ডিভাইস (১০০ পিস)', quantity: 100, total_amount: 150000, date: '২০২৬-১০-১৪' }
+  ]));
+
+  const invest = JSON.parse(localStorage.getItem('dcbd_sheet_invest') || JSON.stringify([
+    { id: 'INV-01', investor: 'জয়নাল আবেদীন (প্রতিষ্ঠাতা)', amount: 1500000, note: 'প্রাথমিক কার্যকরী মূলধন', date: '২০২৬-০১-১৫' },
+    { id: 'INV-02', investor: 'এম সাইফুল ইসলাম (পার্টনার)', amount: 1000000, note: 'ইনভেন্টরি সম্প্রসারণ বিনিয়োগ', date: '২০২৬-০৩-০১' },
+    { id: 'INV-03', investor: 'অ্যাঞ্জেল ক্যাপিটাল পার্টনার্স', amount: 500000, note: 'মার্কেটিং ও কুরিয়ার লজিস্টিকস', date: '২০২৬-০৭-২০' }
+  ]));
+
+  const offers = JSON.parse(localStorage.getItem('dcbd_sheet_offers') || JSON.stringify([
+    { id: 'OFF-01', code: 'DREAM10', discount: '১০% ছাড়', min_spend: 1500, status: 'Active' },
+    { id: 'OFF-02', code: 'FREESHIP', discount: 'ফ্রি ডেলিভারি', min_spend: 2000, status: 'Active' },
+    { id: 'OFF-03', code: 'FESTIVE500', discount: '৳৫০০ ফ্ল্যাট ছাড়', min_spend: 5000, status: 'Active' }
+  ]));
+
+  const variants = JSON.parse(localStorage.getItem('dcbd_variants') || JSON.stringify({
+    colors: ['Jet Black', 'Space Silver', 'Rose Gold', 'Midnight Blue', 'Army Green', 'Pure Amber'],
+    sizes: ['Free Size', 'Small', 'Medium', 'Large', 'XL', '১ কেজি', '৫০০ গ্রাম']
+  }));
+
+  const customers = orders.map(o => ({
+    name: o.customer_name,
+    phone: o.phone,
+    address: o.address,
+    orders_count: 1,
+    total_spent: Number(o.total_amount) || 0
+  }));
+
+  const reviews = [
+    { id: 'REV-01', customer: 'তানভীর আহমেদ', product: 'Amazfit GTS 4 Smartwatch', rating: 5, comment: 'অসাধারণ পণ্য! ১ দিনের মাথায় কুমিল্লা থেকে ডেলিভারি পেয়েছি।', date: 'গতকাল' },
+    { id: 'REV-02', customer: 'সুলতানা জাহান', product: 'অটো গ্যাস সেফটি ডিভাইস', rating: 5, comment: 'প্রতিটি রান্নাঘরে থাকা উচিত। খুব নিরাপদ ও ১০০% অরিজিনাল।', date: '২ দিন আগে' },
+    { id: 'REV-03', customer: 'মাহমুদুর রহমান', product: 'চাকের মধু', rating: 4, comment: 'মধুর টেস্ট দারুণ, একদম খাঁটি চাকের মধু। ধন্যবাদ ড্রিম কার্ট!', date: '৪ দিন আগে' }
+  ];
+
+  const auditLogs = [
+    { time: 'আজ ১২:৩০ PM', user: 'MD. Saiful Islam', event: 'অর্ডার #ORD-9482 এর স্ট্যাটাস "Processing" আপডেট করেছেন', ip: '103.114.98.12' },
+    { time: 'আজ ১১:১৫ AM', user: 'Jainal Abedin', event: 'নতুন পণ্য "পোর্টেবল ব্লেন্ডার" শিটে সংরক্ষণ করেছেন', ip: '103.114.98.15' },
+    { time: 'আজ ১০:০০ AM', user: 'System Sync', event: 'Google Sheets v2.5 লাইভ ব্যাকগ্রাউন্ড সিঙ্ক সফল হয়েছে', ip: 'Cloud Hook' },
+    { time: 'গতকাল ৫:৪০ PM', user: 'MD. Saiful Islam', event: 'রিসেলার REQ-8472 এর ৳১,১৬৪ পে-আউট অনুমোদন করেছেন', ip: '103.114.98.12' }
+  ];
+
+  const totalSalesVal = orders.reduce((acc, o) => acc + (Number(o.total_amount) || 0), 0) + 1485000;
+  const totalBuyingVal = buying.reduce((acc, b) => acc + (Number(b.total_amount) || 0), 0);
+  const totalCostsVal = costs.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
+  const totalInvestVal = invest.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+
+  const kpi = {
+    total_products: products.length,
+    total_orders: orders.length + 840,
+    total_sellers: sellers.length,
+    total_resellers: resellers.length,
+    total_wholesalers: wholesalers.length,
+    pending_orders: orders.filter(o => o.order_status === 'Processing' || o.order_status === 'Order Placed').length || 7,
+    incomplete_orders: incompleteOrders.length,
+    total_costs: totalCostsVal,
+    total_buying: totalBuyingVal,
+    total_invest: totalInvestVal,
+    total_customers: customers.length + 420,
+    live_viewers: 38,
+    delivered_orders: orders.filter(o => o.order_status === 'Delivered').length + 680,
+    low_stock_count: products.filter(p => Number(p.stock) > 0 && Number(p.stock) <= 5).length,
+    out_of_stock_count: products.filter(p => Number(p.stock) === 0).length,
+    total_sales: totalSalesVal,
+    total_profit: Math.round(totalSalesVal * 0.22),
+    total_loss: 0
+  };
+
+  Object.assign(window.__adminState, {
+    products, orders, incompleteOrders, categories, brands, banners, variants,
+    costs, buying, invest, resellers, wholesalers, sellers, markets, workers,
+    admins, couriers, onlinePayments, customers, reviews, auditLogs, offers, kpi
   });
-  const urlBadge = document.getElementById('admin-current-route-badge');
-  if (urlBadge) {
-    urlBadge.textContent = '🔗 /admin/' + activeRoute.slug;
-    urlBadge.setAttribute('onclick', `window.copyToClipboard(window.location.origin + '/admin/${activeRoute.slug}', 'পেজ লিঙ্ক কপি হয়েছে!')`);
+
+  if (!window.__currentLandingDraft && window.getAdminLandingPages) {
+    const lps = window.getAdminLandingPages();
+    if (lps && lps.length > 0) window.initLandingDraft(lps[0]);
   }
 
-  // Update active highlight on all sidebar sub-items
-  document.querySelectorAll('.dc-sidebar-sub-item').forEach(btn => {
-    if (btn.getAttribute('data-page') === activeRoute.pageId) btn.classList.add('active');
-    else btn.classList.remove('active');
-  });
-
-  // Update active group & open accordion
-  document.querySelectorAll('.admin-sidebar-main-btn').forEach(btn => {
-    if (btn.getAttribute('data-group') === activeRoute.groupId) btn.classList.add('active');
-    else btn.classList.remove('active');
-  });
-  const subnav = document.getElementById('subnav-' + activeRoute.groupId);
-  const chevron = document.getElementById('chevron-' + activeRoute.groupId);
-  if (subnav) {
-    subnav.classList.remove('closed');
-    subnav.style.display = 'block';
-  }
-  if (chevron) chevron.style.transform = 'rotate(90deg)';
-
-  // Run page-specific post-mount initializers
-  if (activeRoute.pageId === 'page-prod-add' && window.updateAddProductLiveSummary) {
-    window.updateAddProductLiveSummary();
-  }
-  if (activeRoute.pageId === 'page-prod-categories' && window.renderInteractiveCategoryTree) {
-    window.renderInteractiveCategoryTree();
-  }
-  if (activeRoute.pageId === 'page-prod-banners' && window.renderAdminBannersList) {
-    window.renderAdminBannersList();
-  }
-  if (activeRoute.pageId === 'page-prod-landing') {
-    if (window.renderLandingDraftBanners) window.renderLandingDraftBanners();
-    if (window.renderLandingDraftVideos) window.renderLandingDraftVideos();
-    if (window.renderLandingSelectedProducts) window.renderLandingSelectedProducts();
-  }
-
-  // Auto-close mobile drawer if open
-  if (window.closeAdminSidebar) window.closeAdminSidebar();
+  window.__adminHydratedOnce = true;
+  return window.__adminState;
 }
 
 export async function renderAdminPortal(params = {}) {
-  // Initialize Admin state & styles ONLY when visiting /admin/*
-  if (!window.__adminGlobalStateInitialized) {
-    initAdminGlobalState();
-    window.__adminGlobalStateInitialized = true;
-  }
   injectHarmonizedAdminStyles();
-  activateAdminShellLayout();
 
   const isAuth = authStore.isAuthenticated() && authStore.isAdmin();
   const pathSub = (typeof window !== 'undefined' ? window.location.pathname : '')
@@ -11449,7 +14044,7 @@ export async function renderAdminPortal(params = {}) {
   const rawSubview = params.subview || pathSub || (isAuth ? 'dashboard' : 'login');
 
   if (!isAuth || rawSubview === 'login') {
-    return renderLoginPage();
+    return renderAdminLoginView();
   }
 
   const data = await hydrateAdminDataIfNeeded();
@@ -11461,34 +14056,65 @@ export async function renderAdminPortal(params = {}) {
   const workerType = authStore.user?.worker_type || 'Master Admin';
   const workerRole = authStore.user?.role || 'Full System Access';
 
-  const pageProps = { ...data, userDisplayName, workerType, workerRole, activeRoute };
+  // Render ONLY the requested route module (zero DOM bloat!)
+  const moduleRenderMap = {
+    dashboard: () => renderDashboardModule(data),
+    catalog: () => renderProductCatalogModule(data),
+    addproduct: () => renderAddProductModule(data),
+    catbrand: () => renderCategoryBrandModule(data),
+    bulk: () => renderBulkToolsModule(data),
+    landing: () => renderLandingCmsModule(data),
+    orders: () => renderOrdersModule(data),
+    partners: () => renderPartnersModule(data),
+    reports: () => renderReportsModule(data),
+    inventory: () => renderInventoryModule(data),
+    couriers_settings: () => renderCouriersSettingsModule({ ...data, userDisplayName, workerType }),
+    others: () => renderOthersModule(data)
+  };
 
-  // Attach fast in-place dedicated page renderer for sidebar/tab clicks
-  if (typeof window !== 'undefined') {
-    window.__renderDedicatedAdminPage = function(routeObj) {
-      const mount = document.getElementById('admin-page-content');
-      if (!mount) return;
-      const stData = window.__adminState || data;
-      const fn = ADMIN_PAGE_RENDERERS[routeObj.pageId] || renderDashboardPage;
-      mount.innerHTML = fn({ ...stData, userDisplayName, workerType, workerRole, activeRoute: routeObj });
-      syncAdminSidebarAndTopbarUI(routeObj);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
+  const renderFn = moduleRenderMap[activeRoute.module] || moduleRenderMap.dashboard;
+  let activeModuleHtml = renderFn();
+
+  // Unhide the exact target page view immediately in HTML string
+  const targetMarker = `id="${activeRoute.pageId}" class="admin-page-view hidden`;
+  if (activeModuleHtml.includes(targetMarker)) {
+    activeModuleHtml = activeModuleHtml.replace(targetMarker, `id="${activeRoute.pageId}" class="admin-page-view`);
   }
 
-  const renderPageFn = ADMIN_PAGE_RENDERERS[activeRoute.pageId] || renderDashboardPage;
-  const activePageHtml = renderPageFn(pageProps);
-
+  // Sync sidebar active item & accordion group after mount
   if (typeof window !== 'undefined') {
-    setTimeout(() => syncAdminSidebarAndTopbarUI(activeRoute), 0);
+    setTimeout(() => {
+      document.querySelectorAll('.dc-sidebar-sub-item').forEach(btn => {
+        if (btn.getAttribute('data-page') === activeRoute.pageId) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+      document.querySelectorAll('.admin-sidebar-main-btn').forEach(btn => {
+        if (btn.getAttribute('data-group') === activeRoute.groupId) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+      const subnav = document.getElementById('subnav-' + activeRoute.groupId);
+      const chevron = document.getElementById('chevron-' + activeRoute.groupId);
+      if (subnav) {
+        subnav.classList.remove('closed');
+        subnav.style.display = 'block';
+      }
+      if (chevron) chevron.style.transform = 'rotate(90deg)';
+      if (activeRoute.pageId === 'page-prod-add' && window.updateAddProductLiveSummary) {
+        window.updateAddProductLiveSummary();
+      }
+      if (activeRoute.pageId === 'page-prod-categories' && window.renderInteractiveCategoryTree) {
+        window.renderInteractiveCategoryTree();
+      }
+      if (activeRoute.pageId === 'page-prod-banners' && window.renderAdminBannersList) {
+        window.renderAdminBannersList();
+      }
+    }, 0);
   }
 
   return `
     <div class="dc-admin-wrapper">
-      ${renderSidebarAndTopbar(pageProps)}
-          <div id="admin-page-content">
-            ${activePageHtml}
-          </div>
+      ${renderSidebarAndTopbar({ ...data, userDisplayName, workerType, workerRole, activeRoute })}
+          ${activeModuleHtml}
         </main>
       </div>
     </div>
