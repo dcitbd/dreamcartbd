@@ -17,7 +17,8 @@
  *   - Fully dynamic: Supports custom Landing Pages created via Admin CMS (+ নতুন ল্যান্ডিং পেজ তৈরি করুন).
  */
 
-import { apiClient, getGlobalDeliveryMethods, getGlobalSiteSettings, formatCurrency } from '../../api/client.js';
+import { apiClient, getGlobalDeliveryMethods, getGlobalSiteSettings } from '../../api/client.js';
+import { formatCurrency } from '../../utils/format.js';
 import { toast } from '../../components/Toast.js';
 
 // Global state for interactive package & options selection on the landing page
@@ -198,7 +199,6 @@ if (typeof window !== 'undefined') {
   // Live countdown timer logic
   window.initLpCountdown = function() {
     function updateTimer() {
-      // Countdown based on end of current month + 46 days demo
       const now = new Date().getTime();
       let target = window.__lpCountdownTarget;
       if (!target) {
