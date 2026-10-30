@@ -1,3 +1,5 @@
+import { formatCurrency } from '../utils/format.js';
+export { formatCurrency };
 /**
  * DREAM CART BD — UNIFIED API CLIENT & LIVE SHEET SYNC ENGINE
  * Connects directly to Google Sheets via GViz API (JSONP) & Google Apps Script Web App Gateway
