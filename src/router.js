@@ -230,12 +230,15 @@ export const router = {
     if (!appContainer) return;
 
     const isLanding = path === '/landing' || path.startsWith('/landing/');
+    const isAdmin = path === '/admin' || path.startsWith('/admin/');
+    const isSpecial = isLanding || isAdmin;
+
     const headerMount = document.getElementById('header-mount');
     const footerMount = document.getElementById('footer-mount');
     const mobileNavMount = document.getElementById('mobilenav-mount');
     const floatingActionsMount = document.getElementById('floatingactions-mount');
 
-    if (isLanding) {
+    if (isSpecial) {
       if (headerMount) headerMount.style.display = 'none';
       if (footerMount) footerMount.style.display = 'none';
       if (mobileNavMount) mobileNavMount.style.display = 'none';

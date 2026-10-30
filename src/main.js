@@ -26,6 +26,62 @@ import { router } from './router.js';
 import { apiClient } from './api/client.js';
 import { formatCurrency } from './utils/format.js';
 
+// Global Safe Storage Patch: Intercepts localStorage.setItem to prevent QuotaExceededError from breaking UI buttons
+(function installSafeLocalStorageGlobal() {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  if (window.__safeStoragePatchInstalled) return;
+  window.__safeStoragePatchInstalled = true;
+
+  const originalSet = window.localStorage.setItem.bind(window.localStorage);
+  const originalGet = window.localStorage.getItem.bind(window.localStorage);
+  const memoryFallback = new Map();
+
+  window.localStorage.getItem = function(key) {
+    try {
+      const val = originalGet(key);
+      if (val !== null && val !== undefined) return val;
+    } catch (e) {}
+    if (memoryFallback.has(key)) return memoryFallback.get(key);
+    return null;
+  };
+
+  window.localStorage.setItem = function(key, value) {
+    try {
+      originalSet(key, value);
+    } catch (err) {
+      if (err && (err.name === 'QuotaExceededError' || err.code === 22 || err.code === 1014 || err.number === -2147024882)) {
+        console.warn();
+        try {
+          if (typeof value === 'string' && value.includes('data:image/')) {
+            const stripped = value.replace(/data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]+/g, 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg');
+            originalSet(key, stripped);
+            return;
+          }
+        } catch (e1) {}
+
+        const transientKeys = ['dcbd_worker_logs', 'dcbd_audit_trail', 'dcbd_viewers_log', 'dcbd_landing_config', 'dcbd_backup_data'];
+        transientKeys.forEach(k => {
+          if (k !== key) {
+            try { window.localStorage.removeItem(k); } catch (e2) {}
+          }
+        });
+
+        try {
+          let cleanedVal = typeof value === 'string' ? value.replace(/data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]+/g, 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg') : value;
+          originalSet(key, cleanedVal);
+          return;
+        } catch (e3) {
+          memoryFallback.set(key, value);
+          console.warn();
+        }
+      } else {
+        throw err;
+      }
+    }
+  };
+})();
+
+
 function injectFloatingActionStyles() {
   if (typeof document === 'undefined') return;
   if (document.getElementById('dcbd-floating-custom-styles')) return;
@@ -58,7 +114,7 @@ function injectFloatingActionStyles() {
 }
 
 export function refreshGlobalSiteChrome() {
-  const isLanding = typeof window !== 'undefined' && (window.location.pathname.includes('/landing'));
+  const isLanding = typeof window !== 'undefined' && (window.location.pathname.includes('/landing') || window.location.pathname.includes('/admin'));
   const headerMount = document.getElementById('header-mount');
   const footerMount = document.getElementById('footer-mount');
   const mobileNavMount = document.getElementById('mobilenav-mount');

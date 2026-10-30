@@ -180,3 +180,6 @@ export const toast = new ToastManager();
 if (typeof window !== "undefined") {
   window.toast = toast;
 }
+
+export const Toast = toast;
+export { ToastManager };
