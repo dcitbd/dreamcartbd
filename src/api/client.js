@@ -460,26 +460,41 @@ export async function sendToAppsScript(action, payload) {
     }
   } catch (e) {}
 
-  // Always fire non-blocking POST as well (or if JSONP didn't return success) so full data reaches Apps Script doPost
-  if (!jsonpRes || !(jsonpRes.status === 'success' || jsonpRes.success)) {
-    try {
-      const fullStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
-      const bodyParams = new URLSearchParams();
-      bodyParams.append('action', action);
-      bodyParams.append('payload', fullStr);
-      bodyParams.append('data', fullStr);
-      bodyParams.append('spreadsheet_id', SPREADSHEET_ID);
+  // Always fire POST requests (both text/plain and urlencoded) so full data reliably reaches Apps Script doPost
+  try {
+    const fullStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
 
-      fetch(`${APPS_SCRIPT_URL}?action=${encodeURIComponent(action)}`, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: bodyParams.toString()
-      }).catch(() => {});
-    } catch (err) {}
-  }
+    // 1. Send simple CORS-free text/plain JSON payload
+    fetch(`${APPS_SCRIPT_URL}?action=${encodeURIComponent(action)}`, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify({
+        action: action,
+        payload: payload,
+        data: payload,
+        spreadsheet_id: SPREADSHEET_ID
+      })
+    }).catch(() => {});
+
+    // 2. Also send form urlencoded payload
+    const bodyParams = new URLSearchParams();
+    bodyParams.append('action', action);
+    bodyParams.append('payload', fullStr);
+    bodyParams.append('data', fullStr);
+    bodyParams.append('spreadsheet_id', SPREADSHEET_ID);
+
+    fetch(`${APPS_SCRIPT_URL}?action=${encodeURIComponent(action)}`, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: bodyParams.toString()
+    }).catch(() => {});
+  } catch (err) {}
 
   return jsonpRes || { status: 'success', success: true };
 }
@@ -1018,8 +1033,23 @@ class ApiClient {
     } catch (e) {}
   }
 
-  async request(action, payload = {}) {
-    switch (action) {
+  async request(action, payloadOrMethod = {}, maybePayload = undefined) {
+    let payload = payloadOrMethod;
+    if (maybePayload !== undefined) {
+      payload = maybePayload;
+    } else if (typeof payloadOrMethod === 'string' && (payloadOrMethod === 'POST' || payloadOrMethod === 'GET')) {
+      payload = {};
+    }
+    if (!payload || typeof payload !== 'object') {
+      payload = {};
+    }
+
+    const cleanAction = String(action || '').trim().replace(/^[\-_\/]+|[\-_\/]+$/g, '');
+    let normAction = cleanAction.replace('landing-pages', 'landing_pages');
+    if (normAction === 'settings/save') normAction = 'settings/update';
+    if (normAction === 'landing_pages/save') normAction = 'landing_pages/add';
+    if (normAction.startsWith('others_market/')) normAction = normAction.replace('others_market/', 'markets/');
+    switch (normAction) {
       case "products/list": {
         const products = await this.loadProductsFromSheet();
         // Filter out explicitly inactive products on storefront unless admin requests all
@@ -1478,6 +1508,9 @@ class ApiClient {
           const rows = await fetchSheetViaGviz('Orders');
           if (rows && rows.length > 0) {
             sheetOrders = rows.map((r, i) => normalizeSheetOrderRow(r, i)).filter(Boolean);
+            // Requirement 7: The orders at the bottom of the Google Sheet are the newest orders!
+            // Reverse so that the sheet's bottom orders appear at the beginning of the site list!
+            sheetOrders.reverse();
           }
         } catch (e) {}
 
@@ -1925,10 +1958,49 @@ class ApiClient {
       case "settings/add":
       case "settings/delete":
       case "banners/add":
-      case "banners/update":
+      case "banners/create":
+      case "banners/update": {
+        const bannerId = safeStr(payload.banner_id || payload.id || ("BAN-" + Math.floor(100 + Math.random() * 900)));
+        const newBanner = {
+          banner_id: bannerId,
+          id: bannerId,
+          title: safeStr(payload.title || "ব্যানার স্লাইডার"),
+          subtitle: safeStr(payload.subtitle || ""),
+          image_url: normalizeSingleImageUrl(payload.image_url || payload.image || DEFAULT_PRODUCT_THUMB),
+          link_url: safeStr(payload.link_url || payload.link || "/products"),
+          cta_text: safeStr(payload.cta_text || payload.button_text || "এখনই কিনুন →"),
+          position: Number(payload.position || 1),
+          status: safeStr(payload.status || "Active")
+        };
+
+        let currentBanners = this.sheetBanners || this.loadLocal('dcbd_sheet_banners', null) || [];
+        const existingIdx = currentBanners.findIndex(b => String(b.banner_id || b.id).toLowerCase() === String(bannerId).toLowerCase());
+        if (existingIdx >= 0) {
+          currentBanners[existingIdx] = { ...currentBanners[existingIdx], ...newBanner };
+        } else {
+          currentBanners.unshift(newBanner);
+        }
+        this.sheetBanners = currentBanners;
+        this.saveLocal('dcbd_sheet_banners', currentBanners);
+        if (typeof window !== 'undefined' && window.__adminState) {
+          window.__adminState.banners = currentBanners;
+        }
+
+        await sendToAppsScript("banners/add", newBanner);
+        return { success: true, status: "success", data: newBanner, message: "ব্যানার তালিকা ও গুগল শিটে সংরক্ষিত হয়েছে!" };
+      }
+
       case "banners/delete": {
-        await sendToAppsScript(action, payload);
-        return { success: true, status: "success", data: payload };
+        const id = String(payload.banner_id || payload.id || '').trim().toLowerCase();
+        let currentBanners = this.sheetBanners || this.loadLocal('dcbd_sheet_banners', null) || [];
+        currentBanners = currentBanners.filter(b => String(b.banner_id || b.id).toLowerCase() !== id);
+        this.sheetBanners = currentBanners;
+        this.saveLocal('dcbd_sheet_banners', currentBanners);
+        if (typeof window !== 'undefined' && window.__adminState) {
+          window.__adminState.banners = currentBanners;
+        }
+        await sendToAppsScript("banners/delete", payload);
+        return { success: true, status: "success" };
       }
 
       case "viewers/log": {
