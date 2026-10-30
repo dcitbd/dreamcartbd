@@ -312,9 +312,19 @@ function dispatchAction(action, payload) {
 
     case "settings/list":
       return getSheetDataAsJson(ss, "Settings");
+    case "settings/save":
     case "settings/update":
     case "settings/add":
       return handleSettingsUpdate(ss, payload);
+    case "landing_pages/save":
+    case "landing-pages/save":
+      return handleLandingPageUpsert(ss, payload);
+    case "others_market/create":
+    case "others_market/add":
+    case "others_market/update":
+      return handleOthersMarketUpsert(ss, payload);
+    case "others_market/delete":
+      return handleGenericDelete(ss, "Others_Market", [0, 2, 3], payload.shop_id || payload.id || payload.market_name);
     case "settings/delete":
       return handleSettingsDelete(ss, payload.name || payload.id);
 
@@ -914,24 +924,44 @@ function handleBannerAdd(ss, payload) {
   var sheet = ensureSheetWithHeaders(ss, "Banners", [
     "Banner_ID", "Title", "Image_URL", "Link", "Position", "Status"
   ]);
-  var bId = String(payload.banner_id || ("BAN-" + Math.floor(100 + Math.random() * 900))).trim();
+  var histSheet = ensureSheetWithHeaders(ss, "Banners_History", [
+    "Date", "Banner_ID", "Title", "Image_URL", "Link", "Position", "Status", "Action"
+  ]);
+  var bId = String(payload.banner_id || payload.id || ("BAN-" + Math.floor(100 + Math.random() * 900))).trim();
   var row = [
     bId,
     payload.title || "",
-    payload.image_url || "",
+    payload.image_url || payload.image || "",
     payload.link_url || payload.link || "/products",
-    payload.position || 1,
+    Number(payload.position || 1),
     payload.status || "Active"
   ];
+  var isUpdate = false;
   var data = sheet.getDataRange().getValues();
   for (var i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === bId) {
       sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return { status: "success", success: true };
+      isUpdate = true;
+      break;
     }
   }
-  sheet.appendRow(row);
-  return { status: "success", success: true };
+  if (!isUpdate) {
+    sheet.appendRow(row);
+  }
+
+  // Always log addition / update to Banners_History sheet
+  histSheet.appendRow([
+    nowDhaka(),
+    bId,
+    payload.title || "",
+    payload.image_url || payload.image || "",
+    payload.link_url || payload.link || "/products",
+    Number(payload.position || 1),
+    payload.status || "Active",
+    isUpdate ? "Updated" : "Added"
+  ]);
+
+  return { status: "success", success: true, message: "Banner saved to Sheet & History!" };
 }
 
 function handleReviewAdd(ss, payload) {
