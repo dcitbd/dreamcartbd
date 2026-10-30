@@ -255,13 +255,14 @@ export const router = {
     const hasWarmCache = Array.isArray(apiClient.sheetProducts) && apiClient.sheetProducts.length > 0;
     const isIntraAdmin = path.startsWith('/admin') && !!appContainer.querySelector('.dc-admin-wrapper');
 
-    // Only show skeleton loader if cache is completely cold
+    // Show luxury modern loader when transition begins
     if (!isIntraAdmin && !hasWarmCache) {
       appContainer.innerHTML = `
-        <div class="py-16 sm:py-24 flex flex-col items-center justify-center max-w-7xl mx-auto space-y-6 px-4">
+        <div class="py-20 sm:py-28 flex flex-col items-center justify-center max-w-xl mx-auto space-y-6 px-4">
           <div class="relative flex items-center justify-center">
-            <div class="absolute w-24 h-24 rounded-3xl bg-emerald-500/20 dark:bg-emerald-500/30 animate-ping"></div>
-            <div class="relative w-20 h-20 rounded-2xl bg-white dark:bg-slate-900 border-2 border-emerald-500/60 p-2 shadow-2xl shadow-emerald-500/20 flex items-center justify-center overflow-hidden">
+            <div class="absolute w-28 h-28 rounded-full bg-emerald-500/15 dark:bg-emerald-400/20 blur-xl animate-pulse"></div>
+            <div class="absolute w-24 h-24 rounded-full border-4 border-slate-200 dark:border-slate-800 border-t-emerald-500 dark:border-t-emerald-400 animate-spin" style="animation-duration: 0.85s;"></div>
+            <div class="relative w-16 h-16 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-2.5 shadow-xl shadow-emerald-500/10 flex items-center justify-center overflow-hidden">
               <img 
                 src="https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg" 
                 alt="Dream Cart BD Logo" 
@@ -270,12 +271,15 @@ export const router = {
               />
             </div>
           </div>
-          <div class="text-center space-y-1.5">
+          <div class="text-center space-y-2.5 max-w-sm">
             <div class="text-sm font-extrabold text-slate-800 dark:text-white flex items-center justify-center gap-2">
-              <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>পণ্য লোড হচ্ছে...</span>
+              <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span>ক্যাটালগ ও পণ্য লোড হচ্ছে...</span>
             </div>
-            <p class="text-xs text-slate-400 dark:text-slate-500 font-medium">Dream Cart BD • লাইভ ক্যাটালগ সিঙ্ক হচ্ছে</p>
+            <div class="w-44 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden mx-auto">
+              <div class="w-full h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 rounded-full animate-shimmer" style="background-size: 200% 100%;"></div>
+            </div>
+            <p class="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Dream Cart BD • লাইভ ক্যাটালগ প্রস্তুত করা হচ্ছে</p>
           </div>
         </div>
       `;

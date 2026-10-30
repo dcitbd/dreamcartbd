@@ -2146,3 +2146,17 @@ header.site-header, header {
 @media (min-width: 640px) {
   .sm\:hidden { display: none !important; }
 }
+
+/* Shimmer Animation for Linear Loaders */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s infinite linear;
+}
