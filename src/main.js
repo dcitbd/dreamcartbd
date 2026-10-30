@@ -58,8 +58,31 @@ function injectFloatingActionStyles() {
 }
 
 export function refreshGlobalSiteChrome() {
-  updateHeader();
+  const isLanding = typeof window !== 'undefined' && (window.location.pathname.includes('/landing'));
+  const headerMount = document.getElementById('header-mount');
   const footerMount = document.getElementById('footer-mount');
+  const mobileNavMount = document.getElementById('mobilenav-mount');
+  const floatingActionsMount = document.getElementById('floatingactions-mount');
+  const appContainer = document.getElementById('app-content');
+
+  if (isLanding) {
+    if (headerMount) headerMount.style.display = 'none';
+    if (footerMount) footerMount.style.display = 'none';
+    if (mobileNavMount) mobileNavMount.style.display = 'none';
+    if (floatingActionsMount) floatingActionsMount.style.display = 'none';
+    if (appContainer) appContainer.className = 'w-full min-h-screen p-0 m-0';
+    return;
+  }
+
+  if (headerMount) headerMount.style.display = '';
+  if (footerMount) footerMount.style.display = '';
+  if (mobileNavMount) mobileNavMount.style.display = '';
+  if (floatingActionsMount) floatingActionsMount.style.display = '';
+  if (appContainer && appContainer.className.includes('p-0')) {
+    appContainer.className = 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-20';
+  }
+
+  updateHeader();
   if (footerMount) footerMount.innerHTML = renderFooter();
   updateMobileNav();
   updateCartDrawer();

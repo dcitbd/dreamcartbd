@@ -494,26 +494,100 @@ img { max-width: 100%; display: block; }
 }
 .toast-item {
   pointer-events: auto;
-  min-width: 280px;
-  max-width: 400px;
-  background: #ffffff;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.15);
-  padding: 0.85rem 1.15rem;
+  min-width: 290px;
+  max-width: 420px;
+  border-radius: 14px;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.12);
+  padding: 0.9rem 1.15rem;
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
+  color: #ffffff;
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
   animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: transform 0.25s ease, opacity 0.25s ease;
 }
+
+/* POSITIVE (SUCCESS) — VIBRANT EMERALD GREEN BACKGROUND */
+.toast-item.toast-success {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+  border: 1px solid #10b981 !important;
+  box-shadow: 0 14px 32px rgba(5, 150, 105, 0.38), 0 4px 10px rgba(4, 120, 87, 0.25) !important;
+}
+.toast-icon-wrap.toast-icon-success {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* NEGATIVE (ERROR / REPORT) — RICH CRIMSON RED BACKGROUND */
+.toast-item.toast-error {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  border: 1px solid #ef4444 !important;
+  box-shadow: 0 14px 32px rgba(220, 38, 38, 0.38), 0 4px 10px rgba(185, 28, 28, 0.25) !important;
+}
+.toast-icon-wrap.toast-icon-error {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* WARNING — RICH AMBER BACKGROUND */
+.toast-item.toast-warning {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+  border: 1px solid #f59e0b !important;
+  box-shadow: 0 14px 32px rgba(217, 119, 6, 0.38), 0 4px 10px rgba(180, 83, 9, 0.25) !important;
+}
+.toast-icon-wrap.toast-icon-warning {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* INFO — VIVID ROYAL BLUE BACKGROUND */
+.toast-item.toast-info {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  border: 1px solid #3b82f6 !important;
+  box-shadow: 0 14px 32px rgba(37, 99, 235, 0.38), 0 4px 10px rgba(29, 78, 216, 0.25) !important;
+}
+.toast-icon-wrap.toast-icon-info {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 @keyframes toastSlideIn {
-  from { transform: translateX(120%) scale(0.9); opacity: 0; }
+  from { transform: translateX(120%) scale(0.92); opacity: 0; }
   to { transform: translateX(0) scale(1); opacity: 1; }
 }
 .toast-item.toast-hide { animation: toastSlideOut 0.25s cubic-bezier(0.4, 0, 1, 1) forwards; }
 @keyframes toastSlideOut {
   from { transform: translateX(0) scale(1); opacity: 1; }
-  to { transform: translateX(120%) scale(0.9); opacity: 0; }
+  to { transform: translateX(120%) scale(0.92); opacity: 0; }
 }
 
 /* MODALS & DRAWERS */
