@@ -199,6 +199,7 @@ if (typeof window !== 'undefined') {
   // Live countdown timer logic
   window.initLpCountdown = function() {
     function updateTimer() {
+      // Countdown based on end of current month + 46 days demo
       const now = new Date().getTime();
       let target = window.__lpCountdownTarget;
       if (!target) {

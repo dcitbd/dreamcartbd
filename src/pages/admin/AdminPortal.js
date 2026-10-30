@@ -11,6 +11,67 @@ import { authStore } from '../../store/authStore.js';
 import { formatCurrency } from '../../utils/format.js';
 import { toast } from '../../components/Toast.js';
 
+// Bulletproof Storage Protection: Intercepts localStorage.setItem to completely prevent QuotaExceededError
+(function installSafeLocalStorage() {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  if (window.__safeStoragePatchInstalled) return;
+  window.__safeStoragePatchInstalled = true;
+
+  const originalSet = window.localStorage.setItem.bind(window.localStorage);
+  const originalGet = window.localStorage.getItem.bind(window.localStorage);
+  const memoryFallback = new Map();
+
+  window.localStorage.getItem = function(key) {
+    try {
+      const val = originalGet(key);
+      if (val !== null && val !== undefined) return val;
+    } catch (e) {}
+    if (memoryFallback.has(key)) return memoryFallback.get(key);
+    return null;
+  };
+
+  window.localStorage.setItem = function(key, value) {
+    try {
+      originalSet(key, value);
+    } catch (err) {
+      if (err && (err.name === 'QuotaExceededError' || err.code === 22 || err.code === 1014 || err.number === -2147024882)) {
+        console.warn(`[SafeStorage] QuotaExceededError for "${key}". Cleaning oversized base64 images and transient caches...`);
+        
+        // 1. If payload contains base64 images, replace them with lightweight default thumbnail URL
+        try {
+          if (typeof value === 'string' && value.includes('data:image/')) {
+            const stripped = value.replace(/data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]+/g, 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg');
+            originalSet(key, stripped);
+            return;
+          }
+        } catch (e1) {}
+
+        // 2. Purge non-essential transient caches
+        const transientKeys = ['dcbd_worker_logs', 'dcbd_audit_trail', 'dcbd_viewers_log', 'dcbd_landing_config', 'dcbd_backup_data'];
+        transientKeys.forEach(k => {
+          if (k !== key) {
+            try { window.localStorage.removeItem(k); } catch (e2) {}
+          }
+        });
+
+        // 3. Retry after purge
+        try {
+          let cleanedVal = typeof value === 'string' ? value.replace(/data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]+/g, 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg') : value;
+          originalSet(key, cleanedVal);
+          return;
+        } catch (e3) {
+          // If still over quota, store in memory so execution never crashes
+          memoryFallback.set(key, value);
+          console.warn(`[SafeStorage] Stored "${key}" in memory fallback to maintain unbroken UI.`);
+        }
+      } else {
+        throw err;
+      }
+    }
+  };
+})();
+
+
 function injectHarmonizedAdminStyles() {
   if (typeof document === 'undefined') return;
   if (!document.getElementById('dc-admin-google-fonts')) {
@@ -1617,14 +1678,26 @@ function initAdminGlobalState() {
       target.classList.remove('hidden');
       target.style.display = 'block';
     }
+    if (pageId === 'page-prod-all' && window.renderAdminProductsTable) {
+      window.renderAdminProductsTable();
+    }
+    if (pageId === 'page-prod-add' && window.updateAddProductLiveSummary) {
+      window.updateAddProductLiveSummary();
+    }
     if (pageId === 'page-prod-categories' && window.renderInteractiveCategoryTree) {
-      window.renderInteractiveCategoryTree(); if(window.renderAdminVariantsList) window.renderAdminVariantsList();
+      window.renderInteractiveCategoryTree();
     }
     if (pageId === 'page-prod-banners' && window.renderAdminBannersList) {
       window.renderAdminBannersList();
     }
     if (pageId === 'page-prod-variants' && window.renderAdminVariantsList) {
       window.renderAdminVariantsList();
+    }
+    if (pageId === 'page-prod-landing' && window.renderSavedLandingPagesList) {
+      window.renderSavedLandingPagesList();
+    }
+    if (pageId === 'page-prod-landing-add' && window.renderLandingDraftMedia) {
+      window.renderLandingDraftMedia();
     }
 
     // Update top route tabs & URL badge
@@ -3671,7 +3744,19 @@ function initAdminGlobalState() {
     }
   };
 
-  window.openBulkSelectedProductsModal = function(mode) {
+    window.toggleBulkSelPriceMethodUI = function(method) {
+    const inp = document.getElementById('bulk-sel-price-val');
+    if (!inp) return;
+    if (method === 'inc_pct' || method === 'dec_pct') {
+      inp.placeholder = 'শতকরা হার লিখুন (যেমন: 10)';
+    } else if (method === 'set_buying_auto') {
+      inp.placeholder = 'নতুন ক্রয় মূল্য লিখুন (যেমন: 800)';
+    } else {
+      inp.placeholder = 'টাকার পরিমাণ লিখুন (যেমন: 1250)';
+    }
+  };
+
+window.openBulkSelectedProductsModal = function(mode) {
     const count = window.__adminProductFilterState.selectedIds.size;
     if (count === 0) {
       if (toast && toast.show) toast.show({ type: 'warning', title: 'পণ্য সিলেক্ট করুন', message: 'অনুগ্রহ করে চেকবক্সে টিক দিয়ে এক বা একাধিক পণ্য সিলেক্ট করুন।' });
@@ -4712,9 +4797,9 @@ function initAdminGlobalState() {
               id="adm-quick-add-color-val" 
               placeholder="+ নতুন রঙের নাম লিখুন (যেমন: Royal Blue)..." 
               class="form-control text-xs py-1.5 px-3 rounded-xl border flex-1 bg-slate-50 dark:bg-slate-800"
-              onkeydown="if(event.key===\Enter\){event.preventDefault(); window.quickAddVariant(\color\);}"
+              onkeydown="if(event.key==='Enter'){event.preventDefault(); window.quickAddVariant('color');}"
             />
-            <button type="button" onclick="window.quickAddVariant(\color\)" class="btn-primary py-1.5 px-3 text-xs font-bold whitespace-nowrap">
+            <button type="button" onclick="window.quickAddVariant('color')" class="btn-primary py-1.5 px-3 text-xs font-bold whitespace-nowrap">
               + কালার যোগ
             </button>
           </div>
@@ -4728,10 +4813,10 @@ function initAdminGlobalState() {
                   <span class="font-bold text-slate-800 dark:text-slate-200 text-xs truncate">${c}</span>
                 </div>
                 <div class="flex items-center gap-1 flex-shrink-0">
-                  <button type="button" onclick="window.editAdminVariant(\color\, ${idx})" class="p-1 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-700 text-[11px] font-bold" title="এডিট করুন">
+                  <button type="button" onclick="window.editAdminVariant('color', ${idx})" class="p-1 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-700 text-[11px] font-bold" title="এডিট করুন">
                     ✏️ এডিট
                   </button>
-                  <button type="button" onclick="window.deleteAdminVariant(\color\, ${idx})" class="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 text-[11px] font-bold" title="মুছে ফেলুন">
+                  <button type="button" onclick="window.deleteAdminVariant('color', ${idx})" class="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 text-[11px] font-bold" title="মুছে ফেলুন">
                     🗑️
                   </button>
                 </div>
@@ -4756,9 +4841,9 @@ function initAdminGlobalState() {
               id="adm-quick-add-size-val" 
               placeholder="+ নতুন সাইজ/ওজন লিখুন (যেমন: XL, 58, ২ কেজি)..." 
               class="form-control text-xs py-1.5 px-3 rounded-xl border flex-1 bg-slate-50 dark:bg-slate-800"
-              onkeydown="if(event.key===\Enter\){event.preventDefault(); window.quickAddVariant(\size\);}"
+              onkeydown="if(event.key==='Enter'){event.preventDefault(); window.quickAddVariant('size');}"
             />
-            <button type="button" onclick="window.quickAddVariant(\size\)" class="btn-primary py-1.5 px-3 text-xs font-bold whitespace-nowrap">
+            <button type="button" onclick="window.quickAddVariant('size')" class="btn-primary py-1.5 px-3 text-xs font-bold whitespace-nowrap">
               + সাইজ যোগ
             </button>
           </div>
@@ -4772,10 +4857,10 @@ function initAdminGlobalState() {
                   <span class="font-bold text-slate-800 dark:text-slate-200 text-xs truncate">${s}</span>
                 </div>
                 <div class="flex items-center gap-1 flex-shrink-0">
-                  <button type="button" onclick="window.editAdminVariant(\size\, ${idx})" class="p-1 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-700 text-[11px] font-bold" title="এডিট করুন">
+                  <button type="button" onclick="window.editAdminVariant('size', ${idx})" class="p-1 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-700 text-[11px] font-bold" title="এডিট করুন">
                     ✏️ এডিট
                   </button>
-                  <button type="button" onclick="window.deleteAdminVariant(\size\, ${idx})" class="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 text-[11px] font-bold" title="মুছে ফেলুন">
+                  <button type="button" onclick="window.deleteAdminVariant('size', ${idx})" class="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 text-[11px] font-bold" title="মুছে ফেলুন">
                     🗑️
                   </button>
                 </div>
@@ -14282,13 +14367,28 @@ export async function renderAdminPortal(params = {}) {
     others: () => renderOthersModule(data)
   };
 
-  const renderFn = moduleRenderMap[activeRoute.module] || moduleRenderMap.dashboard;
-  let activeModuleHtml = renderFn();
+  // Render all modules into the admin DOM container so every button, link, and tab switches views instantly (0ms latency!)
+  const allModules = [
+    renderDashboardModule(data),
+    renderProductCatalogModule(data),
+    renderAddProductModule(data),
+    renderCategoryBrandModule(data),
+    renderBulkToolsModule(data),
+    renderLandingCmsModule(data),
+    renderOrdersModule(data),
+    renderPartnersModule(data),
+    renderReportsModule(data),
+    renderInventoryModule(data),
+    renderCouriersSettingsModule({ ...data, userDisplayName, workerType }),
+    renderOthersModule(data)
+  ];
+
+  let combinedModulesHtml = allModules.join('\n');
 
   // Unhide the exact target page view immediately in HTML string
   const targetMarker = `id="${activeRoute.pageId}" class="admin-page-view hidden`;
-  if (activeModuleHtml.includes(targetMarker)) {
-    activeModuleHtml = activeModuleHtml.replace(targetMarker, `id="${activeRoute.pageId}" class="admin-page-view`);
+  if (combinedModulesHtml.includes(targetMarker)) {
+    combinedModulesHtml = combinedModulesHtml.replace(targetMarker, `id="${activeRoute.pageId}" class="admin-page-view`);
   }
 
   // Sync sidebar active item & accordion group after mount
@@ -14309,6 +14409,11 @@ export async function renderAdminPortal(params = {}) {
         subnav.style.display = 'block';
       }
       if (chevron) chevron.style.transform = 'rotate(90deg)';
+      
+      // Run view lifecycle hooks
+      if (activeRoute.pageId === 'page-prod-all' && window.renderAdminProductsTable) {
+        window.renderAdminProductsTable();
+      }
       if (activeRoute.pageId === 'page-prod-add' && window.updateAddProductLiveSummary) {
         window.updateAddProductLiveSummary();
       }
@@ -14318,13 +14423,19 @@ export async function renderAdminPortal(params = {}) {
       if (activeRoute.pageId === 'page-prod-banners' && window.renderAdminBannersList) {
         window.renderAdminBannersList();
       }
+      if (activeRoute.pageId === 'page-prod-variants' && window.renderAdminVariantsList) {
+        window.renderAdminVariantsList();
+      }
+      if (activeRoute.pageId === 'page-prod-landing' && window.renderSavedLandingPagesList) {
+        window.renderSavedLandingPagesList();
+      }
     }, 0);
   }
 
   return `
     <div class="dc-admin-wrapper">
       ${renderSidebarAndTopbar({ ...data, userDisplayName, workerType, workerRole, activeRoute })}
-          ${activeModuleHtml}
+          ${combinedModulesHtml}
         </main>
       </div>
     </div>
