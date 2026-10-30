@@ -4898,7 +4898,12 @@ window.openBulkSelectedProductsModal = function(mode) {
     if (window.__adminState) window.__adminState.variants = v;
     if (inp) inp.value = '';
     window.renderAdminVariantsList();
-    if (toast && toast.success) toast.success(`"${val}" সফলভাবে ${type === 'color' ? 'কালার' : 'সাইজ'} তালিকায় যুক্ত হয়েছে!`);
+    apiClient.request('attributes/add', {
+      type: type === 'color' ? 'Color' : 'Size',
+      name_value: val,
+      status: 'Active'
+    }).catch(() => {});
+    if (toast && toast.success) toast.success(`"${val}" সফলভাবে ${type === 'color' ? 'কালার' : 'সাইজ'} তালিকায় ও গুগল শিটে যুক্ত হয়েছে!`);
   };
 
   window.editAdminVariant = function(type, idx) {
@@ -4911,6 +4916,12 @@ window.openBulkSelectedProductsModal = function(mode) {
     localStorage.setItem('dcbd_variants', JSON.stringify(v));
     if (window.__adminState) window.__adminState.variants = v;
     window.renderAdminVariantsList();
+    apiClient.request('attributes/add', {
+      type: type === 'color' ? 'Color' : 'Size',
+      old_value: oldVal,
+      name_value: newVal.trim(),
+      status: 'Active'
+    }).catch(() => {});
     if (toast && toast.success) toast.success(`"${oldVal}" পরিবর্তিত হয়ে "${newVal.trim()}" হয়েছে।`, 'ভ্যারিয়েন্ট আপডেট');
   };
 
@@ -4923,7 +4934,11 @@ window.openBulkSelectedProductsModal = function(mode) {
     localStorage.setItem('dcbd_variants', JSON.stringify(v));
     if (window.__adminState) window.__adminState.variants = v;
     window.renderAdminVariantsList();
-    if (toast && toast.success) toast.success(`"${val}" তালিকা থেকে সফলভাবে মুছে ফেলা হয়েছে।`);
+    apiClient.request('attributes/delete', {
+      type: type === 'color' ? 'Color' : 'Size',
+      name_value: val
+    }).catch(() => {});
+    if (toast && toast.success) toast.success(`"${val}" তালিকা ও শিট থেকে সফলভাবে মুছে ফেলা হয়েছে।`);
   };
 
   window.handleAdminAddVariant = function(e) {
@@ -4938,7 +4953,13 @@ window.openBulkSelectedProductsModal = function(mode) {
     localStorage.setItem('dcbd_variants', JSON.stringify(variants));
     if (window.__adminState) window.__adminState.variants = variants;
 
-    if (toast && toast.success) toast.success(`${varType === 'color' ? 'কালার' : 'সাইজ'}: "${varValue}" যুক্ত হয়েছে।`, 'ভ্যারিয়েন্ট যুক্ত');
+    apiClient.request('attributes/add', {
+      type: varType === 'color' ? 'Color' : 'Size',
+      name_value: varValue,
+      status: 'Active'
+    }).catch(() => {});
+
+    if (toast && toast.success) toast.success(`${varType === 'color' ? 'কালার' : 'সাইজ'}: "${varValue}" যুক্ত ও শিটে সংরক্ষিত হয়েছে।`, 'ভ্যারিয়েন্ট যুক্ত');
     document.getElementById('form-add-variant-dedicated')?.reset();
     window.renderAdminVariantsList();
     window.switchAdminPage('page-prod-variants', 'group-products');
