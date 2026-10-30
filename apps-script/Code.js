@@ -138,6 +138,21 @@ function dispatchAction(action, payload) {
     case "categories/delete":
       return handleCategoryDelete(ss, payload);
 
+    // --- ATTRIBUTES & VARIANTS (COLOR & SIZE) ---
+    case "attributes/list":
+    case "variants/list":
+      return getSheetDataAsJson(ss, "Attributes");
+    case "attributes/add":
+    case "attributes/create":
+    case "attributes/update":
+    case "variants/add":
+    case "variants/create":
+    case "variants/update":
+      return handleAttributeUpsert(ss, payload);
+    case "attributes/delete":
+    case "variants/delete":
+      return handleAttributeDelete(ss, payload);
+
     // --- BRANDS ---
     case "brands/list":
       return getSheetDataAsJson(ss, "Brands");
@@ -223,13 +238,13 @@ function dispatchAction(action, payload) {
       return handleGenericDelete(ss, "Wholesalers", [0, 3, 7], payload.shop_id || payload.id || payload.mobile || payload.phone);
 
     case "sellers/list":
-      return getSheetDataAsJson(ss, "Settings");
+      return getSheetDataAsJson(ss, "Sellers");
     case "sellers/add":
     case "sellers/create":
     case "sellers/update":
-      return handleSellerUpsert(ss, payload);
+      return handleSellerDirectUpsert(ss, payload);
     case "sellers/delete":
-      return handleSettingsDelete(ss, "SELLER_" + (payload.id || payload.seller_id || payload.store));
+      return handleGenericDelete(ss, "Sellers", [0, 3, 4], payload.shop_id || payload.id || payload.mobile || payload.seller_id);
 
     case "markets/list":
       return getSheetDataAsJson(ss, "Others_Market");
@@ -339,6 +354,71 @@ function dispatchAction(action, payload) {
     default:
       return { status: "success", success: true, message: "Action executed: " + action };
   }
+}
+
+
+function handleAttributeUpsert(ss, payload) {
+  var sheet = ensureSheetWithHeaders(ss, "Attributes", ["Date", "Type", "Name_Value", "Status"]);
+  var dateStr = payload.date || nowDhaka();
+  var type = String(payload.type || (payload.color ? "Color" : (payload.size ? "Size" : "Variant"))).trim();
+  var val = String(payload.name_value || payload.val || payload.value || payload.name || payload.color || payload.size || "").trim();
+  var status = String(payload.status || "Active");
+  if (!val) return { status: "error", success: false, message: "Empty attribute value" };
+
+  var row = [dateStr, type, val, status];
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][1]).trim().toLowerCase() === type.toLowerCase() &&
+        String(data[i][2]).trim().toLowerCase() === val.toLowerCase()) {
+      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
+      return { status: "success", success: true, message: "Attribute updated in Sheet!", data: { type: type, name_value: val } };
+    }
+  }
+  sheet.appendRow(row);
+  return { status: "success", success: true, message: "Attribute added to Sheet!", data: { type: type, name_value: val } };
+}
+
+function handleAttributeDelete(ss, payload) {
+  var type = String(payload.type || "").trim().toLowerCase();
+  var val = String(payload.name_value || payload.val || payload.value || payload.name || payload.color || payload.size || "").trim().toLowerCase();
+  var sheet = ss.getSheetByName("Attributes");
+  if (!sheet) return { status: "success", success: true };
+  var data = sheet.getDataRange().getValues();
+  for (var i = data.length - 1; i >= 1; i--) {
+    var rowType = String(data[i][1] || "").trim().toLowerCase();
+    var rowVal = String(data[i][2] || "").trim().toLowerCase();
+    if ((!type || rowType === type) && rowVal === val) {
+      sheet.deleteRow(i + 1);
+    }
+  }
+  return { status: "success", success: true, message: "Attribute deleted from Sheet!" };
+}
+
+function handleSellerDirectUpsert(ss, payload) {
+  var sheet = ensureSheetWithHeaders(ss, "Sellers", [
+    "Shop_ID", "Shop_logo", "Shop_Name", "Name", "Mobile", "Mail", "Address", "Commission_Rate", "Status"
+  ]);
+  var shopId = String(payload.shop_id || payload.id || ("VND-" + Math.floor(100 + Math.random() * 900))).trim();
+  var logo = String(payload.shop_logo || payload.logo || "").trim();
+  var shopName = String(payload.shop_name || payload.store || "Merchant Store").trim();
+  var ownerName = String(payload.name || payload.owner || "Merchant").trim();
+  var mobile = String(payload.mobile || payload.phone || "").trim();
+  var mail = String(payload.mail || payload.email || "").trim();
+  var addr = String(payload.address || "").trim();
+  var comm = String(payload.commission_rate || payload.commission || "10%").trim();
+  var status = String(payload.status || "Active").trim();
+
+  var row = [shopId, logo, shopName, ownerName, mobile, mail, addr, comm, status];
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim().toLowerCase() === shopId.toLowerCase() ||
+        (mobile && String(data[i][4]).trim() === mobile)) {
+      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
+      return { status: "success", success: true, message: "Seller updated in Sheet!", data: { shop_id: shopId } };
+    }
+  }
+  sheet.appendRow(row);
+  return { status: "success", success: true, message: "Seller added to Sheet!", data: { shop_id: shopId } };
 }
 
 function handleProductUpsert(ss, payload) {
@@ -1040,6 +1120,8 @@ function getSheetDataAsJson(ss, sheetName) {
 function setupAllSystemSheets() {
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var definitions = [
+    { name: "Attributes", headers: ["Date", "Type", "Name_Value", "Status"] },
+    { name: "Sellers", headers: ["Shop_ID", "Shop_logo", "Shop_Name", "Name", "Mobile", "Mail", "Address", "Commission_Rate", "Status"] },
     { name: "Products", headers: ["SKU", "P_Name", "Category", "Sub_Category", "Child_Category", "Brand", "Buying_price", "Selling_Price", "Stock", "Original_Price", "WholeSale_price", "Min_order_Q", "Images", "Slug", "Description", "Specification", "Others", "Color", "Size", "WEIGHT_KG", "WIDTH_CM", "LENGTH_CM", "HEIGHT_CM"] },
     { name: "Categories", headers: ["Catagory_ID", "Catagory_Slug", "Category_Image", "Category", "Sub_Category", "Chail_Category"] },
     { name: "Brands", headers: ["Brand_ID", "Brand_Image", "Brand_Name", "Brand_Slug", "Brand_Description"] },
