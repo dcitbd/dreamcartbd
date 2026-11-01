@@ -17,6 +17,20 @@
 import { renderProductCard } from '../../components/ProductCard.js';
 import { apiClient } from '../../api/client.js';
 
+// Auto-refresh homepage whenever live Google Sheets background sync completes
+if (typeof window !== 'undefined' && !window.__dcbdProductsSyncListener) {
+  window.__dcbdProductsSyncListener = true;
+  window.addEventListener('dcbd:products-synced', () => {
+    const p = window.location.pathname;
+    if (p === '/' || p === '' || p === '/index.html' || (window.__APP_BASE__ && p === window.__APP_BASE__)) {
+      if (window.router && window.router.resolve) {
+        window.router.resolve();
+      }
+    }
+  });
+}
+
+
 // Setup banner auto-slider & touch-swipe safely in browser
 if (typeof window !== 'undefined' && !window.__dcbdSliderInitialized) {
   window.__dcbdSliderInitialized = true;
