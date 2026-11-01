@@ -1,3 +1,5 @@
+import { formatCurrency } from '../utils/format.js';
+export { formatCurrency };
 /**
  * DREAM CART BD — UNIFIED API CLIENT & LIVE SHEET SYNC ENGINE
  * Connects directly to Google Sheets via GViz API (JSONP) & Google Apps Script Web App Gateway
@@ -255,19 +257,20 @@ export function safeStr(val, fallback = '') {
 // In-flight deduplication map for GViz requests
 const _inflightGviz = new Map();
 
-function fetchSheetViaGviz(sheetName, timeoutMs = 4500) {
+function fetchSheetViaGviz(sheetName, timeoutMs = 3000) {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return Promise.resolve([]);
   }
 
-  if (_inflightGviz.has(sheetName)) {
-    return _inflightGviz.get(sheetName);
+  const cacheKey = String(sheetName).trim().toLowerCase();
+  if (_inflightGviz.has(cacheKey)) {
+    return _inflightGviz.get(cacheKey);
   }
 
   const p = new Promise((resolve) => {
     const cbName = 'gviz_cb_' + Math.random().toString(36).substr(2, 9);
     const script = document.createElement('script');
-    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=responseHandler:${cbName}&sheet=${encodeURIComponent(sheetName)}&headers=1`;
+    const url = 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID + '/gviz/tq?tqx=responseHandler:' + cbName + '&sheet=' + encodeURIComponent(sheetName) + '&headers=1';
 
     let settled = false;
     function finish(result) {
@@ -415,15 +418,75 @@ function fetchAppsScriptViaJsonp(action, params = {}, timeoutMs = 6000) {
  * Slim down a payload for JSONP GET so it always fits under URL limits (< 1750 chars),
  * while also firing a full POST request for large fields.
  */
+
+/**
+ * Dual-Channel Live Google Sheets Reader:
+ * Queries Google Apps Script API Gateway (JSONP) AND Google Sheets GViz in parallel.
+ * Whichever responds with valid sheet data first is immediately utilized.
+ */
+async function fetchLiveSheetRows(sheetName, action, timeoutMs = 3000) {
+  if (typeof window === 'undefined') return [];
+
+  // Channel 1: Google Apps Script Web App JSONP (Executes server-side SpreadsheetApp as owner)
+  const p1 = (async () => {
+    try {
+      const resp = await fetchAppsScriptViaJsonp(action, {}, timeoutMs);
+      if (resp && (resp.status === 'success' || resp.success) && resp.data) {
+        if (Array.isArray(resp.data.items) && resp.data.items.length > 0) return resp.data.items;
+        if (Array.isArray(resp.data) && resp.data.length > 0) return resp.data;
+      }
+    } catch (e) {}
+    return null;
+  })();
+
+  // Channel 2: Google Sheets Visualization API (Direct cross-origin tabular query)
+  const p2 = (async () => {
+    try {
+      const rows = await fetchSheetViaGviz(sheetName, timeoutMs);
+      if (Array.isArray(rows) && rows.length > 0) return rows;
+    } catch (e) {}
+    return null;
+  })();
+
+  try {
+    const [r1, r2] = await Promise.all([p1, p2]);
+    if (r1 && r1.length > 0) return r1;
+    if (r2 && r2.length > 0) return r2;
+  } catch (err) {}
+
+  return [];
+}
+
 function buildSlimJsonpPayload(payload) {
   if (!payload || typeof payload !== 'object') return payload;
-  const clone = { ...payload };
 
-  // Strip heavy items array if summary strings are already present
-  if (Array.isArray(clone.items)) {
-    clone.items = clone.items.map(it => ({
+  function sanitizeValue(val, depth = 0) {
+    if (depth > 6) return val;
+    if (typeof val === 'string') {
+      if (val.startsWith('data:image/') || val.includes(';base64,')) {
+        return DEFAULT_PRODUCT_THUMB;
+      }
+      return val;
+    }
+    if (Array.isArray(val)) {
+      return val.map(item => sanitizeValue(item, depth + 1));
+    }
+    if (val && typeof val === 'object') {
+      const res = {};
+      for (const k of Object.keys(val)) {
+        res[k] = sanitizeValue(val[k], depth + 1);
+      }
+      return res;
+    }
+    return val;
+  }
+
+  const clean = sanitizeValue(payload);
+
+  if (clean && Array.isArray(clean.items)) {
+    clean.items = clean.items.map(it => ({
       sku: it.sku || it.product_id || '',
-      name: String(it.name || it.p_name || '').slice(0, 60),
+      name: String(it.name || it.p_name || '').slice(0, 80),
       color: it.color || '',
       size: it.size || '',
       quantity: it.quantity || 1,
@@ -431,55 +494,116 @@ function buildSlimJsonpPayload(payload) {
     }));
   }
 
-  // Strip base64 data URLs from JSONP GET query params so GET never exceeds URL length limit
-  const imgKeys = ['thumbnail', 'category_image', 'brand_image', 'image', 'image_url', 'profile_photo', 'Profile_photo', 'Profile_Photo', 'Shop_logo', 'shop_logo', 'Market_Logo', 'market_logo', 'hero_banner', 'banner'];
-  imgKeys.forEach(k => {
-    if (typeof clone[k] === 'string' && clone[k].startsWith('data:image/')) {
-      clone[k] = DEFAULT_PRODUCT_THUMB;
-    }
-  });
-
-  if (Array.isArray(clone.images)) {
-    clone.images = clone.images.map(u => (typeof u === 'string' && u.startsWith('data:image/') ? DEFAULT_PRODUCT_THUMB : u));
-  } else if (typeof clone.images === 'string' && clone.images.includes('data:image/')) {
-    clone.images = parseImageUrlsList(clone.images)
-      .map(u => (u.startsWith('data:image/') ? DEFAULT_PRODUCT_THUMB : u))
-      .join(', ');
-  }
-
-  return clone;
+  return clean;
 }
 
 export async function sendToAppsScript(action, payload) {
   let jsonpRes = null;
+  const cleanPayload = buildSlimJsonpPayload(payload);
+  const dataStr = JSON.stringify(cleanPayload);
+
+  // LAYER 1: Hidden Iframe Form POST (Browser handles redirects natively, 100% reliable for POST of any size)
   try {
-    const slimPayload = buildSlimJsonpPayload(payload);
-    const dataStr = JSON.stringify(slimPayload);
-    if (dataStr.length < 1850) {
+    if (typeof document !== 'undefined' && document.body) {
+      const iframeName = 'as_post_frame_' + Math.random().toString(36).substr(2, 9);
+      const iframe = document.createElement('iframe');
+      iframe.name = iframeName;
+      iframe.style.position = 'absolute';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
+      iframe.style.top = '-9999px';
+      iframe.style.left = '-9999px';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      document.body.appendChild(iframe);
+
+      const form = document.createElement('form');
+      form.target = iframeName;
+      form.method = 'POST';
+      form.action = APPS_SCRIPT_URL + '?action=' + encodeURIComponent(action);
+      form.style.display = 'none';
+
+      const fields = {
+        action: action,
+        payload: dataStr,
+        data: dataStr,
+        spreadsheet_id: SPREADSHEET_ID
+      };
+
+      for (const [k, v] of Object.entries(fields)) {
+        const inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = k;
+        inp.value = typeof v === 'string' ? v : JSON.stringify(v);
+        form.appendChild(inp);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+
+      setTimeout(() => {
+        try { if (form.parentNode) form.parentNode.removeChild(form); } catch (e) {}
+        try { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); } catch (e) {}
+      }, 5000);
+    }
+  } catch (err) {}
+
+  // LAYER 2: JSONP GET (Browser handles redirects and executes callback)
+  try {
+    if (dataStr.length < 3500) {
       jsonpRes = await fetchAppsScriptViaJsonp(action, { data: dataStr });
     }
   } catch (e) {}
 
-  // Always fire non-blocking POST as well (or if JSONP didn't return success) so full data reaches Apps Script doPost
-  if (!jsonpRes || !(jsonpRes.status === 'success' || jsonpRes.success)) {
-    try {
-      const fullStr = typeof payload === 'string' ? payload : JSON.stringify(payload);
-      const bodyParams = new URLSearchParams();
-      bodyParams.append('action', action);
-      bodyParams.append('payload', fullStr);
-      bodyParams.append('data', fullStr);
-      bodyParams.append('spreadsheet_id', SPREADSHEET_ID);
-
-      fetch(`${APPS_SCRIPT_URL}?action=${encodeURIComponent(action)}`, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: bodyParams.toString()
+  // LAYER 3: Direct Fetch GET (No-CORS, passes action & data query params)
+  try {
+    if (dataStr.length < 3500) {
+      const q = new URLSearchParams({
+        action: action,
+        data: dataStr,
+        payload: dataStr,
+        spreadsheet_id: SPREADSHEET_ID
+      });
+      fetch(APPS_SCRIPT_URL + '?' + q.toString(), {
+        method: 'GET',
+        mode: 'no-cors'
       }).catch(() => {});
-    } catch (err) {}
-  }
+    }
+  } catch (e3) {}
+
+  // LAYER 4: Form-Urlencoded POST
+  try {
+    const urlParams = new URLSearchParams();
+    urlParams.append('action', action);
+    urlParams.append('data', dataStr);
+    urlParams.append('payload', dataStr);
+    urlParams.append('spreadsheet_id', SPREADSHEET_ID);
+    fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: urlParams.toString()
+    }).catch(() => {});
+  } catch (e4) {}
+
+  // LAYER 5: Text/Plain JSON POST (CORS-exempt preflight)
+  try {
+    fetch(APPS_SCRIPT_URL + '?action=' + encodeURIComponent(action), {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify({
+        action: action,
+        payload: cleanPayload,
+        data: cleanPayload,
+        spreadsheet_id: SPREADSHEET_ID
+      })
+    }).catch(() => {});
+  } catch (err) {}
 
   return jsonpRes || { status: 'success', success: true };
 }
@@ -697,11 +821,19 @@ class ApiClient {
     this.endpoint = APPS_SCRIPT_URL;
     this.spreadsheetId = SPREADSHEET_ID;
 
-    this.sheetProducts = this.loadLocal('dcbd_sheet_products', null);
-    this.sheetCategories = this.loadLocal('dcbd_sheet_categories', null);
-    this.sheetBrands = this.loadLocal('dcbd_sheet_brands', null);
+    const savedProds = this.loadLocal('dcbd_sheet_products', null);
+    this.sheetProducts = (Array.isArray(savedProds) && savedProds.length > 0) ? savedProds : [...INITIAL_PRODUCTS];
+
+    const savedCats = this.loadLocal('dcbd_sheet_categories', null);
+    this.sheetCategories = (Array.isArray(savedCats) && savedCats.length > 0) ? savedCats : [...INITIAL_CATEGORIES];
+
+    const savedBrands = this.loadLocal('dcbd_sheet_brands', null);
+    this.sheetBrands = (Array.isArray(savedBrands) && savedBrands.length > 0) ? savedBrands : [...INITIAL_BRANDS];
+
     this.sheetOrders = this.loadLocal('dcbd_sheet_orders', []);
     this.sheetIncompleteOrders = this.loadLocal('dcbd_sheet_incomplete_orders', []);
+    this.sheetBanners = this.loadLocal('dcbd_sheet_banners', []);
+    this.sheetSellers = this.loadLocal('dcbd_sellers', []);
     this._lastProductsSync = 0;
     this._lastCategoriesSync = 0;
     this._lastBrandsSync = 0;
@@ -760,7 +892,8 @@ class ApiClient {
         return normalized;
       }
     }
-    return null;
+    this.sheetProducts = [...INITIAL_PRODUCTS];
+    return this.sheetProducts;
   }
 
   /**
@@ -806,44 +939,38 @@ class ApiClient {
   }
 
   async loadProductsFromSheet(forceRefresh = false) {
-    const existing = this.getMergedLocalProducts();
+    const cached = this.getMergedLocalProducts();
+    const hasCached = Array.isArray(cached) && cached.length > 0 && !cached.every(p => p.sku && p.sku.startsWith('DCBD-DEMO'));
 
-    if (!forceRefresh && existing && existing.length > 0) {
-      // Throttle background sync to once every 25 seconds so rapid page switches don't spam GViz
-      if (Date.now() - this._lastProductsSync > 25000) {
-        this._lastProductsSync = Date.now();
-        this.syncProductsFromSheetAsync();
-      }
-      return existing;
-    }
-
-    try {
-      const rows = await fetchSheetViaGviz('Products');
-      if (rows && rows.length > 0) {
-        const sheetMapped = rows.map((r, idx) => normalizeSheetProductRow(r, idx)).filter(Boolean);
-        const merged = this.mergeProductsLists(sheetMapped, existing || []);
-        this.sheetProducts = merged;
-        this._lastProductsSync = Date.now();
-        this.saveLocal('dcbd_sheet_products', merged);
-        if (typeof window !== 'undefined' && window.__adminState) {
-          window.__adminState.products = merged;
+    // If live sync is due (or forced or no real sheet products loaded yet)
+    if (forceRefresh || !hasCached || (Date.now() - this._lastProductsSync > 15000)) {
+      this._lastProductsSync = Date.now();
+      try {
+        const rows = await fetchLiveSheetRows('Products', 'products/list', hasCached ? 2000 : 3500);
+        if (rows && rows.length > 0) {
+          const sheetMapped = rows.map((r, idx) => normalizeSheetProductRow(r, idx)).filter(Boolean);
+          if (sheetMapped.length > 0) {
+            const merged = this.mergeProductsLists(sheetMapped, cached || []);
+            this.sheetProducts = merged;
+            this.saveLocal('dcbd_sheet_products', merged);
+            if (typeof window !== 'undefined') {
+              if (window.__adminState) window.__adminState.products = merged;
+              window.dispatchEvent(new CustomEvent('dcbd:products-synced', { detail: { products: merged } }));
+            }
+            return merged;
+          }
         }
-        return merged;
-      }
-    } catch (err) {}
-
-    const fallback = (existing && existing.length > 0) ? existing : [...INITIAL_PRODUCTS];
-    this.sheetProducts = fallback;
-    this.saveLocal('dcbd_sheet_products', fallback);
-    if (typeof window !== 'undefined' && window.__adminState) {
-      window.__adminState.products = fallback;
+      } catch (err) {}
     }
-    return fallback;
+
+    return (Array.isArray(this.sheetProducts) && this.sheetProducts.length > 0)
+      ? this.sheetProducts
+      : (hasCached ? cached : [...INITIAL_PRODUCTS]);
   }
 
   async syncProductsFromSheetAsync() {
     try {
-      const rows = await fetchSheetViaGviz('Products');
+      const rows = await fetchLiveSheetRows('Products', 'products/list', 3000);
       if (rows && rows.length > 0) {
         const sheetMapped = rows.map((r, idx) => normalizeSheetProductRow(r, idx)).filter(Boolean);
         if (sheetMapped.length > 0) {
@@ -851,8 +978,9 @@ class ApiClient {
           const merged = this.mergeProductsLists(sheetMapped, currentLocal);
           this.sheetProducts = merged;
           this.saveLocal('dcbd_sheet_products', merged);
-          if (typeof window !== 'undefined' && window.__adminState) {
-            window.__adminState.products = merged;
+          if (typeof window !== 'undefined') {
+            if (window.__adminState) window.__adminState.products = merged;
+            window.dispatchEvent(new CustomEvent('dcbd:products-synced', { detail: { products: merged } }));
           }
         }
       }
@@ -1018,8 +1146,23 @@ class ApiClient {
     } catch (e) {}
   }
 
-  async request(action, payload = {}) {
-    switch (action) {
+  async request(action, payloadOrMethod = {}, maybePayload = undefined) {
+    let payload = payloadOrMethod;
+    if (maybePayload !== undefined) {
+      payload = maybePayload;
+    } else if (typeof payloadOrMethod === 'string' && (payloadOrMethod === 'POST' || payloadOrMethod === 'GET')) {
+      payload = {};
+    }
+    if (!payload || typeof payload !== 'object') {
+      payload = {};
+    }
+
+    const cleanAction = String(action || '').trim().replace(/^[\-_\/]+|[\-_\/]+$/g, '');
+    let normAction = cleanAction.replace('landing-pages', 'landing_pages');
+    if (normAction === 'settings/save') normAction = 'settings/update';
+    if (normAction === 'landing_pages/save') normAction = 'landing_pages/add';
+    if (normAction.startsWith('others_market/')) normAction = normAction.replace('others_market/', 'markets/');
+    switch (normAction) {
       case "products/list": {
         const products = await this.loadProductsFromSheet();
         // Filter out explicitly inactive products on storefront unless admin requests all
@@ -1298,7 +1441,7 @@ class ApiClient {
       case "landing_pages/list": {
         let localPages = this.loadLocal('dcbd_landing_pages', null);
         try {
-          const rows = await fetchSheetViaGviz('Landing-Pages');
+          const rows = await fetchLiveSheetRows('Landing-Pages', 'landing_pages/list', 2500);
           if (rows && rows.length > 0) {
             const sheetPages = rows.map((r, i) => {
               let parsedContent = {};
@@ -1475,9 +1618,12 @@ class ApiClient {
         const localOrders = (this.loadLocal('dcbd_sheet_orders', []) || []).map((o, i) => normalizeSheetOrderRow(o, i)).filter(Boolean);
         let sheetOrders = [];
         try {
-          const rows = await fetchSheetViaGviz('Orders');
+          const rows = await fetchLiveSheetRows('Orders', 'orders/list', 2500);
           if (rows && rows.length > 0) {
             sheetOrders = rows.map((r, i) => normalizeSheetOrderRow(r, i)).filter(Boolean);
+            // Requirement 7: The orders at the bottom of the Google Sheet are the newest orders!
+            // Reverse so that the sheet's bottom orders appear at the beginning of the site list!
+            sheetOrders.reverse();
           }
         } catch (e) {}
 
@@ -1895,40 +2041,282 @@ class ApiClient {
         return { success: true, status: "success", data: payload };
       }
 
+      // --- ATTRIBUTES & VARIANTS (COLOR & SIZE) ---
+      case "attributes/list":
+      case "variants/list": {
+        let v = (typeof window !== 'undefined' && window.getAdminVariants) ? window.getAdminVariants() : (this.loadLocal('dcbd_variants', { colors: [], sizes: [] }));
+        try {
+          const rows = await fetchLiveSheetRows('Attributes', 'attributes/list', 2000);
+          if (rows && rows.length > 0) {
+            rows.forEach(r => {
+              const type = String(r.type || r.Type || r.col_1 || '').trim().toLowerCase();
+              const val = String(r.name_value || r.Name_Value || r.col_2 || '').trim();
+              if (val) {
+                if (type === 'color' && !v.colors.includes(val)) v.colors.push(val);
+                else if (type === 'size' && !v.sizes.includes(val)) v.sizes.push(val);
+              }
+            });
+            this.saveLocal('dcbd_variants', v);
+            if (typeof window !== 'undefined' && window.__adminState) window.__adminState.variants = v;
+          }
+        } catch (e) {}
+        return { success: true, data: v };
+      }
+
+      case "attributes/add":
+      case "attributes/create":
+      case "variants/add":
+      case "variants/create": {
+        const type = String(payload.type || (payload.color ? 'Color' : 'Size')).trim();
+        const val = String(payload.name_value || payload.val || payload.name || payload.color || payload.size || '').trim();
+        if (type && val) {
+          const v = this.loadLocal('dcbd_variants', { colors: ['Black', 'White', 'Navy Blue', 'Silver'], sizes: ['Free Size', 'M', 'L', 'XL'] });
+          if (type.toLowerCase() === 'color' && !v.colors.includes(val)) v.colors.unshift(val);
+          else if (type.toLowerCase() === 'size' && !v.sizes.includes(val)) v.sizes.unshift(val);
+          this.saveLocal('dcbd_variants', v);
+          if (typeof window !== 'undefined' && window.__adminState) window.__adminState.variants = v;
+        }
+        await sendToAppsScript("attributes/add", payload);
+        return { success: true, status: "success", data: payload, message: "অ্যাট্রিবিউট তালিকা ও গুগল শিটে সংরক্ষিত হয়েছে!" };
+      }
+
+      case "attributes/delete":
+      case "variants/delete": {
+        const type = String(payload.type || '').trim().toLowerCase();
+        const val = String(payload.name_value || payload.val || payload.name || payload.color || payload.size || '').trim().toLowerCase();
+        if (type && val) {
+          const v = this.loadLocal('dcbd_variants', { colors: [], sizes: [] });
+          if (type === 'color') v.colors = v.colors.filter(c => c.toLowerCase() !== val);
+          else v.sizes = v.sizes.filter(s => s.toLowerCase() !== val);
+          this.saveLocal('dcbd_variants', v);
+          if (typeof window !== 'undefined' && window.__adminState) window.__adminState.variants = v;
+        }
+        await sendToAppsScript("attributes/delete", payload);
+        return { success: true, status: "success" };
+      }
+
+      // --- SELLERS / VENDORS ---
+      case "sellers/list": {
+        let localSellers = (this.loadLocal('dcbd_sellers', []) || []);
+        try {
+          const rows = await fetchLiveSheetRows('Sellers', 'sellers/list', 2500);
+          if (rows && rows.length > 0) {
+            const mapped = rows.map((r, i) => ({
+              shop_id: safeStr(r.shop_id || r.Shop_ID || r.col_0 || `VND-${101 + i}`),
+              id: safeStr(r.shop_id || r.Shop_ID || r.col_0 || `VND-${101 + i}`),
+              shop_logo: safeStr(r.shop_logo || r.Shop_logo || r.col_1 || ''),
+              shop_name: safeStr(r.shop_name || r.Shop_Name || r.col_2 || 'Store'),
+              name: safeStr(r.name || r.Name || r.col_3 || 'Merchant'),
+              mobile: safeStr(r.mobile || r.Mobile || r.col_4 || ''),
+              mail: safeStr(r.mail || r.Mail || r.col_5 || ''),
+              address: safeStr(r.address || r.Address || r.col_6 || ''),
+              commission_rate: safeStr(r.commission_rate || r.Commission_Rate || r.col_7 || '10%'),
+              status: safeStr(r.status || r.Status || r.col_8 || 'Active')
+            }));
+            const byId = new Map();
+            mapped.forEach(s => byId.set(String(s.shop_id).toLowerCase(), s));
+            (localSellers || []).forEach(s => byId.set(String(s.shop_id || s.id).toLowerCase(), { ...(byId.get(String(s.shop_id || s.id).toLowerCase()) || {}), ...s }));
+            localSellers = Array.from(byId.values());
+            this.saveLocal('dcbd_sellers', localSellers);
+            if (typeof window !== 'undefined' && window.__adminState) window.__adminState.sellers = localSellers;
+          }
+        } catch (e) {}
+        return { success: true, data: { items: localSellers, total: localSellers.length } };
+      }
+
       case "sellers/add":
       case "sellers/create":
-      case "sellers/update":
-      case "sellers/delete":
+      case "sellers/update": {
+        const shopId = safeStr(payload.shop_id || payload.id || ("VND-" + Math.floor(100 + Math.random() * 900)));
+        const entry = {
+          shop_id: shopId,
+          id: shopId,
+          shop_logo: safeStr(payload.shop_logo || payload.logo || ''),
+          shop_name: safeStr(payload.shop_name || payload.store || 'Merchant Store'),
+          name: safeStr(payload.name || payload.owner || 'Merchant'),
+          mobile: safeStr(payload.mobile || payload.phone || ''),
+          mail: safeStr(payload.mail || payload.email || ''),
+          address: safeStr(payload.address || ''),
+          commission_rate: safeStr(payload.commission_rate || payload.commission || '10%'),
+          status: safeStr(payload.status || 'Active')
+        };
+        let sellers = this.loadLocal('dcbd_sellers', []);
+        const exIdx = sellers.findIndex(s => String(s.shop_id || s.id).toLowerCase() === shopId.toLowerCase());
+        if (exIdx >= 0) sellers[exIdx] = { ...sellers[exIdx], ...entry };
+        else sellers.unshift(entry);
+        this.saveLocal('dcbd_sellers', sellers);
+        if (typeof window !== 'undefined' && window.__adminState) window.__adminState.sellers = sellers;
+        await sendToAppsScript("sellers/add", entry);
+        return { success: true, status: "success", data: entry, message: "মার্চেন্ট সেলার তালিকা ও গুগল শিটে সংরক্ষিত হয়েছে!" };
+      }
+
+      case "sellers/delete": {
+        const sId = safeStr(payload.shop_id || payload.id || payload.seller_id);
+        let sellers = this.loadLocal('dcbd_sellers', []);
+        sellers = sellers.filter(s => String(s.shop_id || s.id).toLowerCase() !== sId.toLowerCase());
+        this.saveLocal('dcbd_sellers', sellers);
+        if (typeof window !== 'undefined' && window.__adminState) window.__adminState.sellers = sellers;
+        await sendToAppsScript("sellers/delete", payload);
+        return { success: true, status: "success" };
+      }
+
+      // --- OTHERS MARKETPLACE ---
+      case "markets/list":
+      case "others_market/list": {
+        const m = this.loadLocal('dcbd_markets', []);
+        return { success: true, data: { items: m, total: m.length } };
+      }
+
       case "markets/add":
       case "markets/create":
       case "markets/update":
+      case "others_market/create":
+      case "others_market/add":
+      case "others_market/update": {
+        await sendToAppsScript("markets/add", payload);
+        return { success: true, status: "success", data: payload };
+      }
+
       case "markets/delete":
+      case "others_market/delete": {
+        await sendToAppsScript("markets/delete", payload);
+        return { success: true, status: "success" };
+      }
+
+      // --- ADMINS & WORKERS ---
+      case "admin_worker/list":
+      case "admins/list":
+      case "workers/list": {
+        const w = this.loadLocal('dcbd_workers', []);
+        return { success: true, data: { items: w, total: w.length } };
+      }
+
       case "admin_worker/add":
       case "admin_worker/create":
       case "admin_worker/update":
+      case "admins/add":
+      case "workers/add": {
+        await sendToAppsScript("admin_worker/add", payload);
+        return { success: true, status: "success", data: payload };
+      }
+
       case "admin_worker/delete":
+      case "admins/delete":
+      case "workers/delete": {
+        await sendToAppsScript("admin_worker/delete", payload);
+        return { success: true, status: "success" };
+      }
+
+      // --- FINANCE: COSTS, BUYING, INVEST, PAYMENTS ---
       case "costs/add":
-      case "costs/create":
-      case "costs/delete":
+      case "costs/create": {
+        await sendToAppsScript("costs/add", payload);
+        return { success: true, status: "success", data: payload };
+      }
+
+      case "costs/delete": {
+        await sendToAppsScript("costs/delete", payload);
+        return { success: true, status: "success" };
+      }
+
       case "buying/add":
-      case "buying/create":
-      case "buying/delete":
+      case "buying/create": {
+        await sendToAppsScript("buying/add", payload);
+        return { success: true, status: "success", data: payload };
+      }
+
+      case "buying/delete": {
+        await sendToAppsScript("buying/delete", payload);
+        return { success: true, status: "success" };
+      }
+
       case "invest/add":
-      case "invest/create":
-      case "invest/delete":
+      case "invest/create": {
+        await sendToAppsScript("invest/add", payload);
+        return { success: true, status: "success", data: payload };
+      }
+
+      case "invest/delete": {
+        await sendToAppsScript("invest/delete", payload);
+        return { success: true, status: "success" };
+      }
+
       case "payments/add":
+      case "payments/create": {
+        await sendToAppsScript("payments/add", payload);
+        return { success: true, status: "success", data: payload };
+      }
+
+      case "payments/delete": {
+        await sendToAppsScript("payments/delete", payload);
+        return { success: true, status: "success" };
+      }
+
       case "couriers/add":
       case "couriers/update":
       case "couriers/send_order":
-      case "fraud/add_complaint":
-      case "settings/update":
-      case "settings/add":
-      case "settings/delete":
-      case "banners/add":
-      case "banners/update":
-      case "banners/delete": {
+      case "fraud/add_complaint": {
         await sendToAppsScript(action, payload);
         return { success: true, status: "success", data: payload };
+      }
+
+      case "settings/update":
+      case "settings/save":
+      case "settings/add": {
+        await sendToAppsScript("settings/save", payload);
+        return { success: true, status: "success", data: payload };
+      }
+
+      case "settings/delete": {
+        await sendToAppsScript("settings/delete", payload);
+        return { success: true, status: "success" };
+      }
+
+      // --- BANNERS ---
+      case "banners/add":
+      case "banners/create":
+      case "banners/update": {
+        const bannerId = safeStr(payload.banner_id || payload.id || ("BAN-" + Math.floor(100 + Math.random() * 900)));
+        const newBanner = {
+          banner_id: bannerId,
+          id: bannerId,
+          title: safeStr(payload.title || "ব্যানার স্লাইডার"),
+          subtitle: safeStr(payload.subtitle || ""),
+          image_url: normalizeSingleImageUrl(payload.image_url || payload.image || DEFAULT_PRODUCT_THUMB),
+          link_url: safeStr(payload.link_url || payload.link || "/products"),
+          cta_text: safeStr(payload.cta_text || payload.button_text || "এখনই কিনুন →"),
+          position: Number(payload.position || 1),
+          status: safeStr(payload.status || "Active")
+        };
+
+        let currentBanners = this.sheetBanners || this.loadLocal('dcbd_sheet_banners', null) || [];
+        const existingIdx = currentBanners.findIndex(b => String(b.banner_id || b.id).toLowerCase() === String(bannerId).toLowerCase());
+        if (existingIdx >= 0) {
+          currentBanners[existingIdx] = { ...currentBanners[existingIdx], ...newBanner };
+        } else {
+          currentBanners.unshift(newBanner);
+        }
+        this.sheetBanners = currentBanners;
+        this.saveLocal('dcbd_sheet_banners', currentBanners);
+        if (typeof window !== 'undefined' && window.__adminState) {
+          window.__adminState.banners = currentBanners;
+        }
+
+        await sendToAppsScript("banners/add", newBanner);
+        return { success: true, status: "success", data: newBanner, message: "ব্যানার তালিকা ও গুগল শিটে সংরক্ষিত হয়েছে!" };
+      }
+
+      case "banners/delete": {
+        const id = String(payload.banner_id || payload.id || '').trim().toLowerCase();
+        let currentBanners = this.sheetBanners || this.loadLocal('dcbd_sheet_banners', null) || [];
+        currentBanners = currentBanners.filter(b => String(b.banner_id || b.id).toLowerCase() !== id);
+        this.sheetBanners = currentBanners;
+        this.saveLocal('dcbd_sheet_banners', currentBanners);
+        if (typeof window !== 'undefined' && window.__adminState) {
+          window.__adminState.banners = currentBanners;
+        }
+        await sendToAppsScript("banners/delete", payload);
+        return { success: true, status: "success" };
       }
 
       case "viewers/log": {
@@ -1966,7 +2354,7 @@ class ApiClient {
         }
 
         try {
-          const rows = await fetchSheetViaGviz('Banners');
+          const rows = await fetchLiveSheetRows('Banners', 'banners/list', 2500);
           if (rows && rows.length > 0) {
             this.sheetBanners = rows;
             this.saveLocal('dcbd_sheet_banners', rows);
