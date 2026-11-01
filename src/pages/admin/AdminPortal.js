@@ -11,67 +11,6 @@ import { authStore } from '../../store/authStore.js';
 import { formatCurrency } from '../../utils/format.js';
 import { toast } from '../../components/Toast.js';
 
-// Bulletproof Storage Protection: Intercepts localStorage.setItem to completely prevent QuotaExceededError
-(function installSafeLocalStorage() {
-  if (typeof window === 'undefined' || !window.localStorage) return;
-  if (window.__safeStoragePatchInstalled) return;
-  window.__safeStoragePatchInstalled = true;
-
-  const originalSet = window.localStorage.setItem.bind(window.localStorage);
-  const originalGet = window.localStorage.getItem.bind(window.localStorage);
-  const memoryFallback = new Map();
-
-  window.localStorage.getItem = function(key) {
-    try {
-      const val = originalGet(key);
-      if (val !== null && val !== undefined) return val;
-    } catch (e) {}
-    if (memoryFallback.has(key)) return memoryFallback.get(key);
-    return null;
-  };
-
-  window.localStorage.setItem = function(key, value) {
-    try {
-      originalSet(key, value);
-    } catch (err) {
-      if (err && (err.name === 'QuotaExceededError' || err.code === 22 || err.code === 1014 || err.number === -2147024882)) {
-        console.warn(`[SafeStorage] QuotaExceededError for "${key}". Cleaning oversized base64 images and transient caches...`);
-        
-        // 1. If payload contains base64 images, replace them with lightweight default thumbnail URL
-        try {
-          if (typeof value === 'string' && value.includes('data:image/')) {
-            const stripped = value.replace(/data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]+/g, 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg');
-            originalSet(key, stripped);
-            return;
-          }
-        } catch (e1) {}
-
-        // 2. Purge non-essential transient caches
-        const transientKeys = ['dcbd_worker_logs', 'dcbd_audit_trail', 'dcbd_viewers_log', 'dcbd_landing_config', 'dcbd_backup_data'];
-        transientKeys.forEach(k => {
-          if (k !== key) {
-            try { window.localStorage.removeItem(k); } catch (e2) {}
-          }
-        });
-
-        // 3. Retry after purge
-        try {
-          let cleanedVal = typeof value === 'string' ? value.replace(/data:image\/[a-zA-Z0-9.+_-]+;base64,[A-Za-z0-9+/=]+/g, 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg') : value;
-          originalSet(key, cleanedVal);
-          return;
-        } catch (e3) {
-          // If still over quota, store in memory so execution never crashes
-          memoryFallback.set(key, value);
-          console.warn(`[SafeStorage] Stored "${key}" in memory fallback to maintain unbroken UI.`);
-        }
-      } else {
-        throw err;
-      }
-    }
-  };
-})();
-
-
 function injectHarmonizedAdminStyles() {
   if (typeof document === 'undefined') return;
   if (!document.getElementById('dc-admin-google-fonts')) {
@@ -1678,26 +1617,11 @@ function initAdminGlobalState() {
       target.classList.remove('hidden');
       target.style.display = 'block';
     }
-    if (pageId === 'page-prod-all' && window.renderAdminProductsTable) {
-      window.renderAdminProductsTable();
-    }
-    if (pageId === 'page-prod-add' && window.updateAddProductLiveSummary) {
-      window.updateAddProductLiveSummary();
-    }
     if (pageId === 'page-prod-categories' && window.renderInteractiveCategoryTree) {
       window.renderInteractiveCategoryTree();
     }
     if (pageId === 'page-prod-banners' && window.renderAdminBannersList) {
       window.renderAdminBannersList();
-    }
-    if (pageId === 'page-prod-variants' && window.renderAdminVariantsList) {
-      window.renderAdminVariantsList();
-    }
-    if (pageId === 'page-prod-landing' && window.renderSavedLandingPagesList) {
-      window.renderSavedLandingPagesList();
-    }
-    if (pageId === 'page-prod-landing-add' && window.renderLandingDraftMedia) {
-      window.renderLandingDraftMedia();
     }
 
     // Update top route tabs & URL badge
@@ -3411,36 +3335,16 @@ function initAdminGlobalState() {
     localStorage.setItem('dcbd_sheet_products', JSON.stringify(prods));
     if (window.__adminState) window.__adminState.products = prods;
 
-    const submitBtn = e.target.querySelector('button[type="submit"]') || document.querySelector('#form-add-product-dedicated button[type="submit"]');
-    const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span>⏳ ক্যাটালগ ও গুগল শিটে সংরক্ষণ করা হচ্ছে...</span>';
-    }
+    await apiClient.request('products/add', 'POST', newProduct);
 
-    try {
-      await apiClient.request('products/add', newProduct);
-      if (toast && toast.success) {
-        toast.success(`"${name}" (২৩ কলাম ডাটা) সফলভাবে ক্যাটালগ ও গুগল শিটে সংরক্ষিত হয়েছে!`, 'পণ্য সংরক্ষিত হয়েছে');
-      } else if (toast && toast.show) {
-        toast.show({ type: 'success', title: 'পণ্য সংরক্ষিত হয়েছে', message: `"${name}" (২৩ কলাম ডাটা) সফলভাবে যুক্ত হয়েছে!` });
-      }
-
-      document.getElementById('form-add-product-dedicated')?.reset();
-      const sellEl = document.getElementById('adm-sellprice');
-      if (sellEl) delete sellEl.dataset.manualOverride;
-      window.renderAdminProductImagePreviews('adm');
-      window.renderColorSizeChips('adm');
-      window.renderAdminProductsTable && window.renderAdminProductsTable();
-      window.switchAdminPage('page-prod-all', 'group-products');
-    } catch (err) {
-      if (toast && toast.error) toast.error('পণ্য সংরক্ষণ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
-    } finally {
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = origBtnHtml;
-      }
-    }
+    if (toast && toast.show) toast.show({ type: 'success', title: 'পণ্য সংরক্ষিত হয়েছে', message: `"${name}" (২৩ কলাম ডাটা) সফলভাবে যুক্ত হয়েছে!` });
+    document.getElementById('form-add-product-dedicated')?.reset();
+    const sellEl = document.getElementById('adm-sellprice');
+    if (sellEl) delete sellEl.dataset.manualOverride;
+    window.renderAdminProductImagePreviews('adm');
+    window.renderColorSizeChips('adm');
+    window.renderAdminProductsTable && window.renderAdminProductsTable();
+    window.switchAdminPage('page-prod-all', 'group-products');
   };
 
   // ============================================================================
@@ -3744,19 +3648,7 @@ function initAdminGlobalState() {
     }
   };
 
-    window.toggleBulkSelPriceMethodUI = function(method) {
-    const inp = document.getElementById('bulk-sel-price-val');
-    if (!inp) return;
-    if (method === 'inc_pct' || method === 'dec_pct') {
-      inp.placeholder = 'শতকরা হার লিখুন (যেমন: 10)';
-    } else if (method === 'set_buying_auto') {
-      inp.placeholder = 'নতুন ক্রয় মূল্য লিখুন (যেমন: 800)';
-    } else {
-      inp.placeholder = 'টাকার পরিমাণ লিখুন (যেমন: 1250)';
-    }
-  };
-
-window.openBulkSelectedProductsModal = function(mode) {
+  window.openBulkSelectedProductsModal = function(mode) {
     const count = window.__adminProductFilterState.selectedIds.size;
     if (count === 0) {
       if (toast && toast.show) toast.show({ type: 'warning', title: 'পণ্য সিলেক্ট করুন', message: 'অনুগ্রহ করে চেকবক্সে টিক দিয়ে এক বা একাধিক পণ্য সিলেক্ট করুন।' });
@@ -4743,225 +4635,20 @@ window.openBulkSelectedProductsModal = function(mode) {
     window.switchAdminPage('page-prod-brands', 'group-products');
   };
 
-  window.getAdminVariants = function() {
-    let raw = localStorage.getItem('dcbd_variants');
-    let v = null;
-    try { if (raw) v = JSON.parse(raw); } catch (e) {}
-    if (!v || !Array.isArray(v.colors) || !Array.isArray(v.sizes)) {
-      v = {
-        colors: ['Jet Black', 'Space Silver', 'Rose Gold', 'Red/Black', 'Army Green', 'Pure Amber', 'White', 'Navy Blue', 'Maroon', 'Golden'],
-        sizes: ['Standard', '42mm', '44mm', '50', '52', '54', '56', '১ কেজি', '৫০০ গ্রাম', '22mm Standard', 'Large']
-      };
-      localStorage.setItem('dcbd_variants', JSON.stringify(v));
-    }
-    if (window.__adminState) window.__adminState.variants = v;
-    return v;
-  };
-
-  function getVariantColorHex(name) {
-    const n = String(name || '').toLowerCase();
-    if (n.includes('black')) return '#0f172a';
-    if (n.includes('white')) return '#f8fafc';
-    if (n.includes('red')) return '#ef4444';
-    if (n.includes('green')) return '#10b981';
-    if (n.includes('blue')) return '#3b82f6';
-    if (n.includes('gold')) return '#eab308';
-    if (n.includes('silver')) return '#94a3b8';
-    if (n.includes('amber')) return '#f59e0b';
-    if (n.includes('maroon')) return '#881337';
-    if (n.includes('rose')) return '#f43f5e';
-    return '#6366f1';
-  }
-
-  window.renderAdminVariantsList = function() {
-    const container = document.getElementById('admin-variants-container');
-    if (!container) return;
-    const v = window.getAdminVariants();
-
-    container.innerHTML = `
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
-        
-        <!-- COLORS COLUMN -->
-        <div class="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-          <div class="flex items-center justify-between border-b pb-2">
-            <div class="font-black text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>🎨</span> উপলব্ধ কালার শেডস (<span id="var-count-color">${v.colors.length}</span> টি)
-            </div>
-            <span class="text-[10px] text-slate-400 font-bold uppercase">Color Shades</span>
-          </div>
-
-          <!-- Quick Add Color -->
-          <div class="flex gap-1.5 pb-2 border-b border-dashed">
-            <input 
-              type="text" 
-              id="adm-quick-add-color-val" 
-              placeholder="+ নতুন রঙের নাম লিখুন (যেমন: Royal Blue)..." 
-              class="form-control text-xs py-1.5 px-3 rounded-xl border flex-1 bg-slate-50 dark:bg-slate-800"
-              onkeydown="if(event.key==='Enter'){event.preventDefault(); window.quickAddVariant('color');}"
-            />
-            <button type="button" onclick="window.quickAddVariant('color')" class="btn-primary py-1.5 px-3 text-xs font-bold whitespace-nowrap">
-              + কালার যোগ
-            </button>
-          </div>
-
-          <!-- Color Items List -->
-          <div class="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
-            ${v.colors.map((c, idx) => `
-              <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-400 transition group">
-                <div class="flex items-center gap-2 min-w-0">
-                  <span class="w-3.5 h-3.5 rounded-full border border-slate-300 shadow-sm flex-shrink-0" style="background-color: ${getVariantColorHex(c)};"></span>
-                  <span class="font-bold text-slate-800 dark:text-slate-200 text-xs truncate">${c}</span>
-                </div>
-                <div class="flex items-center gap-1 flex-shrink-0">
-                  <button type="button" onclick="window.editAdminVariant('color', ${idx})" class="p-1 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-700 text-[11px] font-bold" title="এডিট করুন">
-                    ✏️ এডিট
-                  </button>
-                  <button type="button" onclick="window.deleteAdminVariant('color', ${idx})" class="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 text-[11px] font-bold" title="মুছে ফেলুন">
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-
-        <!-- SIZES COLUMN -->
-        <div class="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-          <div class="flex items-center justify-between border-b pb-2">
-            <div class="font-black text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>📏</span> উপলব্ধ সাইজ ও ওজন স্কেল (<span id="var-count-size">${v.sizes.length}</span> টি)
-            </div>
-            <span class="text-[10px] text-slate-400 font-bold uppercase">Size Scales</span>
-          </div>
-
-          <!-- Quick Add Size -->
-          <div class="flex gap-1.5 pb-2 border-b border-dashed">
-            <input 
-              type="text" 
-              id="adm-quick-add-size-val" 
-              placeholder="+ নতুন সাইজ/ওজন লিখুন (যেমন: XL, 58, ২ কেজি)..." 
-              class="form-control text-xs py-1.5 px-3 rounded-xl border flex-1 bg-slate-50 dark:bg-slate-800"
-              onkeydown="if(event.key==='Enter'){event.preventDefault(); window.quickAddVariant('size');}"
-            />
-            <button type="button" onclick="window.quickAddVariant('size')" class="btn-primary py-1.5 px-3 text-xs font-bold whitespace-nowrap">
-              + সাইজ যোগ
-            </button>
-          </div>
-
-          <!-- Size Items List -->
-          <div class="space-y-1.5 max-h-[420px] overflow-y-auto pr-1">
-            ${v.sizes.map((s, idx) => `
-              <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 hover:border-emerald-400 transition group">
-                <div class="flex items-center gap-2 min-w-0">
-                  <span class="px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-mono text-[10px] font-bold">#${idx + 1}</span>
-                  <span class="font-bold text-slate-800 dark:text-slate-200 text-xs truncate">${s}</span>
-                </div>
-                <div class="flex items-center gap-1 flex-shrink-0">
-                  <button type="button" onclick="window.editAdminVariant('size', ${idx})" class="p-1 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-700 text-[11px] font-bold" title="এডিট করুন">
-                    ✏️ এডিট
-                  </button>
-                  <button type="button" onclick="window.deleteAdminVariant('size', ${idx})" class="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-700 text-[11px] font-bold" title="মুছে ফেলুন">
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-
-      </div>
-    `;
-  };
-
-  window.quickAddVariant = function(type) {
-    const inp = document.getElementById(type === 'color' ? 'adm-quick-add-color-val' : 'adm-quick-add-size-val');
-    const val = (inp?.value || '').trim();
-    if (!val) {
-      if (toast && toast.warning) toast.warning(`অনুগ্রহ করে ${type === 'color' ? 'কালার' : 'সাইজ'} নাম লিখুন।`);
-      return;
-    }
-    const v = window.getAdminVariants();
-    if (type === 'color') {
-      if (v.colors.includes(val)) {
-        if (toast && toast.warning) toast.warning('এই কালারটি ইতিমধ্যে তালিকায় রয়েছে।');
-        return;
-      }
-      v.colors.unshift(val);
-    } else {
-      if (v.sizes.includes(val)) {
-        if (toast && toast.warning) toast.warning('এই সাইজটি ইতিমধ্যে তালিকায় রয়েছে।');
-        return;
-      }
-      v.sizes.unshift(val);
-    }
-    localStorage.setItem('dcbd_variants', JSON.stringify(v));
-    if (window.__adminState) window.__adminState.variants = v;
-    if (inp) inp.value = '';
-    window.renderAdminVariantsList();
-    apiClient.request('attributes/add', {
-      type: type === 'color' ? 'Color' : 'Size',
-      name_value: val,
-      status: 'Active'
-    }).catch(() => {});
-    if (toast && toast.success) toast.success(`"${val}" সফলভাবে ${type === 'color' ? 'কালার' : 'সাইজ'} তালিকায় ও গুগল শিটে যুক্ত হয়েছে!`);
-  };
-
-  window.editAdminVariant = function(type, idx) {
-    const v = window.getAdminVariants();
-    const arr = type === 'color' ? v.colors : v.sizes;
-    const oldVal = arr[idx];
-    const newVal = prompt(`নতুন ${type === 'color' ? 'কালার' : 'সাইজ'} নাম লিখুন:`, oldVal);
-    if (!newVal || newVal.trim() === '' || newVal.trim() === oldVal) return;
-    arr[idx] = newVal.trim();
-    localStorage.setItem('dcbd_variants', JSON.stringify(v));
-    if (window.__adminState) window.__adminState.variants = v;
-    window.renderAdminVariantsList();
-    apiClient.request('attributes/add', {
-      type: type === 'color' ? 'Color' : 'Size',
-      old_value: oldVal,
-      name_value: newVal.trim(),
-      status: 'Active'
-    }).catch(() => {});
-    if (toast && toast.success) toast.success(`"${oldVal}" পরিবর্তিত হয়ে "${newVal.trim()}" হয়েছে।`, 'ভ্যারিয়েন্ট আপডেট');
-  };
-
-  window.deleteAdminVariant = function(type, idx) {
-    const v = window.getAdminVariants();
-    const arr = type === 'color' ? v.colors : v.sizes;
-    const val = arr[idx];
-    if (!confirm(`আপনি কি নিশ্চিত যে "${val}" মুছে ফেলতে চান?`)) return;
-    arr.splice(idx, 1);
-    localStorage.setItem('dcbd_variants', JSON.stringify(v));
-    if (window.__adminState) window.__adminState.variants = v;
-    window.renderAdminVariantsList();
-    apiClient.request('attributes/delete', {
-      type: type === 'color' ? 'Color' : 'Size',
-      name_value: val
-    }).catch(() => {});
-    if (toast && toast.success) toast.success(`"${val}" তালিকা ও শিট থেকে সফলভাবে মুছে ফেলা হয়েছে।`);
-  };
-
   window.handleAdminAddVariant = function(e) {
     e.preventDefault();
     const varType = document.getElementById('adm-variant-type')?.value;
     const varValue = document.getElementById('adm-variant-val')?.value.trim();
     if (!varValue) return;
 
-    let variants = window.getAdminVariants();
+    let variants = JSON.parse(localStorage.getItem('dcbd_variants') || '{"colors":[], "sizes":[]}');
     if (varType === 'color') variants.colors.push(varValue);
     else variants.sizes.push(varValue);
     localStorage.setItem('dcbd_variants', JSON.stringify(variants));
     if (window.__adminState) window.__adminState.variants = variants;
 
-    apiClient.request('attributes/add', {
-      type: varType === 'color' ? 'Color' : 'Size',
-      name_value: varValue,
-      status: 'Active'
-    }).catch(() => {});
-
-    if (toast && toast.success) toast.success(`${varType === 'color' ? 'কালার' : 'সাইজ'}: "${varValue}" যুক্ত ও শিটে সংরক্ষিত হয়েছে।`, 'ভ্যারিয়েন্ট যুক্ত');
+    if (toast && toast.show) toast.show({ type: 'success', title: 'ভ্যারিয়েন্ট যুক্ত', message: `${varType === 'color' ? 'কালার' : 'সাইজ'}: "${varValue}" যুক্ত হয়েছে।` });
     document.getElementById('form-add-variant-dedicated')?.reset();
-    window.renderAdminVariantsList();
     window.switchAdminPage('page-prod-variants', 'group-products');
   };
 
@@ -5206,11 +4893,10 @@ window.openBulkSelectedProductsModal = function(mode) {
     if (!title || !image) return;
 
     let banners = [...window.getAdminBannersList()];
-    let targetPayload = null;
     if (editId) {
       banners = banners.map(b => {
         if (b.banner_id === editId) {
-          targetPayload = {
+          return {
             ...b,
             title,
             subtitle: subtitle || '',
@@ -5220,14 +4906,10 @@ window.openBulkSelectedProductsModal = function(mode) {
             position,
             status
           };
-          return targetPayload;
         }
         return b;
       });
-      if (targetPayload) {
-        apiClient.request('banners/update', targetPayload).catch(() => {});
-      }
-      if (toast && toast.success) toast.success(`"${title}" সফলভাবে আপডেট ও গুগল শিটে সংরক্ষিত হয়েছে!`, 'ব্যানার আপডেট সম্পন্ন');
+      if (toast && toast.show) toast.show({ type: 'success', title: 'ব্যানার আপডেট সম্পন্ন', message: `"${title}" সফলভাবে আপডেট করা হয়েছে!` });
     } else {
       const newBanner = {
         banner_id: 'BAN-' + Math.floor(100 + Math.random() * 900),
@@ -5241,7 +4923,7 @@ window.openBulkSelectedProductsModal = function(mode) {
       };
       banners.unshift(newBanner);
       apiClient.request('banners/add', newBanner).catch(() => {});
-      if (toast && toast.success) toast.success(`"${title}" স্লাইডার ও গুগল শিটে সংরক্ষিত হয়েছে!`, 'নতুন ব্যানার যুক্ত');
+      if (toast && toast.show) toast.show({ type: 'success', title: 'নতুন ব্যানার যুক্ত', message: `"${title}" স্লাইডারে সংরক্ষিত হয়েছে!` });
     }
 
     localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
@@ -5255,21 +4937,18 @@ window.openBulkSelectedProductsModal = function(mode) {
   window.toggleAdminBannerStatus = function(bannerId) {
     let banners = [...window.getAdminBannersList()];
     let newStatus = 'Active';
-    let changed = null;
     banners = banners.map(b => {
       if (b.banner_id === bannerId) {
         newStatus = (b.status || 'Active') === 'Active' ? 'Inactive' : 'Active';
-        changed = { ...b, status: newStatus };
-        return changed;
+        return { ...b, status: newStatus };
       }
       return b;
     });
     localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
     if (window.__adminState) window.__adminState.banners = banners;
-    if (changed) apiClient.request('banners/update', changed).catch(() => {});
     window.renderAdminBannersList();
-    if (toast && toast.info) {
-      toast.info(`ব্যানার #${bannerId} এখন "${newStatus}" করা হয়েছে।`, 'স্ট্যাটাস পরিবর্তিত');
+    if (toast && toast.show) {
+      toast.show({ type: 'info', title: 'স্ট্যাটাস পরিবর্তিত', message: `ব্যানার #${bannerId} এখন "${newStatus}" করা হয়েছে।` });
     }
   };
 
@@ -5285,8 +4964,6 @@ window.openBulkSelectedProductsModal = function(mode) {
     banners = banners.map((b, i) => ({ ...b, position: i + 1 }));
     localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
     if (window.__adminState) window.__adminState.banners = banners;
-    const moved = banners[targetIdx];
-    if (moved) apiClient.request('banners/update', moved).catch(() => {});
     window.renderAdminBannersList();
   };
 
@@ -5295,10 +4972,9 @@ window.openBulkSelectedProductsModal = function(mode) {
     let banners = window.getAdminBannersList().filter(b => b.banner_id !== bannerId);
     localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
     if (window.__adminState) window.__adminState.banners = banners;
-    apiClient.request('banners/delete', { banner_id: bannerId }).catch(() => {});
     window.renderAdminBannersList();
-    if (toast && toast.success) {
-      toast.success(`ব্যানার ${bannerId} সফলভাবে ডিলিট হয়েছে।`, 'ব্যানার মুছে ফেলা হয়েছে');
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'ব্যানার মুছে ফেলা হয়েছে', message: `ব্যানার ${bannerId} সফলভাবে ডিলিট হয়েছে।` });
     }
   };
 
@@ -10243,19 +9919,27 @@ function renderCategoryBrandModule({ products = [], categories = [], brands = []
           <!-- 11. Color/Size Variants List Page -->
           <div id="page-prod-variants" class="admin-page-view hidden space-y-4">
             <div class="dc-admin-card space-y-4">
-              <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
-                <div>
-                  <h3 class="font-black text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <span>🎨</span> কালার ও সাইজ ভ্যারিয়েন্ট ম্যানেজমেন্ট (Add / Edit / Delete)
-                  </h3>
-                  <p class="text-[11px] text-slate-400">পণ্য যুক্ত করার সময় ব্যবহৃত রঙের নাম ও সাইজ স্কেল পরিবর্তন ও পরিচালনা</p>
-                </div>
-                <button class="btn-primary py-1.5 px-3.5 text-xs font-bold" onclick="switchAdminPage('page-prod-variant-add', 'group-products')">+ নতুন ভ্যারিয়েন্ট ফর্ম</button>
+              <div class="flex items-center justify-between border-b pb-2">
+                <h3 class="font-bold text-sm text-slate-900 dark:text-white">🎨 কালার ও সাইজ ভ্যারিয়েন্ট কনফিগারেশন</h3>
+                <button class="btn-primary py-1 px-3 text-xs font-bold" onclick="switchAdminPage('page-prod-variant-add', 'group-products')">+ নতুন ভ্যারিয়েন্ট</button>
               </div>
-
-              <!-- Dynamic Interactive Variants Container -->
-              <div id="admin-variants-container">
-                <!-- Populated dynamically by window.renderAdminVariantsList() -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2">
+                  <h5 class="font-bold text-slate-900 dark:text-white">উপলব্ধ কালার শেডস:</h5>
+                  <div class="flex flex-wrap gap-1.5">
+                    ${variants.colors.map(c => `
+                      <span class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border text-slate-700 dark:text-slate-200 font-bold text-[11px] shadow-sm">${c}</span>
+                    `).join("")}
+                  </div>
+                </div>
+                <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2">
+                  <h5 class="font-bold text-slate-900 dark:text-white">উপলব্ধ সাইজ ও ওজন স্কেল:</h5>
+                  <div class="flex flex-wrap gap-1.5">
+                    ${variants.sizes.map(s => `
+                      <span class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border text-slate-700 dark:text-slate-200 font-bold text-[11px] shadow-sm">${s}</span>
+                    `).join("")}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -14388,28 +14072,13 @@ export async function renderAdminPortal(params = {}) {
     others: () => renderOthersModule(data)
   };
 
-  // Render all modules into the admin DOM container so every button, link, and tab switches views instantly (0ms latency!)
-  const allModules = [
-    renderDashboardModule(data),
-    renderProductCatalogModule(data),
-    renderAddProductModule(data),
-    renderCategoryBrandModule(data),
-    renderBulkToolsModule(data),
-    renderLandingCmsModule(data),
-    renderOrdersModule(data),
-    renderPartnersModule(data),
-    renderReportsModule(data),
-    renderInventoryModule(data),
-    renderCouriersSettingsModule({ ...data, userDisplayName, workerType }),
-    renderOthersModule(data)
-  ];
-
-  let combinedModulesHtml = allModules.join('\n');
+  const renderFn = moduleRenderMap[activeRoute.module] || moduleRenderMap.dashboard;
+  let activeModuleHtml = renderFn();
 
   // Unhide the exact target page view immediately in HTML string
   const targetMarker = `id="${activeRoute.pageId}" class="admin-page-view hidden`;
-  if (combinedModulesHtml.includes(targetMarker)) {
-    combinedModulesHtml = combinedModulesHtml.replace(targetMarker, `id="${activeRoute.pageId}" class="admin-page-view`);
+  if (activeModuleHtml.includes(targetMarker)) {
+    activeModuleHtml = activeModuleHtml.replace(targetMarker, `id="${activeRoute.pageId}" class="admin-page-view`);
   }
 
   // Sync sidebar active item & accordion group after mount
@@ -14430,11 +14099,6 @@ export async function renderAdminPortal(params = {}) {
         subnav.style.display = 'block';
       }
       if (chevron) chevron.style.transform = 'rotate(90deg)';
-      
-      // Run view lifecycle hooks
-      if (activeRoute.pageId === 'page-prod-all' && window.renderAdminProductsTable) {
-        window.renderAdminProductsTable();
-      }
       if (activeRoute.pageId === 'page-prod-add' && window.updateAddProductLiveSummary) {
         window.updateAddProductLiveSummary();
       }
@@ -14444,19 +14108,13 @@ export async function renderAdminPortal(params = {}) {
       if (activeRoute.pageId === 'page-prod-banners' && window.renderAdminBannersList) {
         window.renderAdminBannersList();
       }
-      if (activeRoute.pageId === 'page-prod-variants' && window.renderAdminVariantsList) {
-        window.renderAdminVariantsList();
-      }
-      if (activeRoute.pageId === 'page-prod-landing' && window.renderSavedLandingPagesList) {
-        window.renderSavedLandingPagesList();
-      }
     }, 0);
   }
 
   return `
     <div class="dc-admin-wrapper">
       ${renderSidebarAndTopbar({ ...data, userDisplayName, workerType, workerRole, activeRoute })}
-          ${combinedModulesHtml}
+          ${activeModuleHtml}
         </main>
       </div>
     </div>
