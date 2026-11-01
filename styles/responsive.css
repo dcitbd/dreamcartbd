@@ -1,0 +1,153 @@
+/* ==========================================================================
+   DREAM CART BD — COMPREHENSIVE RESPONSIVE SUITE & ADAPTIVE LAYOUTS
+   Multi-screen support: Mobile (320-480px), Phablet (481-768px),
+   Tablet/iPad (769-1024px), Laptop/Desktop (1025-1440px), 4K & Smart TVs (>1440px)
+   ========================================================================== */
+
+:root {
+  --app-max-width: 1380px;
+  --header-height: 72px;
+  --notice-height: 38px;
+  --mobile-nav-height: 64px;
+
+  /* Light Theme */
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --bg-card-hover: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-main: #e2e8f0;
+  --border-light: #f1f5f9;
+  --primary: #059669;
+  --primary-hover: #047857;
+  --primary-light: #ecfdf5;
+  --accent: #f59e0b;
+}
+
+.dark {
+  --bg-main: #0b1120;
+  --bg-card: #1e293b;
+  --bg-card-hover: #243248;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-main: #334155;
+  --border-light: #1e293b;
+  --primary: #10b981;
+  --primary-hover: #059669;
+  --primary-light: #064e3b;
+  --accent: #fbbf24;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main#app-content {
+  flex: 1;
+  width: 100%;
+}
+
+.container-custom {
+  width: 100%;
+  max-width: var(--app-max-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: clamp(12px, 3vw, 32px);
+  padding-right: clamp(12px, 3vw, 32px);
+}
+
+/* --------------------------------------------------------------------------
+   RESPONSIVE PRODUCT GRID (Cards will NEVER compress into thin strips)
+   -------------------------------------------------------------------------- */
+.product-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important;
+  gap: 1.25rem !important;
+  width: 100% !important;
+}
+
+@media (max-width: 640px) {
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.625rem !important;
+  }
+
+  .product-card {
+    border-radius: 1rem !important;
+  }
+
+  .product-card .card-body {
+    padding: 0.625rem !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .product-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+    gap: 0.75rem !important;
+  }
+}
+
+.product-card {
+  min-width: 0;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.25s ease;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-main);
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 30px -10px rgba(5, 150, 105, 0.15);
+  border-color: rgba(16, 185, 129, 0.5);
+}
+
+.product-card .img-box {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  position: relative;
+  background-color: #f1f5f9;
+}
+
+.dark .product-card .img-box {
+  background-color: #0f172a;
+}
+
+.product-card .img-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.product-card:hover .img-box img {
+  transform: scale(1.05);
+}
+
+@media (max-width: 768px) {
+  body {
+    padding-bottom: 74px !important;
+  }
+  
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
