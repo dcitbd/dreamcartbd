@@ -283,6 +283,96 @@ export function renderFooter() {
         transform: translateY(-3px) scale(1.14) rotate(3deg) !important;
         box-shadow: 0 5px 16px rgba(16, 185, 129, 0.5) !important;
       }
+      /* Extraordinary Footer Action Buttons */
+      .ft-action-buttons-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .ft-action-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 12px;
+        text-decoration: none;
+        transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative;
+        overflow: hidden;
+      }
+      .ft-action-btn::before {
+        content: "";
+        position: absolute;
+        top: 0; left: -100%; width: 100%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+        transition: left 0.6s ease;
+      }
+      .ft-action-btn:hover::before {
+        left: 100%;
+      }
+      .ft-action-btn:hover {
+        transform: translateY(-2px) scale(1.02);
+      }
+      .ft-btn-career {
+        background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
+        border: 1px solid rgba(52, 211, 153, 0.4);
+        box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+      }
+      .ft-btn-career:hover {
+        box-shadow: 0 8px 24px rgba(5, 150, 105, 0.55);
+        border-color: #34d399;
+      }
+      .ft-btn-support {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #1e40af 100%);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3);
+      }
+      .ft-btn-support:hover {
+        box-shadow: 0 8px 24px rgba(2, 132, 199, 0.55);
+        border-color: #38bdf8;
+      }
+      .ft-btn-icon-box {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        flex-shrink: 0;
+      }
+      .ft-btn-content {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+      }
+      .ft-btn-text {
+        color: #ffffff;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1.2;
+      }
+      .ft-btn-sub {
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 9.5px;
+        font-weight: 500;
+        line-height: 1.2;
+        margin-top: 1px;
+      }
+      .ft-btn-arrow {
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 900;
+        transition: transform 0.2s ease;
+      }
+      .ft-action-btn:hover .ft-btn-arrow {
+        transform: translateX(4px);
+      }
+
       .ft-social-btn:hover .ft-social-svg {
         transform: scale(1.1);
       }
@@ -546,6 +636,39 @@ export function renderFooter() {
                   <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
                   <path d="M2 12h20"/>
                 </svg>
+              </a>
+            </div>
+
+            <!-- Extraordinary Action Buttons: শিখুন ও ক্যারিয়ার গড়ুন & আইটি সাপোর্ট -->
+            <div class="ft-action-buttons-wrap">
+              <a 
+                href="https://dreamcartbd.com/education" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                class="ft-action-btn ft-btn-career"
+                title="শিখুন ও ক্যারিয়ার গড়ুন"
+              >
+                <div class="ft-btn-icon-box">🎓</div>
+                <div class="ft-btn-content">
+                  <span class="ft-btn-text">শিখুন ও ক্যারিয়ার গড়ুন</span>
+                  <span class="ft-btn-sub">ডিজিটাল স্কিল ও ক্যারিয়ার ডেভেলপমেন্ট</span>
+                </div>
+                <span class="ft-btn-arrow">→</span>
+              </a>
+
+              <a 
+                href="https://dreamcartbd.com/dcitbd" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                class="ft-action-btn ft-btn-support"
+                title="আইটি সাপোর্ট"
+              >
+                <div class="ft-btn-icon-box">💻</div>
+                <div class="ft-btn-content">
+                  <span class="ft-btn-text">আইটি সাপোর্ট</span>
+                  <span class="ft-btn-sub">২৪/৭ টেকনিক্যাল সাপোর্ট ও সফটওয়্যার</span>
+                </div>
+                <span class="ft-btn-arrow">→</span>
               </a>
             </div>
           </div>
