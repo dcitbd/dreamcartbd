@@ -12,6 +12,8 @@ export const SPREADSHEET_ID = "1BGi8IXV6S7uXDi4IaR_sCJYhtpfzyLGuldo4NnGVmR8";
 
 export const DEFAULT_PRODUCT_THUMB = "https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg";
 
+const DEMO_SKUS = new Set(["dcbd-wt-01", "dcbd-gs-02", "dcbd-hn-03", "dcbd-fl-04", "dcbd-ch-05"]);
+
 export const INITIAL_PRODUCTS = [
   {
     sku: "DCBD-WT-01",
@@ -200,16 +202,12 @@ export function parseImageUrlsList(rawInput) {
   const str = String(rawInput).trim();
   if (!str) return [];
 
-  // Temporarily protect "data:image/...;base64," commas before splitting
   const protectedStr = str.replace(/(data:image\/[a-zA-Z0-9.+_-]+;base64),/gi, '$1__DCBD_B64_COMMA__');
-  // Split by pipe, newline, or comma followed by http/https/data:/slash/whitespace
   const parts = protectedStr
     .split(/\s*\|\s*|\r?\n|,(?=\s*(?:https?:\/\/|data:image\/|\/))/i)
     .flatMap(chunk => {
-      // If chunk doesn't start with data:image and has comma-separated http links or plain URLs
       if (!chunk.trim().startsWith('data:image/') && chunk.includes(',')) {
         const sub = chunk.split(',').map(s => s.trim()).filter(Boolean);
-        // Only split by comma if every piece looks like a URL/path (not a query param like w_400,h_400)
         if (sub.length > 1 && sub.every(s => /^(https?:\/\/|\/|data:)/i.test(s))) {
           return sub;
         }
@@ -229,7 +227,6 @@ export function normalizeSingleImageUrl(rawUrl) {
   if (!u) return '';
   if (u.startsWith('data:image/') || u.startsWith('blob:')) return u;
   if (u.startsWith('//')) u = 'https:' + u;
-  // Convert Google Drive share links into direct viewable image URLs
   const driveMatch =
     u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=view&)?id=|thumbnail\?id=)([a-zA-Z0-9_-]{15,})/) ||
     u.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]{15,})/);
@@ -254,29 +251,46 @@ export function safeStr(val, fallback = '') {
   return String(val).trim();
 }
 
+/**
+ * Convert GViz column letter ID ('A'..'Z', 'AA'..'AZ') to 0-based sheet column index.
+ */
+function gvizColIdToIndex(colId, fallbackIdx = 0) {
+  if (!colId || typeof colId !== 'string') return fallbackIdx;
+  const clean = colId.trim().toUpperCase();
+  if (!/^[A-Z]+$/.test(clean)) return fallbackIdx;
+  let idx = 0;
+  for (let i = 0; i < clean.length; i++) {
+    idx = idx * 26 + (clean.charCodeAt(i) - 64);
+  }
+  return idx - 1;
+}
+
 // In-flight deduplication map for GViz requests
 const _inflightGviz = new Map();
 
-function fetchSheetViaGviz(sheetName, timeoutMs = 3000) {
+export function fetchSheetViaGviz(sheetName, timeoutMs = 15000, customTq = '') {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return Promise.resolve([]);
   }
 
-  const cacheKey = String(sheetName).trim().toLowerCase();
+  const cacheKey = `${String(sheetName).trim().toLowerCase()}::${String(customTq || '').trim().toLowerCase()}`;
   if (_inflightGviz.has(cacheKey)) {
     return _inflightGviz.get(cacheKey);
   }
 
   const p = new Promise((resolve) => {
-    const cbName = 'gviz_cb_' + Math.random().toString(36).substr(2, 9);
+    const cbName = 'gviz_cb_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now().toString(36);
     const script = document.createElement('script');
-    const url = 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID + '/gviz/tq?tqx=responseHandler:' + cbName + '&sheet=' + encodeURIComponent(sheetName) + '&headers=1';
+    let url = 'https://docs.google.com/spreadsheets/d/' + SPREADSHEET_ID + '/gviz/tq?tqx=responseHandler:' + cbName + '&sheet=' + encodeURIComponent(sheetName) + '&headers=1';
+    if (customTq) {
+      url += '&tq=' + encodeURIComponent(customTq);
+    }
 
     let settled = false;
     function finish(result) {
       if (settled) return;
       settled = true;
-      _inflightGviz.delete(sheetName);
+      _inflightGviz.delete(cacheKey);
       cleanup();
       resolve(result);
     }
@@ -301,15 +315,16 @@ function fetchSheetViaGviz(sheetName, timeoutMs = 3000) {
         return finish([]);
       }
 
-      let cols = (resp.table.cols || []).map(c => (c && c.label ? String(c.label).trim() : ''));
+      const rawCols = resp.table.cols || [];
+      let cols = rawCols.map(c => (c && c.label ? String(c.label).trim() : ''));
+      const colSheetIndices = rawCols.map((c, idx) => gvizColIdToIndex(c && c.id, idx));
       const rawRows = resp.table.rows || [];
 
-      // If GViz put headers into rows[0] because cols labels were empty, extract headers from rows[0]
       let startRowIdx = 0;
       const nonEmptyLabels = cols.filter(Boolean).length;
       if (nonEmptyLabels === 0 && rawRows.length > 0 && rawRows[0] && Array.isArray(rawRows[0].c)) {
         const firstRowVals = rawRows[0].c.map(cell => (cell && cell.v !== undefined && cell.v !== null ? String(cell.v).trim() : ''));
-        const headerKeywords = ['sku', 'p_name', 'category', 'brand_id', 'orderid', 'user_id', 'shop_id', 'date', 'name', 'page_id', 'banner_id'];
+        const headerKeywords = ['sku', 'p_name', 'category', 'catagory_id', 'brand_id', 'orderid', 'user_id', 'customer_id', 'shop_id', 'date', 'name', 'slug', 'banner_id', 'request_id', 'review_id'];
         if (firstRowVals.some(v => headerKeywords.includes(v.toLowerCase()))) {
           cols = firstRowVals;
           startRowIdx = 1;
@@ -321,15 +336,18 @@ function fetchSheetViaGviz(sheetName, timeoutMs = 3000) {
         const r = rawRows[rIdx];
         if (!r || !r.c) continue;
         const rowObj = {};
-        let hasData = false;
+        let hasPrimaryData = false;
 
         r.c.forEach((cell, idx) => {
-          const colName = cols[idx] || `col_${idx}`;
+          const sheetColIdx = colSheetIndices[idx] !== undefined ? colSheetIndices[idx] : idx;
+          const colName = cols[idx] || `col_${sheetColIdx}`;
           const key = colName.toLowerCase().replace(/[^a-z0-9_]/g, '_');
-          // Prefer raw value cell.v for numbers, and formatted cell.f only for dates/strings
+
           let val = '';
           if (cell) {
             if (typeof cell.v === 'number') {
+              val = cell.v;
+            } else if (typeof cell.v === 'boolean') {
               val = cell.v;
             } else if (cell.f !== undefined && cell.f !== null && String(cell.f).trim() !== '') {
               val = String(cell.f).trim();
@@ -339,18 +357,23 @@ function fetchSheetViaGviz(sheetName, timeoutMs = 3000) {
           }
           rowObj[key] = val;
           rowObj[colName] = val;
-          rowObj["col_" + idx] = val;
-          if (val !== '') hasData = true;
+          rowObj["col_" + sheetColIdx] = val;
+
+          // Ignore rows where only a checkbox column is false and primary columns are empty
+          if (val !== '' && val !== false) {
+            hasPrimaryData = true;
+          }
         });
 
-        // Skip accidental header repeat rows
         const col0Lower = String(rowObj.col_0 || '').trim().toLowerCase();
         const col1Lower = String(rowObj.col_1 || '').trim().toLowerCase();
         if (col0Lower === 'sku' && col1Lower === 'p_name') continue;
-        if (col0Lower === 'catagory_id' || col0Lower === 'brand_id') continue;
-        if (col0Lower === 'date' && (col1Lower === 'orderid' || col1Lower === 'who buy' || col1Lower === 'who paid')) continue;
+        if (col0Lower === 'catagory_id' || col0Lower === 'brand_id' || col0Lower === 'banner_id') continue;
+        if (col0Lower === 'date' && (col1Lower === 'orderid' || col1Lower === 'who buy' || col1Lower === 'who paid' || col1Lower === 'invest type' || col1Lower === 'type')) continue;
+        if (col0Lower === 'shop_id' && (col1Lower === 'shop_logo' || col1Lower === 'market_logo')) continue;
+        if (col0Lower === 'customer_id' || col0Lower === 'user_id' || col0Lower === 'request_id' || col0Lower === 'review_id') continue;
 
-        if (hasData) rows.push(rowObj);
+        if (hasPrimaryData) rows.push(rowObj);
       }
 
       finish(rows);
@@ -364,17 +387,17 @@ function fetchSheetViaGviz(sheetName, timeoutMs = 3000) {
     document.head.appendChild(script);
   });
 
-  _inflightGviz.set(sheetName, p);
+  _inflightGviz.set(cacheKey, p);
   return p;
 }
 
-function fetchAppsScriptViaJsonp(action, params = {}, timeoutMs = 6000) {
+function fetchAppsScriptViaJsonp(action, params = {}, timeoutMs = 10000) {
   return new Promise((resolve) => {
     if (typeof window === 'undefined' || typeof document === 'undefined') {
       return resolve(null);
     }
 
-    const cbName = 'as_cb_' + Math.random().toString(36).substr(2, 9);
+    const cbName = 'as_cb_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now().toString(36);
     const script = document.createElement('script');
     const qParams = new URLSearchParams({
       action: action,
@@ -415,55 +438,61 @@ function fetchAppsScriptViaJsonp(action, params = {}, timeoutMs = 6000) {
 }
 
 /**
- * Slim down a payload for JSONP GET so it always fits under URL limits (< 1750 chars),
- * while also firing a full POST request for large fields.
+ * Fast, Reliable Live Google Sheets Reader:
+ * - For `Products`, uses a lightweight GViz projection (`SELECT A..N,R..W`) that skips the 14.5MB essay columns O,P,Q,
+ *   downloading all 1,336 products in ~590 KB (< 0.6s) instead of timing out at 15.2 MB!
+ * - Resolves as soon as either GViz or Apps Script JSONP returns non-empty rows.
  */
-
-/**
- * Dual-Channel Live Google Sheets Reader:
- * Queries Google Apps Script API Gateway (JSONP) AND Google Sheets GViz in parallel.
- * Whichever responds with valid sheet data first is immediately utilized.
- */
-async function fetchLiveSheetRows(sheetName, action, timeoutMs = 3000) {
+async function fetchLiveSheetRows(sheetName, action, timeoutMs = 15000) {
   if (typeof window === 'undefined') return [];
 
-  // Channel 1: Google Apps Script Web App JSONP (Executes server-side SpreadsheetApp as owner)
-  const p1 = (async () => {
-    try {
-      const resp = await fetchAppsScriptViaJsonp(action, {}, timeoutMs);
-      if (resp && (resp.status === 'success' || resp.success) && resp.data) {
-        if (Array.isArray(resp.data.items) && resp.data.items.length > 0) return resp.data.items;
-        if (Array.isArray(resp.data) && resp.data.length > 0) return resp.data;
+  const isProductsSheet = String(sheetName).trim().toLowerCase() === 'products';
+  const gvizTq = isProductsSheet ? 'SELECT A,B,C,D,E,F,G,H,I,J,K,L,M,N,R,S,T,U,V,W' : '';
+
+  return new Promise((resolve) => {
+    let resolved = false;
+    let pending = 2;
+
+    function checkDone(rows) {
+      if (resolved) return;
+      if (Array.isArray(rows) && rows.length > 0) {
+        resolved = true;
+        resolve(rows);
+        return;
       }
-    } catch (e) {}
-    return null;
-  })();
+      pending--;
+      if (pending <= 0 && !resolved) {
+        resolved = true;
+        resolve([]);
+      }
+    }
 
-  // Channel 2: Google Sheets Visualization API (Direct cross-origin tabular query)
-  const p2 = (async () => {
-    try {
-      const rows = await fetchSheetViaGviz(sheetName, timeoutMs);
-      if (Array.isArray(rows) && rows.length > 0) return rows;
-    } catch (e) {}
-    return null;
-  })();
+    // Channel 1: Direct Google Sheets GViz API (Fastest: < 0.6s)
+    fetchSheetViaGviz(sheetName, timeoutMs, gvizTq)
+      .then(rows => checkDone(rows))
+      .catch(() => checkDone(null));
 
-  try {
-    const [r1, r2] = await Promise.all([p1, p2]);
-    if (r1 && r1.length > 0) return r1;
-    if (r2 && r2.length > 0) return r2;
-  } catch (err) {}
-
-  return [];
+    // Channel 2: Google Apps Script JSONP Fallback
+    fetchAppsScriptViaJsonp(action, {}, timeoutMs)
+      .then(resp => {
+        if (resp && (resp.status === 'success' || resp.success) && resp.data) {
+          if (Array.isArray(resp.data.items) && resp.data.items.length > 0) return checkDone(resp.data.items);
+          if (Array.isArray(resp.data) && resp.data.length > 0) return checkDone(resp.data);
+        }
+        checkDone(null);
+      })
+      .catch(() => checkDone(null));
+  });
 }
 
-function buildSlimJsonpPayload(payload) {
+function sanitizePayloadForSheet(payload) {
   if (!payload || typeof payload !== 'object') return payload;
 
   function sanitizeValue(val, depth = 0) {
     if (depth > 6) return val;
     if (typeof val === 'string') {
-      if (val.startsWith('data:image/') || val.includes(';base64,')) {
+      // Only replace oversized base64 data URLs (> 45KB) so Google Sheets cell limit (50,000 chars) is never exceeded
+      if ((val.startsWith('data:image/') || val.includes(';base64,')) && val.length > 45000) {
         return DEFAULT_PRODUCT_THUMB;
       }
       return val;
@@ -481,131 +510,103 @@ function buildSlimJsonpPayload(payload) {
     return val;
   }
 
-  const clean = sanitizeValue(payload);
-
-  if (clean && Array.isArray(clean.items)) {
-    clean.items = clean.items.map(it => ({
-      sku: it.sku || it.product_id || '',
-      name: String(it.name || it.p_name || '').slice(0, 80),
-      color: it.color || '',
-      size: it.size || '',
-      quantity: it.quantity || 1,
-      price: it.price || it.selling_price || 0
-    }));
-  }
-
-  return clean;
+  return sanitizeValue(payload);
 }
 
-export async function sendToAppsScript(action, payload) {
-  let jsonpRes = null;
-  const cleanPayload = buildSlimJsonpPayload(payload);
-  const dataStr = JSON.stringify(cleanPayload);
+// Track recently sent mutations to prevent duplicate submissions within 4 seconds
+const _recentMutations = new Map();
 
-  // LAYER 1: Hidden Iframe Form POST (Browser handles redirects natively, 100% reliable for POST of any size)
+/**
+ * Single-Execution Reliable Mutation Sender to Google Apps Script:
+ * - Sends ONE request (never 5 parallel requests!) so orders and items NEVER duplicate 5 times in the Sheet.
+ * - Uses CORS-safelisted `text/plain;charset=utf-8` POST first, and falls back to hidden iframe POST only if fetch fails.
+ */
+export async function sendToAppsScript(action, payload = {}) {
+  const cleanPayload = sanitizePayloadForSheet(payload || {});
+
+  // Build deterministic deduplication signature for order/item mutations
+  const dedupKey = `${action}::${cleanPayload.order_id || cleanPayload.orderId || cleanPayload.sku || cleanPayload.catagory_id || cleanPayload.brand_id || cleanPayload.banner_id || cleanPayload.shop_id || cleanPayload.id || JSON.stringify(cleanPayload).slice(0, 180)}`;
+  const lastSentAt = _recentMutations.get(dedupKey) || 0;
+  if (Date.now() - lastSentAt < 3500) {
+    return { status: 'success', success: true, deduplicated: true };
+  }
+  _recentMutations.set(dedupKey, Date.now());
+
+  const reqId = cleanPayload._req_id || ('REQ_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
+  const bodyObj = {
+    action: action,
+    _req_id: reqId,
+    spreadsheet_id: SPREADSHEET_ID,
+    payload: { ...cleanPayload, _req_id: reqId, spreadsheet_id: SPREADSHEET_ID },
+    data: { ...cleanPayload, _req_id: reqId, spreadsheet_id: SPREADSHEET_ID }
+  };
+  const bodyJson = JSON.stringify(bodyObj);
+
+  // Primary Channel: Single Fetch POST with text/plain;charset=utf-8 (CORS-safelisted simple request, follows GAS redirect)
   try {
-    if (typeof document !== 'undefined' && document.body) {
-      const iframeName = 'as_post_frame_' + Math.random().toString(36).substr(2, 9);
-      const iframe = document.createElement('iframe');
-      iframe.name = iframeName;
-      iframe.style.position = 'absolute';
-      iframe.style.width = '1px';
-      iframe.style.height = '1px';
-      iframe.style.top = '-9999px';
-      iframe.style.left = '-9999px';
-      iframe.style.opacity = '0';
-      iframe.style.pointerEvents = 'none';
-      document.body.appendChild(iframe);
-
-      const form = document.createElement('form');
-      form.target = iframeName;
-      form.method = 'POST';
-      form.action = APPS_SCRIPT_URL + '?action=' + encodeURIComponent(action);
-      form.style.display = 'none';
-
-      const fields = {
-        action: action,
-        payload: dataStr,
-        data: dataStr,
-        spreadsheet_id: SPREADSHEET_ID
-      };
-
-      for (const [k, v] of Object.entries(fields)) {
-        const inp = document.createElement('input');
-        inp.type = 'hidden';
-        inp.name = k;
-        inp.value = typeof v === 'string' ? v : JSON.stringify(v);
-        form.appendChild(inp);
-      }
-
-      document.body.appendChild(form);
-      form.submit();
-
-      setTimeout(() => {
-        try { if (form.parentNode) form.parentNode.removeChild(form); } catch (e) {}
-        try { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); } catch (e) {}
-      }, 5000);
-    }
-  } catch (err) {}
-
-  // LAYER 2: JSONP GET (Browser handles redirects and executes callback)
-  try {
-    if (dataStr.length < 3500) {
-      jsonpRes = await fetchAppsScriptViaJsonp(action, { data: dataStr });
-    }
-  } catch (e) {}
-
-  // LAYER 3: Direct Fetch GET (No-CORS, passes action & data query params)
-  try {
-    if (dataStr.length < 3500) {
-      const q = new URLSearchParams({
-        action: action,
-        data: dataStr,
-        payload: dataStr,
-        spreadsheet_id: SPREADSHEET_ID
-      });
-      fetch(APPS_SCRIPT_URL + '?' + q.toString(), {
-        method: 'GET',
-        mode: 'no-cors'
-      }).catch(() => {});
-    }
-  } catch (e3) {}
-
-  // LAYER 4: Form-Urlencoded POST
-  try {
-    const urlParams = new URLSearchParams();
-    urlParams.append('action', action);
-    urlParams.append('data', dataStr);
-    urlParams.append('payload', dataStr);
-    urlParams.append('spreadsheet_id', SPREADSHEET_ID);
-    fetch(APPS_SCRIPT_URL, {
+    const resp = await fetch(`${APPS_SCRIPT_URL}?action=${encodeURIComponent(action)}`, {
       method: 'POST',
-      mode: 'no-cors',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: urlParams.toString()
-    }).catch(() => {});
-  } catch (e4) {}
-
-  // LAYER 5: Text/Plain JSON POST (CORS-exempt preflight)
-  try {
-    fetch(APPS_SCRIPT_URL + '?action=' + encodeURIComponent(action), {
-      method: 'POST',
-      mode: 'no-cors',
       headers: {
         'Content-Type': 'text/plain;charset=utf-8'
       },
-      body: JSON.stringify({
-        action: action,
-        payload: cleanPayload,
-        data: cleanPayload,
-        spreadsheet_id: SPREADSHEET_ID
-      })
-    }).catch(() => {});
-  } catch (err) {}
+      body: bodyJson
+    });
+    if (resp && (resp.ok || resp.type === 'opaque')) {
+      try {
+        const json = await resp.json();
+        if (json) return json;
+      } catch (parseErr) {}
+      return { status: 'success', success: true };
+    }
+  } catch (fetchErr) {
+    // Fallback Channel (ONLY if primary fetch throws a network/CORS error): no-cors POST
+    try {
+      await fetch(`${APPS_SCRIPT_URL}?action=${encodeURIComponent(action)}`, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8'
+        },
+        body: bodyJson
+      });
+      return { status: 'success', success: true };
+    } catch (noCorsErr) {
+      // Final Fallback: Hidden Iframe Form POST
+      try {
+        if (typeof document !== 'undefined' && document.body) {
+          const iframeName = 'as_post_frame_' + Math.random().toString(36).substr(2, 9);
+          const iframe = document.createElement('iframe');
+          iframe.name = iframeName;
+          iframe.style.cssText = 'position:absolute;width:1px;height:1px;top:-9999px;left:-9999px;opacity:0;pointer-events:none;';
+          document.body.appendChild(iframe);
 
-  return jsonpRes || { status: 'success', success: true };
+          const form = document.createElement('form');
+          form.target = iframeName;
+          form.method = 'POST';
+          form.action = `${APPS_SCRIPT_URL}?action=${encodeURIComponent(action)}`;
+          form.style.display = 'none';
+
+          const dataStr = JSON.stringify({ ...cleanPayload, _req_id: reqId, spreadsheet_id: SPREADSHEET_ID });
+          const fields = { action, payload: dataStr, data: dataStr, spreadsheet_id: SPREADSHEET_ID, _req_id: reqId };
+          for (const [k, v] of Object.entries(fields)) {
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = k;
+            inp.value = String(v);
+            form.appendChild(inp);
+          }
+          document.body.appendChild(form);
+          form.submit();
+          setTimeout(() => {
+            try { if (form.parentNode) form.parentNode.removeChild(form); } catch (e) {}
+            try { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); } catch (e) {}
+          }, 6000);
+        }
+      } catch (iframeErr) {}
+    }
+  }
+
+  return { status: 'success', success: true };
 }
 
 export function normalizeBDPhone(phone) {
@@ -620,22 +621,58 @@ export function normalizeBDPhone(phone) {
   return str;
 }
 
+/**
+ * Calculate fallback retail, original & wholesale prices from buying_price using Dream Cart BD Profit-Calculator rules.
+ */
+export function calculatePricesFromBuyingTier(buyPrice, explicitSellPrice = 0) {
+  const b = safeNumber(buyPrice, 0);
+  let sell = safeNumber(explicitSellPrice, 0);
+  let marginPct = 0.25;
+  let discPct = 0.30;
+  let wsMarginPct = 0.12;
+  let moq = 5;
+
+  if (b > 0) {
+    if (b <= 200) { marginPct = 0.40; discPct = 0.35; wsMarginPct = 0.18; moq = 10; }
+    else if (b <= 500) { marginPct = 0.32; discPct = 0.32; wsMarginPct = 0.15; moq = 8; }
+    else if (b <= 1000) { marginPct = 0.27; discPct = 0.30; wsMarginPct = 0.12; moq = 5; }
+    else if (b <= 2000) { marginPct = 0.22; discPct = 0.28; wsMarginPct = 0.10; moq = 5; }
+    else if (b <= 5000) { marginPct = 0.17; discPct = 0.25; wsMarginPct = 0.08; moq = 3; }
+    else { marginPct = 0.12; discPct = 0.20; wsMarginPct = 0.06; moq = 2; }
+
+    if (sell <= 0) {
+      sell = Math.round(b * (1 + marginPct));
+    }
+  }
+
+  const orig = sell > 0 ? Math.round(sell * (1 + discPct)) : 0;
+  const ws = b > 0 ? Math.round(b * (1 + wsMarginPct)) : (sell > 0 ? Math.round(sell * 0.85) : 0);
+  return { selling_price: sell, original_price: orig, wholesale_price: ws, min_order_q: moq };
+}
+
 export function normalizeSheetProductRow(r, idx = 0) {
   if (!r || typeof r !== 'object') return null;
-  const sku = safeStr(r.sku || r.product_id || r.col_0 || `DCBD-PRD-${idx + 1}`);
-  const name = safeStr(r.p_name || r.name || r.col_1 || 'পণ্য');
+  const sku = safeStr(r.sku || r.SKU || r.product_id || r.col_0 || `DCBD-PRD-${idx + 1}`);
+  const name = safeStr(r.p_name || r.P_Name || r.name || r.col_1 || '');
   if (!name || name.toLowerCase() === 'p_name' || sku.toLowerCase() === 'sku') return null;
 
-  const slug = safeStr(r.slug || r.col_13) || name.toLowerCase().replace(/[^a-z0-9\u0980-\u09ff]+/g, '-').replace(/^-|-$/g, '') || sku.toLowerCase();
-  const rawImages = r.images !== undefined ? r.images : (r.col_12 !== undefined ? r.col_12 : r.thumbnail);
+  const slug = safeStr(r.slug || r.Slug || r.col_13) || name.toLowerCase().replace(/[^a-z0-9\u0980-\u09ff]+/g, '-').replace(/^-|-$/g, '') || sku.toLowerCase();
+  const rawImages = r.images !== undefined ? r.images : (r.Images !== undefined ? r.Images : (r.col_12 !== undefined ? r.col_12 : r.thumbnail));
   const imgs = parseImageUrlsList(rawImages);
   const thumb = normalizeSingleImageUrl(r.thumbnail) || imgs[0] || DEFAULT_PRODUCT_THUMB;
-  const sellPrice = safeNumber(r.selling_price !== undefined ? r.selling_price : r.col_7, 0);
-  const buyPrice = safeNumber(r.buying_price !== undefined ? r.buying_price : r.col_6, 0);
-  const stockVal = safeNumber(r.stock !== undefined ? r.stock : r.col_8, 25);
-  const origPrice = safeNumber(r.original_price !== undefined ? r.original_price : r.col_9, sellPrice > 0 ? Math.round(sellPrice * 1.35) : 0);
-  const wsPrice = safeNumber(r.wholesale_price !== undefined ? r.wholesale_price : r.col_10, sellPrice > 0 ? Math.round(sellPrice * 0.85) : 0);
-  const minOrderQ = safeNumber(r.min_order_q !== undefined ? r.min_order_q : (r.min_order_qty !== undefined ? r.min_order_qty : r.col_11), sellPrice <= 200 ? 10 : 5);
+
+  const buyPrice = safeNumber(r.buying_price !== undefined ? r.buying_price : (r.Buying_price !== undefined ? r.Buying_price : r.col_6), 0);
+  const rawSellPrice = safeNumber(r.selling_price !== undefined ? r.selling_price : (r.Selling_Price !== undefined ? r.Selling_Price : r.col_7), 0);
+  const tierCalc = calculatePricesFromBuyingTier(buyPrice, rawSellPrice);
+
+  const sellPrice = rawSellPrice > 0 ? rawSellPrice : tierCalc.selling_price;
+  const stockVal = safeNumber(r.stock !== undefined ? r.stock : (r.Stock !== undefined ? r.Stock : r.col_8), 25);
+  const rawOrig = safeNumber(r.original_price !== undefined ? r.original_price : (r.Original_Price !== undefined ? r.Original_Price : r.col_9), 0);
+  const origPrice = rawOrig > 0 ? rawOrig : tierCalc.original_price;
+  const rawWs = safeNumber(r.wholesale_price !== undefined ? r.wholesale_price : (r.WholeSale_price !== undefined ? r.WholeSale_price : r.col_10), 0);
+  const wsPrice = rawWs > 0 ? rawWs : tierCalc.wholesale_price;
+  const rawMoq = safeNumber(r.min_order_q !== undefined ? r.min_order_q : (r.Min_order_Q !== undefined ? r.Min_order_Q : (r.min_order_qty !== undefined ? r.min_order_qty : r.col_11)), 0);
+  const minOrderQ = rawMoq > 0 ? rawMoq : tierCalc.min_order_q;
   const statusStr = safeStr(r.status || 'সক্রিয়');
 
   return {
@@ -643,10 +680,10 @@ export function normalizeSheetProductRow(r, idx = 0) {
     product_id: sku,
     name: name,
     p_name: name,
-    category: safeStr(r.category || r.col_2 || 'General') || 'General',
-    sub_category: safeStr(r.sub_category !== undefined ? r.sub_category : r.col_3, ''),
-    child_category: safeStr(r.child_category !== undefined ? r.child_category : r.col_4, ''),
-    brand: safeStr(r.brand || r.col_5 || 'Dream Cart BD') || 'Dream Cart BD',
+    category: safeStr(r.category || r.Category || r.col_2 || 'General') || 'General',
+    sub_category: safeStr(r.sub_category !== undefined ? r.sub_category : (r.Sub_Category !== undefined ? r.Sub_Category : r.col_3), ''),
+    child_category: safeStr(r.child_category !== undefined ? r.child_category : (r.Child_Category !== undefined ? r.Child_Category : r.col_4), ''),
+    brand: safeStr(r.brand || r.Brand || r.col_5 || 'Dream Cart BD') || 'Dream Cart BD',
     buying_price: buyPrice,
     selling_price: sellPrice,
     stock: stockVal,
@@ -658,15 +695,15 @@ export function normalizeSheetProductRow(r, idx = 0) {
     images: imgs.length > 0 ? imgs : [thumb],
     thumbnail: thumb,
     slug: slug,
-    description: safeStr(r.description !== undefined ? r.description : r.col_14, ''),
-    specification: safeStr(r.specification !== undefined ? r.specification : r.col_15, ''),
-    others: safeStr(r.others !== undefined ? r.others : r.col_16, ''),
-    color: safeStr(r.color !== undefined ? r.color : r.col_17, 'Standard'),
-    size: safeStr(r.size !== undefined ? r.size : r.col_18, 'Free Size'),
-    weight_kg: safeNumber(r.weight_kg !== undefined ? r.weight_kg : r.col_19, 0.25),
-    width_cm: safeNumber(r.width_cm !== undefined ? r.width_cm : r.col_20, 10),
-    length_cm: safeNumber(r.length_cm !== undefined ? r.length_cm : r.col_21, 10),
-    height_cm: safeNumber(r.height_cm !== undefined ? r.height_cm : r.col_22, 5),
+    description: safeStr(r.description !== undefined ? r.description : (r.Description !== undefined ? r.Description : r.col_14), ''),
+    specification: safeStr(r.specification !== undefined ? r.specification : (r.Specification !== undefined ? r.Specification : r.col_15), ''),
+    others: safeStr(r.others !== undefined ? r.others : (r.Others !== undefined ? r.Others : r.col_16), ''),
+    color: safeStr(r.color !== undefined ? r.color : (r.Color !== undefined ? r.Color : r.col_17), 'Standard') || 'Standard',
+    size: safeStr(r.size !== undefined ? r.size : (r.Size !== undefined ? r.Size : r.col_18), 'Free Size') || 'Free Size',
+    weight_kg: safeNumber(r.weight_kg !== undefined ? r.weight_kg : (r.WEIGHT_KG !== undefined ? r.WEIGHT_KG : r.col_19), 0.25),
+    width_cm: safeNumber(r.width_cm !== undefined ? r.width_cm : (r.WIDTH_CM !== undefined ? r.WIDTH_CM : r.col_20), 10),
+    length_cm: safeNumber(r.length_cm !== undefined ? r.length_cm : (r.LENGTH_CM !== undefined ? r.LENGTH_CM : r.col_21), 10),
+    height_cm: safeNumber(r.height_cm !== undefined ? r.height_cm : (r.HEIGHT_CM !== undefined ? r.HEIGHT_CM : r.col_22), 5),
     status: statusStr,
     is_active: statusStr !== 'নিষ্ক্রিয়'
   };
@@ -674,7 +711,7 @@ export function normalizeSheetProductRow(r, idx = 0) {
 
 export function normalizeSheetOrderRow(r, idx = 0) {
   if (!r || typeof r !== 'object') return null;
-  const orderId = safeStr(r.order_id || r.orderid || r.OrderID || r.col_1 || `ORD-${100000 + idx}`);
+  const orderId = safeStr(r.order_id || r.orderid || r.OrderID || r.col_1 || '');
   if (!orderId || orderId.toLowerCase() === 'orderid') return null;
   const prodStr = safeStr(r.products || r.Products || r.product_name || r.col_6 || 'পণ্য অর্ডার');
   return {
@@ -709,7 +746,7 @@ export function normalizeSheetOrderRow(r, idx = 0) {
 
 export function normalizeIncompleteOrderRow(r, idx = 0) {
   if (!r || typeof r !== 'object') return null;
-  const orderId = safeStr(r.order_id || r.orderid || r.OrderID || r.col_1 || `INC-${2000 + idx}`);
+  const orderId = safeStr(r.order_id || r.orderid || r.OrderID || r.col_1 || '');
   if (!orderId || orderId.toLowerCase() === 'orderid') return null;
   return {
     date: safeStr(r.date || r.Date || r.col_0 || 'আজ'),
@@ -722,6 +759,110 @@ export function normalizeIncompleteOrderRow(r, idx = 0) {
     total_amount: safeNumber(r.total_amount !== undefined ? r.total_amount : r.col_7, 0),
     status: safeStr(r.status || r.Status || r.col_8 || 'Draft/Incomplete')
   };
+}
+
+/**
+ * Aggregate raw Category rows from the Google Sheet (where each row is a Category -> Sub_Category -> Chail_Category tuple)
+ * into deduplicated category objects with full `sub_category`, `chail_category`, and `tree_subs`.
+ */
+export function aggregateCategoryRows(rawRows = [], existingCats = []) {
+  const catMap = new Map();
+
+  function addEntry(catName, catId, catSlug, catImg, subStr, childStr, treeSubs) {
+    const cleanCat = safeStr(catName);
+    if (!cleanCat || cleanCat.toLowerCase() === 'category' || cleanCat.toLowerCase() === 'test id') return;
+    const key = cleanCat.toLowerCase();
+
+    if (!catMap.has(key)) {
+      catMap.set(key, {
+        catagory_id: safeStr(catId) || `CAT-${101 + catMap.size}`,
+        catagory_slug: safeStr(catSlug) || cleanCat.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        category_image: normalizeSingleImageUrl(catImg) || DEFAULT_PRODUCT_THUMB,
+        category: cleanCat,
+        subMap: new Map()
+      });
+    }
+
+    const entry = catMap.get(key);
+    if (catId && entry.catagory_id.startsWith('CAT-') && !String(catId).startsWith('CAT-10')) {
+      entry.catagory_id = safeStr(catId);
+    }
+    if (catImg && (!entry.category_image || entry.category_image === DEFAULT_PRODUCT_THUMB)) {
+      const normImg = normalizeSingleImageUrl(catImg);
+      if (normImg) entry.category_image = normImg;
+    }
+
+    if (Array.isArray(treeSubs) && treeSubs.length > 0) {
+      treeSubs.forEach(ts => {
+        const sName = safeStr(ts && ts.name);
+        if (!sName) return;
+        const sKey = sName.toLowerCase();
+        if (!entry.subMap.has(sKey)) entry.subMap.set(sKey, { name: sName, children: new Set() });
+        const sObj = entry.subMap.get(sKey);
+        (Array.isArray(ts.children) ? ts.children : []).forEach(ch => {
+          const cName = safeStr(ch);
+          if (cName) sObj.children.add(cName);
+        });
+      });
+      return;
+    }
+
+    const subs = String(subStr || '').split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
+    const childs = String(childStr || '').split(/[,|\n]/).map(s => s.trim()).filter(Boolean);
+
+    if (subs.length > 0) {
+      subs.forEach(sName => {
+        const sKey = sName.toLowerCase();
+        if (!entry.subMap.has(sKey)) entry.subMap.set(sKey, { name: sName, children: new Set() });
+        const sObj = entry.subMap.get(sKey);
+        childs.forEach(cName => sObj.children.add(cName));
+      });
+    }
+  }
+
+  rawRows.forEach((r, i) => {
+    if (!r) return;
+    addEntry(
+      r.category || r.Category || r.col_3,
+      r.catagory_id || r.Catagory_ID || r.col_0 || `CAT-${101 + i}`,
+      r.catagory_slug || r.Catagory_Slug || r.col_1,
+      r.category_image || r.Category_Image || r.col_2,
+      r.sub_category !== undefined ? r.sub_category : (r.Sub_Category !== undefined ? r.Sub_Category : r.col_4),
+      r.chail_category !== undefined ? r.chail_category : (r.Chail_Category !== undefined ? r.Chail_Category : (r.child_category || r.col_5)),
+      r.tree_subs
+    );
+  });
+
+  existingCats.forEach((c, i) => {
+    if (!c) return;
+    // Skip demo categories if we already loaded real categories from the sheet
+    if (rawRows.length > 10 && ['CAT-001', 'CAT-002', 'CAT-003', 'CAT-004'].includes(c.catagory_id)) return;
+    addEntry(
+      c.category || c.Category,
+      c.catagory_id || c.Catagory_ID || `CAT-${500 + i}`,
+      c.catagory_slug || c.Catagory_Slug,
+      c.category_image || c.Category_Image,
+      c.sub_category,
+      c.chail_category || c.child_category,
+      c.tree_subs
+    );
+  });
+
+  return Array.from(catMap.values()).map(entry => {
+    const treeSubs = Array.from(entry.subMap.values()).map(s => ({
+      name: s.name,
+      children: Array.from(s.children)
+    }));
+    return {
+      catagory_id: entry.catagory_id,
+      catagory_slug: entry.catagory_slug,
+      category_image: entry.category_image,
+      category: entry.category,
+      sub_category: treeSubs.map(s => s.name).join(', '),
+      chail_category: Array.from(new Set(treeSubs.flatMap(s => s.children))).join(', '),
+      tree_subs: treeSubs
+    };
+  });
 }
 
 // ============================================================================
@@ -752,10 +893,10 @@ export const DEFAULT_PAYMENT_METHODS = [
 ];
 
 export const DEFAULT_DELIVERY_METHODS = [
-  { id: "DLV-01", code: "cumilla", name: "কুমিল্লা সদর (In Cumilla)", charge: 70, eta: "১-২ দিন (২৪ ঘন্টায় ডেলিভারি)", free_threshold: 2000, status: "Active" },
-  { id: "DLV-02", code: "dhaka", name: "ঢাকা সিটি (In Dhaka)", charge: 90, eta: "২-৩ দিন (হোম ডেলিভারি)", free_threshold: 2000, status: "Active" },
-  { id: "DLV-03", code: "outside", name: "ঢাকার বাইরে সমগ্র বাংলাদেশ (Outside Dhaka)", charge: 120, eta: "৩-৫ দিন (কুরিয়ার ডেলিভারি)", free_threshold: 2000, status: "Active" },
-  { id: "DLV-04", code: "pickup", name: "অফিস থেকে পিকআপ (Office Pickup - Cumilla)", charge: 0, eta: "তাৎক্ষণিক পিকআপ (ফ্রি)", free_threshold: 0, status: "Active" }
+  { id: "DLV-01", code: "cumilla", zone: "কুমিল্লা সদর (In Cumilla)", name: "কুমিল্লা সদর (In Cumilla)", charge: 70, time: "১-২ দিন", eta: "১-২ দিন (২৪ ঘন্টায় ডেলিভারি)", free_threshold: 2000, status: "Active" },
+  { id: "DLV-02", code: "dhaka", zone: "ঢাকা সিটি (In Dhaka)", name: "ঢাকা সিটি (In Dhaka)", charge: 90, time: "২-৩ দিন", eta: "২-৩ দিন (হোম ডেলিভারি)", free_threshold: 2000, status: "Active" },
+  { id: "DLV-03", code: "outside", zone: "ঢাকার বাইরে সমগ্র বাংলাদেশ (Outside Dhaka)", name: "ঢাকার বাইরে সমগ্র বাংলাদেশ (Outside Dhaka)", charge: 120, time: "৩-৫ দিন", eta: "৩-৫ দিন (কুরিয়ার ডেলিভারি)", free_threshold: 2000, status: "Active" },
+  { id: "DLV-04", code: "pickup", zone: "অফিস থেকে পিকআপ (Office Pickup - Cumilla)", name: "অফিস থেকে পিকআপ (Office Pickup - Cumilla)", charge: 0, time: "তাৎক্ষণিক", eta: "তাৎক্ষণিক পিকআপ (ফ্রি)", free_threshold: 0, status: "Active" }
 ];
 
 export const DEFAULT_OFFERS = [
@@ -822,21 +963,23 @@ class ApiClient {
     this.spreadsheetId = SPREADSHEET_ID;
 
     const savedProds = this.loadLocal('dcbd_sheet_products', null);
-    this.sheetProducts = (Array.isArray(savedProds) && savedProds.length > 0) ? savedProds : [...INITIAL_PRODUCTS];
+    this.sheetProducts = (Array.isArray(savedProds) && savedProds.length > 0) ? savedProds : [];
 
     const savedCats = this.loadLocal('dcbd_sheet_categories', null);
-    this.sheetCategories = (Array.isArray(savedCats) && savedCats.length > 0) ? savedCats : [...INITIAL_CATEGORIES];
+    this.sheetCategories = (Array.isArray(savedCats) && savedCats.length > 0) ? savedCats : [];
 
     const savedBrands = this.loadLocal('dcbd_sheet_brands', null);
-    this.sheetBrands = (Array.isArray(savedBrands) && savedBrands.length > 0) ? savedBrands : [...INITIAL_BRANDS];
+    this.sheetBrands = (Array.isArray(savedBrands) && savedBrands.length > 0) ? savedBrands : [];
 
     this.sheetOrders = this.loadLocal('dcbd_sheet_orders', []);
     this.sheetIncompleteOrders = this.loadLocal('dcbd_sheet_incomplete_orders', []);
     this.sheetBanners = this.loadLocal('dcbd_sheet_banners', []);
     this.sheetSellers = this.loadLocal('dcbd_sellers', []);
+    this._productDetailsCache = new Map();
     this._lastProductsSync = 0;
     this._lastCategoriesSync = 0;
     this._lastBrandsSync = 0;
+    this._hydratingDescriptions = false;
   }
 
   loadLocal(key, defaultVal) {
@@ -850,14 +993,29 @@ class ApiClient {
 
   saveLocal(key, data) {
     try {
+      // For dcbd_sheet_products (1,336+ rows), store compact catalog fields in localStorage so it never exceeds 5MB quota
+      if (key === 'dcbd_sheet_products' && Array.isArray(data) && data.length > 50) {
+        const compactList = data.map(p => {
+          if (!p || typeof p !== 'object') return p;
+          const copy = { ...p };
+          if (copy.description && copy.description.length > 240) copy.description = copy.description.slice(0, 240);
+          if (copy.specification && copy.specification.length > 240) copy.specification = copy.specification.slice(0, 240);
+          if (copy.others && copy.others.length > 180) copy.others = copy.others.slice(0, 180);
+          return copy;
+        });
+        localStorage.setItem(key, JSON.stringify(compactList));
+        return;
+      }
       localStorage.setItem(key, JSON.stringify(data));
     } catch (e) {
-      // If QuotaExceededError due to oversized base64 images, strip base64 thumbnails in storage copy
       try {
         if (Array.isArray(data)) {
           const slim = data.map(item => {
             if (!item || typeof item !== 'object') return item;
             const copy = { ...item };
+            delete copy.description;
+            delete copy.specification;
+            delete copy.others;
             if (typeof copy.thumbnail === 'string' && copy.thumbnail.length > 40000) {
               copy.thumbnail = DEFAULT_PRODUCT_THUMB;
             }
@@ -876,24 +1034,35 @@ class ApiClient {
    * Always returns the latest synchronized product list across memory, localStorage, and Admin state.
    */
   getMergedLocalProducts() {
+    const memProds = (Array.isArray(this.sheetProducts) && this.sheetProducts.length > 0) ? this.sheetProducts : null;
     const localStored = this.loadLocal('dcbd_sheet_products', null);
     const adminProds = (typeof window !== 'undefined' && window.__adminState && Array.isArray(window.__adminState.products) && window.__adminState.products.length > 0)
       ? window.__adminState.products
       : null;
 
-    const base = (Array.isArray(localStored) && localStored.length > 0)
-      ? localStored
-      : ((Array.isArray(this.sheetProducts) && this.sheetProducts.length > 0) ? this.sheetProducts : adminProds);
+    // Prefer whichever list has real sheet products (> 5 items)
+    let base = memProds;
+    if ((!base || base.length <= 5) && Array.isArray(localStored) && localStored.length > (base ? base.length : 0)) {
+      base = localStored;
+    }
+    if ((!base || base.length <= 5) && Array.isArray(adminProds) && adminProds.length > (base ? base.length : 0)) {
+      base = adminProds;
+    }
 
     if (Array.isArray(base) && base.length > 0) {
-      const normalized = base.map((p, idx) => normalizeSheetProductRow(p, idx)).filter(Boolean);
+      const normalized = base.map((p, idx) => {
+        const norm = normalizeSheetProductRow(p, idx);
+        if (norm && this._productDetailsCache.has(norm.sku.toLowerCase())) {
+          Object.assign(norm, this._productDetailsCache.get(norm.sku.toLowerCase()));
+        }
+        return norm;
+      }).filter(Boolean);
       if (normalized.length > 0) {
         this.sheetProducts = normalized;
         return normalized;
       }
     }
-    this.sheetProducts = [...INITIAL_PRODUCTS];
-    return this.sheetProducts;
+    return [];
   }
 
   /**
@@ -904,16 +1073,18 @@ class ApiClient {
     const deletedIds = new Set(this.loadLocal('dcbd_deleted_product_ids', []));
     const localOverrides = this.loadLocal('dcbd_local_product_overrides', {});
     const byId = new Map();
+    const hasRealSheetRows = Array.isArray(sheetList) && sheetList.length > 5;
 
-    // 1. First insert any locally added products (so newly created products appear first)
+    // 1. First insert any locally added/overridden products (excluding initial 5 demo products once real sheet rows exist)
     (Array.isArray(localList) ? localList : []).forEach((p, idx) => {
       const norm = normalizeSheetProductRow(p, idx);
       if (!norm) return;
       const key = String(norm.sku || norm.product_id).trim().toLowerCase();
       if (deletedIds.has(key)) return;
+      if (hasRealSheetRows && DEMO_SKUS.has(key) && !localOverrides[key]) return;
       if (localOverrides[key]) {
         byId.set(key, normalizeSheetProductRow({ ...norm, ...localOverrides[key] }, idx));
-      } else {
+      } else if (!hasRealSheetRows) {
         byId.set(key, norm);
       }
     });
@@ -926,9 +1097,16 @@ class ApiClient {
       if (deletedIds.has(key)) return;
       const existing = byId.get(key);
       const override = localOverrides[key];
+      const cachedDetails = this._productDetailsCache.get(key);
       if (override) {
-        // Keep local edits/images if edited in admin
-        byId.set(key, normalizeSheetProductRow({ ...norm, ...existing, ...override }, idx));
+        byId.set(key, normalizeSheetProductRow({ ...norm, ...existing, ...override, ...(cachedDetails || {}) }, idx));
+      } else if (existing || cachedDetails) {
+        byId.set(key, {
+          ...norm,
+          description: norm.description || existing?.description || cachedDetails?.description || '',
+          specification: norm.specification || existing?.specification || cachedDetails?.specification || '',
+          others: norm.others || existing?.others || cachedDetails?.others || ''
+        });
       } else {
         byId.set(key, norm);
       }
@@ -940,13 +1118,12 @@ class ApiClient {
 
   async loadProductsFromSheet(forceRefresh = false) {
     const cached = this.getMergedLocalProducts();
-    const hasCached = Array.isArray(cached) && cached.length > 0 && !cached.every(p => p.sku && p.sku.startsWith('DCBD-DEMO'));
+    const hasRealSheetCached = Array.isArray(cached) && cached.length > 5 && !cached.every(p => DEMO_SKUS.has(String(p.sku || '').toLowerCase()));
 
-    // If live sync is due (or forced or no real sheet products loaded yet)
-    if (forceRefresh || !hasCached || (Date.now() - this._lastProductsSync > 15000)) {
+    if (forceRefresh || !hasRealSheetCached || (Date.now() - this._lastProductsSync > 30000)) {
       this._lastProductsSync = Date.now();
       try {
-        const rows = await fetchLiveSheetRows('Products', 'products/list', hasCached ? 2000 : 3500);
+        const rows = await fetchLiveSheetRows('Products', 'products/list', 15000);
         if (rows && rows.length > 0) {
           const sheetMapped = rows.map((r, idx) => normalizeSheetProductRow(r, idx)).filter(Boolean);
           if (sheetMapped.length > 0) {
@@ -957,6 +1134,7 @@ class ApiClient {
               if (window.__adminState) window.__adminState.products = merged;
               window.dispatchEvent(new CustomEvent('dcbd:products-synced', { detail: { products: merged } }));
             }
+            this.hydrateProductDescriptionsInBackground();
             return merged;
           }
         }
@@ -965,26 +1143,76 @@ class ApiClient {
 
     return (Array.isArray(this.sheetProducts) && this.sheetProducts.length > 0)
       ? this.sheetProducts
-      : (hasCached ? cached : [...INITIAL_PRODUCTS]);
+      : (cached && cached.length > 0 ? cached : [...INITIAL_PRODUCTS]);
   }
 
   async syncProductsFromSheetAsync() {
+    return this.loadProductsFromSheet(true);
+  }
+
+  /**
+   * Fetch rich Description, Specification & Others (Columns O, P, Q) for a single product on demand (~150ms),
+   * and also hydrate in background when needed.
+   */
+  async fetchSingleProductRichDetails(product) {
+    if (!product || !product.sku) return product;
+    const key = String(product.sku).trim().toLowerCase();
+    if (this._productDetailsCache.has(key)) {
+      return Object.assign(product, this._productDetailsCache.get(key));
+    }
+    if (product.description && product.description.length > 240) {
+      return product;
+    }
+
     try {
-      const rows = await fetchLiveSheetRows('Products', 'products/list', 3000);
-      if (rows && rows.length > 0) {
-        const sheetMapped = rows.map((r, idx) => normalizeSheetProductRow(r, idx)).filter(Boolean);
-        if (sheetMapped.length > 0) {
-          const currentLocal = this.getMergedLocalProducts() || [];
-          const merged = this.mergeProductsLists(sheetMapped, currentLocal);
-          this.sheetProducts = merged;
-          this.saveLocal('dcbd_sheet_products', merged);
-          if (typeof window !== 'undefined') {
-            if (window.__adminState) window.__adminState.products = merged;
-            window.dispatchEvent(new CustomEvent('dcbd:products-synced', { detail: { products: merged } }));
-          }
-        }
+      const safeSku = String(product.sku).replace(/'/g, "\\'");
+      const tq = `SELECT A,O,P,Q WHERE lower(A) = '${safeSku.toLowerCase()}' LIMIT 1`;
+      const rows = await fetchSheetViaGviz('Products', 8000, tq);
+      if (Array.isArray(rows) && rows.length > 0) {
+        const r = rows[0];
+        const details = {
+          description: safeStr(r.description || r.Description || r.col_14 || product.description || ''),
+          specification: safeStr(r.specification || r.Specification || r.col_15 || product.specification || ''),
+          others: safeStr(r.others || r.Others || r.col_16 || product.others || '')
+        };
+        this._productDetailsCache.set(key, details);
+        Object.assign(product, details);
       }
     } catch (e) {}
+    return product;
+  }
+
+  hydrateProductDescriptionsInBackground() {
+    if (this._hydratingDescriptions || typeof window === 'undefined') return;
+    this._hydratingDescriptions = true;
+    setTimeout(async () => {
+      try {
+        const rows = await fetchSheetViaGviz('Products', 25000, 'SELECT A,O,P,Q');
+        if (Array.isArray(rows) && rows.length > 0) {
+          rows.forEach(r => {
+            const skuKey = safeStr(r.sku || r.SKU || r.col_0).toLowerCase();
+            if (!skuKey) return;
+            const details = {
+              description: safeStr(r.description || r.Description || r.col_14 || ''),
+              specification: safeStr(r.specification || r.Specification || r.col_15 || ''),
+              others: safeStr(r.others || r.Others || r.col_16 || '')
+            };
+            this._productDetailsCache.set(skuKey, details);
+          });
+          if (Array.isArray(this.sheetProducts)) {
+            this.sheetProducts.forEach(p => {
+              const k = String(p.sku || '').toLowerCase();
+              if (this._productDetailsCache.has(k)) {
+                const d = this._productDetailsCache.get(k);
+                if (!p.description || p.description.length <= 240) p.description = d.description || p.description;
+                if (!p.specification || p.specification.length <= 240) p.specification = d.specification || p.specification;
+                if (!p.others || p.others.length <= 180) p.others = d.others || p.others;
+              }
+            });
+          }
+        }
+      } catch (e) {}
+    }, 1500);
   }
 
   async loadCategoriesFromSheet(forceRefresh = false) {
@@ -993,41 +1221,25 @@ class ApiClient {
       this.sheetCategories = cached;
     }
 
-    if (!forceRefresh && this.sheetCategories && this.sheetCategories.length > 0) {
-      if (Date.now() - this._lastCategoriesSync > 30000) {
-        this._lastCategoriesSync = Date.now();
-        this.syncCategoriesFromSheetAsync();
-      }
+    const hasRealCategories = Array.isArray(this.sheetCategories) &&
+      this.sheetCategories.length > 4 &&
+      !this.sheetCategories.every(c => ['CAT-001', 'CAT-002', 'CAT-003', 'CAT-004'].includes(c.catagory_id));
+
+    if (!forceRefresh && hasRealCategories && (Date.now() - this._lastCategoriesSync < 45000)) {
       return this.sheetCategories;
     }
 
     try {
-      const rows = await fetchSheetViaGviz('Categories');
+      const rows = await fetchLiveSheetRows('Categories', 'categories/list', 15000);
       if (rows && rows.length > 0) {
-        const mapped = rows.map((r, i) => ({
-          catagory_id: safeStr(r.catagory_id || r.col_0 || `CAT-${101 + i}`),
-          catagory_slug: safeStr(r.catagory_slug || r.col_1) || safeStr(r.category || r.col_3 || 'cat').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          category_image: normalizeSingleImageUrl(r.category_image || r.col_2) || DEFAULT_PRODUCT_THUMB,
-          category: safeStr(r.category || r.col_3 || 'Category'),
-          sub_category: safeStr(r.sub_category !== undefined ? r.sub_category : r.col_4, ''),
-          chail_category: safeStr(r.chail_category !== undefined ? r.chail_category : (r.child_category || r.col_5), '')
-        })).filter(c => c.category && c.category.toLowerCase() !== 'category');
-
-        if (mapped.length > 0) {
-          // Merge with any locally added categories
-          const byName = new Map();
-          (this.sheetCategories || []).forEach(c => {
-            if (c && c.category) byName.set(String(c.category).trim().toLowerCase(), c);
-          });
-          mapped.forEach(c => {
-            const k = String(c.category).trim().toLowerCase();
-            const prev = byName.get(k);
-            byName.set(k, prev ? { ...c, ...prev } : c);
-          });
-          const finalCats = Array.from(byName.values());
+        const finalCats = aggregateCategoryRows(rows, this.sheetCategories || []);
+        if (finalCats.length > 0) {
           this.sheetCategories = finalCats;
           this._lastCategoriesSync = Date.now();
           this.saveLocal('dcbd_sheet_categories', finalCats);
+          if (typeof window !== 'undefined' && window.__adminState) {
+            window.__adminState.categories = finalCats;
+          }
           return finalCats;
         }
       }
@@ -1041,32 +1253,7 @@ class ApiClient {
   }
 
   async syncCategoriesFromSheetAsync() {
-    try {
-      const rows = await fetchSheetViaGviz('Categories');
-      if (rows && rows.length > 0) {
-        const mapped = rows.map((r, i) => ({
-          catagory_id: safeStr(r.catagory_id || r.col_0 || `CAT-${101 + i}`),
-          catagory_slug: safeStr(r.catagory_slug || r.col_1) || safeStr(r.category || r.col_3 || 'cat').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          category_image: normalizeSingleImageUrl(r.category_image || r.col_2) || DEFAULT_PRODUCT_THUMB,
-          category: safeStr(r.category || r.col_3 || 'Category'),
-          sub_category: safeStr(r.sub_category !== undefined ? r.sub_category : r.col_4, ''),
-          chail_category: safeStr(r.chail_category !== undefined ? r.chail_category : (r.child_category || r.col_5), '')
-        })).filter(c => c.category && c.category.toLowerCase() !== 'category');
-
-        if (mapped.length > 0) {
-          const byName = new Map();
-          mapped.forEach(c => byName.set(String(c.category).trim().toLowerCase(), c));
-          (this.sheetCategories || []).forEach(c => {
-            if (c && c.category) {
-              const k = String(c.category).trim().toLowerCase();
-              byName.set(k, { ...(byName.get(k) || {}), ...c });
-            }
-          });
-          this.sheetCategories = Array.from(byName.values());
-          this.saveLocal('dcbd_sheet_categories', this.sheetCategories);
-        }
-      }
-    } catch (e) {}
+    return this.loadCategoriesFromSheet(true);
   }
 
   async loadBrandsFromSheet(forceRefresh = false) {
@@ -1075,37 +1262,40 @@ class ApiClient {
       this.sheetBrands = cached;
     }
 
-    if (!forceRefresh && this.sheetBrands && this.sheetBrands.length > 0) {
-      if (Date.now() - this._lastBrandsSync > 30000) {
-        this._lastBrandsSync = Date.now();
-        this.syncBrandsFromSheetAsync();
-      }
+    const hasRealBrands = Array.isArray(this.sheetBrands) &&
+      this.sheetBrands.length > 4 &&
+      !this.sheetBrands.every(b => ['BRD-001', 'BRD-002', 'BRD-003', 'BRD-004'].includes(b.brand_id));
+
+    if (!forceRefresh && hasRealBrands && (Date.now() - this._lastBrandsSync < 45000)) {
       return this.sheetBrands;
     }
 
     try {
-      const rows = await fetchSheetViaGviz('Brands');
+      const rows = await fetchLiveSheetRows('Brands', 'brands/list', 15000);
       if (rows && rows.length > 0) {
         const mapped = rows.map((r, i) => ({
-          brand_id: safeStr(r.brand_id || r.col_0 || `BRD-${101 + i}`),
-          brand_image: normalizeSingleImageUrl(r.brand_image || r.col_1) || DEFAULT_PRODUCT_THUMB,
-          brand_name: safeStr(r.brand_name || r.col_2 || 'Brand'),
-          brand_slug: safeStr(r.brand_slug || r.col_3) || safeStr(r.brand_name || r.col_2 || 'brand').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          brand_description: safeStr(r.brand_description || r.col_4 || '')
+          brand_id: safeStr(r.brand_id || r.Brand_ID || r.col_0 || `BRD-${101 + i}`),
+          brand_image: normalizeSingleImageUrl(r.brand_image || r.Brand_Image || r.col_1) || DEFAULT_PRODUCT_THUMB,
+          brand_name: safeStr(r.brand_name || r.Brand_Name || r.col_2 || ''),
+          brand_slug: safeStr(r.brand_slug || r.Brand_Slug || r.col_3) || safeStr(r.brand_name || r.Brand_Name || r.col_2 || 'brand').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          brand_description: safeStr(r.brand_description || r.Brand_Description || r.col_4 || '')
         })).filter(b => b.brand_name && b.brand_name.toLowerCase() !== 'brand_name');
 
         if (mapped.length > 0) {
           const byName = new Map();
           mapped.forEach(b => byName.set(String(b.brand_name).trim().toLowerCase(), b));
           (this.sheetBrands || []).forEach(b => {
-            if (b && b.brand_name) {
-              const k = String(b.brand_name).trim().toLowerCase();
-              byName.set(k, { ...(byName.get(k) || {}), ...b });
-            }
+            if (!b || !b.brand_name) return;
+            if (mapped.length > 4 && ['BRD-001', 'BRD-002', 'BRD-003', 'BRD-004'].includes(b.brand_id)) return;
+            const k = String(b.brand_name).trim().toLowerCase();
+            byName.set(k, { ...(byName.get(k) || {}), ...b });
           });
           this.sheetBrands = Array.from(byName.values());
           this._lastBrandsSync = Date.now();
           this.saveLocal('dcbd_sheet_brands', this.sheetBrands);
+          if (typeof window !== 'undefined' && window.__adminState) {
+            window.__adminState.brands = this.sheetBrands;
+          }
           return this.sheetBrands;
         }
       }
@@ -1119,31 +1309,7 @@ class ApiClient {
   }
 
   async syncBrandsFromSheetAsync() {
-    try {
-      const rows = await fetchSheetViaGviz('Brands');
-      if (rows && rows.length > 0) {
-        const mapped = rows.map((r, i) => ({
-          brand_id: safeStr(r.brand_id || r.col_0 || `BRD-${101 + i}`),
-          brand_image: normalizeSingleImageUrl(r.brand_image || r.col_1) || DEFAULT_PRODUCT_THUMB,
-          brand_name: safeStr(r.brand_name || r.col_2 || 'Brand'),
-          brand_slug: safeStr(r.brand_slug || r.col_3) || safeStr(r.brand_name || r.col_2 || 'brand').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-          brand_description: safeStr(r.brand_description || r.col_4 || '')
-        })).filter(b => b.brand_name && b.brand_name.toLowerCase() !== 'brand_name');
-
-        if (mapped.length > 0) {
-          const byName = new Map();
-          mapped.forEach(b => byName.set(String(b.brand_name).trim().toLowerCase(), b));
-          (this.sheetBrands || []).forEach(b => {
-            if (b && b.brand_name) {
-              const k = String(b.brand_name).trim().toLowerCase();
-              byName.set(k, { ...(byName.get(k) || {}), ...b });
-            }
-          });
-          this.sheetBrands = Array.from(byName.values());
-          this.saveLocal('dcbd_sheet_brands', this.sheetBrands);
-        }
-      }
-    } catch (e) {}
+    return this.loadBrandsFromSheet(true);
   }
 
   async request(action, payloadOrMethod = {}, maybePayload = undefined) {
@@ -1162,10 +1328,10 @@ class ApiClient {
     if (normAction === 'settings/save') normAction = 'settings/update';
     if (normAction === 'landing_pages/save') normAction = 'landing_pages/add';
     if (normAction.startsWith('others_market/')) normAction = normAction.replace('others_market/', 'markets/');
+
     switch (normAction) {
       case "products/list": {
-        const products = await this.loadProductsFromSheet();
-        // Filter out explicitly inactive products on storefront unless admin requests all
+        const products = await this.loadProductsFromSheet(Boolean(payload.force));
         let items = payload.include_inactive
           ? [...products]
           : products.filter(p => p.status !== 'নিষ্ক্রিয়' && p.is_active !== false);
@@ -1218,7 +1384,7 @@ class ApiClient {
         let decodedTarget = target;
         try { decodedTarget = decodeURIComponent(target); } catch (e) {}
 
-        const found = products.find(p => {
+        let found = products.find(p => {
           const pId = (p.product_id || '').toString().trim().toLowerCase();
           const sku = (p.sku || '').toString().trim().toLowerCase();
           const slug = (p.slug || '').toString().trim().toLowerCase();
@@ -1232,19 +1398,18 @@ class ApiClient {
                  normName === target || normName === decodedTarget;
         });
 
-        if (found) {
-          return { success: true, data: found };
+        if (!found) {
+          found = products.find(p => {
+            const pId = (p.product_id || '').toString().trim().toLowerCase();
+            const slug = (p.slug || '').toString().trim().toLowerCase();
+            return (slug && (target.includes(slug) || slug.includes(target))) ||
+                   (pId && (target.includes(pId) || pId.includes(target)));
+          });
         }
 
-        const partial = products.find(p => {
-          const pId = (p.product_id || '').toString().trim().toLowerCase();
-          const slug = (p.slug || '').toString().trim().toLowerCase();
-          return (slug && (target.includes(slug) || slug.includes(target))) ||
-                 (pId && (target.includes(pId) || pId.includes(target)));
-        });
-
-        if (partial) {
-          return { success: true, data: partial };
+        if (found) {
+          const enriched = await this.fetchSingleProductRichDetails(found);
+          return { success: true, data: enriched };
         }
 
         return { success: false, message: "পণ্য পাওয়া যায়নি" };
@@ -1255,7 +1420,7 @@ class ApiClient {
       case "products/update": {
         const newProd = normalizeSheetProductRow({
           ...payload,
-          sku: payload.sku || payload.product_id || ("DCBD-" + Math.floor(1000 + Math.random() * 9000))
+          sku: payload.sku || payload.SKU || payload.product_id || ("DCBD-" + Math.floor(1000 + Math.random() * 9000))
         });
 
         let current = this.getMergedLocalProducts() || [];
@@ -1267,7 +1432,12 @@ class ApiClient {
           current.unshift(newProd);
         }
 
-        // Persist local override so background GViz sync never loses this product
+        this._productDetailsCache.set(key, {
+          description: newProd.description || '',
+          specification: newProd.specification || '',
+          others: newProd.others || ''
+        });
+
         const overrides = this.loadLocal('dcbd_local_product_overrides', {});
         overrides[key] = newProd;
         this.saveLocal('dcbd_local_product_overrides', overrides);
@@ -1284,7 +1454,34 @@ class ApiClient {
           window.__adminState.products = current;
         }
 
-        await sendToAppsScript("products/add", newProd);
+        const sheetPayload = {
+          ...newProd,
+          SKU: newProd.sku,
+          P_Name: newProd.name,
+          Category: newProd.category,
+          Sub_Category: newProd.sub_category,
+          Child_Category: newProd.child_category,
+          Brand: newProd.brand,
+          Buying_price: newProd.buying_price,
+          Selling_Price: newProd.selling_price,
+          Stock: newProd.stock,
+          Original_Price: newProd.original_price,
+          WholeSale_price: newProd.wholesale_price,
+          Min_order_Q: newProd.min_order_q,
+          Images: Array.isArray(newProd.images) ? newProd.images.join(', ') : String(newProd.images || newProd.thumbnail || ''),
+          Slug: newProd.slug,
+          Description: newProd.description,
+          Specification: newProd.specification,
+          Others: newProd.others,
+          Color: newProd.color,
+          Size: newProd.size,
+          WEIGHT_KG: newProd.weight_kg,
+          WIDTH_CM: newProd.width_cm,
+          LENGTH_CM: newProd.length_cm,
+          HEIGHT_CM: newProd.height_cm
+        };
+
+        await sendToAppsScript("products/add", sheetPayload);
 
         return {
           success: true,
@@ -1323,7 +1520,7 @@ class ApiClient {
       }
 
       case "categories/list": {
-        const categories = await this.loadCategoriesFromSheet();
+        const categories = await this.loadCategoriesFromSheet(Boolean(payload.force));
         return {
           success: true,
           data: {
@@ -1336,26 +1533,41 @@ class ApiClient {
       case "categories/add":
       case "categories/create":
       case "categories/update": {
+        const catId = safeStr(payload.catagory_id || payload.Catagory_ID || payload.id || ("CAT-" + Math.floor(1000 + Math.random() * 9000)));
+        const catName = safeStr(payload.category || payload.Category || payload.name || "Category");
+        const catSlug = safeStr(payload.catagory_slug || payload.Catagory_Slug || payload.slug || catName.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+        const catImg = normalizeSingleImageUrl(payload.category_image || payload.Category_Image || payload.image) || DEFAULT_PRODUCT_THUMB;
+        const subCat = safeStr(payload.sub_category || payload.Sub_Category || "General");
+        const childCat = safeStr(payload.chail_category || payload.Chail_Category || payload.child_category || "Standard");
+
         const newCat = {
-          catagory_id: payload.catagory_id || payload.id || ("CAT-" + Math.floor(1000 + Math.random() * 9000)),
-          catagory_slug: payload.catagory_slug || payload.slug || (payload.category ? String(payload.category).toLowerCase().replace(/[^a-z0-9]+/g, "-") : "cat"),
-          category_image: normalizeSingleImageUrl(payload.category_image || payload.image) || DEFAULT_PRODUCT_THUMB,
-          category: safeStr(payload.category || payload.name || "Category"),
-          sub_category: safeStr(payload.sub_category || ""),
-          chail_category: safeStr(payload.chail_category || payload.child_category || ""),
+          catagory_id: catId,
+          Catagory_ID: catId,
+          catagory_slug: catSlug,
+          Catagory_Slug: catSlug,
+          category_image: catImg,
+          Category_Image: catImg,
+          category: catName,
+          Category: catName,
+          sub_category: subCat,
+          Sub_Category: subCat,
+          chail_category: childCat,
+          Chail_Category: childCat,
           tree_subs: payload.tree_subs || undefined
         };
 
-        if (!this.sheetCategories) this.sheetCategories = this.loadLocal('dcbd_sheet_categories', [...INITIAL_CATEGORIES]);
+        if (!this.sheetCategories || this.sheetCategories.length === 0) {
+          this.sheetCategories = this.loadLocal('dcbd_sheet_categories', []);
+        }
         const existingIdx = this.sheetCategories.findIndex(c =>
-          String(c.catagory_id || '').toLowerCase() === String(newCat.catagory_id).toLowerCase() ||
-          String(c.category || '').toLowerCase() === String(newCat.category).toLowerCase() ||
+          String(c.catagory_id || '').toLowerCase() === catId.toLowerCase() ||
+          String(c.category || '').toLowerCase() === catName.toLowerCase() ||
           (payload.old_category && String(c.category || '').toLowerCase() === String(payload.old_category).toLowerCase())
         );
         if (existingIdx >= 0) {
           this.sheetCategories[existingIdx] = { ...this.sheetCategories[existingIdx], ...newCat };
         } else {
-          this.sheetCategories.push(newCat);
+          this.sheetCategories.unshift(newCat);
         }
         this.saveLocal('dcbd_sheet_categories', this.sheetCategories);
         if (typeof window !== 'undefined' && window.__adminState) {
@@ -1383,7 +1595,7 @@ class ApiClient {
       }
 
       case "brands/list": {
-        const brands = await this.loadBrandsFromSheet();
+        const brands = await this.loadBrandsFromSheet(Boolean(payload.force));
         return {
           success: true,
           data: {
@@ -1396,17 +1608,31 @@ class ApiClient {
       case "brands/add":
       case "brands/create":
       case "brands/update": {
+        const bId = safeStr(payload.brand_id || payload.Brand_ID || payload.id || ("BRD-" + Math.floor(1000 + Math.random() * 9000)));
+        const bName = safeStr(payload.brand_name || payload.Brand_Name || payload.name || "Brand");
+        const bSlug = safeStr(payload.brand_slug || payload.Brand_Slug || payload.slug || bName.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+        const bImg = normalizeSingleImageUrl(payload.brand_image || payload.Brand_Image || payload.image) || DEFAULT_PRODUCT_THUMB;
+        const bDesc = safeStr(payload.brand_description || payload.Brand_Description || payload.description || "");
+
         const newBrand = {
-          brand_id: payload.brand_id || payload.id || ("BRD-" + Math.floor(1000 + Math.random() * 9000)),
-          brand_name: safeStr(payload.brand_name || payload.name || "Brand"),
-          brand_slug: payload.brand_slug || payload.slug || (payload.brand_name ? String(payload.brand_name).toLowerCase().replace(/[^a-z0-9]+/g, "-") : "brand"),
-          brand_image: normalizeSingleImageUrl(payload.brand_image || payload.image) || DEFAULT_PRODUCT_THUMB,
-          brand_description: safeStr(payload.brand_description || payload.description || "")
+          brand_id: bId,
+          Brand_ID: bId,
+          brand_name: bName,
+          Brand_Name: bName,
+          brand_slug: bSlug,
+          Brand_Slug: bSlug,
+          brand_image: bImg,
+          Brand_Image: bImg,
+          brand_description: bDesc,
+          Brand_Description: bDesc
         };
-        if (!this.sheetBrands) this.sheetBrands = this.loadLocal('dcbd_sheet_brands', [...INITIAL_BRANDS]);
+
+        if (!this.sheetBrands || this.sheetBrands.length === 0) {
+          this.sheetBrands = this.loadLocal('dcbd_sheet_brands', []);
+        }
         const idx = this.sheetBrands.findIndex(b =>
-          String(b.brand_id || '').toLowerCase() === String(newBrand.brand_id).toLowerCase() ||
-          String(b.brand_name || '').toLowerCase() === String(newBrand.brand_name).toLowerCase()
+          String(b.brand_id || '').toLowerCase() === bId.toLowerCase() ||
+          String(b.brand_name || '').toLowerCase() === bName.toLowerCase()
         );
         if (idx >= 0) {
           this.sheetBrands[idx] = { ...this.sheetBrands[idx], ...newBrand };
@@ -1439,27 +1665,51 @@ class ApiClient {
 
       // --- LANDING PAGES ---
       case "landing_pages/list": {
-        let localPages = this.loadLocal('dcbd_landing_pages', null);
+        let localPages = this.loadLocal('dcbd_landing_pages', null) || [];
         try {
-          const rows = await fetchLiveSheetRows('Landing-Pages', 'landing_pages/list', 2500);
+          const rows = await fetchLiveSheetRows('Landing-Pages', 'landing_pages/list', 10000);
           if (rows && rows.length > 0) {
             const sheetPages = rows.map((r, i) => {
-              let parsedContent = {};
-              try { parsedContent = JSON.parse(r.content || r.col_3 || '{}'); } catch (e) {}
+              let parsedMeta = {};
+              const rawJson = r.social_icons || r.Social_Icons || r.content || r.col_9 || r.col_3 || '';
+              if (typeof rawJson === 'string' && rawJson.trim().startsWith('{')) {
+                try { parsedMeta = JSON.parse(rawJson); } catch (e) {}
+              }
+              const slugVal = safeStr(r.slug || r.Slug || r.col_0 || parsedMeta.slug || `lp-${101 + i}`);
+              const titleVal = safeStr(r.slogan || r.Slogan || r.title || r.col_1 || parsedMeta.title || 'ক্যাম্পেইন ল্যান্ডিং পেজ');
+              const prodImgs = parseImageUrlsList(r.product_images || r.Product_Images || r.banner || r.col_4 || parsedMeta.hero_banner);
+              const prodList = r.products || r.Products || r.col_3 || parsedMeta.selected_products || '';
+              const selectedProducts = Array.isArray(prodList)
+                ? prodList
+                : String(prodList).split(',').map(s => s.trim()).filter(Boolean);
+
               return {
-                id: safeStr(r.page_id || r.col_0 || `LP-${101 + i}`),
-                title: safeStr(r.title || r.col_1 || 'ক্যাম্পেইন ল্যান্ডিং পেজ'),
-                slug: safeStr(r.slug || r.col_2 || `lp-${101 + i}`),
-                hero_banner: normalizeSingleImageUrl(r.banner || r.col_4) || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200',
-                status: safeStr(r.status || r.col_5 || 'Active'),
-                ...parsedContent
+                id: safeStr(parsedMeta.id || parsedMeta.page_id || r.page_id || `LP-${101 + i}`),
+                page_id: safeStr(parsedMeta.id || parsedMeta.page_id || r.page_id || `LP-${101 + i}`),
+                title: titleVal,
+                slug: slugVal,
+                main_link: safeStr(r.main_link || r.Main_Link || r.col_2 || `/landing?page=${slugVal}`),
+                hero_banner: prodImgs[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200',
+                selected_products: selectedProducts,
+                hotline: safeStr(r.contact_call || r.Contact_Call || r.col_6 || parsedMeta.hotline || '01581703822'),
+                whatsapp: safeStr(r.contact_whatsapp || r.Contact_Whatsapp || r.col_7 || '01581703822'),
+                email: safeStr(r.contact_mail || r.Contact_Mail || r.col_8 || 'jainal.dcitbd@gmail.com'),
+                status: safeStr(r.status || r.Status || r.col_10 || r.col_5 || 'Active'),
+                ...parsedMeta
               };
+            }).filter(lp => lp.slug && lp.slug.toLowerCase() !== 'slug');
+
+            const bySlug = new Map();
+            sheetPages.forEach(lp => bySlug.set(String(lp.slug || lp.id).toLowerCase(), lp));
+            (localPages || []).forEach(lp => {
+              const k = String(lp.slug || lp.id).toLowerCase();
+              bySlug.set(k, { ...(bySlug.get(k) || {}), ...lp });
             });
-            const byId = new Map();
-            sheetPages.forEach(lp => byId.set(String(lp.id).toLowerCase(), lp));
-            (localPages || []).forEach(lp => byId.set(String(lp.id).toLowerCase(), { ...(byId.get(String(lp.id).toLowerCase()) || {}), ...lp }));
-            localPages = Array.from(byId.values());
+            localPages = Array.from(bySlug.values());
             this.saveLocal('dcbd_landing_pages', localPages);
+            if (typeof window !== 'undefined' && window.__adminState) {
+              window.__adminState.landingPages = localPages;
+            }
           }
         } catch (e) {}
         return { success: true, data: { items: localPages || [], total: (localPages || []).length } };
@@ -1468,8 +1718,32 @@ class ApiClient {
       case "landing_pages/add":
       case "landing_pages/create":
       case "landing_pages/update": {
-        await sendToAppsScript("landing_pages/add", payload);
-        return { success: true, status: "success", data: payload, message: "ল্যান্ডিং পেজ তালিকা ও গুগল শিটে সংরক্ষিত হয়েছে!" };
+        const pageId = safeStr(payload.page_id || payload.id || ("LP-" + Math.floor(100 + Math.random() * 900)));
+        const title = safeStr(payload.title || payload.slogan || payload.Slogan || "ক্যাম্পেইন ল্যান্ডিং পেজ");
+        const slug = safeStr(payload.slug || payload.Slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+        const selectedSkus = payload.selected_products || payload.selected_skus || [];
+        const heroBanner = normalizeSingleImageUrl(payload.hero_banner || payload.banner || '');
+
+        const sheetPayload = {
+          ...payload,
+          id: pageId,
+          page_id: pageId,
+          Slug: slug,
+          slug: slug,
+          Slogan: title,
+          title: title,
+          Main_Link: `/landing?page=${slug}`,
+          Products: Array.isArray(selectedSkus) ? selectedSkus.join(', ') : String(selectedSkus || ''),
+          Product_Images: heroBanner,
+          Review_Images: Array.isArray(payload.videos) ? payload.videos.map(v => typeof v === 'string' ? v : v.url).filter(Boolean).join(' | ') : '',
+          Contact_Call: safeStr(payload.hotline || '01581703822'),
+          Contact_Whatsapp: safeStr(payload.hotline || '01581703822'),
+          Contact_Mail: 'jainal.dcitbd@gmail.com',
+          Status: safeStr(payload.status || 'Active')
+        };
+
+        await sendToAppsScript("landing_pages/add", sheetPayload);
+        return { success: true, status: "success", data: sheetPayload, message: "ল্যান্ডিং পেজ তালিকা ও গুগল শিটে সংরক্ষিত হয়েছে!" };
       }
 
       case "landing_pages/delete": {
@@ -1499,13 +1773,13 @@ class ApiClient {
 
       case "orders/create":
       case "orders/add": {
-        const orderId = safeStr(payload.order_id || payload.orderId || ("ORD-" + Math.floor(100000 + Math.random() * 900000)));
-        const dateStr = payload.date || new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dhaka' });
+        const orderId = safeStr(payload.order_id || payload.orderId || payload.OrderID || ("ORD-" + Math.floor(100000 + Math.random() * 900000)));
+        const dateStr = payload.date || payload.Date || new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dhaka' });
 
-        let productsDesc = safeStr(payload.products || payload.product_name || '');
-        let colorStr = safeStr(payload.color || '');
-        let sizeStr = safeStr(payload.size || '');
-        let totalQty = safeNumber(payload.quantity, 0);
+        let productsDesc = safeStr(payload.products || payload.Products || payload.product_name || '');
+        let colorStr = safeStr(payload.color || payload.Color || '');
+        let sizeStr = safeStr(payload.size || payload.Size || '');
+        let totalQty = safeNumber(payload.quantity || payload.Quantity, 0);
 
         if (Array.isArray(payload.items) && payload.items.length > 0) {
           if (!productsDesc) {
@@ -1530,21 +1804,30 @@ class ApiClient {
         const orderData = normalizeSheetOrderRow({
           ...payload,
           order_id: orderId,
+          OrderID: orderId,
           date: dateStr,
+          Date: dateStr,
           products: productsDesc,
+          Products: productsDesc,
           product_name: productsDesc,
           color: colorStr || 'Standard',
+          Color: colorStr || 'Standard',
           size: sizeStr || 'Free Size',
+          Size: sizeStr || 'Free Size',
           quantity: totalQty,
+          Quantity: totalQty,
           account_type: payload.account_type || 'Customer',
+          Account_type: payload.account_type || 'Customer',
           payment_method: payload.payment_method || 'Cash On Delivery (COD)',
+          Payment_method: payload.payment_method || 'Cash On Delivery (COD)',
           transaction_id: payload.transaction_id || 'COD',
+          Transaction_ID: payload.transaction_id || 'COD',
           payment_status: payload.payment_status || (String(payload.payment_method || '').toLowerCase().includes('cod') || String(payload.payment_method || '').toLowerCase().includes('cash') ? 'Pending' : 'Paid'),
           order_status: payload.order_status || 'Order Placed'
         });
 
         let localOrders = this.loadLocal('dcbd_sheet_orders', []);
-        const existingIdx = localOrders.findIndex(o => String(o.order_id || o.orderId) === orderId);
+        const existingIdx = localOrders.findIndex(o => String(o.order_id || o.orderId).toLowerCase() === orderId.toLowerCase());
         if (existingIdx >= 0) {
           localOrders[existingIdx] = { ...localOrders[existingIdx], ...orderData };
         } else {
@@ -1556,7 +1839,6 @@ class ApiClient {
           window.__adminState.orders = localOrders;
         }
 
-        // Remove any matching incomplete order draft for this phone number now that order is confirmed
         if (orderData.phone) {
           const normP = normalizeBDPhone(orderData.phone);
           let incList = this.loadLocal('dcbd_sheet_incomplete_orders', []);
@@ -1618,15 +1900,14 @@ class ApiClient {
         const localOrders = (this.loadLocal('dcbd_sheet_orders', []) || []).map((o, i) => normalizeSheetOrderRow(o, i)).filter(Boolean);
         let sheetOrders = [];
         try {
-          const rows = await fetchLiveSheetRows('Orders', 'orders/list', 2500);
+          const rows = await fetchLiveSheetRows('Orders', 'orders/list', 12000);
           if (rows && rows.length > 0) {
             sheetOrders = rows.map((r, i) => normalizeSheetOrderRow(r, i)).filter(Boolean);
-            // Requirement 7: The orders at the bottom of the Google Sheet are the newest orders!
-            // Reverse so that the sheet's bottom orders appear at the beginning of the site list!
             sheetOrders.reverse();
           }
         } catch (e) {}
 
+        // Deduplicate by OrderID so historical 5x duplicate rows in the sheet show only ONCE!
         const byId = new Map();
         localOrders.forEach(o => byId.set(String(o.order_id).toLowerCase(), o));
         sheetOrders.forEach(o => {
@@ -1642,6 +1923,9 @@ class ApiClient {
         if (merged.length > 0) {
           this.sheetOrders = merged;
           this.saveLocal('dcbd_sheet_orders', merged);
+          if (typeof window !== 'undefined' && window.__adminState) {
+            window.__adminState.orders = merged;
+          }
         }
         return { success: true, data: { items: merged, total: merged.length } };
       }
@@ -1690,23 +1974,31 @@ class ApiClient {
         const localInc = (this.loadLocal('dcbd_sheet_incomplete_orders', []) || []).map((r, i) => normalizeIncompleteOrderRow(r, i)).filter(Boolean);
         let sheetInc = [];
         try {
-          const rows = await fetchSheetViaGviz('Incomplete_Orders');
+          const rows = await fetchLiveSheetRows('Incomplete_Orders', 'incomplete_orders/list', 10000);
           if (rows && rows.length > 0) {
             sheetInc = rows.map((r, i) => normalizeIncompleteOrderRow(r, i)).filter(Boolean);
+            sheetInc.reverse();
           }
         } catch (e) {}
 
-        const byId = new Map();
-        localInc.forEach(io => byId.set(String(io.order_id).toLowerCase(), io));
+        // Deduplicate by phone or order_id
+        const byKey = new Map();
+        localInc.forEach(io => {
+          const k = normalizeBDPhone(io.phone) || String(io.order_id).toLowerCase();
+          if (k) byKey.set(k, io);
+        });
         sheetInc.forEach(io => {
-          const k = String(io.order_id).toLowerCase();
-          if (!byId.has(k)) byId.set(k, io);
+          const k = normalizeBDPhone(io.phone) || String(io.order_id).toLowerCase();
+          if (k && !byKey.has(k)) byKey.set(k, io);
         });
 
-        const merged = Array.from(byId.values());
+        const merged = Array.from(byKey.values());
         if (merged.length > 0) {
           this.sheetIncompleteOrders = merged;
           this.saveLocal('dcbd_sheet_incomplete_orders', merged);
+          if (typeof window !== 'undefined' && window.__adminState) {
+            window.__adminState.incompleteOrders = merged;
+          }
         }
         return { success: true, data: { items: merged, total: merged.length } };
       }
@@ -1753,7 +2045,7 @@ class ApiClient {
         let existingList = this.sheetCustomers || this.loadLocal('dcbd_sheet_customers', []) || [];
         if (!isManualAdmin) {
           try {
-            const rows = await fetchSheetViaGviz('Customers');
+            const rows = await fetchSheetViaGviz('Customers', 8000);
             if (Array.isArray(rows) && rows.length > 0) existingList = rows;
           } catch (e) {}
 
@@ -1772,8 +2064,9 @@ class ApiClient {
           }
         }
 
-        const generatedUserId = safeStr(payload.USER_ID || payload.user_id || ('CUST-' + Math.floor(100000 + Math.random() * 900000)));
+        const generatedUserId = safeStr(payload.Customer_ID || payload.USER_ID || payload.user_id || ('CUST-' + Math.floor(100000 + Math.random() * 900000)));
         const customerData = {
+          Customer_ID: generatedUserId,
           USER_ID: generatedUserId,
           user_id: generatedUserId,
           Profile_photo: profilePhoto,
@@ -1855,7 +2148,7 @@ class ApiClient {
 
         let customers = [];
         try {
-          const rows = await fetchSheetViaGviz('Customers');
+          const rows = await fetchSheetViaGviz('Customers', 10000);
           if (Array.isArray(rows) && rows.length > 0) {
             customers = rows;
             this.sheetCustomers = rows;
@@ -1872,7 +2165,7 @@ class ApiClient {
         let matched = allCandidates.find(c => {
           const cMobile = normalizeBDPhone(c.mobile || c.Mobile || c.phone || c.Phone || c.col_3 || '');
           const cMail = String(c.mail || c.Mail || c.email || c.Email || c.col_4 || '').trim().toLowerCase();
-          const cUserIdA = String(c.user_id || c.USER_ID || c.col_0 || '').trim().toLowerCase();
+          const cUserIdA = String(c.customer_id || c.Customer_ID || c.user_id || c.USER_ID || c.col_0 || '').trim().toLowerCase();
           const cUserIdG = String(c.User_ID || c.col_6 || '').trim().toLowerCase();
 
           return (normPhone && cMobile === normPhone) ||
@@ -1921,7 +2214,7 @@ class ApiClient {
           };
         }
 
-        const uId = matched.user_id || matched.USER_ID || matched.col_0 || matched.User_ID || matched.col_6 || ('CUST-' + Math.floor(100000 + Math.random() * 900000));
+        const uId = matched.customer_id || matched.Customer_ID || matched.user_id || matched.USER_ID || matched.col_0 || matched.User_ID || matched.col_6 || ('CUST-' + Math.floor(100000 + Math.random() * 900000));
         const customerProfile = {
           user_id: uId,
           USER_ID: uId,
@@ -1953,13 +2246,13 @@ class ApiClient {
         const localCust = this.loadLocal('dcbd_sheet_customers', []) || this.loadLocal('dcbd_customers', []) || [];
         let sheetCust = [];
         try {
-          const rows = await fetchSheetViaGviz('Customers');
+          const rows = await fetchLiveSheetRows('Customers', 'customers/list', 10000);
           if (rows && rows.length > 0) {
             sheetCust = rows.map((r, i) => ({
-              user_id: safeStr(r.user_id || r.USER_ID || r.col_0 || `CUST-${100 + i}`),
-              USER_ID: safeStr(r.user_id || r.USER_ID || r.col_0 || `CUST-${100 + i}`),
+              user_id: safeStr(r.customer_id || r.Customer_ID || r.user_id || r.USER_ID || r.col_0 || `CUST-${100 + i}`),
+              USER_ID: safeStr(r.customer_id || r.Customer_ID || r.user_id || r.USER_ID || r.col_0 || `CUST-${100 + i}`),
               profile_photo: normalizeSingleImageUrl(r.profile_photo || r.Profile_photo || r.col_1 || ''),
-              name: safeStr(r.name || r.Name || r.col_2 || 'গ্রাহক'),
+              name: safeStr(r.name || r.Name || r.col_2 || ''),
               phone: safeStr(r.mobile || r.Mobile || r.phone || r.col_3 || ''),
               mobile: safeStr(r.mobile || r.Mobile || r.phone || r.col_3 || ''),
               mail: safeStr(r.mail || r.Mail || r.email || r.col_4 || ''),
@@ -1989,6 +2282,9 @@ class ApiClient {
         const merged = Array.from(byPhone.values());
         this.sheetCustomers = merged;
         this.saveLocal('dcbd_sheet_customers', merged);
+        if (typeof window !== 'undefined' && window.__adminState) {
+          window.__adminState.customers = merged;
+        }
         return { success: true, data: { items: merged, total: merged.length } };
       }
 
@@ -1997,22 +2293,32 @@ class ApiClient {
         const localRevs = this.loadLocal('dcbd_sheet_reviews', []);
         let sheetRevs = [];
         try {
-          const rows = await fetchSheetViaGviz('Reviews');
+          const rows = await fetchLiveSheetRows('Reviews', 'reviews/list', 10000);
           if (rows && rows.length > 0) {
+            // Exact headers in Excel: ['Review_ID', 'Product_SKU', 'Customer_Name', 'Rating', 'Comment', 'Image', 'Status', 'Date']
             sheetRevs = rows.map((r, i) => ({
-              id: safeStr(r.id || `REV-SH-${i + 1}`),
-              date: safeStr(r.date || r.col_0 || 'সম্প্রতি'),
-              product_sku: safeStr(r.product_sku || r.col_1 || ''),
-              product: safeStr(r.product || r.product_sku || r.col_1 || 'পণ্য'),
-              customer_name: safeStr(r.customer_name || r.col_2 || 'গ্রাহক'),
-              customer: safeStr(r.customer || r.customer_name || r.col_2 || 'গ্রাহক'),
-              rating: safeNumber(r.rating !== undefined ? r.rating : r.col_3, 5),
-              comment: safeStr(r.comment || r.col_4 || ''),
-              status: safeStr(r.status || r.col_5 || 'Approved')
-            })).filter(rv => rv.comment);
+              id: safeStr(r.review_id || r.Review_ID || r.col_0 || `REV-SH-${i + 1}`),
+              review_id: safeStr(r.review_id || r.Review_ID || r.col_0 || `REV-SH-${i + 1}`),
+              product_sku: safeStr(r.product_sku || r.Product_SKU || r.col_1 || ''),
+              product: safeStr(r.product || r.product_sku || r.Product_SKU || r.col_1 || 'পণ্য'),
+              customer_name: safeStr(r.customer_name || r.Customer_Name || r.col_2 || 'গ্রাহক'),
+              customer: safeStr(r.customer || r.customer_name || r.Customer_Name || r.col_2 || 'গ্রাহক'),
+              rating: safeNumber(r.rating !== undefined ? r.rating : (r.Rating !== undefined ? r.Rating : r.col_3), 5),
+              comment: safeStr(r.comment || r.Comment || r.col_4 || ''),
+              image: normalizeSingleImageUrl(r.image || r.Image || r.col_5 || ''),
+              status: safeStr(r.status || r.Status || r.col_6 || 'Approved'),
+              date: safeStr(r.date || r.Date || r.col_7 || 'সম্প্রতি')
+            })).filter(rv => rv.comment && rv.id.toLowerCase() !== 'review_id');
           }
         } catch (e) {}
-        const merged = [...localRevs, ...sheetRevs];
+        const byId = new Map();
+        sheetRevs.forEach(rv => byId.set(String(rv.id).toLowerCase(), rv));
+        localRevs.forEach(rv => byId.set(String(rv.id || Math.random()).toLowerCase(), rv));
+        const merged = Array.from(byId.values());
+        this.saveLocal('dcbd_sheet_reviews', merged);
+        if (typeof window !== 'undefined' && window.__adminState) {
+          window.__adminState.reviews = merged;
+        }
         return { success: true, data: { items: merged, total: merged.length } };
       }
 
@@ -2022,23 +2328,195 @@ class ApiClient {
         return { success: true, status: "success", data: payload };
       }
 
-      // --- PARTNERS, ADMINS, WORKERS, FINANCE, COURIERS, SETTINGS ---
+      // --- RESELLERS ---
+      case "resellers/list": {
+        let localRes = this.loadLocal('dcbd_resellers', []) || [];
+        try {
+          const rows = await fetchLiveSheetRows('Resellers', 'resellers/list', 10000);
+          if (rows && rows.length > 0) {
+            const mapped = rows.map((r, i) => ({
+              id: safeStr(r.shop_id || r.Shop_ID || r.col_0 || `RSL-${101 + i}`),
+              shop_id: safeStr(r.shop_id || r.Shop_ID || r.col_0 || `RSL-${101 + i}`),
+              Shop_ID: safeStr(r.shop_id || r.Shop_ID || r.col_0 || `RSL-${101 + i}`),
+              shop_logo: normalizeSingleImageUrl(r.shop_logo || r.Shop_logo || r.col_1 || ''),
+              name: safeStr(r.name || r.Name || r.col_2 || ''),
+              mobile: safeStr(r.mobile || r.Mobile || r.col_3 || ''),
+              phone: safeStr(r.mobile || r.Mobile || r.col_3 || ''),
+              mail: safeStr(r.mail || r.Mail || r.col_4 || ''),
+              address: safeStr(r.address || r.Address || r.col_5 || 'ঢাকা'),
+              city: safeStr(r.address || r.Address || r.col_5 || 'ঢাকা'),
+              shop_name: safeStr(r.shop_name || r.Shop_Name || r.col_6 || 'রিসেলার শপ'),
+              shop: safeStr(r.shop_name || r.Shop_Name || r.col_6 || 'রিসেলার শপ'),
+              nid_number: safeStr(r.nid_number || r.NID_Number || r.col_7 || ''),
+              date_of_birth: safeStr(r.date_of_birth || r.Date_of_birth || r.col_8 || ''),
+              trade_licence_no: safeStr(r.trade_licence_no || r.Trade_Licence_No || r.col_9 || ''),
+              user_id: safeStr(r.user_id || r.User_ID || r.col_10 || r.col_3 || ''),
+              password: safeStr(r.password || r.Password || r.col_11 || ''),
+              status: safeStr(r.status || r.Status || r.col_12 || 'Active'),
+              commission: safeStr(r.commission || '15%'),
+              balance: safeNumber(r.balance, 0)
+            })).filter(r => r.name && r.name.toLowerCase() !== 'name');
+
+            const byId = new Map();
+            mapped.forEach(r => byId.set(String(r.shop_id).toLowerCase(), r));
+            localRes.forEach(r => {
+              const k = String(r.shop_id || r.id || '').toLowerCase();
+              if (k) byId.set(k, { ...(byId.get(k) || {}), ...r });
+            });
+            localRes = Array.from(byId.values());
+            this.saveLocal('dcbd_resellers', localRes);
+            if (typeof window !== 'undefined' && window.__adminState) {
+              window.__adminState.resellers = localRes;
+            }
+          }
+        } catch (e) {}
+        return { success: true, data: { items: localRes, total: localRes.length } };
+      }
+
       case "resellers/register":
       case "resellers/add":
       case "resellers/create":
-      case "resellers/update":
+      case "resellers/update": {
+        const shopId = safeStr(payload.shop_id || payload.Shop_ID || payload.id || ("RSL-" + Math.floor(1000 + Math.random() * 9000)));
+        const mobile = safeStr(payload.mobile || payload.Mobile || payload.phone || '');
+        const entry = {
+          ...payload,
+          id: shopId,
+          shop_id: shopId,
+          Shop_ID: shopId,
+          Shop_logo: safeStr(payload.shop_logo || payload.Shop_logo || ''),
+          Name: safeStr(payload.name || payload.Name || ''),
+          Mobile: mobile,
+          mobile: mobile,
+          phone: mobile,
+          Mail: safeStr(payload.mail || payload.Mail || payload.email || ''),
+          Address: safeStr(payload.address || payload.Address || payload.city || 'ঢাকা'),
+          Shop_Name: safeStr(payload.shop_name || payload.Shop_Name || payload.shop || 'রিসেলার শপ'),
+          NID_Number: safeStr(payload.nid_number || payload.NID_Number || ''),
+          Date_of_birth: safeStr(payload.date_of_birth || payload.Date_of_birth || ''),
+          Trade_Licence_No: safeStr(payload.trade_licence_no || payload.Trade_Licence_No || ''),
+          User_ID: safeStr(payload.user_id || payload.User_ID || mobile || shopId),
+          Password: safeStr(payload.password || payload.Password || '123456'),
+          Status: safeStr(payload.status || payload.Status || 'Active')
+        };
+
+        let list = this.loadLocal('dcbd_resellers', []);
+        const idx = list.findIndex(r => String(r.shop_id || r.id).toLowerCase() === shopId.toLowerCase());
+        if (idx >= 0) list[idx] = { ...list[idx], ...entry };
+        else list.unshift(entry);
+        this.saveLocal('dcbd_resellers', list);
+        if (typeof window !== 'undefined' && window.__adminState) window.__adminState.resellers = list;
+
+        await sendToAppsScript("resellers/register", entry);
+        return { success: true, status: "success", data: entry, message: "রিসেলার সফলভাবে তালিকা ও গুগল শিটে সংরক্ষিত হয়েছে!" };
+      }
+
       case "resellers/login": {
-        await sendToAppsScript("resellers/" + (action.split('/')[1] || 'add'), payload);
+        await sendToAppsScript("resellers/login", payload);
         return { success: true, status: "success", data: payload };
+      }
+
+      case "resellers/delete": {
+        const sId = safeStr(payload.shop_id || payload.id || '');
+        let list = this.loadLocal('dcbd_resellers', []);
+        list = list.filter(r => String(r.shop_id || r.id).toLowerCase() !== sId.toLowerCase());
+        this.saveLocal('dcbd_resellers', list);
+        if (typeof window !== 'undefined' && window.__adminState) window.__adminState.resellers = list;
+        await sendToAppsScript("resellers/delete", payload);
+        return { success: true, status: "success" };
+      }
+
+      // --- WHOLESALERS ---
+      case "wholesalers/list": {
+        let localWhs = this.loadLocal('dcbd_wholesalers', []) || [];
+        try {
+          const rows = await fetchLiveSheetRows('Wholesalers', 'wholesalers/list', 10000);
+          if (rows && rows.length > 0) {
+            const mapped = rows.map((r, i) => ({
+              id: safeStr(r.shop_id || r.Shop_ID || r.col_0 || `WHS-${101 + i}`),
+              shop_id: safeStr(r.shop_id || r.Shop_ID || r.col_0 || `WHS-${101 + i}`),
+              Shop_ID: safeStr(r.shop_id || r.Shop_ID || r.col_0 || `WHS-${101 + i}`),
+              shop_logo: normalizeSingleImageUrl(r.shop_logo || r.Shop_logo || r.col_1 || ''),
+              name: safeStr(r.name || r.Name || r.col_2 || ''),
+              mobile: safeStr(r.mobile || r.Mobile || r.col_3 || ''),
+              phone: safeStr(r.mobile || r.Mobile || r.col_3 || ''),
+              mail: safeStr(r.mail || r.Mail || r.col_4 || ''),
+              address: safeStr(r.address || r.Address || r.col_5 || 'ঢাকা'),
+              shop_name: safeStr(r.shop_name || r.Shop_Name || r.col_6 || 'পাইকারি প্রতিষ্ঠান'),
+              company: safeStr(r.shop_name || r.Shop_Name || r.col_6 || 'পাইকারি প্রতিষ্ঠান'),
+              user_id: safeStr(r.user_id || r.User_ID || r.col_7 || r.col_3 || ''),
+              password: safeStr(r.password || r.Password || r.col_8 || ''),
+              status: safeStr(r.status || r.Status || r.col_9 || 'Approved'),
+              moq: safeNumber(r.moq, 5),
+              discount_pct: safeStr(r.discount_pct || '15%'),
+              tier: safeStr(r.tier || 'MOQ 5 • 15% Off')
+            })).filter(w => w.name && w.name.toLowerCase() !== 'name');
+
+            const byId = new Map();
+            mapped.forEach(w => byId.set(String(w.shop_id).toLowerCase(), w));
+            localWhs.forEach(w => {
+              const k = String(w.shop_id || w.id || '').toLowerCase();
+              if (k) byId.set(k, { ...(byId.get(k) || {}), ...w });
+            });
+            localWhs = Array.from(byId.values());
+            this.saveLocal('dcbd_wholesalers', localWhs);
+            if (typeof window !== 'undefined' && window.__adminState) {
+              window.__adminState.wholesalers = localWhs;
+            }
+          }
+        } catch (e) {}
+        return { success: true, data: { items: localWhs, total: localWhs.length } };
       }
 
       case "wholesalers/register":
       case "wholesalers/add":
       case "wholesalers/create":
-      case "wholesalers/update":
+      case "wholesalers/update": {
+        const shopId = safeStr(payload.shop_id || payload.Shop_ID || payload.id || ("WHS-" + Math.floor(1000 + Math.random() * 9000)));
+        const mobile = safeStr(payload.mobile || payload.Mobile || payload.phone || '');
+        const entry = {
+          ...payload,
+          id: shopId,
+          shop_id: shopId,
+          Shop_ID: shopId,
+          Shop_logo: safeStr(payload.shop_logo || payload.Shop_logo || ''),
+          Name: safeStr(payload.name || payload.Name || ''),
+          Mobile: mobile,
+          mobile: mobile,
+          phone: mobile,
+          Mail: safeStr(payload.mail || payload.Mail || payload.email || ''),
+          Address: safeStr(payload.address || payload.Address || 'ঢাকা'),
+          Shop_Name: safeStr(payload.shop_name || payload.Shop_Name || payload.company || 'ট্রেডার্স'),
+          company: safeStr(payload.shop_name || payload.Shop_Name || payload.company || 'ট্রেডার্স'),
+          User_ID: safeStr(payload.user_id || payload.User_ID || mobile || shopId),
+          Password: safeStr(payload.password || payload.Password || '123456'),
+          Status: safeStr(payload.status || payload.Status || 'Approved')
+        };
+
+        let list = this.loadLocal('dcbd_wholesalers', []);
+        const idx = list.findIndex(w => String(w.shop_id || w.id).toLowerCase() === shopId.toLowerCase());
+        if (idx >= 0) list[idx] = { ...list[idx], ...entry };
+        else list.unshift(entry);
+        this.saveLocal('dcbd_wholesalers', list);
+        if (typeof window !== 'undefined' && window.__adminState) window.__adminState.wholesalers = list;
+
+        await sendToAppsScript("wholesalers/register", entry);
+        return { success: true, status: "success", data: entry, message: "হোলসেলার সফলভাবে তালিকা ও গুগল শিটে সংরক্ষিত হয়েছে!" };
+      }
+
       case "wholesalers/login": {
-        await sendToAppsScript("wholesalers/" + (action.split('/')[1] || 'add'), payload);
+        await sendToAppsScript("wholesalers/login", payload);
         return { success: true, status: "success", data: payload };
+      }
+
+      case "wholesalers/delete": {
+        const sId = safeStr(payload.shop_id || payload.id || '');
+        let list = this.loadLocal('dcbd_wholesalers', []);
+        list = list.filter(w => String(w.shop_id || w.id).toLowerCase() !== sId.toLowerCase());
+        this.saveLocal('dcbd_wholesalers', list);
+        if (typeof window !== 'undefined' && window.__adminState) window.__adminState.wholesalers = list;
+        await sendToAppsScript("wholesalers/delete", payload);
+        return { success: true, status: "success" };
       }
 
       // --- ATTRIBUTES & VARIANTS (COLOR & SIZE) ---
@@ -2046,12 +2524,12 @@ class ApiClient {
       case "variants/list": {
         let v = (typeof window !== 'undefined' && window.getAdminVariants) ? window.getAdminVariants() : (this.loadLocal('dcbd_variants', { colors: [], sizes: [] }));
         try {
-          const rows = await fetchLiveSheetRows('Attributes', 'attributes/list', 2000);
+          const rows = await fetchLiveSheetRows('Attributes', 'attributes/list', 10000);
           if (rows && rows.length > 0) {
             rows.forEach(r => {
               const type = String(r.type || r.Type || r.col_1 || '').trim().toLowerCase();
               const val = String(r.name_value || r.Name_Value || r.col_2 || '').trim();
-              if (val) {
+              if (val && val.toLowerCase() !== 'name_value') {
                 if (type === 'color' && !v.colors.includes(val)) v.colors.push(val);
                 else if (type === 'size' && !v.sizes.includes(val)) v.sizes.push(val);
               }
@@ -2065,10 +2543,12 @@ class ApiClient {
 
       case "attributes/add":
       case "attributes/create":
+      case "attributes/update":
       case "variants/add":
-      case "variants/create": {
-        const type = String(payload.type || (payload.color ? 'Color' : 'Size')).trim();
-        const val = String(payload.name_value || payload.val || payload.name || payload.color || payload.size || '').trim();
+      case "variants/create":
+      case "variants/update": {
+        const type = String(payload.type || payload.Type || (payload.color ? 'Color' : 'Size')).trim();
+        const val = String(payload.name_value || payload.Name_Value || payload.val || payload.name || payload.color || payload.size || '').trim();
         if (type && val) {
           const v = this.loadLocal('dcbd_variants', { colors: ['Black', 'White', 'Navy Blue', 'Silver'], sizes: ['Free Size', 'M', 'L', 'XL'] });
           if (type.toLowerCase() === 'color' && !v.colors.includes(val)) v.colors.unshift(val);
@@ -2076,8 +2556,17 @@ class ApiClient {
           this.saveLocal('dcbd_variants', v);
           if (typeof window !== 'undefined' && window.__adminState) window.__adminState.variants = v;
         }
-        await sendToAppsScript("attributes/add", payload);
-        return { success: true, status: "success", data: payload, message: "অ্যাট্রিবিউট তালিকা ও গুগল শিটে সংরক্ষিত হয়েছে!" };
+        const sheetPayload = {
+          ...payload,
+          Date: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dhaka' }),
+          Type: type,
+          type: type,
+          Name_Value: val,
+          name_value: val,
+          Status: payload.status || 'Active'
+        };
+        await sendToAppsScript("attributes/add", sheetPayload);
+        return { success: true, status: "success", data: sheetPayload, message: "অ্যাট্রিবিউট তালিকা ও গুগল শিটে সংরক্ষিত হয়েছে!" };
       }
 
       case "attributes/delete":
@@ -2099,20 +2588,23 @@ class ApiClient {
       case "sellers/list": {
         let localSellers = (this.loadLocal('dcbd_sellers', []) || []);
         try {
-          const rows = await fetchLiveSheetRows('Sellers', 'sellers/list', 2500);
+          const rows = await fetchLiveSheetRows('Sellers', 'sellers/list', 10000);
           if (rows && rows.length > 0) {
             const mapped = rows.map((r, i) => ({
               shop_id: safeStr(r.shop_id || r.Shop_ID || r.col_0 || `VND-${101 + i}`),
               id: safeStr(r.shop_id || r.Shop_ID || r.col_0 || `VND-${101 + i}`),
-              shop_logo: safeStr(r.shop_logo || r.Shop_logo || r.col_1 || ''),
+              shop_logo: normalizeSingleImageUrl(r.shop_logo || r.Shop_logo || r.col_1 || ''),
               shop_name: safeStr(r.shop_name || r.Shop_Name || r.col_2 || 'Store'),
+              store: safeStr(r.shop_name || r.Shop_Name || r.col_2 || 'Store'),
               name: safeStr(r.name || r.Name || r.col_3 || 'Merchant'),
               mobile: safeStr(r.mobile || r.Mobile || r.col_4 || ''),
+              phone: safeStr(r.mobile || r.Mobile || r.col_4 || ''),
               mail: safeStr(r.mail || r.Mail || r.col_5 || ''),
-              address: safeStr(r.address || r.Address || r.col_6 || ''),
+              address: safeStr(r.address || r.Address || r.col_6 || 'ঢাকা'),
               commission_rate: safeStr(r.commission_rate || r.Commission_Rate || r.col_7 || '10%'),
+              commission: safeStr(r.commission_rate || r.Commission_Rate || r.col_7 || '10%'),
               status: safeStr(r.status || r.Status || r.col_8 || 'Active')
-            }));
+            })).filter(s => s.name && s.name.toLowerCase() !== 'name');
             const byId = new Map();
             mapped.forEach(s => byId.set(String(s.shop_id).toLowerCase(), s));
             (localSellers || []).forEach(s => byId.set(String(s.shop_id || s.id).toLowerCase(), { ...(byId.get(String(s.shop_id || s.id).toLowerCase()) || {}), ...s }));
@@ -2127,25 +2619,44 @@ class ApiClient {
       case "sellers/add":
       case "sellers/create":
       case "sellers/update": {
-        const shopId = safeStr(payload.shop_id || payload.id || ("VND-" + Math.floor(100 + Math.random() * 900)));
+        const shopId = safeStr(payload.shop_id || payload.Shop_ID || payload.id || ("VND-" + Math.floor(100 + Math.random() * 900)));
+        const shopName = safeStr(payload.shop_name || payload.Shop_Name || payload.store || 'Merchant Store');
+        const ownerName = safeStr(payload.name || payload.Name || payload.owner || 'Merchant');
+        const mobile = safeStr(payload.mobile || payload.Mobile || payload.phone || '');
+        const comm = safeStr(payload.commission_rate || payload.Commission_Rate || payload.commission || '10%');
+
         const entry = {
           shop_id: shopId,
+          Shop_ID: shopId,
           id: shopId,
-          shop_logo: safeStr(payload.shop_logo || payload.logo || ''),
-          shop_name: safeStr(payload.shop_name || payload.store || 'Merchant Store'),
-          name: safeStr(payload.name || payload.owner || 'Merchant'),
-          mobile: safeStr(payload.mobile || payload.phone || ''),
-          mail: safeStr(payload.mail || payload.email || ''),
-          address: safeStr(payload.address || ''),
-          commission_rate: safeStr(payload.commission_rate || payload.commission || '10%'),
-          status: safeStr(payload.status || 'Active')
+          shop_logo: safeStr(payload.shop_logo || payload.Shop_logo || payload.logo || ''),
+          Shop_logo: safeStr(payload.shop_logo || payload.Shop_logo || payload.logo || ''),
+          shop_name: shopName,
+          Shop_Name: shopName,
+          store: shopName,
+          name: ownerName,
+          Name: ownerName,
+          mobile: mobile,
+          Mobile: mobile,
+          phone: mobile,
+          mail: safeStr(payload.mail || payload.Mail || payload.email || ''),
+          Mail: safeStr(payload.mail || payload.Mail || payload.email || ''),
+          address: safeStr(payload.address || payload.Address || 'ঢাকা'),
+          Address: safeStr(payload.address || payload.Address || 'ঢাকা'),
+          commission_rate: comm,
+          Commission_Rate: comm,
+          commission: comm,
+          status: safeStr(payload.status || payload.Status || 'Active'),
+          Status: safeStr(payload.status || payload.Status || 'Active')
         };
+
         let sellers = this.loadLocal('dcbd_sellers', []);
         const exIdx = sellers.findIndex(s => String(s.shop_id || s.id).toLowerCase() === shopId.toLowerCase());
         if (exIdx >= 0) sellers[exIdx] = { ...sellers[exIdx], ...entry };
         else sellers.unshift(entry);
         this.saveLocal('dcbd_sellers', sellers);
         if (typeof window !== 'undefined' && window.__adminState) window.__adminState.sellers = sellers;
+
         await sendToAppsScript("sellers/add", entry);
         return { success: true, status: "success", data: entry, message: "মার্চেন্ট সেলার তালিকা ও গুগল শিটে সংরক্ষিত হয়েছে!" };
       }
@@ -2163,22 +2674,56 @@ class ApiClient {
       // --- OTHERS MARKETPLACE ---
       case "markets/list":
       case "others_market/list": {
-        const m = this.loadLocal('dcbd_markets', []);
-        return { success: true, data: { items: m, total: m.length } };
+        let localMarkets = this.loadLocal('dcbd_markets', []) || [];
+        try {
+          const rows = await fetchLiveSheetRows('Others_Market', 'markets/list', 10000);
+          if (rows && rows.length > 0) {
+            const mapped = rows.map((r, i) => {
+              const rawStatus = r.status !== undefined ? r.status : (r.Status !== undefined ? r.Status : r.col_5);
+              // In Dream Cart BD-Site.xlsx -> Others_Market, Status column has unchecked checkboxes (false) for active rows!
+              const statusStr = (rawStatus === false || rawStatus === 'FALSE' || rawStatus === 'false' || !rawStatus)
+                ? 'Active'
+                : String(rawStatus).trim();
+              return {
+                id: safeStr(r.shop_id || r.Shop_ID || r.col_0 || `MKT-${101 + i}`),
+                shop_id: safeStr(r.shop_id || r.Shop_ID || r.col_0 || `MKT-${101 + i}`),
+                market_logo: normalizeSingleImageUrl(r.market_logo || r.Market_Logo || r.col_1 || '') || 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png',
+                market_name: safeStr(r.market_name || r.Market_Name || r.col_2 || ''),
+                name: safeStr(r.market_name || r.Market_Name || r.col_2 || ''),
+                shop_name: safeStr(r.shop_name || r.Shop_Name || r.col_3 || 'Dream Cart BD'),
+                shop_link: safeStr(r.shop_link || r.Shop_Link || r.col_4 || '#'),
+                status: statusStr
+              };
+            }).filter(m => m.market_name && m.market_name.toLowerCase() !== 'market_name');
+
+            if (mapped.length > 0) {
+              const byId = new Map();
+              mapped.forEach(m => byId.set(String(m.shop_id).toLowerCase(), m));
+              localMarkets.forEach(m => {
+                const k = String(m.shop_id || m.id || '').toLowerCase();
+                if (k && !['mkt-01', 'mkt-02', 'mkt-03'].includes(k)) {
+                  byId.set(k, { ...(byId.get(k) || {}), ...m });
+                }
+              });
+              localMarkets = Array.from(byId.values());
+              this.saveLocal('dcbd_markets', localMarkets);
+              if (typeof window !== 'undefined' && window.__adminState) {
+                window.__adminState.markets = localMarkets;
+              }
+            }
+          }
+        } catch (e) {}
+        return { success: true, data: { items: localMarkets, total: localMarkets.length } };
       }
 
       case "markets/add":
       case "markets/create":
-      case "markets/update":
-      case "others_market/create":
-      case "others_market/add":
-      case "others_market/update": {
+      case "markets/update": {
         await sendToAppsScript("markets/add", payload);
         return { success: true, status: "success", data: payload };
       }
 
-      case "markets/delete":
-      case "others_market/delete": {
+      case "markets/delete": {
         await sendToAppsScript("markets/delete", payload);
         return { success: true, status: "success" };
       }
@@ -2187,8 +2732,47 @@ class ApiClient {
       case "admin_worker/list":
       case "admins/list":
       case "workers/list": {
-        const w = this.loadLocal('dcbd_workers', []);
-        return { success: true, data: { items: w, total: w.length } };
+        let localWorkers = this.loadLocal('dcbd_workers', []) || [];
+        let localAdmins = this.loadLocal('dcbd_admins', []) || [];
+        try {
+          const rows = await fetchLiveSheetRows('AdminWorker', 'admin_worker/list', 10000);
+          if (rows && rows.length > 0) {
+            const mapped = rows.map((r, i) => ({
+              id: safeStr(r.user_id || r.USER_ID || r.col_0 || `USR-${101 + i}`),
+              user_id: safeStr(r.user_id || r.USER_ID || r.col_0 || `USR-${101 + i}`),
+              profile_photo: normalizeSingleImageUrl(r.profile_photo || r.Profile_Photo || r.col_1 || ''),
+              name: safeStr(r.name || r.Name || r.col_2 || ''),
+              mobile: safeStr(r.mobile || r.Mobile || r.col_3 || ''),
+              phone: safeStr(r.mobile || r.Mobile || r.col_3 || ''),
+              mail: safeStr(r.mail || r.Mail || r.col_4 || ''),
+              email: safeStr(r.mail || r.Mail || r.col_4 || ''),
+              address: safeStr(r.address || r.Address || r.col_5 || ''),
+              worker_type: safeStr(r.worker_type || r.Worker_Type || r.col_6 || 'Admin'),
+              role: safeStr(r.role || r.Role || r.col_7 || 'Full Access'),
+              user_name: safeStr(r.user_name || r.User_Name || r.col_8 || ''),
+              password: safeStr(r.password || r.Password || r.col_9 || ''),
+              status: 'Active'
+            })).filter(u => u.name && u.name.toLowerCase() !== 'name');
+
+            if (mapped.length > 0) {
+              const sheetAdmins = mapped.filter(u => String(u.worker_type).toLowerCase().includes('admin'));
+              const sheetWorkers = mapped.filter(u => !String(u.worker_type).toLowerCase().includes('admin'));
+              if (sheetAdmins.length > 0) {
+                localAdmins = sheetAdmins;
+                this.saveLocal('dcbd_admins', localAdmins);
+              }
+              if (sheetWorkers.length > 0) {
+                localWorkers = sheetWorkers;
+                this.saveLocal('dcbd_workers', localWorkers);
+              }
+              if (typeof window !== 'undefined' && window.__adminState) {
+                window.__adminState.admins = localAdmins;
+                window.__adminState.workers = localWorkers;
+              }
+            }
+          }
+        } catch (e) {}
+        return { success: true, data: { items: [...localAdmins, ...localWorkers], admins: localAdmins, workers: localWorkers } };
       }
 
       case "admin_worker/add":
@@ -2208,6 +2792,31 @@ class ApiClient {
       }
 
       // --- FINANCE: COSTS, BUYING, INVEST, PAYMENTS ---
+      case "costs/list": {
+        let localCosts = this.loadLocal('dcbd_sheet_costs', []) || [];
+        try {
+          const rows = await fetchLiveSheetRows('Costs', 'costs/list', 10000);
+          if (rows && rows.length > 0) {
+            const mapped = rows.map((r, i) => ({
+              id: `CST-${101 + i}`,
+              date: safeStr(r.date || r.Date || r.col_0 || ''),
+              who_paid: safeStr(r.who_paid || r['Who Paid'] || r.col_1 || 'Admin'),
+              title: safeStr(r.purpose || r.Purpose || r.col_2 || ''),
+              purpose: safeStr(r.purpose || r.Purpose || r.col_2 || ''),
+              amount: safeNumber(r.amount !== undefined ? r.amount : (r.Amount !== undefined ? r.Amount : r.col_3), 0),
+              note: safeStr(r.note || r.Note || r.col_4 || ''),
+              category: safeStr(r.note || r.Note || r.col_4 || 'অপারেশন')
+            })).filter(c => c.title && c.title.toLowerCase() !== 'purpose');
+            if (mapped.length > 0) {
+              localCosts = mapped;
+              this.saveLocal('dcbd_sheet_costs', localCosts);
+              if (typeof window !== 'undefined' && window.__adminState) window.__adminState.costs = localCosts;
+            }
+          }
+        } catch (e) {}
+        return { success: true, data: { items: localCosts, total: localCosts.length } };
+      }
+
       case "costs/add":
       case "costs/create": {
         await sendToAppsScript("costs/add", payload);
@@ -2217,6 +2826,33 @@ class ApiClient {
       case "costs/delete": {
         await sendToAppsScript("costs/delete", payload);
         return { success: true, status: "success" };
+      }
+
+      case "buying/list": {
+        let localBuying = this.loadLocal('dcbd_sheet_buying', []) || [];
+        try {
+          const rows = await fetchLiveSheetRows('Buying', 'buying/list', 10000);
+          if (rows && rows.length > 0) {
+            const mapped = rows.map((r, i) => ({
+              id: `BUY-${101 + i}`,
+              date: safeStr(r.date || r.Date || r.col_0 || ''),
+              who_buy: safeStr(r.who_buy || r['Who Buy'] || r.col_1 || 'Admin'),
+              product: safeStr(r.product_name || r['Product Name'] || r.col_2 || ''),
+              product_name: safeStr(r.product_name || r['Product Name'] || r.col_2 || ''),
+              buying_price: safeNumber(r.buying_price !== undefined ? r.buying_price : r.col_3, 0),
+              quantity: safeNumber(r.quantity !== undefined ? r.quantity : r.col_4, 1),
+              total_amount: safeNumber(r.total_buying__calculated_ !== undefined ? r.total_buying__calculated_ : r.col_5, 0),
+              supplier: safeStr(r.supplier || r.Supplier || r.col_6 || ''),
+              location: safeStr(r.location || r.Location || r.col_7 || '')
+            })).filter(b => b.product && b.product.toLowerCase() !== 'product name');
+            if (mapped.length > 0) {
+              localBuying = mapped;
+              this.saveLocal('dcbd_sheet_buying', localBuying);
+              if (typeof window !== 'undefined' && window.__adminState) window.__adminState.buying = localBuying;
+            }
+          }
+        } catch (e) {}
+        return { success: true, data: { items: localBuying, total: localBuying.length } };
       }
 
       case "buying/add":
@@ -2230,6 +2866,29 @@ class ApiClient {
         return { success: true, status: "success" };
       }
 
+      case "invest/list": {
+        let localInvest = this.loadLocal('dcbd_sheet_invest', []) || [];
+        try {
+          const rows = await fetchLiveSheetRows('Invest', 'invest/list', 10000);
+          if (rows && rows.length > 0) {
+            const mapped = rows.map((r, i) => ({
+              id: `INV-${101 + i}`,
+              date: safeStr(r.date || r.Date || r.col_0 || ''),
+              invest_type: safeStr(r.invest_type || r['Invest type'] || r.col_1 || 'Working Capital'),
+              investor: safeStr(r.name_of_investor || r['Name of investor'] || r.col_2 || ''),
+              amount: safeNumber(r.amount !== undefined ? r.amount : r.col_3, 0),
+              note: safeStr(r.note || r.Note || r.col_4 || '')
+            })).filter(inv => inv.investor && inv.investor.toLowerCase() !== 'name of investor');
+            if (mapped.length > 0) {
+              localInvest = mapped;
+              this.saveLocal('dcbd_sheet_invest', localInvest);
+              if (typeof window !== 'undefined' && window.__adminState) window.__adminState.invest = localInvest;
+            }
+          }
+        } catch (e) {}
+        return { success: true, data: { items: localInvest, total: localInvest.length } };
+      }
+
       case "invest/add":
       case "invest/create": {
         await sendToAppsScript("invest/add", payload);
@@ -2239,6 +2898,32 @@ class ApiClient {
       case "invest/delete": {
         await sendToAppsScript("invest/delete", payload);
         return { success: true, status: "success" };
+      }
+
+      case "payments/list": {
+        let localPayments = this.loadLocal('dcbd_sheet_payments', []) || [];
+        try {
+          const rows = await fetchLiveSheetRows('Payments', 'payments/list', 10000);
+          if (rows && rows.length > 0) {
+            const mapped = rows.map((r, i) => ({
+              request_id: safeStr(r.request_id || r.Request_ID || r.col_0 || `REQ-${101 + i}`),
+              reseller_id: safeStr(r.reseller_id || r.Reseller_ID || r.col_1 || ''),
+              reseller_name: safeStr(r.reseller_name || r.Reseller_Name || r.col_2 || ''),
+              payment_method: safeStr(r.payment_method || r.Payment_Method || r.col_3 || 'bKash'),
+              account_details: safeStr(r.account_details || r.Account_Details || r.col_4 || ''),
+              amount: safeNumber(r.amount !== undefined ? r.amount : r.col_5, 0),
+              net_amount: safeNumber(r.net_amount_less_3percent !== undefined ? r.net_amount_less_3percent : r.col_6, 0),
+              status: safeStr(r.status || r.Status || r.col_7 || 'Pending'),
+              date: safeStr(r.date || r.Date || r.col_8 || ''),
+              transaction_id: safeStr(r.transaction_id || r.Transaction_ID || r.col_9 || '')
+            })).filter(p => p.request_id && p.request_id.toLowerCase() !== 'request_id');
+            if (mapped.length > 0) {
+              localPayments = mapped;
+              this.saveLocal('dcbd_sheet_payments', localPayments);
+            }
+          }
+        } catch (e) {}
+        return { success: true, data: { items: localPayments, total: localPayments.length } };
       }
 
       case "payments/add":
@@ -2276,17 +2961,30 @@ class ApiClient {
       case "banners/add":
       case "banners/create":
       case "banners/update": {
-        const bannerId = safeStr(payload.banner_id || payload.id || ("BAN-" + Math.floor(100 + Math.random() * 900)));
+        const bannerId = safeStr(payload.banner_id || payload.Banner_ID || payload.id || ("BAN-" + Math.floor(100 + Math.random() * 900)));
+        const title = safeStr(payload.title || payload.Title || "ব্যানার স্লাইডার");
+        const imgUrl = normalizeSingleImageUrl(payload.image_url || payload.Image_URL || payload.image || DEFAULT_PRODUCT_THUMB);
+        const linkUrl = safeStr(payload.link_url || payload.Link || payload.link || "/products");
+        const pos = Number(payload.position || payload.Sort_Order || 1);
+        const status = safeStr(payload.status || payload.Status || "Active");
+
         const newBanner = {
           banner_id: bannerId,
+          Banner_ID: bannerId,
           id: bannerId,
-          title: safeStr(payload.title || "ব্যানার স্লাইডার"),
+          title: title,
+          Title: title,
           subtitle: safeStr(payload.subtitle || ""),
-          image_url: normalizeSingleImageUrl(payload.image_url || payload.image || DEFAULT_PRODUCT_THUMB),
-          link_url: safeStr(payload.link_url || payload.link || "/products"),
+          image_url: imgUrl,
+          Image_URL: imgUrl,
+          link_url: linkUrl,
+          Link: linkUrl,
           cta_text: safeStr(payload.cta_text || payload.button_text || "এখনই কিনুন →"),
-          position: Number(payload.position || 1),
-          status: safeStr(payload.status || "Active")
+          position: pos,
+          Sort_Order: pos,
+          status: status,
+          Status: status,
+          Created_At: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dhaka' })
         };
 
         let currentBanners = this.sheetBanners || this.loadLocal('dcbd_sheet_banners', null) || [];
@@ -2320,12 +3018,32 @@ class ApiClient {
       }
 
       case "viewers/log": {
+        // Log visit once per browser session so Viewers sheet stays clean
+        if (typeof window !== 'undefined' && window.__dcbdViewerLoggedSession) {
+          return { success: true };
+        }
+        if (typeof window !== 'undefined') window.__dcbdViewerLoggedSession = true;
         sendToAppsScript("viewers/log", payload).catch(() => {});
         return { success: true };
       }
 
       case "settings/list": {
         const s = getGlobalSiteSettings();
+        try {
+          const rows = await fetchLiveSheetRows('Settings', 'settings/list', 8000);
+          if (rows && rows.length > 0) {
+            rows.forEach(r => {
+              const k = safeStr(r.name || r.Name || r.col_0);
+              const val = safeStr(r.details || r.Details || r.col_1);
+              if (k === 'Shop_Name' && val) s.shopName = val;
+              if (k === 'Address' && val) s.address = val;
+              if (k === 'Phone_1' && val) s.hotline1 = val;
+              if (k === 'Phone_2' && val) s.hotline2 = val;
+              if (k === 'Support_Email' && val) s.email = val;
+              if (k === 'Free_Delivery_Min_Order' && val) s.freeDeliveryThreshold = safeNumber(val, 2000);
+            });
+          }
+        } catch (e) {}
         return {
           success: true,
           data: {
@@ -2348,19 +3066,45 @@ class ApiClient {
           { banner_id: "BAN-02", title: "অর্গানিক ফুড ও হেলথ সাপ্লিমেন্ট", subtitle: "প্রাকৃতিক খাঁটি উপাদান ও সুস্থ জীবন", image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1600&auto=format&fit=crop&q=80", link_url: "/products?cat=Organic%20%26%20Health", tag: "স্বাস্থ্যকর জীবন", button_text: "কালেকশন দেখুন", status: "Active" }
         ];
 
-        let banners = this.sheetBanners || this.loadLocal('dcbd_sheet_banners', null);
-        if (banners && banners.length > 0) {
-          return { success: true, data: { items: banners, total: banners.length } };
-        }
-
+        let localBanners = this.sheetBanners || this.loadLocal('dcbd_sheet_banners', null) || [];
         try {
-          const rows = await fetchLiveSheetRows('Banners', 'banners/list', 2500);
+          const rows = await fetchLiveSheetRows('Banners', 'banners/list', 10000);
           if (rows && rows.length > 0) {
-            this.sheetBanners = rows;
-            this.saveLocal('dcbd_sheet_banners', rows);
-            return { success: true, data: { items: rows, total: rows.length } };
+            const sheetBanners = rows.map((r, i) => ({
+              banner_id: safeStr(r.banner_id || r.Banner_ID || r.col_0 || `BAN-${101 + i}`),
+              id: safeStr(r.banner_id || r.Banner_ID || r.col_0 || `BAN-${101 + i}`),
+              title: safeStr(r.title || r.Title || r.col_1 || 'ব্যানার স্লাইডার'),
+              subtitle: safeStr(r.subtitle || 'সেরা মানের শতভাগ অরিজিনাল পণ্যের সমাহার'),
+              image_url: normalizeSingleImageUrl(r.image_url || r.Image_URL || r.col_2 || DEFAULT_PRODUCT_THUMB),
+              link_url: safeStr(r.link || r.Link || r.link_url || r.col_3 || '/products'),
+              position: safeNumber(r.sort_order !== undefined ? r.sort_order : (r.Sort_Order !== undefined ? r.Sort_Order : r.col_4), i + 1),
+              status: safeStr(r.status || r.Status || r.col_5 || 'Active'),
+              created_at: safeStr(r.created_at || r.Created_At || r.col_6 || '')
+            })).filter(b => b.banner_id && b.banner_id.toLowerCase() !== 'banner_id');
+
+            if (sheetBanners.length > 0) {
+              const byId = new Map();
+              sheetBanners.forEach(b => byId.set(String(b.banner_id).toLowerCase(), b));
+              localBanners.forEach(b => {
+                const k = String(b.banner_id || b.id || '').toLowerCase();
+                if (k && !['ban-01', 'ban-02'].includes(k)) {
+                  byId.set(k, { ...(byId.get(k) || {}), ...b });
+                }
+              });
+              const merged = Array.from(byId.values());
+              this.sheetBanners = merged;
+              this.saveLocal('dcbd_sheet_banners', merged);
+              if (typeof window !== 'undefined' && window.__adminState) {
+                window.__adminState.banners = merged;
+              }
+              return { success: true, data: { items: merged, total: merged.length } };
+            }
           }
         } catch (e) {}
+
+        if (localBanners && localBanners.length > 0) {
+          return { success: true, data: { items: localBanners, total: localBanners.length } };
+        }
 
         this.sheetBanners = defaultBanners;
         this.saveLocal('dcbd_sheet_banners', defaultBanners);
