@@ -55,7 +55,6 @@ function handleRequest(e, method) {
         payload = parsed;
       }
     } catch (err) {
-      // Handle application/x-www-form-urlencoded body if e.parameter didn't catch it
       try {
         var rawBody = String(e.postData.contents || "");
         var parts = rawBody.split("&");
@@ -73,12 +72,63 @@ function handleRequest(e, method) {
   }
 
   if (!action) action = "system/health";
+  action = String(action).trim().replace(/^[\-_\/]+|[\-_\/]+$/g, "");
+
+  var isWriteAction = !(/\/list$|\/health$|\/details$|\/get$|\/login$/i.test(action));
+  var lock = null;
+
+  // Deduplicate identical request_id within 60 seconds using ScriptCache
+  var reqId = payload && (payload._req_id || payload.request_id || "");
+  if (isWriteAction && reqId) {
+    try {
+      var cache = CacheService.getScriptCache();
+      var cachedResp = cache.get("DCBD_REQ_" + reqId);
+      if (cachedResp) {
+        var parsedCached = JSON.parse(cachedResp);
+        if (callback) {
+          return ContentService.createTextOutput(callback + "(" + JSON.stringify(parsedCached) + ")")
+            .setMimeType(ContentService.MimeType.JAVASCRIPT);
+        }
+        return ContentService.createTextOutput(JSON.stringify(parsedCached))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+    } catch (cErr) {}
+  }
+
+  if (isWriteAction) {
+    try {
+      lock = LockService.getScriptLock();
+      lock.waitLock(12000);
+    } catch (lErr) {}
+  }
 
   var responseObj;
   try {
-    responseObj = dispatchAction(action, payload);
+    // Re-check cache after acquiring lock in case concurrent transport layers hit simultaneously
+    if (isWriteAction && reqId) {
+      try {
+        var cache2 = CacheService.getScriptCache();
+        var cachedResp2 = cache2.get("DCBD_REQ_" + reqId);
+        if (cachedResp2) {
+          responseObj = JSON.parse(cachedResp2);
+        }
+      } catch (cErr2) {}
+    }
+
+    if (!responseObj) {
+      responseObj = dispatchAction(action, payload || {});
+      if (isWriteAction && reqId && responseObj && responseObj.success !== false) {
+        try {
+          CacheService.getScriptCache().put("DCBD_REQ_" + reqId, JSON.stringify(responseObj), 120);
+        } catch (cErr3) {}
+      }
+    }
   } catch (err) {
     responseObj = { status: "error", success: false, message: err.toString() };
+  } finally {
+    if (lock) {
+      try { lock.releaseLock(); } catch (relErr) {}
+    }
   }
 
   if (callback) {
@@ -90,40 +140,62 @@ function handleRequest(e, method) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+/**
+ * Finds the last row that actually contains non-empty primary data in columns A..C,
+ * ignoring pre-formatted blank rows or trailing unchecked checkboxes (false) at the bottom of the sheet.
+ */
+function writeOrUpsertRow(sheet, rowArray, matchFn, keyColsCount) {
+  var lastRow = sheet.getLastRow();
+  var numCols = rowArray.length;
+  var scanCols = Math.max(keyColsCount || 3, Math.min(numCols, 6));
 
-
-function buildRowFromHeaders(sheet, defaultHeaders, keyValMap, defaultRowArray) {
-  var lastCol = sheet.getLastColumn();
-  if (lastCol === 0) {
-    sheet.appendRow(defaultHeaders);
-    try { sheet.setFrozenRows(1); } catch (e) {}
-    return defaultRowArray;
+  if (lastRow <= 1) {
+    sheet.getRange(2, 1, 1, numCols).setValues([rowArray]);
+    SpreadsheetApp.flush();
+    return { row: 2, updated: false };
   }
-  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  var row = [];
-  for (var h = 0; h < headers.length; h++) {
-    var hName = String(headers[h] || "").trim();
-    var hKey = hName.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-    var val = "";
-    if (keyValMap[hName] !== undefined && keyValMap[hName] !== null) {
-      val = keyValMap[hName];
-    } else if (keyValMap[hKey] !== undefined && keyValMap[hKey] !== null) {
-      val = keyValMap[hKey];
-    } else if (h < defaultRowArray.length) {
-      val = defaultRowArray[h];
+
+  var data = sheet.getRange(1, 1, lastRow, scanCols).getValues();
+  var lastRealRow = 1;
+
+  for (var i = 1; i < data.length; i++) {
+    var r = data[i];
+    var hasPrimaryText = false;
+    for (var c = 0; c < Math.min(3, r.length); c++) {
+      var v = r[c];
+      if (v !== "" && v !== null && v !== undefined && v !== false) {
+        if (String(v).trim() !== "") {
+          hasPrimaryText = true;
+          break;
+        }
+      }
     }
-    row.push(val !== undefined && val !== null ? val : "");
+    if (hasPrimaryText) {
+      lastRealRow = i + 1;
+      if (typeof matchFn === "function" && matchFn(r, i)) {
+        sheet.getRange(i + 1, 1, 1, numCols).setValues([rowArray]);
+        SpreadsheetApp.flush();
+        return { row: i + 1, updated: true };
+      }
+    }
   }
-  return row;
+
+  var targetRow = lastRealRow + 1;
+  sheet.getRange(targetRow, 1, 1, numCols).setValues([rowArray]);
+  SpreadsheetApp.flush();
+  return { row: targetRow, updated: false };
 }
 
 function findSheetCaseInsensitive(ss, targetName) {
   if (!ss) return null;
+  var direct = ss.getSheetByName(targetName);
+  if (direct) return direct;
+
   var sheets = ss.getSheets();
-  var normTarget = String(targetName || "").trim().toLowerCase().replace(/[\s\-_]/g, "");
+  var normTarget = String(targetName || "").trim().toLowerCase().replace(/[\s\-_\/]/g, "");
   for (var i = 0; i < sheets.length; i++) {
     var sName = sheets[i].getName();
-    var normName = sName.trim().toLowerCase().replace(/[\s\-_]/g, "");
+    var normName = sName.trim().toLowerCase().replace(/[\s\-_\/]/g, "");
     if (normName === normTarget) return sheets[i];
     if (normName + "s" === normTarget || normTarget + "s" === normName ||
         normName.replace(/ies$/, "y") === normTarget || normTarget.replace(/ies$/, "y") === normName) {
@@ -153,16 +225,23 @@ function ensureSheetWithHeaders(ss, sheetName, headers) {
   if (!sheet) {
     sheet = ss.insertSheet(sheetName);
     sheet.appendRow(headers);
-    sheet.setFrozenRows(1);
+    try { sheet.setFrozenRows(1); } catch (e) {}
   } else if (sheet.getLastRow() === 0) {
     sheet.appendRow(headers);
-    sheet.setFrozenRows(1);
+    try { sheet.setFrozenRows(1); } catch (e2) {}
   }
   return sheet;
 }
 
 function nowDhaka() {
   return Utilities.formatDate(new Date(), "Asia/Dhaka", "yyyy-MM-dd HH:mm:ss");
+}
+
+function normalizePhoneStr(p) {
+  if (!p) return "";
+  var s = String(p).trim().replace(/^(\+?88)/, "").replace(/[\s\-\(\)]/g, "");
+  if (s.length === 10 && s.charAt(0) === "1") s = "0" + s;
+  return s;
 }
 
 function dispatchAction(action, payload) {
@@ -174,11 +253,11 @@ function dispatchAction(action, payload) {
 
     case "setup":
     case "system/setup":
-      return setupAllSystemSheets();
+      return setupAllSystemSheets(ss);
 
     // --- PRODUCTS ---
     case "products/list":
-      return getSheetDataAsJson(ss, "Products");
+      return getSheetDataAsJson(ss, "Products", { compactProducts: !payload.full });
     case "products/add":
     case "products/create":
     case "products/update":
@@ -223,13 +302,18 @@ function dispatchAction(action, payload) {
 
     // --- LANDING PAGES ---
     case "landing_pages/list":
+    case "landing-pages/list":
       return getSheetDataAsJson(ss, "Landing-Pages");
     case "landing_pages/add":
     case "landing_pages/create":
     case "landing_pages/update":
+    case "landing_pages/save":
+    case "landing-pages/save":
+    case "landing-pages/add":
       return handleLandingPageUpsert(ss, payload);
     case "landing_pages/delete":
-      return handleGenericDelete(ss, "Landing-Pages", [0, 2], payload.id || payload.page_id || payload.slug);
+    case "landing-pages/delete":
+      return handleGenericDelete(ss, "Landing-Pages", [0, 1, 2], payload.slug || payload.id || payload.page_id);
 
     // --- ORDERS ---
     case "orders/list":
@@ -272,7 +356,7 @@ function dispatchAction(action, payload) {
     case "reviews/create":
       return handleReviewAdd(ss, payload);
     case "reviews/delete":
-      return handleGenericDelete(ss, "Reviews", [1, 2], payload.id || payload.product_sku || payload.customer_name);
+      return handleGenericDelete(ss, "Reviews", [0, 1, 2], payload.review_id || payload.id || payload.product_sku || payload.customer_name);
 
     // --- PARTNERS: RESELLERS, WHOLESALERS, SELLERS, OTHERS_MARKET ---
     case "resellers/list":
@@ -282,6 +366,10 @@ function dispatchAction(action, payload) {
     case "resellers/create":
     case "resellers/update":
       return handleResellerUpsert(ss, payload);
+    case "resellers/login":
+      return handlePartnerLogin(ss, "Resellers", payload, "RESELLER");
+    case "resellers/withdraw":
+      return handlePaymentAdd(ss, payload);
     case "resellers/delete":
       return handleGenericDelete(ss, "Resellers", [0, 3, 10], payload.shop_id || payload.id || payload.mobile || payload.phone);
 
@@ -292,6 +380,8 @@ function dispatchAction(action, payload) {
     case "wholesalers/create":
     case "wholesalers/update":
       return handleWholesalerUpsert(ss, payload);
+    case "wholesalers/login":
+      return handlePartnerLogin(ss, "Wholesalers", payload, "WHOLESALER");
     case "wholesalers/delete":
       return handleGenericDelete(ss, "Wholesalers", [0, 3, 7], payload.shop_id || payload.id || payload.mobile || payload.phone);
 
@@ -300,24 +390,30 @@ function dispatchAction(action, payload) {
     case "sellers/add":
     case "sellers/create":
     case "sellers/update":
+    case "sellers/register":
       return handleSellerDirectUpsert(ss, payload);
     case "sellers/delete":
       return handleGenericDelete(ss, "Sellers", [0, 3, 4], payload.shop_id || payload.id || payload.mobile || payload.seller_id);
 
     case "markets/list":
+    case "others_market/list":
       return getSheetDataAsJson(ss, "Others_Market");
     case "markets/add":
     case "markets/create":
     case "markets/update":
+    case "others_market/create":
+    case "others_market/add":
+    case "others_market/update":
       return handleOthersMarketUpsert(ss, payload);
     case "markets/delete":
+    case "others_market/delete":
       return handleGenericDelete(ss, "Others_Market", [0, 2, 3], payload.shop_id || payload.id || payload.market_name);
 
-    // --- TEAM & ADMIN: ADMIN/WORKER ---
+    // --- TEAM & ADMIN: ADMINWORKER ---
     case "admin_worker/list":
     case "admins/list":
     case "workers/list":
-      return getSheetDataAsJson(ss, "Admin/Worker");
+      return getSheetDataAsJson(ss, "AdminWorker");
     case "admin_worker/add":
     case "admin_worker/create":
     case "admin_worker/update":
@@ -327,7 +423,7 @@ function dispatchAction(action, payload) {
     case "admin_worker/delete":
     case "admins/delete":
     case "workers/delete":
-      return handleGenericDelete(ss, "Admin/Worker", [0, 3, 8], payload.user_id || payload.USER_ID || payload.id || payload.user_name);
+      return handleGenericDelete(ss, "AdminWorker", [0, 3, 8], payload.user_id || payload.USER_ID || payload.id || payload.user_name);
 
     // --- FINANCE & INVENTORY: BUYING, COSTS, INVEST, PAYMENTS ---
     case "buying/list":
@@ -358,7 +454,10 @@ function dispatchAction(action, payload) {
       return getSheetDataAsJson(ss, "Payments");
     case "payments/add":
     case "payments/create":
+    case "payments/update":
       return handlePaymentAdd(ss, payload);
+    case "payments/delete":
+      return handleGenericDelete(ss, "Payments", [0, 1, 9], payload.request_id || payload.id || payload.order_id);
 
     // --- COURIERS, FRAUD & SYSTEM SETTINGS ---
     case "couriers/add":
@@ -389,21 +488,13 @@ function dispatchAction(action, payload) {
     case "settings/update":
     case "settings/add":
       return handleSettingsUpdate(ss, payload);
-    case "landing_pages/save":
-    case "landing-pages/save":
-      return handleLandingPageUpsert(ss, payload);
-    case "others_market/create":
-    case "others_market/add":
-    case "others_market/update":
-      return handleOthersMarketUpsert(ss, payload);
-    case "others_market/delete":
-      return handleGenericDelete(ss, "Others_Market", [0, 2, 3], payload.shop_id || payload.id || payload.market_name);
     case "settings/delete":
       return handleSettingsDelete(ss, payload.name || payload.id);
 
     case "banners/list":
       return getSheetDataAsJson(ss, "Banners");
     case "banners/add":
+    case "banners/create":
     case "banners/update":
       return handleBannerAdd(ss, payload);
     case "banners/delete":
@@ -414,34 +505,39 @@ function dispatchAction(action, payload) {
   }
 }
 
-
 function handleAttributeUpsert(ss, payload) {
   var sheet = ensureSheetWithHeaders(ss, "Attributes", ["Date", "Type", "Name_Value", "Status"]);
-  var dateStr = payload.date || nowDhaka();
-  var type = String(payload.type || (payload.color ? "Color" : (payload.size ? "Size" : "Variant"))).trim();
-  var val = String(payload.name_value || payload.val || payload.value || payload.name || payload.color || payload.size || "").trim();
-  var status = String(payload.status || "Active");
+  var dateStr = payload.date || payload.Date || nowDhaka();
+  var type = String(payload.Type || payload.type || (payload.color ? "Color" : (payload.size ? "Size" : "Variant"))).trim();
+  var val = String(payload.Name_Value || payload.name_value || payload.val || payload.value || payload.name || payload.color || payload.size || "").trim();
+  var oldVal = String(payload.old_value || "").trim().toLowerCase();
+  var status = String(payload.Status || payload.status || "Active").trim();
   if (!val) return { status: "error", success: false, message: "Empty attribute value" };
 
   var row = [dateStr, type, val, status];
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][1]).trim().toLowerCase() === type.toLowerCase() &&
-        String(data[i][2]).trim().toLowerCase() === val.toLowerCase()) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return { status: "success", success: true, message: "Attribute updated in Sheet!", data: { type: type, name_value: val } };
-    }
-  }
-  sheet.appendRow(row);
-  return { status: "success", success: true, message: "Attribute added to Sheet!", data: { type: type, name_value: val } };
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    var rType = String(r[1] || "").trim().toLowerCase();
+    var rVal = String(r[2] || "").trim().toLowerCase();
+    if (rType !== type.toLowerCase()) return false;
+    return rVal === val.toLowerCase() || (oldVal && rVal === oldVal);
+  }, 3);
+
+  return {
+    status: "success",
+    success: true,
+    message: res.updated ? "Attribute updated in Sheet!" : "Attribute added to Sheet!",
+    data: { date: dateStr, type: type, name_value: val, status: status }
+  };
 }
 
 function handleAttributeDelete(ss, payload) {
-  var type = String(payload.type || "").trim().toLowerCase();
-  var val = String(payload.name_value || payload.val || payload.value || payload.name || payload.color || payload.size || "").trim().toLowerCase();
-  var sheet = ss.getSheetByName("Attributes");
-  if (!sheet) return { status: "success", success: true };
-  var data = sheet.getDataRange().getValues();
+  var type = String(payload.type || payload.Type || "").trim().toLowerCase();
+  var val = String(payload.name_value || payload.Name_Value || payload.val || payload.value || payload.name || payload.color || payload.size || "").trim().toLowerCase();
+  var sheet = findSheetCaseInsensitive(ss, "Attributes");
+  if (!sheet || !val) return { status: "success", success: true };
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return { status: "success", success: true };
+  var data = sheet.getRange(1, 1, lastRow, 4).getValues();
   for (var i = data.length - 1; i >= 1; i--) {
     var rowType = String(data[i][1] || "").trim().toLowerCase();
     var rowVal = String(data[i][2] || "").trim().toLowerCase();
@@ -456,27 +552,31 @@ function handleSellerDirectUpsert(ss, payload) {
   var sheet = ensureSheetWithHeaders(ss, "Sellers", [
     "Shop_ID", "Shop_logo", "Shop_Name", "Name", "Mobile", "Mail", "Address", "Commission_Rate", "Status"
   ]);
-  var shopId = String(payload.shop_id || payload.id || ("VND-" + Math.floor(100 + Math.random() * 900))).trim();
-  var logo = String(payload.shop_logo || payload.logo || "").trim();
-  var shopName = String(payload.shop_name || payload.store || "Merchant Store").trim();
-  var ownerName = String(payload.name || payload.owner || "Merchant").trim();
-  var mobile = String(payload.mobile || payload.phone || "").trim();
-  var mail = String(payload.mail || payload.email || "").trim();
-  var addr = String(payload.address || "").trim();
-  var comm = String(payload.commission_rate || payload.commission || "10%").trim();
-  var status = String(payload.status || "Active").trim();
+  var shopId = String(payload.Shop_ID || payload.shop_id || payload.id || ("VND-" + Math.floor(100 + Math.random() * 900))).trim();
+  var logo = String(payload.Shop_logo || payload.shop_logo || payload.logo || "").trim();
+  var shopName = String(payload.Shop_Name || payload.shop_name || payload.store || "Merchant Store").trim();
+  var ownerName = String(payload.Name || payload.name || payload.owner || "Merchant").trim();
+  var mobile = String(payload.Mobile || payload.mobile || payload.phone || "").trim();
+  var mail = String(payload.Mail || payload.mail || payload.email || "").trim();
+  var addr = String(payload.Address || payload.address || "ঢাকা").trim();
+  var comm = String(payload.Commission_Rate || payload.commission_rate || payload.commission || "10%").trim();
+  var status = String(payload.Status || payload.status || "Active").trim();
 
   var row = [shopId, logo, shopName, ownerName, mobile, mail, addr, comm, status];
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim().toLowerCase() === shopId.toLowerCase() ||
-        (mobile && String(data[i][4]).trim() === mobile)) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return { status: "success", success: true, message: "Seller updated in Sheet!", data: { shop_id: shopId } };
-    }
-  }
-  sheet.appendRow(row);
-  return { status: "success", success: true, message: "Seller added to Sheet!", data: { shop_id: shopId } };
+  var normMob = normalizePhoneStr(mobile);
+
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    var rId = String(r[0] || "").trim().toLowerCase();
+    var rMob = normalizePhoneStr(r[4]);
+    return rId === shopId.toLowerCase() || (normMob && rMob === normMob);
+  }, 5);
+
+  return {
+    status: "success",
+    success: true,
+    message: res.updated ? "Seller updated in Sheet!" : "Seller added to Sheet!",
+    data: { shop_id: shopId, shop_name: shopName, name: ownerName, mobile: mobile }
+  };
 }
 
 function handleProductUpsert(ss, payload) {
@@ -487,57 +587,74 @@ function handleProductUpsert(ss, payload) {
     "Color", "Size", "WEIGHT_KG", "WIDTH_CM", "LENGTH_CM", "HEIGHT_CM"
   ]);
 
-  var sku = String(payload.sku || payload.product_id || ("DCBD-" + Math.floor(1000 + Math.random() * 9000))).trim();
-  var name = String(payload.name || payload.p_name || "নতুন পণ্য").trim();
-  var slug = String(payload.slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-")).trim();
-  var imagesStr = Array.isArray(payload.images) ? payload.images.join(" | ") : String(payload.images || payload.thumbnail || "");
+  var sku = String(payload.SKU || payload.sku || payload.product_id || ("DCBD-" + Math.floor(1000 + Math.random() * 9000))).trim();
+  var name = String(payload.P_Name || payload.p_name || payload.name || "নতুন পণ্য").trim();
+  var slug = String(payload.Slug || payload.slug || name.toLowerCase().replace(/[^a-z0-9\u0980-\u09ff]+/g, "-").replace(/^-|-$/g, "") || sku.toLowerCase()).trim();
+  var imagesStr = Array.isArray(payload.images)
+    ? payload.images.join(", ")
+    : String(payload.Images || payload.images || payload.thumbnail || "");
 
-  var defaultHeaders = [
-    "SKU", "P_Name", "Category", "Sub_Category", "Child_Category", "Brand",
-    "Buying_price", "Selling_Price", "Stock", "Original_Price", "WholeSale_price",
-    "Min_order_Q", "Images", "Slug", "Description", "Specification", "Others",
-    "Color", "Size", "WEIGHT_KG", "WIDTH_CM", "LENGTH_CM", "HEIGHT_CM"
-  ];
-  var defaultRow = [
-    sku, name, payload.category || "General", payload.sub_category || "", payload.child_category || "",
-    payload.brand || "Dream Cart BD", Number(payload.buying_price || 0), Number(payload.selling_price || 0),
-    Number(payload.stock !== undefined ? payload.stock : 10), Number(payload.original_price || payload.selling_price || 0),
-    Number(payload.wholesale_price || Math.round((Number(payload.selling_price) || 0) * 0.85)),
-    Number(payload.min_order_q || payload.min_order_qty || 1), imagesStr, slug,
-    payload.description || "", payload.specification || "", payload.others || "",
-    payload.color || "", payload.size || "", Number(payload.weight_kg || 0.25),
-    Number(payload.width_cm || 10), Number(payload.length_cm || 10), Number(payload.height_cm || 5)
-  ];
-  var rowMap = {
-    "sku": sku, "p_name": name, "name": name, "category": payload.category || "General",
-    "sub_category": payload.sub_category || "", "child_category": payload.child_category || "",
-    "brand": payload.brand || "Dream Cart BD", "buying_price": Number(payload.buying_price || 0),
-    "selling_price": Number(payload.selling_price || 0), "stock": Number(payload.stock !== undefined ? payload.stock : 10),
-    "original_price": Number(payload.original_price || payload.selling_price || 0),
-    "wholesale_price": Number(payload.wholesale_price || Math.round((Number(payload.selling_price) || 0) * 0.85)),
-    "min_order_q": Number(payload.min_order_q || payload.min_order_qty || 1),
-    "images": imagesStr, "slug": slug, "description": payload.description || "",
-    "specification": payload.specification || "", "others": payload.others || "",
-    "color": payload.color || "", "size": payload.size || "",
-    "weight_kg": Number(payload.weight_kg || 0.25), "width_cm": Number(payload.width_cm || 10),
-    "length_cm": Number(payload.length_cm || 10), "height_cm": Number(payload.height_cm || 5)
-  };
-  var row = buildRowFromHeaders(sheet, defaultHeaders, rowMap, defaultRow);
+  var buyPrice = Number(payload.Buying_price !== undefined ? payload.Buying_price : (payload.buying_price || 0));
+  var sellPrice = Number(payload.Selling_Price !== undefined ? payload.Selling_Price : (payload.selling_price || 0));
+  var stock = Number(payload.Stock !== undefined ? payload.Stock : (payload.stock !== undefined ? payload.stock : 20));
+  var origPrice = Number(payload.Original_Price !== undefined ? payload.Original_Price : (payload.original_price || (sellPrice > 0 ? Math.round(sellPrice * 1.35) : 0)));
+  var wsPrice = Number(payload.WholeSale_price !== undefined ? payload.WholeSale_price : (payload.wholesale_price || (sellPrice > 0 ? Math.round(sellPrice * 0.85) : 0)));
+  var minOrderQ = Number(payload.Min_order_Q !== undefined ? payload.Min_order_Q : (payload.min_order_q || payload.min_order_qty || (sellPrice <= 200 ? 10 : 5)));
 
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim().toLowerCase() === sku.toLowerCase()) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return { status: "success", success: true, message: "Product updated in Sheet!", data: { sku: sku, slug: slug } };
+  var row = [
+    sku,
+    name,
+    String(payload.Category || payload.category || "General").trim(),
+    String(payload.Sub_Category || payload.sub_category || "").trim(),
+    String(payload.Child_Category || payload.child_category || "").trim(),
+    String(payload.Brand || payload.brand || "Dream Cart BD").trim(),
+    buyPrice,
+    sellPrice,
+    stock,
+    origPrice,
+    wsPrice,
+    minOrderQ,
+    imagesStr,
+    slug,
+    String(payload.Description || payload.description || ""),
+    String(payload.Specification || payload.specification || ""),
+    String(payload.Others || payload.others || ""),
+    String(payload.Color || payload.color || "Standard"),
+    String(payload.Size || payload.size || "Free Size"),
+    Number(payload.WEIGHT_KG !== undefined ? payload.WEIGHT_KG : (payload.weight_kg || 0.25)),
+    Number(payload.WIDTH_CM !== undefined ? payload.WIDTH_CM : (payload.width_cm || 10)),
+    Number(payload.LENGTH_CM !== undefined ? payload.LENGTH_CM : (payload.length_cm || 10)),
+    Number(payload.HEIGHT_CM !== undefined ? payload.HEIGHT_CM : (payload.height_cm || 5))
+  ];
+
+  // Fast SKU scan reading only Column A & B (avoids loading 8.9MB of descriptions!)
+  var lastRow = sheet.getLastRow();
+  var lastRealRow = 1;
+  if (lastRow > 1) {
+    var skuVals = sheet.getRange(1, 1, lastRow, 2).getValues();
+    var targetSkuLower = sku.toLowerCase();
+    for (var i = 1; i < skuVals.length; i++) {
+      var rSku = String(skuVals[i][0] || "").trim();
+      var rName = String(skuVals[i][1] || "").trim();
+      if (rSku !== "" || rName !== "") {
+        lastRealRow = i + 1;
+        if (rSku.toLowerCase() === targetSkuLower) {
+          sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
+          SpreadsheetApp.flush();
+          return { status: "success", success: true, message: "Product updated in Sheet!", data: { sku: sku, slug: slug, row: i + 1 } };
+        }
+      }
     }
   }
 
-  sheet.appendRow(row);
-  return { status: "success", success: true, message: "Product added to Sheet!", data: { sku: sku, slug: slug } };
+  var insertRow = lastRealRow + 1;
+  sheet.getRange(insertRow, 1, 1, row.length).setValues([row]);
+  SpreadsheetApp.flush();
+  return { status: "success", success: true, message: "Product added to Sheet!", data: { sku: sku, slug: slug, row: insertRow } };
 }
 
 function handleProductDelete(ss, payload) {
-  return handleGenericDelete(ss, "Products", [0, 13], payload.id || payload.sku || payload.slug);
+  return handleGenericDelete(ss, "Products", [0, 13], payload.id || payload.sku || payload.SKU || payload.slug);
 }
 
 function handleCategoryUpsert(ss, payload) {
@@ -545,33 +662,32 @@ function handleCategoryUpsert(ss, payload) {
     "Catagory_ID", "Catagory_Slug", "Category_Image", "Category", "Sub_Category", "Chail_Category"
   ]);
 
-  var catId = String(payload.catagory_id || payload.id || ("CAT-" + Math.floor(1000 + Math.random() * 9000))).trim();
-  var catName = String(payload.category || payload.name || "Category").trim();
-  var slug = String(payload.catagory_slug || payload.slug || catName.toLowerCase().replace(/[^a-z0-9]+/g, "-")).trim();
+  var catId = String(payload.Catagory_ID || payload.catagory_id || payload.id || ("CAT-" + Math.floor(1000 + Math.random() * 9000))).trim();
+  var catName = String(payload.Category || payload.category || payload.name || "Category").trim();
+  var slug = String(payload.Catagory_Slug || payload.catagory_slug || payload.slug || catName.toLowerCase().replace(/[^a-z0-9]+/g, "-")).trim();
+  var img = String(payload.Category_Image || payload.category_image || payload.image || "").trim();
+  var subCat = String(payload.Sub_Category || payload.sub_category || "General").trim();
+  var childCat = String(payload.Chail_Category || payload.chail_category || payload.child_category || "Standard").trim();
 
-  var row = [
-    catId,
-    slug,
-    payload.category_image || payload.image || "",
-    catName,
-    payload.sub_category || "",
-    payload.chail_category || payload.child_category || ""
-  ];
+  var row = [catId, slug, img, catName, subCat, childCat];
+  var oldCatLower = payload.old_category ? String(payload.old_category).trim().toLowerCase() : "";
 
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (
-      String(data[i][0]).trim().toLowerCase() === catId.toLowerCase() ||
-      String(data[i][3]).trim().toLowerCase() === catName.toLowerCase() ||
-      (payload.old_category && String(data[i][3]).trim().toLowerCase() === String(payload.old_category).trim().toLowerCase())
-    ) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return { status: "success", success: true, message: "Category updated in Sheet!", data: { catagory_id: catId, catagory_slug: slug } };
-    }
-  }
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    var rId = String(r[0] || "").trim().toLowerCase();
+    var rCat = String(r[3] || "").trim().toLowerCase();
+    var rSub = String(r[4] || "").trim().toLowerCase();
+    if (rId === catId.toLowerCase()) return true;
+    if (oldCatLower && rCat === oldCatLower) return true;
+    if (rCat === catName.toLowerCase() && (!subCat || rSub === subCat.toLowerCase())) return true;
+    return false;
+  }, 6);
 
-  sheet.appendRow(row);
-  return { status: "success", success: true, message: "Category added to Sheet!", data: { catagory_id: catId, catagory_slug: slug } };
+  return {
+    status: "success",
+    success: true,
+    message: res.updated ? "Category updated in Sheet!" : "Category added to Sheet!",
+    data: { catagory_id: catId, catagory_slug: slug, category: catName }
+  };
 }
 
 function handleCategoryDelete(ss, payload) {
@@ -583,31 +699,24 @@ function handleBrandUpsert(ss, payload) {
     "Brand_ID", "Brand_Image", "Brand_Name", "Brand_Slug", "Brand_Description"
   ]);
 
-  var brandId = String(payload.brand_id || payload.id || ("BRD-" + Math.floor(1000 + Math.random() * 9000))).trim();
-  var brandName = String(payload.brand_name || payload.name || "Brand").trim();
-  var slug = String(payload.brand_slug || payload.slug || brandName.toLowerCase().replace(/[^a-z0-9]+/g, "-")).trim();
+  var brandId = String(payload.Brand_ID || payload.brand_id || payload.id || ("BRD-" + Math.floor(1000 + Math.random() * 9000))).trim();
+  var brandName = String(payload.Brand_Name || payload.brand_name || payload.name || "Brand").trim();
+  var slug = String(payload.Brand_Slug || payload.brand_slug || payload.slug || brandName.toLowerCase().replace(/[^a-z0-9]+/g, "-")).trim();
+  var img = String(payload.Brand_Image || payload.brand_image || payload.image || "").trim();
+  var desc = String(payload.Brand_Description || payload.brand_description || payload.description || "").trim();
 
-  var row = [
-    brandId,
-    payload.brand_image || payload.image || "",
-    brandName,
-    slug,
-    payload.brand_description || payload.description || ""
-  ];
+  var row = [brandId, img, brandName, slug, desc];
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    return String(r[0] || "").trim().toLowerCase() === brandId.toLowerCase() ||
+           String(r[2] || "").trim().toLowerCase() === brandName.toLowerCase();
+  }, 5);
 
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (
-      String(data[i][0]).trim().toLowerCase() === brandId.toLowerCase() ||
-      String(data[i][2]).trim().toLowerCase() === brandName.toLowerCase()
-    ) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return { status: "success", success: true, message: "Brand updated in Sheet!", data: { brand_id: brandId, brand_slug: slug } };
-    }
-  }
-
-  sheet.appendRow(row);
-  return { status: "success", success: true, message: "Brand added to Sheet!", data: { brand_id: brandId, brand_slug: slug } };
+  return {
+    status: "success",
+    success: true,
+    message: res.updated ? "Brand updated in Sheet!" : "Brand added to Sheet!",
+    data: { brand_id: brandId, brand_name: brandName, brand_slug: slug }
+  };
 }
 
 function handleBrandDelete(ss, payload) {
@@ -615,40 +724,81 @@ function handleBrandDelete(ss, payload) {
 }
 
 function handleLandingPageUpsert(ss, payload) {
+  // Matches exact 11 columns in Dream Cart BD-Site.xlsx -> Landing-Pages:
+  // ['Slug', 'Slogan', 'Main_Link', 'Products', 'Product_Images', 'Review_Images', 'Contact_Call', 'Contact_Whatsapp', 'Contact_Mail', 'Social_Icons', 'Status']
   var sheet = ensureSheetWithHeaders(ss, "Landing-Pages", [
-    "Page_ID", "Title", "Slug", "Content", "Banner", "Status"
+    "Slug", "Slogan", "Main_Link", "Products", "Product_Images",
+    "Review_Images", "Contact_Call", "Contact_Whatsapp", "Contact_Mail", "Social_Icons", "Status"
   ]);
 
   var pageId = String(payload.id || payload.page_id || ("LP-" + Math.floor(100 + Math.random() * 900))).trim();
-  var title = String(payload.title || "ক্যাম্পেইন ল্যান্ডিং পেজ").trim();
-  var slug = String(payload.slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-")).trim();
-  var contentObj = {
+  var title = String(payload.Slogan || payload.slogan || payload.title || "ক্যাম্পেইন ল্যান্ডিং পেজ").trim();
+  var slug = String(payload.Slug || payload.slug || title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || pageId.toLowerCase()).trim();
+  var mainLink = String(payload.Main_Link || payload.main_link || ("/landing?page=" + slug)).trim();
+
+  var selectedProds = payload.Products || payload.selected_products || payload.selected_skus || [];
+  var productsStr = Array.isArray(selectedProds) ? selectedProds.join(", ") : String(selectedProds || "");
+
+  var bannerImgs = [];
+  if (payload.hero_banner || payload.banner) bannerImgs.push(payload.hero_banner || payload.banner);
+  if (Array.isArray(payload.banners)) {
+    payload.banners.forEach(function(b) {
+      var u = typeof b === "string" ? b : (b && b.url ? b.url : "");
+      if (u && bannerImgs.indexOf(u) === -1) bannerImgs.push(u);
+    });
+  }
+  var productImagesStr = payload.Product_Images || payload.product_images || bannerImgs.join(" | ");
+  var reviewImagesStr = payload.Review_Images || payload.review_images || (Array.isArray(payload.videos) ? payload.videos.map(function(v) { return typeof v === "string" ? v : (v.url || ""); }).join(" | ") : "");
+  var contactCall = String(payload.Contact_Call || payload.contact_call || payload.hotline || "01581703822").trim();
+  var contactWa = String(payload.Contact_Whatsapp || payload.contact_whatsapp || payload.hotline || "01581703822").trim();
+  var contactMail = String(payload.Contact_Mail || payload.contact_mail || NOTIFICATION_EMAIL).trim();
+
+  var metaObj = {
+    id: pageId,
+    page_id: pageId,
+    title: title,
+    slug: slug,
     subtitle: payload.subtitle || "",
     badge: payload.badge || "",
     promo: payload.promo || "",
     theme: payload.theme || "emerald",
-    hotline: payload.hotline || "01581703822",
+    hotline: contactCall,
     cta_text: payload.cta_text || "এখনই অর্ডার করুন →",
+    hero_banner: payload.hero_banner || payload.banner || "",
     banners: payload.banners || [],
     videos: payload.videos || [],
-    features: payload.features || [],
-    selected_products: payload.selected_products || []
+    features: payload.features || payload.bullets || [],
+    selected_products: Array.isArray(selectedProds) ? selectedProds : (productsStr ? productsStr.split(",").map(function(s) { return s.trim(); }) : [])
   };
-  var contentJson = JSON.stringify(contentObj);
-  var banner = String(payload.hero_banner || payload.banner || "");
-  var status = String(payload.status || "Active");
+  var socialIconsOrJson = payload.Social_Icons || JSON.stringify(metaObj);
+  var status = String(payload.Status || payload.status || "Active").trim();
 
-  var row = [pageId, title, slug, contentJson, banner, status];
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim().toLowerCase() === pageId.toLowerCase() || String(data[i][2]).trim().toLowerCase() === slug.toLowerCase()) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return { status: "success", success: true, message: "Landing Page updated in Sheet!", data: { id: pageId, slug: slug } };
-    }
-  }
+  var row = [
+    slug,
+    title,
+    mainLink,
+    productsStr,
+    productImagesStr,
+    reviewImagesStr,
+    contactCall,
+    contactWa,
+    contactMail,
+    socialIconsOrJson,
+    status
+  ];
 
-  sheet.appendRow(row);
-  return { status: "success", success: true, message: "Landing Page added to Sheet!", data: { id: pageId, slug: slug } };
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    var rSlug = String(r[0] || "").trim().toLowerCase();
+    var rTitle = String(r[1] || "").trim().toLowerCase();
+    return rSlug === slug.toLowerCase() || rSlug === pageId.toLowerCase() || (title && rTitle === title.toLowerCase());
+  }, 3);
+
+  return {
+    status: "success",
+    success: true,
+    message: res.updated ? "Landing Page updated in Sheet!" : "Landing Page added to Sheet!",
+    data: { id: pageId, slug: slug, title: title }
+  };
 }
 
 function handleOrderCreation(ss, payload) {
@@ -658,13 +808,13 @@ function handleOrderCreation(ss, payload) {
     "Transaction_ID", "Payment_Status", "Order_Status", "Reseller_Commission", "Commission_Status"
   ]);
 
-  var orderId = String(payload.order_id || payload.orderId || ("ORD-" + Math.floor(100000 + Math.random() * 900000))).trim();
-  var dateStr = payload.date || nowDhaka();
+  var orderId = String(payload.OrderID || payload.order_id || payload.orderId || ("ORD-" + Math.floor(100000 + Math.random() * 900000))).trim();
+  var dateStr = payload.Date || payload.date || nowDhaka();
 
-  var productsDesc = payload.products || payload.product_name || "";
-  var colorsStr = payload.color || "";
-  var sizesStr = payload.size || "";
-  var totalQty = Number(payload.quantity || 0);
+  var productsDesc = payload.Products || payload.products || payload.product_name || "";
+  var colorsStr = payload.Color || payload.color || "";
+  var sizesStr = payload.Size || payload.size || "";
+  var totalQty = Number(payload.Quantity || payload.quantity || 0);
 
   if (Array.isArray(payload.items) && payload.items.length > 0) {
     if (!productsDesc) {
@@ -686,46 +836,74 @@ function handleOrderCreation(ss, payload) {
   if (!productsDesc) productsDesc = "পণ্য অর্ডার";
   if (!totalQty) totalQty = 1;
 
+  var phoneStr = String(payload.Phone || payload.phone || "").trim();
+  var normPhone = normalizePhoneStr(phoneStr);
+  var totalAmt = Number(payload.Total_Amount !== undefined ? payload.Total_Amount : (payload.total_amount || 0));
+
   var row = [
     dateStr,
     orderId,
-    payload.account_type || "Customer",
-    payload.customer_name || "গ্রাহক",
-    payload.phone || "",
-    payload.address || "",
+    payload.Account_type || payload.account_type || "Customer",
+    payload.Customer_Name || payload.customer_name || "গ্রাহক",
+    phoneStr,
+    payload.Address || payload.address || "",
     productsDesc,
     colorsStr || "Standard",
     sizesStr || "Free Size",
     totalQty,
-    Number(payload.total_amount || 0),
-    payload.payment_method || "Cash On Delivery (COD)",
-    payload.transaction_id || "N/A",
-    payload.payment_status || "Pending",
-    payload.order_status || "Order Placed",
-    Number(payload.reseller_commission || 0),
-    payload.commission_status || "Pending"
+    totalAmt,
+    payload.Payment_method || payload.payment_method || "Cash On Delivery (COD)",
+    payload.Transaction_ID || payload.transaction_id || "N/A",
+    payload.Payment_Status || payload.payment_status || "Pending",
+    payload.Order_Status || payload.order_status || "Order Placed",
+    Number(payload.Reseller_Commission !== undefined ? payload.Reseller_Commission : (payload.reseller_commission || 0)),
+    payload.Commission_Status || payload.commission_status || "Pending"
   ];
 
-  sheet.appendRow(row);
-  sendOrderReminderEmail(orderId, payload, dateStr);
+  // Deduplicate by OrderID so an order NEVER shows up 5 times in the sheet!
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    var existingOrderId = String(r[1] || "").trim().toLowerCase();
+    return existingOrderId !== "" && existingOrderId === orderId.toLowerCase();
+  }, 5);
+
+  // Clean up any matching draft in Incomplete_Orders for this customer phone
+  if (normPhone) {
+    try {
+      var incSheet = findSheetCaseInsensitive(ss, "Incomplete_Orders");
+      if (incSheet && incSheet.getLastRow() > 1) {
+        var incData = incSheet.getRange(1, 1, incSheet.getLastRow(), 9).getValues();
+        for (var k = incData.length - 1; k >= 1; k--) {
+          if (normalizePhoneStr(incData[k][4]) === normPhone) {
+            incSheet.deleteRow(k + 1);
+          }
+        }
+      }
+    } catch (cleanErr) {}
+  }
+
+  if (!res.updated) {
+    sendOrderReminderEmail(orderId, payload, dateStr);
+  }
 
   return {
     status: "success",
     success: true,
-    data: { order_id: orderId },
+    data: { order_id: orderId, row: res.row },
     message: "অর্ডার সফলভাবে শিটে জমা হয়েছে!"
   };
 }
 
 function handleOrderStatusUpdate(ss, payload) {
-  var sheet = ss.getSheetByName("Orders");
+  var sheet = findSheetCaseInsensitive(ss, "Orders");
   if (!sheet) return { status: "error", message: "Orders sheet not found" };
 
-  var data = sheet.getDataRange().getValues();
-  var orderId = String(payload.order_id || payload.orderId || payload.id || "").trim();
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return { status: "error", message: "Orders sheet is empty" };
+  var data = sheet.getRange(1, 1, lastRow, 17).getValues();
+  var orderId = String(payload.order_id || payload.orderId || payload.OrderID || payload.id || "").trim();
 
   for (var i = 1; i < data.length; i++) {
-    if (String(data[i][1]).trim() === orderId) {
+    if (String(data[i][1]).trim().toLowerCase() === orderId.toLowerCase()) {
       if (payload.customer_name !== undefined) sheet.getRange(i + 1, 4).setValue(payload.customer_name);
       if (payload.phone !== undefined) sheet.getRange(i + 1, 5).setValue(payload.phone);
       if (payload.address !== undefined) sheet.getRange(i + 1, 6).setValue(payload.address);
@@ -738,6 +916,9 @@ function handleOrderStatusUpdate(ss, payload) {
       if (payload.transaction_id !== undefined) sheet.getRange(i + 1, 13).setValue(payload.transaction_id);
       if (payload.payment_status !== undefined) sheet.getRange(i + 1, 14).setValue(payload.payment_status);
       if (payload.order_status || payload.status) sheet.getRange(i + 1, 15).setValue(payload.order_status || payload.status);
+      if (payload.reseller_commission !== undefined) sheet.getRange(i + 1, 16).setValue(Number(payload.reseller_commission));
+      if (payload.commission_status !== undefined) sheet.getRange(i + 1, 17).setValue(payload.commission_status);
+      SpreadsheetApp.flush();
       return { status: "success", success: true, message: "Order updated in Sheet" };
     }
   }
@@ -753,6 +934,7 @@ function handleIncompleteOrder(ss, payload) {
   var dateStr = payload.date || nowDhaka();
   var incId = String(payload.order_id || payload.orderId || ("INC-" + Math.floor(100000 + Math.random() * 900000))).trim();
   var phone = String(payload.phone || "").trim();
+  var normP = normalizePhoneStr(phone);
 
   var row = [
     dateStr,
@@ -766,20 +948,13 @@ function handleIncompleteOrder(ss, payload) {
     payload.status || "Draft/Incomplete"
   ];
 
-  // Update existing draft for same phone if already in Incomplete_Orders
-  if (phone) {
-    var data = sheet.getDataRange().getValues();
-    for (var i = 1; i < data.length; i++) {
-      if (String(data[i][4]).trim() === phone && String(data[i][8]) === "Draft/Incomplete") {
-        row[1] = data[i][1] || incId;
-        sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-        return { status: "success", success: true, data: { order_id: row[1] } };
-      }
-    }
-  }
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    var rId = String(r[1] || "").trim().toLowerCase();
+    var rPhone = normalizePhoneStr(r[4]);
+    return (rId && rId === incId.toLowerCase()) || (normP && rPhone === normP);
+  }, 5);
 
-  sheet.appendRow(row);
-  return { status: "success", success: true, data: { order_id: incId } };
+  return { status: "success", success: true, data: { order_id: incId, updated: res.updated } };
 }
 
 function handleResellerUpsert(ss, payload) {
@@ -789,34 +964,37 @@ function handleResellerUpsert(ss, payload) {
 
   var shopId = String(payload.Shop_ID || payload.shop_id || payload.id || ("RSL-" + Math.floor(1000 + Math.random() * 9000))).trim();
   var mobile = String(payload.Mobile || payload.mobile || payload.phone || "").trim();
+  var normMob = normalizePhoneStr(mobile);
   var userId = String(payload.User_ID || payload.user_id || mobile || shopId).trim();
 
   var row = [
     shopId,
-    payload.Shop_logo || payload.shop_logo || "",
-    payload.Name || payload.name || "",
+    String(payload.Shop_logo || payload.shop_logo || payload.logo || ""),
+    String(payload.Name || payload.name || ""),
     mobile,
-    payload.Mail || payload.mail || payload.email || "",
-    payload.Address || payload.address || payload.city || "",
-    payload.Shop_Name || payload.shop_name || payload.shop || "",
-    payload.NID_Number || payload.nid_number || "",
-    payload.Date_of_birth || payload.date_of_birth || "",
-    payload.Trade_Licence_No || payload.trade_licence_no || "",
+    String(payload.Mail || payload.mail || payload.email || ""),
+    String(payload.Address || payload.address || payload.city || ""),
+    String(payload.Shop_Name || payload.shop_name || payload.shop || ""),
+    String(payload.NID_Number || payload.nid_number || ""),
+    String(payload.Date_of_birth || payload.date_of_birth || ""),
+    String(payload.Trade_Licence_No || payload.trade_licence_no || ""),
     userId,
-    payload.Password || payload.password || "123456",
-    payload.Status || payload.status || "Active"
+    String(payload.Password || payload.password || "123456"),
+    String(payload.Status || payload.status || "Active")
   ];
 
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === shopId || (mobile && String(data[i][3]).trim() === mobile)) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return { status: "success", success: true, data: { shop_id: shopId } };
-    }
-  }
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    var rId = String(r[0] || "").trim().toLowerCase();
+    var rMob = normalizePhoneStr(r[3]);
+    return rId === shopId.toLowerCase() || (normMob && rMob === normMob);
+  }, 4);
 
-  sheet.appendRow(row);
-  return { status: "success", success: true, data: { shop_id: shopId } };
+  return {
+    status: "success",
+    success: true,
+    message: res.updated ? "Reseller updated in Sheet!" : "Reseller added to Sheet!",
+    data: { shop_id: shopId }
+  };
 }
 
 function handleWholesalerUpsert(ss, payload) {
@@ -826,40 +1004,76 @@ function handleWholesalerUpsert(ss, payload) {
 
   var shopId = String(payload.Shop_ID || payload.shop_id || payload.id || ("WHS-" + Math.floor(1000 + Math.random() * 9000))).trim();
   var mobile = String(payload.Mobile || payload.mobile || payload.phone || "").trim();
+  var normMob = normalizePhoneStr(mobile);
   var userId = String(payload.User_ID || payload.user_id || mobile || shopId).trim();
 
   var row = [
     shopId,
-    payload.Shop_logo || payload.shop_logo || "",
-    payload.Name || payload.name || "",
+    String(payload.Shop_logo || payload.shop_logo || payload.logo || ""),
+    String(payload.Name || payload.name || ""),
     mobile,
-    payload.Mail || payload.mail || payload.email || "",
-    payload.Address || payload.address || "",
-    payload.Shop_Name || payload.shop_name || payload.company || "",
+    String(payload.Mail || payload.mail || payload.email || ""),
+    String(payload.Address || payload.address || ""),
+    String(payload.Shop_Name || payload.shop_name || payload.company || ""),
     userId,
-    payload.Password || payload.password || "123456",
-    payload.Status || payload.status || "Approved"
+    String(payload.Password || payload.password || "123456"),
+    String(payload.Status || payload.status || "Approved")
   ];
 
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === shopId || (mobile && String(data[i][3]).trim() === mobile)) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return { status: "success", success: true, data: { shop_id: shopId } };
-    }
-  }
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    var rId = String(r[0] || "").trim().toLowerCase();
+    var rMob = normalizePhoneStr(r[3]);
+    return rId === shopId.toLowerCase() || (normMob && rMob === normMob);
+  }, 4);
 
-  sheet.appendRow(row);
-  return { status: "success", success: true, data: { shop_id: shopId } };
+  return {
+    status: "success",
+    success: true,
+    message: res.updated ? "Wholesaler updated in Sheet!" : "Wholesaler added to Sheet!",
+    data: { shop_id: shopId }
+  };
 }
 
-function handleSellerUpsert(ss, payload) {
-  var sellerId = String(payload.id || payload.seller_id || ("VND-" + Math.floor(100 + Math.random() * 900))).trim();
-  return handleSettingsUpdate(ss, {
-    name: "SELLER_" + sellerId,
-    details: JSON.stringify(payload),
-    activation: payload.status === "Inactive" ? "FALSE" : "TRUE"
-  });
+function handlePartnerLogin(ss, sheetName, payload, roleName) {
+  var sheet = findSheetCaseInsensitive(ss, sheetName);
+  if (!sheet || sheet.getLastRow() <= 1) {
+    return { status: "error", success: false, message: sheetName + " শিট পাওয়া যায়নি।" };
+  }
+  var idInput = String(payload.phone || payload.mobile || payload.identifier || payload.user_id || "").trim();
+  var normP = normalizePhoneStr(idInput);
+  var pass = String(payload.password || "").trim();
+
+  var data = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn()).getValues();
+  for (var i = 1; i < data.length; i++) {
+    var r = data[i];
+    var rShopId = String(r[0] || "").trim().toLowerCase();
+    var rMob = normalizePhoneStr(r[3]);
+    var rMail = String(r[4] || "").trim().toLowerCase();
+    var rUserId = String(sheetName === "Resellers" ? r[10] : r[7] || "").trim().toLowerCase();
+    var rPass = String(sheetName === "Resellers" ? r[11] : r[8] || "").trim();
+
+    if ((normP && rMob === normP) || (idInput && (rShopId === idInput.toLowerCase() || rMail === idInput.toLowerCase() || rUserId === idInput.toLowerCase()))) {
+      if (pass && rPass && rPass !== pass) {
+        return { status: "error", success: false, message: "ভুল পাসওয়ার্ড!" };
+      }
+      return {
+        status: "success",
+        success: true,
+        data: {
+          shop_id: r[0],
+          shop_logo: r[1],
+          name: r[2],
+          mobile: r[3],
+          phone: r[3],
+          mail: r[4],
+          address: r[5],
+          shop_name: r[6],
+          account_type: roleName
+        }
+      };
+    }
+  }
+  return { status: "error", success: false, message: "অ্যাকাউন্ট পাওয়া যায়নি।" };
 }
 
 function handleOthersMarketUpsert(ss, payload) {
@@ -870,54 +1084,44 @@ function handleOthersMarketUpsert(ss, payload) {
   var shopId = String(payload.Shop_ID || payload.shop_id || payload.id || ("MKT-" + Math.floor(100 + Math.random() * 900))).trim();
   var row = [
     shopId,
-    payload.Market_Logo || payload.market_logo || "",
-    payload.Market_Name || payload.market_name || payload.name || "",
-    payload.Shop_Name || payload.shop_name || "",
-    payload.Shop_Link || payload.shop_link || "",
-    payload.Status || payload.status || "Active"
+    String(payload.Market_Logo || payload.market_logo || ""),
+    String(payload.Market_Name || payload.market_name || payload.name || ""),
+    String(payload.Shop_Name || payload.shop_name || "Dream Cart BD"),
+    String(payload.Shop_Link || payload.shop_link || ""),
+    String(payload.Status !== undefined ? payload.Status : (payload.status || "Active"))
   ];
 
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === shopId) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return { status: "success", success: true, data: { shop_id: shopId } };
-    }
-  }
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    return String(r[0] || "").trim().toLowerCase() === shopId.toLowerCase();
+  }, 3);
 
-  sheet.appendRow(row);
-  return { status: "success", success: true, data: { shop_id: shopId } };
+  return { status: "success", success: true, data: { shop_id: shopId, updated: res.updated } };
 }
 
 function handleAdminWorkerUpsert(ss, payload) {
-  var sheet = ensureSheetWithHeaders(ss, "Admin/Worker", [
+  var sheet = ensureSheetWithHeaders(ss, "AdminWorker", [
     "USER_ID", "Profile_Photo", "Name", "Mobile", "Mail", "Address", "Worker_Type", "Role", "User_Name", "Password"
   ]);
 
   var userId = String(payload.USER_ID || payload.user_id || payload.id || ("USR-" + Math.floor(100 + Math.random() * 900))).trim();
   var row = [
     userId,
-    payload.Profile_Photo || payload.profile_photo || "",
-    payload.Name || payload.name || "",
-    payload.Mobile || payload.mobile || payload.phone || "",
-    payload.Mail || payload.mail || payload.email || "",
-    payload.Address || payload.address || "",
-    payload.Worker_Type || payload.worker_type || "Admin",
-    payload.Role || payload.role || "Full Access",
-    payload.User_Name || payload.user_name || payload.Name || payload.name || "",
-    payload.Password || payload.password || "admin123"
+    String(payload.Profile_Photo || payload.profile_photo || ""),
+    String(payload.Name || payload.name || ""),
+    String(payload.Mobile || payload.mobile || payload.phone || ""),
+    String(payload.Mail || payload.mail || payload.email || ""),
+    String(payload.Address || payload.address || ""),
+    String(payload.Worker_Type || payload.worker_type || "Admin"),
+    String(payload.Role || payload.role || "Full Access"),
+    String(payload.User_Name || payload.user_name || payload.Name || payload.name || ""),
+    String(payload.Password || payload.password || "admin123")
   ];
 
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === userId) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      return { status: "success", success: true, data: { user_id: userId } };
-    }
-  }
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    return String(r[0] || "").trim().toLowerCase() === userId.toLowerCase();
+  }, 4);
 
-  sheet.appendRow(row);
-  return { status: "success", success: true, data: { user_id: userId } };
+  return { status: "success", success: true, data: { user_id: userId, updated: res.updated } };
 }
 
 function handleBuyingAdd(ss, payload) {
@@ -929,7 +1133,7 @@ function handleBuyingAdd(ss, payload) {
   var unitPrice = Number(payload.buying_price || (payload.total_amount ? Math.round(Number(payload.total_amount) / Math.max(1, qty)) : 0));
   var total = Number(payload.total_amount || payload.total_buying || (unitPrice * qty));
 
-  sheet.appendRow([
+  var row = [
     dateStr,
     payload.who_buy || "Admin",
     payload.product_name || payload.product || "",
@@ -938,7 +1142,8 @@ function handleBuyingAdd(ss, payload) {
     total,
     payload.supplier || "",
     payload.location || "Dhaka/Cumilla"
-  ]);
+  ];
+  writeOrUpsertRow(sheet, row, null, 3);
   return { status: "success", success: true };
 }
 
@@ -947,13 +1152,14 @@ function handleCostAdd(ss, payload) {
     "Date", "Who Paid", "Purpose", "Amount", "Note"
   ]);
   var dateStr = payload.date || nowDhaka().slice(0, 10);
-  sheet.appendRow([
+  var row = [
     dateStr,
     payload.who_paid || "Admin",
     payload.purpose || payload.title || "",
     Number(payload.amount || 0),
     payload.note || payload.category || ""
-  ]);
+  ];
+  writeOrUpsertRow(sheet, row, null, 3);
   return { status: "success", success: true };
 }
 
@@ -962,31 +1168,46 @@ function handleInvestAdd(ss, payload) {
     "Date", "Invest type", "Name of investor", "Amount", "Note"
   ]);
   var dateStr = payload.date || nowDhaka().slice(0, 10);
-  sheet.appendRow([
+  var row = [
     dateStr,
     payload.invest_type || "Working Capital",
     payload.investor || payload.name_of_investor || "",
     Number(payload.amount || 0),
     payload.note || ""
-  ]);
+  ];
+  writeOrUpsertRow(sheet, row, null, 3);
   return { status: "success", success: true };
 }
 
 function handlePaymentAdd(ss, payload) {
+  // Exact 10 columns in Dream Cart BD-Site.xlsx -> Payments:
+  // ['Request_ID', 'Reseller_ID', 'Reseller_Name', 'Payment_Method', 'Account_Details', 'Amount', 'Net_Amount_Less_3Percent', 'Status', 'Date', 'Transaction_ID']
   var sheet = ensureSheetWithHeaders(ss, "Payments", [
-    "Date", "OrderID", "Method", "Account_Number", "TrxID", "Amount", "Status"
+    "Request_ID", "Reseller_ID", "Reseller_Name", "Payment_Method", "Account_Details",
+    "Amount", "Net_Amount_Less_3Percent", "Status", "Date", "Transaction_ID"
   ]);
-  var dateStr = payload.date || nowDhaka();
-  sheet.appendRow([
+  var reqId = String(payload.Request_ID || payload.request_id || payload.id || ("WDR-" + Math.floor(100000 + Math.random() * 900000))).trim();
+  var amt = Number(payload.Amount || payload.amount || 0);
+  var netAmt = Number(payload.Net_Amount_Less_3Percent || payload.net_amount || Math.round(amt * 0.97));
+  var dateStr = payload.Date || payload.date || nowDhaka();
+
+  var row = [
+    reqId,
+    String(payload.Reseller_ID || payload.reseller_id || payload.shop_id || "RSL-101"),
+    String(payload.Reseller_Name || payload.reseller_name || payload.name || "Reseller"),
+    String(payload.Payment_Method || payload.payment_method || payload.method || "bKash"),
+    String(payload.Account_Details || payload.account_details || payload.account_number || ""),
+    amt,
+    netAmt,
+    String(payload.Status || payload.status || "Pending"),
     dateStr,
-    payload.order_id || payload.id || "",
-    payload.method || "bKash",
-    payload.account_number || "",
-    payload.trx_id || "N/A",
-    Number(payload.amount || 0),
-    payload.status || "Paid"
-  ]);
-  return { status: "success", success: true };
+    String(payload.Transaction_ID || payload.transaction_id || payload.trx_id || "N/A")
+  ];
+
+  writeOrUpsertRow(sheet, row, function(r) {
+    return String(r[0] || "").trim().toLowerCase() === reqId.toLowerCase();
+  }, 3);
+  return { status: "success", success: true, data: { request_id: reqId } };
 }
 
 function handleCourierSendOrder(ss, payload) {
@@ -995,31 +1216,44 @@ function handleCourierSendOrder(ss, payload) {
     order_status: "Shipped"
   });
   var logSheet = ensureSheetWithHeaders(ss, "Worker-Logs", [
-    "Date", "Worker_Name", "Action", "Details", "Status"
+    "Log_ID", "Timestamp", "User_ID", "User_Name", "Role", "Action", "Details", "IP_Address"
   ]);
-  logSheet.appendRow([
+  var logRow = [
+    "LOG-" + Math.floor(100000 + Math.random() * 900000),
     nowDhaka(),
+    payload.user_id || "ADM-01",
     payload.worker_name || "Admin",
+    payload.role || "Admin",
     "Courier Booking (" + (payload.courier_name || "Steadfast") + ")",
-    "Order: " + payload.order_id + " | Consignment: " + (payload.consignment_id || "") + " | API Key: " + (payload.api_key_masked || "Configured"),
-    "Shipped"
-  ]);
+    "Order: " + payload.order_id + " | Consignment: " + (payload.consignment_id || ""),
+    payload.ip || "System"
+  ];
+  writeOrUpsertRow(logSheet, logRow, null, 3);
   return { status: "success", success: true, consignment_id: payload.consignment_id };
 }
 
 function handleGenericDelete(ss, sheetName, matchColIndices, targetVal) {
-  var sheet = ss.getSheetByName(sheetName);
+  var sheet = findSheetCaseInsensitive(ss, sheetName);
   if (!sheet || !targetVal) return { status: "error", message: "Sheet or target ID not found" };
-  var data = sheet.getDataRange().getValues();
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return { status: "error", message: "Sheet is empty" };
+  var maxCol = Math.max.apply(null, matchColIndices) + 1;
+  var data = sheet.getRange(1, 1, lastRow, Math.max(maxCol, 3)).getValues();
   var targetStr = String(targetVal).trim().toLowerCase();
-  for (var i = 1; i < data.length; i++) {
+  var deletedCount = 0;
+  for (var i = data.length - 1; i >= 1; i--) {
     for (var c = 0; c < matchColIndices.length; c++) {
       var colIdx = matchColIndices[c];
       if (String(data[i][colIdx] || "").trim().toLowerCase() === targetStr) {
         sheet.deleteRow(i + 1);
-        return { status: "success", success: true, message: sheetName + " row deleted" };
+        deletedCount++;
+        break;
       }
     }
+  }
+  if (deletedCount > 0) {
+    SpreadsheetApp.flush();
+    return { status: "success", success: true, message: sheetName + " row deleted (" + deletedCount + ")" };
   }
   return { status: "error", message: "Item not found in " + sheetName };
 }
@@ -1032,7 +1266,7 @@ function logViewerActivity(ss, payload) {
   var sheet = ensureSheetWithHeaders(ss, "Viewers", [
     "Time", "IP", "Address", "Name", "Phone", "Device", "Activity"
   ]);
-  sheet.appendRow([
+  var row = [
     nowDhaka(),
     payload.ip || "ClientIP",
     payload.address || "Bangladesh",
@@ -1040,87 +1274,90 @@ function logViewerActivity(ss, payload) {
     payload.phone || "N/A",
     payload.device || "Mobile/Desktop",
     payload.activity || "Page View"
-  ]);
+  ];
+  writeOrUpsertRow(sheet, row, null, 3);
   return { status: "success", success: true };
 }
 
 function handleSettingsUpdate(ss, payload) {
   var sheet = ensureSheetWithHeaders(ss, "Settings", ["Name", "Details", "Activation"]);
   var name = String(payload.name || payload.Name || "").trim();
+
+  // Support key-value object updates (e.g., { reseller_settings: "..." })
+  if (!name && payload && typeof payload === "object") {
+    var keys = Object.keys(payload).filter(function(k) {
+      return k !== "action" && k !== "spreadsheet_id" && k !== "_req_id";
+    });
+    if (keys.length > 0) {
+      keys.forEach(function(k) {
+        var val = typeof payload[k] === "object" ? JSON.stringify(payload[k]) : String(payload[k]);
+        writeOrUpsertRow(sheet, [k, val, "TRUE"], function(r) {
+          return String(r[0] || "").trim().toLowerCase() === k.toLowerCase();
+        }, 2);
+      });
+      return { status: "success", success: true, message: "Settings batch updated" };
+    }
+  }
+
   if (!name) return { status: "error", message: "Setting Name required" };
   var details = typeof payload.details === "object" ? JSON.stringify(payload.details) : String(payload.details !== undefined ? payload.details : (payload.Details || ""));
   var activation = payload.activation !== undefined ? String(payload.activation) : (payload.Activation !== undefined ? String(payload.Activation) : "TRUE");
 
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === name) {
-      sheet.getRange(i + 1, 2).setValue(details);
-      sheet.getRange(i + 1, 3).setValue(activation);
-      return { status: "success", success: true, message: "Setting updated" };
-    }
-  }
+  var res = writeOrUpsertRow(sheet, [name, details, activation], function(r) {
+    return String(r[0] || "").trim().toLowerCase() === name.toLowerCase();
+  }, 2);
 
-  sheet.appendRow([name, details, activation]);
-  return { status: "success", success: true, message: "Setting created" };
+  return { status: "success", success: true, message: res.updated ? "Setting updated" : "Setting created" };
 }
 
 function handleBannerAdd(ss, payload) {
+  // Exact 7 columns in Dream Cart BD-Site.xlsx -> Banners:
+  // ['Banner_ID', 'Title', 'Image_URL', 'Link', 'Sort_Order', 'Status', 'Created_At']
   var sheet = ensureSheetWithHeaders(ss, "Banners", [
-    "Banner_ID", "Title", "Image_URL", "Link", "Position", "Status"
+    "Banner_ID", "Title", "Image_URL", "Link", "Sort_Order", "Status", "Created_At"
   ]);
-  var histSheet = ensureSheetWithHeaders(ss, "Banners_History", [
-    "Date", "Banner_ID", "Title", "Image_URL", "Link", "Position", "Status", "Action"
-  ]);
-  var bId = String(payload.banner_id || payload.id || ("BAN-" + Math.floor(100 + Math.random() * 900))).trim();
-  var row = [
-    bId,
-    payload.title || "",
-    payload.image_url || payload.image || "",
-    payload.link_url || payload.link || "/products",
-    Number(payload.position || 1),
-    payload.status || "Active"
-  ];
-  var isUpdate = false;
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === bId) {
-      sheet.getRange(i + 1, 1, 1, row.length).setValues([row]);
-      isUpdate = true;
-      break;
-    }
-  }
-  if (!isUpdate) {
-    sheet.appendRow(row);
-  }
+  var bId = String(payload.Banner_ID || payload.banner_id || payload.id || ("BAN-" + Math.floor(100 + Math.random() * 900))).trim();
+  var title = String(payload.Title || payload.title || "ব্যানার স্লাইডার").trim();
+  var img = String(payload.Image_URL || payload.image_url || payload.image || "").trim();
+  var link = String(payload.Link || payload.link_url || payload.link || "/products").trim();
+  var sortOrder = Number(payload.Sort_Order !== undefined ? payload.Sort_Order : (payload.position || 1));
+  var status = String(payload.Status || payload.status || "Active").trim();
+  var createdAt = String(payload.Created_At || payload.created_at || nowDhaka());
 
-  // Always log addition / update to Banners_History sheet
-  histSheet.appendRow([
-    nowDhaka(),
-    bId,
-    payload.title || "",
-    payload.image_url || payload.image || "",
-    payload.link_url || payload.link || "/products",
-    Number(payload.position || 1),
-    payload.status || "Active",
-    isUpdate ? "Updated" : "Added"
-  ]);
+  var row = [bId, title, img, link, sortOrder, status, createdAt];
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    return String(r[0] || "").trim().toLowerCase() === bId.toLowerCase();
+  }, 3);
 
-  return { status: "success", success: true, message: "Banner saved to Sheet & History!" };
+  return {
+    status: "success",
+    success: true,
+    message: res.updated ? "Banner updated in Sheet!" : "Banner added to Sheet!",
+    data: { banner_id: bId, title: title, image_url: img, link_url: link, position: sortOrder, status: status }
+  };
 }
 
 function handleReviewAdd(ss, payload) {
+  // Exact 8 columns in Dream Cart BD-Site.xlsx -> Reviews:
+  // ['Review_ID', 'Product_SKU', 'Customer_Name', 'Rating', 'Comment', 'Image', 'Status', 'Date']
   var sheet = ensureSheetWithHeaders(ss, "Reviews", [
-    "Date", "Product_SKU", "Customer_Name", "Rating", "Comment", "Status"
+    "Review_ID", "Product_SKU", "Customer_Name", "Rating", "Comment", "Image", "Status", "Date"
   ]);
-  sheet.appendRow([
-    payload.date || nowDhaka(),
-    payload.product_sku || payload.product || "",
-    payload.customer_name || payload.customer || "Customer",
-    Number(payload.rating || 5),
-    payload.comment || "",
-    payload.status || "Approved"
-  ]);
-  return { status: "success", success: true };
+  var revId = String(payload.Review_ID || payload.review_id || payload.id || ("REV-" + Math.floor(1000 + Math.random() * 9000))).trim();
+  var row = [
+    revId,
+    String(payload.Product_SKU || payload.product_sku || payload.product || ""),
+    String(payload.Customer_Name || payload.customer_name || payload.customer || "গ্রাহক"),
+    Number(payload.Rating || payload.rating || 5),
+    String(payload.Comment || payload.comment || ""),
+    String(payload.Image || payload.image || ""),
+    String(payload.Status || payload.status || "Approved"),
+    String(payload.Date || payload.date || nowDhaka())
+  ];
+  writeOrUpsertRow(sheet, row, function(r) {
+    return String(r[0] || "").trim().toLowerCase() === revId.toLowerCase();
+  }, 3);
+  return { status: "success", success: true, data: { review_id: revId } };
 }
 
 function sendOrderReminderEmail(orderId, orderData, dateStr) {
@@ -1139,38 +1376,52 @@ function sendOrderReminderEmail(orderId, orderData, dateStr) {
   } catch (err) {}
 }
 
-function getSheetDataAsJson(ss, sheetName) {
+function getSheetDataAsJson(ss, sheetName, opts) {
   if (!ss) ss = getActiveSs();
   var sheet = findSheetCaseInsensitive(ss, sheetName);
   if (!sheet) {
     return { status: "success", success: true, data: { items: [], total: 0 } };
   }
 
-  var data = sheet.getDataRange().getValues();
-  if (data.length <= 1) {
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow <= 1 || lastCol === 0) {
     return { status: "success", success: true, data: { items: [], total: 0 } };
   }
 
+  // Cap columns at 23 for Products so formula helper columns X..AB are not transferred
+  var readCols = String(sheetName).toLowerCase() === "products" ? Math.min(lastCol, 23) : lastCol;
+  var data = sheet.getRange(1, 1, lastRow, readCols).getValues();
   var headers = data[0];
+  var isCompactProducts = opts && opts.compactProducts && String(sheetName).toLowerCase() === "products";
+
   var items = [];
   for (var i = 1; i < data.length; i++) {
     var row = data[i];
-    var hasContent = false;
-    for (var c = 0; c < row.length; c++) {
-      if (row[c] !== "" && row[c] !== null && row[c] !== undefined) {
-        hasContent = true;
-        break;
+    // Require at least one of the first 3 columns to be non-empty and not just an unchecked checkbox (false)
+    var hasPrimaryContent = false;
+    for (var c = 0; c < Math.min(4, row.length); c++) {
+      if (row[c] !== "" && row[c] !== null && row[c] !== undefined && row[c] !== false) {
+        if (String(row[c]).trim() !== "") {
+          hasPrimaryContent = true;
+          break;
+        }
       }
     }
-    if (!hasContent) continue;
+    if (!hasPrimaryContent) continue;
 
     var obj = {};
     for (var h = 0; h < headers.length; h++) {
-      var rawH = String(headers[h]).trim();
+      var rawH = String(headers[h] || ("col_" + h)).trim();
       var key = rawH.toLowerCase().replace(/[^a-z0-9_]/g, "_");
-      obj[key] = row[h];
-      obj[rawH] = row[h];
-      obj["col_" + h] = row[h];
+      var cellVal = row[h];
+      // Omit huge essay fields on compact catalog list so JSONP payload stays < 500 KB
+      if (isCompactProducts && (h === 14 || h === 15 || h === 16)) {
+        cellVal = "";
+      }
+      obj[key] = cellVal;
+      obj[rawH] = cellVal;
+      obj["col_" + h] = cellVal;
     }
     items.push(obj);
   }
@@ -1182,8 +1433,8 @@ function getSheetDataAsJson(ss, sheetName) {
   };
 }
 
-function setupAllSystemSheets() {
-  var ss = getActiveSs(payload);
+function setupAllSystemSheets(ss) {
+  if (!ss) ss = getActiveSs();
   var definitions = [
     { name: "Attributes", headers: ["Date", "Type", "Name_Value", "Status"] },
     { name: "Sellers", headers: ["Shop_ID", "Shop_logo", "Shop_Name", "Name", "Mobile", "Mail", "Address", "Commission_Rate", "Status"] },
@@ -1193,78 +1444,42 @@ function setupAllSystemSheets() {
     { name: "Orders", headers: ["Date", "OrderID", "Account_type", "Customer_Name", "Phone", "Address", "Products", "Color", "Size", "Quantity", "Total_Amount", "Payment_method", "Transaction_ID", "Payment_Status", "Order_Status", "Reseller_Commission", "Commission_Status"] },
     { name: "Incomplete_Orders", headers: ["Date", "OrderID", "Account_type", "Customer_Name", "Phone", "Address", "Products", "Total_Amount", "Status"] },
     { name: "Viewers", headers: ["Time", "IP", "Address", "Name", "Phone", "Device", "Activity"] },
-    { name: "Customers", headers: ["USER_ID", "Profile_photo", "Name", "Mobile", "Mail", "Address", "User_ID", "Password", "Status", "Success_order", "Cancel_Order", "Total_Order", "Order_Success_Rate"] },
+    { name: "Customers", headers: ["Customer_ID", "Profile_photo", "Name", "Mobile", "Mail", "Address", "User_ID", "Password", "Status", "Success_order", "Cancel_Order", "Total_Order", "Order_Success_Rate"] },
     { name: "Resellers", headers: ["Shop_ID", "Shop_logo", "Name", "Mobile", "Mail", "Address", "Shop_Name", "NID_Number", "Date_of_birth", "Trade_Licence_No", "User_ID", "Password", "Status"] },
     { name: "Wholesalers", headers: ["Shop_ID", "Shop_logo", "Name", "Mobile", "Mail", "Address", "Shop_Name", "User_ID", "Password", "Status"] },
     { name: "Buying", headers: ["Date", "Who Buy", "Product Name", "buying price", "Quantity", "Total buying (calculated)", "Supplier", "Location"] },
     { name: "Costs", headers: ["Date", "Who Paid", "Purpose", "Amount", "Note"] },
     { name: "Invest", headers: ["Date", "Invest type", "Name of investor", "Amount", "Note"] },
     { name: "Others_Market", headers: ["Shop_ID", "Market_Logo", "Market_Name", "Shop_Name", "Shop_Link", "Status"] },
-    { name: "Admin/Worker", headers: ["USER_ID", "Profile_Photo", "Name", "Mobile", "Mail", "Address", "Worker_Type", "Role", "User_Name", "Password"] },
+    { name: "AdminWorker", headers: ["USER_ID", "Profile_Photo", "Name", "Mobile", "Mail", "Address", "Worker_Type", "Role", "User_Name", "Password"] },
     { name: "Settings", headers: ["Name", "Details", "Activation"] },
-    { name: "Banners", headers: ["Banner_ID", "Title", "Image_URL", "Link", "Position", "Status"] },
-    { name: "Reviews", headers: ["Date", "Product_SKU", "Customer_Name", "Rating", "Comment", "Status"] },
-    { name: "Payments", headers: ["Date", "OrderID", "Method", "Account_Number", "TrxID", "Amount", "Status"] },
-    { name: "Landing-Pages", headers: ["Page_ID", "Title", "Slug", "Content", "Banner", "Status"] },
-    { name: "Worker-Logs", headers: ["Date", "Worker_Name", "Action", "Details", "Status"] }
+    { name: "Banners", headers: ["Banner_ID", "Title", "Image_URL", "Link", "Sort_Order", "Status", "Created_At"] },
+    { name: "Reviews", headers: ["Review_ID", "Product_SKU", "Customer_Name", "Rating", "Comment", "Image", "Status", "Date"] },
+    { name: "Payments", headers: ["Request_ID", "Reseller_ID", "Reseller_Name", "Payment_Method", "Account_Details", "Amount", "Net_Amount_Less_3Percent", "Status", "Date", "Transaction_ID"] },
+    { name: "Landing-Pages", headers: ["Slug", "Slogan", "Main_Link", "Products", "Product_Images", "Review_Images", "Contact_Call", "Contact_Whatsapp", "Contact_Mail", "Social_Icons", "Status"] },
+    { name: "Worker-Logs", headers: ["Log_ID", "Timestamp", "User_ID", "User_Name", "Role", "Action", "Details", "IP_Address"] }
   ];
 
   definitions.forEach(function(item) {
     ensureSheetWithHeaders(ss, item.name, item.headers);
   });
 
-  return { status: "success", success: true, message: "All 20 sheets successfully initialized!" };
+  return { status: "success", success: true, message: "All 22 system sheets successfully initialized!" };
 }
 
 function handleCustomerRegistration(ss, payload) {
   var sheet = ensureSheetWithHeaders(ss, "Customers", [
-    "USER_ID", "Profile_photo", "Name", "Mobile", "Mail", "Address", "User_ID", "Password", "Status", "Success_order", "Cancel_Order", "Total_Order", "Order_Success_Rate"
+    "Customer_ID", "Profile_photo", "Name", "Mobile", "Mail", "Address", "User_ID", "Password", "Status", "Success_order", "Cancel_Order", "Total_Order", "Order_Success_Rate"
   ]);
 
   var rawPhone = String(payload.Mobile || payload.mobile || payload.phone || "").trim();
-  var cleanPhone = rawPhone.replace(/^(\+?88)/, "").replace(/[\s\-]/g, "");
-  if (cleanPhone.length === 10 && cleanPhone.charAt(0) === '1') cleanPhone = '0' + cleanPhone;
-
+  var cleanPhone = normalizePhoneStr(rawPhone);
   var rawMail = String(payload.Mail || payload.mail || payload.email || "").trim().toLowerCase();
   var rawPass = String(payload.Password || payload.password || "123456").trim();
   var rawName = String(payload.Name || payload.name || "সম্মানিত গ্রাহক").trim();
   var rawAddr = String(payload.Address || payload.address || "").trim();
   var rawPhoto = String(payload.Profile_photo || payload.profile_photo || "").trim();
-  var userId = String(payload.USER_ID || payload.user_id || ("CUST-" + Math.floor(100000 + Math.random() * 900000))).trim();
-
-  var data = sheet.getDataRange().getValues();
-  for (var i = 1; i < data.length; i++) {
-    var rowMobile = String(data[i][3] || "").trim().replace(/^(\+?88)/, "").replace(/[\s\-]/g, "");
-    if (rowMobile.length === 10 && rowMobile.charAt(0) === '1') rowMobile = '0' + rowMobile;
-    var rowId = String(data[i][0] || "").trim();
-
-    if ((cleanPhone && rowMobile === cleanPhone) || (rowId && rowId === userId)) {
-      if (payload.allow_update || payload.is_admin_manual) {
-        var updatedRow = [
-          rowId || userId,
-          rawPhoto || data[i][1] || "",
-          rawName || data[i][2] || "",
-          cleanPhone || data[i][3] || "",
-          rawMail || data[i][4] || "",
-          rawAddr || data[i][5] || "",
-          rowId || userId,
-          rawPass || data[i][7] || "123456",
-          payload.status || payload.Status || data[i][8] || "Active",
-          Number(payload.success_order !== undefined ? payload.success_order : (data[i][9] || 0)),
-          Number(payload.cancel_order !== undefined ? payload.cancel_order : (data[i][10] || 0)),
-          Number(payload.total_order !== undefined ? payload.total_order : (data[i][11] || 0)),
-          payload.order_success_rate || data[i][12] || "100%"
-        ];
-        sheet.getRange(i + 1, 1, 1, updatedRow.length).setValues([updatedRow]);
-        return { status: "success", success: true, message: "কাস্টমার তথ্য আপডেট হয়েছে!", data: { user_id: rowId || userId } };
-      }
-      return {
-        status: "error",
-        success: false,
-        message: "এই মোবাইল নম্বর বা ইমেইল দিয়ে ইতিমধ্যে একটি অ্যাকাউন্ট তৈরি করা আছে। অনুগ্রহ করে লগইন করুন।"
-      };
-    }
-  }
+  var userId = String(payload.Customer_ID || payload.USER_ID || payload.user_id || ("CUST-" + Math.floor(100000 + Math.random() * 900000))).trim();
 
   var row = [
     userId,
@@ -1282,12 +1497,16 @@ function handleCustomerRegistration(ss, payload) {
     payload.order_success_rate || "100%"
   ];
 
-  sheet.appendRow(row);
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    var rowMobile = normalizePhoneStr(r[3]);
+    var rowId = String(r[0] || "").trim().toLowerCase();
+    return (cleanPhone && rowMobile === cleanPhone) || (rowId && rowId === userId.toLowerCase());
+  }, 4);
 
   return {
     status: "success",
     success: true,
-    message: "কাস্টমার অ্যাকাউন্ট সফলভাবে শিটে জমা হয়েছে!",
+    message: res.updated ? "কাস্টমার তথ্য আপডেট হয়েছে!" : "কাস্টমার অ্যাকাউন্ট সফলভাবে শিটে জমা হয়েছে!",
     data: {
       user_id: userId,
       USER_ID: userId,
@@ -1300,44 +1519,33 @@ function handleCustomerRegistration(ss, payload) {
       address: rawAddr,
       account_type: "CUSTOMER",
       role: "Customer",
-      status: "Active",
-      success_order: 0,
-      cancel_order: 0,
-      total_order: 0,
-      order_success_rate: "100%"
+      status: "Active"
     }
   };
 }
 
 function handleCustomerLogin(ss, payload) {
-  var sheet = ss.getSheetByName("Customers");
-  if (!sheet) {
+  var sheet = findSheetCaseInsensitive(ss, "Customers");
+  if (!sheet || sheet.getLastRow() <= 1) {
     return { status: "error", success: false, message: "Customers শিট পাওয়া যায়নি।" };
   }
 
   var identifier = String(payload.phone || payload.mobile || payload.identifier || payload.mail || payload.email || payload.username || "").trim();
   var inputPass = String(payload.password || "").trim();
-
-  var cleanPhone = identifier.replace(/^(\+?88)/, "").replace(/[\s\-]/g, "");
-  if (cleanPhone.length === 10 && cleanPhone.charAt(0) === '1') cleanPhone = '0' + cleanPhone;
+  var cleanPhone = normalizePhoneStr(identifier);
   var cleanMail = identifier.toLowerCase();
 
-  var data = sheet.getDataRange().getValues();
+  var data = sheet.getRange(1, 1, sheet.getLastRow(), 13).getValues();
   for (var i = 1; i < data.length; i++) {
     var rUserIdA = String(data[i][0] || "").trim().toLowerCase();
     var rPhoto = String(data[i][1] || "").trim();
     var rName = String(data[i][2] || "").trim();
-    var rMobile = String(data[i][3] || "").trim().replace(/^(\+?88)/, "").replace(/[\s\-]/g, "");
-    if (rMobile.length === 10 && rMobile.charAt(0) === '1') rMobile = '0' + rMobile;
+    var rMobile = normalizePhoneStr(data[i][3]);
     var rMail = String(data[i][4] || "").trim().toLowerCase();
     var rAddr = String(data[i][5] || "").trim();
     var rUserIdG = String(data[i][6] || "").trim().toLowerCase();
     var rPass = String(data[i][7] || "").trim();
     var rStatus = String(data[i][8] || "Active").trim();
-    var rSuccessOrder = Number(data[i][9] || 0);
-    var rCancelOrder = Number(data[i][10] || 0);
-    var rTotalOrder = Number(data[i][11] || 0);
-    var rRate = String(data[i][12] || "100%").trim();
 
     var isMatch = (cleanPhone && rMobile === cleanPhone) ||
                   (cleanMail && rMail === cleanMail) ||
@@ -1352,7 +1560,6 @@ function handleCustomerLogin(ss, payload) {
           message: "আপনার অ্যাকাউন্টটি সাময়িকভাবে স্থগিত বা ব্লক করা আছে। কাস্টমার সাপোর্টে যোগাযোগ করুন।"
         };
       }
-
       if (rPass !== inputPass) {
         return {
           status: "error",
@@ -1360,31 +1567,28 @@ function handleCustomerLogin(ss, payload) {
           message: "ভুল পাসওয়ার্ড! অনুগ্রহ করে সঠিক পাসওয়ার্ড প্রদান করুন।"
         };
       }
-
-      var customerProfile = {
-        user_id: data[i][0] || data[i][6] || ("CUST-" + i),
-        USER_ID: data[i][0] || data[i][6] || ("CUST-" + i),
-        profile_photo: rPhoto,
-        name: rName,
-        mobile: data[i][3],
-        phone: data[i][3],
-        mail: data[i][4],
-        email: data[i][4],
-        address: rAddr,
-        status: rStatus,
-        success_order: rSuccessOrder,
-        cancel_order: rCancelOrder,
-        total_order: rTotalOrder,
-        order_success_rate: rRate,
-        account_type: "CUSTOMER",
-        role: "Customer"
-      };
-
       return {
         status: "success",
         success: true,
         message: "লগইন সফল হয়েছে!",
-        data: customerProfile
+        data: {
+          user_id: data[i][0] || data[i][6] || ("CUST-" + i),
+          USER_ID: data[i][0] || data[i][6] || ("CUST-" + i),
+          profile_photo: rPhoto,
+          name: rName,
+          mobile: data[i][3],
+          phone: data[i][3],
+          mail: data[i][4],
+          email: data[i][4],
+          address: rAddr,
+          status: rStatus,
+          success_order: Number(data[i][9] || 0),
+          cancel_order: Number(data[i][10] || 0),
+          total_order: Number(data[i][11] || 0),
+          order_success_rate: String(data[i][12] || "100%").trim(),
+          account_type: "CUSTOMER",
+          role: "Customer"
+        }
       };
     }
   }
