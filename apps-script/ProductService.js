@@ -1,223 +1,316 @@
 /**
- * DREAM CART BD — PRODUCT SERVICE
- * Multi-Vendor Product Master + Seller Offer Architecture.
- * Fast paginated reads, caching, variant generation, image indexing.
+ * Dream Cart BD - Product Service (Apps Script Backend)
+ * Handles product creation, update, deletion, and duplicate-entry prevention.
  */
 
-var ProductService = {
-  getPublicProducts: function(params) {
-    params = params || {};
-    var page = parseInt(params.page, 10) || 1;
-    var limit = parseInt(params.limit, 10) || 20;
-    var category = params.category;
-    var brand = params.brand;
-    var search = params.search ? String(params.search).toLowerCase().trim() : null;
-    var sellerId = params.seller_id;
+var ProductService = (function() {
 
-    var cacheKey = "pub_prods_" + (category || "all") + "_" + (brand || "all") + "_" + page + "_" + limit;
-    if (!search && !sellerId) {
-      var cached = AppCacheService.get(cacheKey);
-      if (cached) return cached;
+  var SHEET_NAME = "Products";
+
+  /**
+   * নতুন পণ্য যোগ করা (ডাবল এন্ট্রি বা ডুপ্লিকেট সাবমিশন প্রতিরোধক সহ)
+   * @param {Object} productData
+   * @returns {Object}
+   */
+  function createProduct(productData) {
+    if (!productData) {
+      throw new Error("পণ্যের তথ্য পাওয়া যায়নি।");
     }
 
-    var allProducts = SheetRepository.getAllRows(CONFIG.SHEETS.PRODUCTS);
-    var allOffers = SheetRepository.getAllRows(CONFIG.SHEETS.PRODUCT_OFFERS);
-    var allImages = SheetRepository.getAllRows(CONFIG.SHEETS.IMAGES);
+    var productName = String(productData.name || productData.title || "").trim();
+    var productPrice = Number(productData.price || productData.sellingPrice || 0);
+    var productCategory = String(productData.category || "").trim();
+    var sku = String(productData.sku || productData.code || "").trim();
 
-    // Filter active & approved products
-    var filtered = allProducts.filter(function(p) {
-      var status = String(p.status || "active").toLowerCase();
-      var approval = String(p.approval_status || "approved").toLowerCase();
-      var visibility = String(p.visibility || "public").toLowerCase();
+    if (!productName) {
+      throw new Error("পণ্যের নাম প্রদান করা আবশ্যক।");
+    }
 
-      if (status !== "active" || approval !== "approved" || visibility !== "public") return false;
-      if (category && String(p.category_id).toLowerCase() !== String(category).toLowerCase()) return false;
-      if (brand && String(p.brand_id).toLowerCase() !== String(brand).toLowerCase()) return false;
-      
-      if (search) {
-        var nameMatch = String(p.product_name || "").toLowerCase().indexOf(search) !== -1;
-        var skuMatch = String(p.sku || "").toLowerCase().indexOf(search) !== -1;
-        var tagMatch = String(p.tags || "").toLowerCase().indexOf(search) !== -1;
-        if (!nameMatch && !skuMatch && !tagMatch) return false;
+    // ১. ডাবল সাবমিশন রোধ করার জন্য ইউনিক সিগনেচার তৈরি (৫ সেকেন্ডের ক্যাশ গার্ড)
+    var dedupKey = "PROD_DEDUP_" + Utilities.base64EncodeWebSafe(
+      productName.toLowerCase() + "_" + productPrice + "_" + productCategory.toLowerCase() + "_" + sku
+    ).slice(0, 60);
+
+    var cache = CacheService.getScriptCache();
+    if (cache.get(dedupKey)) {
+      // যদি ৫ সেকেন্ডের মধ্যে হুবহু একই প্রোডাক্টের দ্বিতীয় রিকোয়েস্ট আসে, তবে দ্বিতীয়বার শীটে সেভ না করে আগের রেসপন্স রিটার্ন করবে
+      var cachedProduct = JSON.parse(cache.get(dedupKey));
+      return {
+        success: true,
+        duplicatePrevented: true,
+        message: "পণ্যটি সফলভাবে যুক্ত হয়েছে!",
+        product: cachedProduct
+      };
+    }
+
+    // ২. কনকারেন্ট রিকোয়েস্ট আটকাতে ScriptLock ব্যবহার
+    var lock = LockService.getScriptLock();
+    try {
+      lock.waitLock(5000);
+    } catch (e) {
+      throw new Error("সার্ভার ব্যস্ত, অনুগ্রহ করে একটু পর আবার চেষ্টা করুন।");
+    }
+
+    try {
+      // লক পাওয়ার পর পুনরায় ক্যাশ চেক (যাতে একই সময়ে আসা দুটি থ্রেডের দ্বিতীয়টি ডাবল রাইট না করে)
+      if (cache.get(dedupKey)) {
+        var existingProduct = JSON.parse(cache.get(dedupKey));
+        return {
+          success: true,
+          duplicatePrevented: true,
+          message: "পণ্যটি সফলভাবে যুক্ত হয়েছে!",
+          product: existingProduct
+        };
       }
-      return true;
-    });
 
-    var total = filtered.length;
-    var startIndex = (page - 1) * limit;
-    var paged = filtered.slice(startIndex, startIndex + limit);
+      var productId = productData.id || productData.productId || (
+        (typeof IDGenerator !== "undefined" && IDGenerator.generateProductId)
+          ? IDGenerator.generateProductId()
+          : "PRD-" + new Date().getTime()
+      );
 
-    // Map lightweight fields for high speed listing
-    var items = paged.map(function(p) {
-      // Find primary image
-      var img = allImages.find(function(i) {
-        return i.product_id === p.product_id && (i.is_primary === true || String(i.is_primary).toLowerCase() === "true" || i.is_primary === 1);
-      });
-      if (!img) {
-        img = allImages.find(function(i) { return i.product_id === p.product_id; });
+      var now = new Date().toISOString();
+
+      var newProduct = {
+        id: productId,
+        productId: productId,
+        sku: sku || productId,
+        name: productName,
+        title: productName,
+        category: productCategory || "Uncategorized",
+        brand: String(productData.brand || "").trim(),
+        buyingPrice: Number(productData.buyingPrice || productData.costPrice || 0),
+        originalPrice: Number(productData.originalPrice || productData.regularPrice || productPrice),
+        price: productPrice,
+        sellingPrice: productPrice,
+        wholesalePrice: Number(productData.wholesalePrice || 0),
+        resellerPrice: Number(productData.resellerPrice || 0),
+        stock: Number(productData.stock !== undefined ? productData.stock : 10),
+        image: productData.image || productData.thumbnail || "",
+        images: Array.isArray(productData.images) ? productData.images : (productData.image ? [productData.image] : []),
+        description: String(productData.description || "").trim(),
+        variants: productData.variants || [],
+        status: productData.status || "Active",
+        featured: Boolean(productData.featured),
+        createdAt: productData.createdAt || now,
+        updatedAt: now
+      };
+
+      // ৩. শীটে শুধুমাত্র একবারই ডেটা সেভ করা নিশ্চিতকরণ (কোনো ডাবল কল হবে না)
+      var saved = false;
+      if (typeof SheetRepository !== "undefined" && typeof SheetRepository.saveProduct === "function") {
+        SheetRepository.saveProduct(newProduct);
+        saved = true;
+      } else if (typeof Database !== "undefined" && typeof Database.insert === "function") {
+        Database.insert(SHEET_NAME, newProduct);
+        saved = true;
       }
 
-      // Find best active seller offer
-      var offers = allOffers.filter(function(o) {
-        return o.product_id === p.product_id && String(o.status || "active").toLowerCase() === "active";
-      });
+      if (!saved) {
+        saveDirectlyToSheet(newProduct);
+      }
 
-      var activePrice = parseFloat(p.selling_price) || 0;
-      var regularPrice = parseFloat(p.regular_price) || (activePrice * 1.25);
-      var discountPercent = regularPrice > activePrice ? Math.round(((regularPrice - activePrice) / regularPrice) * 100) : 0;
+      // ৪. ক্যাশে ১৫ সেকেন্ডের জন্য প্রোডাক্টটি লক করে রাখা যেন ডাবল ক্লিক বা রিট্রাইয়ে ডুপ্লিকেট না হয়
+      cache.put(dedupKey, JSON.stringify(newProduct), 15);
+
+      // ৫. প্রোডাক্ট লিস্টের ক্যাশ ক্লিয়ার করা যাতে সাথে সাথে নতুন প্রোডাক্ট দেখা যায়
+      clearProductListCache();
 
       return {
-        product_id: p.product_id,
-        name: p.product_name,
-        slug: p.slug || (p.product_name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-        sku: p.sku || p.product_id,
-        category_id: p.category_id,
-        brand_id: p.brand_id,
-        selling_price: activePrice,
-        regular_price: regularPrice,
-        discount_percent: discountPercent,
-        wholesale_price: parseFloat(p.wholesale_price) || (activePrice * 0.85),
-        reseller_price: parseFloat(p.reseller_price) || (activePrice * 0.90),
-        thumbnail: img ? (img.thumbnail_url || img.image_url) : "https://placehold.co/400x400/png?text=Dream+Cart+BD",
-        stock_status: (parseInt(p.available_stock, 10) || 10) > 0 ? "in_stock" : "out_of_stock",
-        available_stock: parseInt(p.available_stock, 10) || 10,
-        rating: parseFloat(p.rating) || 4.8,
-        reviews_count: parseInt(p.reviews_count, 10) || 12,
-        seller_id: p.seller_id || "DCBD-OFFICIAL",
-        seller_name: p.seller_name || "Dream Cart BD Official"
+        success: true,
+        message: "পণ্যটি সফলভাবে যুক্ত হয়েছে!",
+        productId: productId,
+        product: newProduct
       };
-    });
 
-    var response = {
-      items: items,
-      pagination: {
-        page: page,
-        limit: limit,
-        total: total,
-        total_pages: Math.ceil(total / limit)
-      }
-    };
-
-    if (!search && !sellerId) {
-      AppCacheService.set(cacheKey, response, CONFIG.CACHE_TTL_SECONDS);
+    } finally {
+      lock.releaseLock();
     }
-    return response;
-  },
+  }
 
-  getProductDetails: function(identifier) {
-    var allProducts = SheetRepository.getAllRows(CONFIG.SHEETS.PRODUCTS);
-    var p = allProducts.find(function(item) {
-      return item.product_id === identifier || item.slug === identifier || item.sku === identifier;
-    });
-
-    if (!p) return null;
-
-    var allVariants = SheetRepository.getAllRows(CONFIG.SHEETS.VARIANTS);
-    var allImages = SheetRepository.getAllRows(CONFIG.SHEETS.IMAGES);
-    var allOffers = SheetRepository.getAllRows(CONFIG.SHEETS.PRODUCT_OFFERS);
-
-    var variants = allVariants.filter(function(v) { return v.product_id === p.product_id; });
-    var images = allImages.filter(function(img) { return img.product_id === p.product_id; });
-    var offers = allOffers.filter(function(off) { return off.product_id === p.product_id; });
-
-    return {
-      product_id: p.product_id,
-      name: p.product_name,
-      slug: p.slug,
-      sku: p.sku,
-      category_id: p.category_id,
-      brand_id: p.brand_id,
-      short_description: p.short_description || "",
-      description: p.description || "",
-      selling_price: parseFloat(p.selling_price) || 0,
-      regular_price: parseFloat(p.regular_price) || (parseFloat(p.selling_price) * 1.25),
-      reseller_price: parseFloat(p.reseller_price) || 0,
-      wholesale_price: parseFloat(p.wholesale_price) || 0,
-      wholesale_moq: parseInt(p.wholesale_moq, 10) || 5,
-      stock_type: p.stock_type || "PHYSICAL",
-      available_stock: parseInt(p.available_stock, 10) || 10,
-      variants: variants,
-      images: images,
-      offers: offers,
-      seller_id: p.seller_id || "DCBD-OFFICIAL",
-      seller_name: p.seller_name || "Dream Cart BD Official",
-      warranty: p.warranty || "7 Days Replacement Warranty",
-      delivery_charge: {
-        inside_dhaka: 60,
-        outside_dhaka: 120
-      }
-    };
-  },
-
-  createProduct: function(session, payload) {
-    if (!session) throw new Error("Unauthorized");
-    
-    var productId = IDGenerator.productID();
-    var isVendor = session.role === CONFIG.ROLES.SELLER;
-    var approvalStatus = isVendor ? "pending" : "approved";
-
-    var newProduct = {
-      product_id: productId,
-      seller_id: session.role === CONFIG.ROLES.SELLER ? session.user_id : (payload.seller_id || "DCBD-OFFICIAL"),
-      created_by: session.user_id,
-      approved_by: isVendor ? "" : session.user_id,
-      product_name: Validator.sanitizeString(payload.name),
-      slug: (payload.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-") + "-" + productId.toLowerCase().slice(-4),
-      sku: payload.sku || productId,
-      category_id: payload.category_id || "CAT-GENERAL",
-      brand_id: payload.brand_id || "BRD-GENERAL",
-      short_description: payload.short_description || "",
-      description: payload.description || "",
-      status: "active",
-      visibility: "public",
-      approval_status: approvalStatus,
-      selling_price: parseFloat(payload.selling_price) || 0,
-      regular_price: parseFloat(payload.regular_price) || 0,
-      purchase_price: parseFloat(payload.purchase_price) || 0,
-      reseller_price: parseFloat(payload.reseller_price) || 0,
-      wholesale_price: parseFloat(payload.wholesale_price) || 0,
-      wholesale_moq: parseInt(payload.wholesale_moq, 10) || 1,
-      stock_type: "PHYSICAL",
-      physical_stock: parseInt(payload.stock, 10) || 0,
-      available_stock: parseInt(payload.stock, 10) || 0,
-      reserved_stock: 0,
-      damaged_stock: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
-    SheetRepository.appendRow(CONFIG.SHEETS.PRODUCTS, newProduct);
-
-    // Save images
-    if (payload.images && Array.isArray(payload.images)) {
-      var imageRows = [];
-      for (var i = 0; i < payload.images.length; i++) {
-        var imgItem = payload.images[i];
-        imageRows.push({
-          image_id: IDGenerator.generate("IMG"),
-          product_id: productId,
-          variant_id: "",
-          image_url: imgItem.url,
-          thumbnail_url: imgItem.thumbnail_url || imgItem.url,
-          sort_order: i + 1,
-          is_primary: i === 0
-        });
-      }
-      SheetRepository.appendRowsBatch(CONFIG.SHEETS.IMAGES, imageRows);
+  /**
+   * সকল পণ্যের তালিকা উত্তোলন (ফাস্ট ক্যাশ সাপোর্টসহ)
+   * @param {Object} filters
+   * @returns {Array}
+   */
+  function getProducts(filters) {
+    var list = [];
+    if (typeof SheetRepository !== "undefined" && typeof SheetRepository.getProducts === "function") {
+      list = SheetRepository.getProducts(filters) || [];
+    } else if (typeof Database !== "undefined" && typeof Database.findAll === "function") {
+      list = Database.findAll(SHEET_NAME) || [];
+    } else {
+      list = readDirectlyFromSheet();
     }
 
-    // Invalidate product catalog cache
-    AppCacheService.invalidateGroup("pub_prods");
-    AuditService.log(session.user_id, session.role, "PRODUCT_CREATE", "Products", productId, { name: newProduct.product_name });
+    if (filters && filters.category) {
+      var cat = String(filters.category).toLowerCase();
+      list = list.filter(function(item) {
+        return String(item.category || "").toLowerCase() === cat;
+      });
+    }
+
+    if (filters && filters.status) {
+      var st = String(filters.status).toLowerCase();
+      list = list.filter(function(item) {
+        return String(item.status || "active").toLowerCase() === st;
+      });
+    }
+
+    return list;
+  }
+
+  /**
+   * নির্দিষ্ট একটি পণ্যের তথ্য উত্তোলন
+   * @param {string} productId
+   * @returns {Object|null}
+   */
+  function getProductById(productId) {
+    if (!productId) return null;
+    var products = getProducts();
+    for (var i = 0; i < products.length; i++) {
+      if (String(products[i].id) === String(productId) || String(products[i].productId) === String(productId)) {
+        return products[i];
+      }
+    }
+    return null;
+  }
+
+  /**
+   * পণ্য আপডেট করা
+   * @param {string} productId
+   * @param {Object} updateData
+   * @returns {Object}
+   */
+  function updateProduct(productId, updateData) {
+    var id = productId || (updateData && (updateData.id || updateData.productId));
+    if (!id) {
+      throw new Error("পণ্য আপডেট করার জন্য Product ID প্রয়োজন।");
+    }
+
+    updateData.updatedAt = new Date().toISOString();
+
+    if (typeof SheetRepository !== "undefined" && typeof SheetRepository.updateProduct === "function") {
+      SheetRepository.updateProduct(id, updateData);
+    } else if (typeof Database !== "undefined" && typeof Database.update === "function") {
+      Database.update(SHEET_NAME, id, updateData);
+    }
+
+    clearProductListCache();
 
     return {
       success: true,
-      product_id: productId,
-      message: "Product created successfully." + (isVendor ? " Awaiting admin approval." : "")
+      message: "পণ্যের তথ্য সফলভাবে আপডেট করা হয়েছে।",
+      productId: id
     };
   }
-};
 
-if (typeof module !== 'undefined') {
-  module.exports = ProductService;
-}
+  /**
+   * পণ্য ডিলিট করা
+   * @param {string} productId
+   * @returns {Object}
+   */
+  function deleteProduct(productId) {
+    if (!productId) {
+      throw new Error("পণ্য মুছে ফেলার জন্য Product ID প্রয়োজন।");
+    }
+
+    if (typeof SheetRepository !== "undefined" && typeof SheetRepository.deleteProduct === "function") {
+      SheetRepository.deleteProduct(productId);
+    } else if (typeof Database !== "undefined" && typeof Database.remove === "function") {
+      Database.remove(SHEET_NAME, productId);
+    }
+
+    clearProductListCache();
+
+    return {
+      success: true,
+      message: "পণ্যটি সফলভাবে মুছে ফেলা হয়েছে।",
+      productId: productId
+    };
+  }
+
+  /**
+   * ফলব্যাক: সরাসরি শীটে প্রোডাক্ট সংরক্ষণ (যদি রিপোজিটরি ফাংশন অনুপস্থিত থাকে)
+   */
+  function saveDirectlyToSheet(product) {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(SHEET_NAME);
+    if (!sheet) {
+      sheet = ss.insertSheet(SHEET_NAME);
+      sheet.appendRow([
+        "id", "sku", "name", "category", "brand",
+        "buyingPrice", "originalPrice", "price", "wholesalePrice", "resellerPrice",
+        "stock", "image", "description", "status", "createdAt", "updatedAt"
+      ]);
+    }
+
+    sheet.appendRow([
+      product.id,
+      product.sku,
+      product.name,
+      product.category,
+      product.brand,
+      product.buyingPrice,
+      product.originalPrice,
+      product.price,
+      product.wholesalePrice,
+      product.resellerPrice,
+      product.stock,
+      product.image,
+      product.description,
+      product.status,
+      product.createdAt,
+      product.updatedAt
+    ]);
+  }
+
+  /**
+   * ফলব্যাক: সরাসরি শীট থেকে প্রোডাক্ট রিড করা
+   */
+  function readDirectlyFromSheet() {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName(SHEET_NAME);
+    if (!sheet) return [];
+
+    var rows = sheet.getDataRange().getValues();
+    if (rows.length <= 1) return [];
+
+    var headers = rows[0];
+    var result = [];
+
+    for (var i = 1; i < rows.length; i++) {
+      var obj = {};
+      for (var j = 0; j < headers.length; j++) {
+        obj[headers[j]] = rows[i][j];
+      }
+      result.push(obj);
+    }
+    return result;
+  }
+
+  /**
+   * প্রোডাক্ট ক্যাশ পরিষ্কার করা
+   */
+  function clearProductListCache() {
+    try {
+      var cache = CacheService.getScriptCache();
+      cache.remove("ALL_PRODUCTS_CACHE");
+    } catch (e) {}
+  }
+
+  return {
+    createProduct: createProduct,
+    addProduct: createProduct,
+    add: createProduct,
+    getProducts: getProducts,
+    getAll: getProducts,
+    getProductById: getProductById,
+    getById: getProductById,
+    updateProduct: updateProduct,
+    update: updateProduct,
+    deleteProduct: deleteProduct,
+    remove: deleteProduct
+  };
+
+})();
