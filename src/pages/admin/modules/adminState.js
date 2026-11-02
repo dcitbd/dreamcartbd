@@ -39,7 +39,7 @@ import { renderCouriersSettingsModule } from './modules/adminCouriersSettings.js
 
 initAdminGlobalState();
 
-async function safeFetchWithTimeout(fetchPromise, timeoutMs = 1200, fallbackVal = null) {
+async function safeFetchWithTimeout(fetchPromise, timeoutMs = 15000, fallbackVal = null) {
   try {
     const timeout = new Promise(resolve => setTimeout(() => resolve(fallbackVal), timeoutMs));
     const result = await Promise.race([fetchPromise, timeout]);
@@ -51,7 +51,7 @@ async function safeFetchWithTimeout(fetchPromise, timeoutMs = 1200, fallbackVal 
 
 async function hydrateAdminDataIfNeeded() {
   const st = window.__adminState || {};
-  if (window.__adminHydratedOnce && Array.isArray(st.products) && st.products.length > 0) {
+  if (window.__adminHydratedOnce && Array.isArray(st.products) && st.products.length > 6) {
     return st;
   }
 
@@ -63,12 +63,12 @@ async function hydrateAdminDataIfNeeded() {
   const cachedIncomplete = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_incomplete_orders', []) : [];
 
   const [prodRes, orderRes, catRes, brandRes, bannerRes, incRes] = await Promise.all([
-    safeFetchWithTimeout(apiClient.request('products/list'), 1200, { data: { items: cachedProducts } }),
-    safeFetchWithTimeout(apiClient.request('orders/list'), 1200, { data: { items: cachedOrders } }),
-    safeFetchWithTimeout(apiClient.request('categories/list'), 1200, { data: { items: cachedCategories } }),
-    safeFetchWithTimeout(apiClient.request('brands/list'), 1200, { data: { items: cachedBrands } }),
-    safeFetchWithTimeout(apiClient.request('banners/list'), 1200, { data: { items: cachedBanners } }),
-    safeFetchWithTimeout(apiClient.request('incomplete_orders/list'), 1200, { data: { items: cachedIncomplete } })
+    safeFetchWithTimeout(apiClient.request('products/list'), 15000, { data: { items: cachedProducts } }),
+    safeFetchWithTimeout(apiClient.request('orders/list'), 15000, { data: { items: cachedOrders } }),
+    safeFetchWithTimeout(apiClient.request('categories/list'), 15000, { data: { items: cachedCategories } }),
+    safeFetchWithTimeout(apiClient.request('brands/list'), 15000, { data: { items: cachedBrands } }),
+    safeFetchWithTimeout(apiClient.request('banners/list'), 15000, { data: { items: cachedBanners } }),
+    safeFetchWithTimeout(apiClient.request('incomplete_orders/list'), 15000, { data: { items: cachedIncomplete } })
   ]);
 
   const rawProducts = (prodRes?.data?.items?.length ? prodRes.data.items : cachedProducts) || [];

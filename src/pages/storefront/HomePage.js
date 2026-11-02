@@ -195,7 +195,12 @@ export async function renderHomePage() {
   ];
 
   // If custom banners uploaded in admin/sheet, prioritize them; otherwise ensure all 5 core categories are displayed
-  const banners = activeBanners.length >= 4 ? activeBanners : defaultBanners;
+  const banners = activeBanners.length > 0
+    ? [
+        ...activeBanners,
+        ...defaultBanners.filter(db => !activeBanners.some(ab => String(ab.banner_id || ab.id).toLowerCase() === String(db.banner_id).toLowerCase()))
+      ].slice(0, Math.max(5, activeBanners.length))
+    : defaultBanners;
 
   // Group and deduplicate by Main Category name
   // Each unique category name appears EXACTLY ONCE on the homepage!

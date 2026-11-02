@@ -85,7 +85,8 @@ function triggerBackgroundSync() {
   setTimeout(() => {
     Promise.allSettled([
       apiClient.request("products/list"),
-      apiClient.request("orders/list")
+      apiClient.request("orders/list"),
+      apiClient.request("resellers/list")
     ]).then(([prodRes, orderRes]) => {
       let updated = false;
       if (prodRes.status === 'fulfilled' && prodRes.value?.data?.items?.length) {

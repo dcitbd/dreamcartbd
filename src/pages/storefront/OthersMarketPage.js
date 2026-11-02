@@ -45,28 +45,34 @@ export async function renderOthersMarketPage() {
     }
   ];
 
-  let savedMarkets = apiClient.loadLocal('dcbd_markets', null);
+  let savedMarkets = null;
+  try {
+    const res = await apiClient.request('others_market/list');
+    if (res?.data?.items?.length) {
+      savedMarkets = res.data.items;
+    }
+  } catch (e) {}
+
   if (!Array.isArray(savedMarkets) || savedMarkets.length === 0) {
-    try {
-      const res = await apiClient.request('others_market/list');
-      if (res?.data?.items?.length) {
-        savedMarkets = res.data.items;
-      }
-    } catch (e) {}
+    savedMarkets = apiClient.loadLocal('dcbd_markets', null);
   }
 
   const rawList = Array.isArray(savedMarkets) && savedMarkets.length > 0 ? savedMarkets : defaultMarketplaces;
   const marketplaces = rawList
-    .map(m => ({
-      shop_id: m.shop_id || m.Shop_ID || 'MKT-01',
-      market_name: m.market_name || m.Market_Name || 'Marketplace',
-      market_logo: m.market_logo || m.Market_Logo || 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png',
-      shop_name: m.shop_name || m.Shop_Name || 'Dream Cart BD',
-      shop_link: m.shop_link || m.Shop_Link || '#',
-      status: m.status || m.Status || 'Active',
-      badge: m.badge || 'Official Verified Store'
-    }))
-    .filter(m => String(m.status).toLowerCase() !== 'inactive');
+    .map(m => {
+      const rawSt = m.status !== undefined ? m.status : m.Status;
+      const stStr = (rawSt === false || rawSt === 'false' || rawSt === 'FALSE' || !rawSt) ? 'Active' : String(rawSt).trim();
+      return {
+        shop_id: m.shop_id || m.Shop_ID || 'MKT-01',
+        market_name: m.market_name || m.Market_Name || m.name || 'Marketplace',
+        market_logo: m.market_logo || m.Market_Logo || 'https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png',
+        shop_name: m.shop_name || m.Shop_Name || 'Dream Cart BD',
+        shop_link: m.shop_link || m.Shop_Link || '#',
+        status: stStr,
+        badge: m.badge || 'Official Verified Store'
+      };
+    })
+    .filter(m => m.market_name && String(m.status).toLowerCase() !== 'inactive');
 
   return `
     <div class="space-y-8 pb-20">
@@ -74,20 +80,20 @@ export async function renderOthersMarketPage() {
         <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-2">
           <span>🌐</span> অন্যান্য অনলাইন মার্কেটপ্লেসে ড্রিম কার্ট বিডি
         </h1>
-        <p class="text-xs text-slate-500 mt-1">দারাজ, বিক্রয় এবং ফেসবুক শপে আমাদের অফিসিয়াল আউটলেটসমূহ</p>
+        <p class="text-xs text-slate-500 mt-1">দারাজ, বিক্রয় এবং ফেসবুক শপে আমাদের অফিসিয়াল আউটলেটসমূহ (${marketplaces.length} টি আউটলেট)</p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         ${marketplaces.map(m => `
-          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-xs flex flex-col justify-between space-y-4">
+          <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/90 dark:border-slate-800 p-6 shadow-xs hover:shadow-md transition flex flex-col justify-between space-y-4">
             <div class="flex items-center gap-4">
               <div class="w-16 h-16 rounded-2xl bg-white p-2 border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
                 <img src="${m.market_logo}" alt="${m.market_name}" class="max-w-full max-h-full object-contain" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png';" />
               </div>
-              <div>
+              <div class="min-w-0">
                 <span class="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 px-2 py-0.5 rounded">${m.shop_id}</span>
-                <h3 class="text-lg font-black text-slate-900 dark:text-white mt-1">${m.market_name}</h3>
-                <div class="text-xs font-bold text-slate-600 dark:text-slate-300">দোকান: ${m.shop_name}</div>
+                <h3 class="text-base sm:text-lg font-black text-slate-900 dark:text-white mt-1 truncate">${m.market_name}</h3>
+                <div class="text-xs font-bold text-slate-600 dark:text-slate-300 truncate">দোকান: ${m.shop_name}</div>
               </div>
             </div>
             <div class="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
