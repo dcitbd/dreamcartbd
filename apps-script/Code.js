@@ -409,11 +409,11 @@ function dispatchAction(action, payload) {
     case "others_market/delete":
       return handleGenericDelete(ss, "Others_Market", [0, 2, 3], payload.shop_id || payload.id || payload.market_name);
 
-    // --- TEAM & ADMIN: ADMINWORKER ---
+    // --- TEAM & ADMIN: Admin/Worker ---
     case "admin_worker/list":
     case "admins/list":
     case "workers/list":
-      return getSheetDataAsJson(ss, "AdminWorker");
+      return getSheetDataAsJson(ss, "Admin/Worker");
     case "admin_worker/add":
     case "admin_worker/create":
     case "admin_worker/update":
@@ -423,7 +423,35 @@ function dispatchAction(action, payload) {
     case "admin_worker/delete":
     case "admins/delete":
     case "workers/delete":
-      return handleGenericDelete(ss, "AdminWorker", [0, 3, 8], payload.user_id || payload.USER_ID || payload.id || payload.user_name);
+      return handleGenericDelete(ss, "Admin/Worker", [0, 3, 8], payload.user_id || payload.USER_ID || payload.id || payload.user_name);
+
+    // --- SYSTEM SETTINGS: Payment_Method, Delivery_Area, Offer_or_Coupon ---
+    case "payment_method/list":
+      return getSheetDataAsJson(ss, "Payment_Method");
+    case "payment_method/add":
+    case "payment_method/create":
+    case "payment_method/update":
+      return handlePaymentMethodSheetUpsert(ss, payload);
+    case "payment_method/delete":
+      return handleGenericDelete(ss, "Payment_Method", [0, 1, 2], payload.payment_id || payload.id || payload.code || payload.name);
+
+    case "delivery_area/list":
+      return getSheetDataAsJson(ss, "Delivery_Area");
+    case "delivery_area/add":
+    case "delivery_area/create":
+    case "delivery_area/update":
+      return handleDeliveryAreaSheetUpsert(ss, payload);
+    case "delivery_area/delete":
+      return handleGenericDelete(ss, "Delivery_Area", [0, 1, 2], payload.delivery_id || payload.id || payload.code || payload.name);
+
+    case "offer_or_coupon/list":
+      return getSheetDataAsJson(ss, "Offer_or_Coupon");
+    case "offer_or_coupon/add":
+    case "offer_or_coupon/create":
+    case "offer_or_coupon/update":
+      return handleOfferOrCouponSheetUpsert(ss, payload);
+    case "offer_or_coupon/delete":
+      return handleGenericDelete(ss, "Offer_or_Coupon", [0, 1, 2], payload.offer_id || payload.id || payload.code || payload.coupon_code);
 
     // --- FINANCE & INVENTORY: BUYING, COSTS, INVEST, PAYMENTS ---
     case "buying/list":
@@ -1108,7 +1136,7 @@ function handleOthersMarketUpsert(ss, payload) {
 }
 
 function handleAdminWorkerUpsert(ss, payload) {
-  var sheet = ensureSheetWithHeaders(ss, "AdminWorker", [
+  var sheet = ensureSheetWithHeaders(ss, "Admin/Worker", [
     "USER_ID", "Profile_Photo", "Name", "Mobile", "Mail", "Address", "Worker_Type", "Role", "User_Name", "Password"
   ]);
 
@@ -1131,6 +1159,72 @@ function handleAdminWorkerUpsert(ss, payload) {
   }, 4);
 
   return { status: "success", success: true, data: { user_id: userId, updated: res.updated } };
+}
+
+function handlePaymentMethodSheetUpsert(ss, payload) {
+  var sheet = ensureSheetWithHeaders(ss, "Payment_Method", [
+    "Payment_ID", "Code", "Method_Name", "Account_Type", "Account_Number", "Payment_Link", "Discount_Pct", "Instructions", "Status", "Updated_At"
+  ]);
+  var pId = String(payload.Payment_ID || payload.payment_id || payload.id || ("PM-" + Math.floor(100 + Math.random() * 900))).trim();
+  var code = String(payload.Code || payload.code || "CUSTOM_PAY").trim().toUpperCase();
+  var name = String(payload.Method_Name || payload.method_name || payload.name || "").trim();
+  var type = String(payload.Account_Type || payload.account_type || payload.type || "Mobile Banking").trim();
+  var num = String(payload.Account_Number || payload.account_number || payload.number || "").trim();
+  var link = String(payload.Payment_Link || payload.payment_link || payload.link || "").trim();
+  var disc = Number(payload.Discount_Pct !== undefined ? payload.Discount_Pct : (payload.discount_pct || 0));
+  var inst = String(payload.Instructions || payload.instructions || payload.details || "").trim();
+  var status = String(payload.Status || payload.status || "Active").trim();
+
+  var row = [pId, code, name, type, num, link, disc, inst, status, nowDhaka()];
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    return String(r[0] || "").trim().toLowerCase() === pId.toLowerCase();
+  }, 3);
+  return { status: "success", success: true, data: { payment_id: pId, updated: res.updated } };
+}
+
+function handleDeliveryAreaSheetUpsert(ss, payload) {
+  var sheet = ensureSheetWithHeaders(ss, "Delivery_Area", [
+    "Delivery_ID", "Zone_Code", "Area_Name", "Delivery_Charge", "Delivery_Time", "Free_Threshold", "Coverage_Details", "Courier_Partner", "Status", "Updated_At"
+  ]);
+  var dId = String(payload.Delivery_ID || payload.delivery_id || payload.id || ("DLV-" + Math.floor(100 + Math.random() * 900))).trim();
+  var code = String(payload.Zone_Code || payload.zone_code || payload.code || "dhaka").trim().toLowerCase();
+  var name = String(payload.Area_Name || payload.area_name || payload.zone || payload.name || "").trim();
+  var charge = Number(payload.Delivery_Charge !== undefined ? payload.Delivery_Charge : (payload.charge || 0));
+  var eta = String(payload.Delivery_Time || payload.delivery_time || payload.eta || payload.time || "২৪-৪৮ ঘন্টা").trim();
+  var freeMin = Number(payload.Free_Threshold !== undefined ? payload.Free_Threshold : (payload.free_threshold || 2000));
+  var cov = String(payload.Coverage_Details || payload.coverage_details || payload.coverage || name).trim();
+  var courier = String(payload.Courier_Partner || payload.courier_partner || payload.courier || "Steadfast / Pathao / RedX").trim();
+  var status = String(payload.Status || payload.status || "Active").trim();
+
+  var row = [dId, code, name, charge, eta, freeMin, cov, courier, status, nowDhaka()];
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    return String(r[0] || "").trim().toLowerCase() === dId.toLowerCase();
+  }, 3);
+  return { status: "success", success: true, data: { delivery_id: dId, updated: res.updated } };
+}
+
+function handleOfferOrCouponSheetUpsert(ss, payload) {
+  var sheet = ensureSheetWithHeaders(ss, "Offer_or_Coupon", [
+    "Offer_ID", "Coupon_Code", "Title", "Discount_Text", "Discount_Type", "Discount_Value", "Min_Spend", "Expiry_Date", "Usage_Limit", "Status", "Updated_At"
+  ]);
+  var oId = String(payload.Offer_ID || payload.offer_id || payload.id || ("OFF-" + Math.floor(100 + Math.random() * 900))).trim();
+  var code = String(payload.Coupon_Code || payload.coupon_code || payload.code || "").trim().toUpperCase();
+  var title = String(payload.Title || payload.title || code).trim();
+  var discTxt = String(payload.Discount_Text || payload.discount_text || payload.discount || "").trim();
+  var discType = String(payload.Discount_Type || payload.discount_type || payload.type || "percent").trim();
+  var discVal = Number(payload.Discount_Value !== undefined ? payload.Discount_Value : (payload.discount_value || payload.value || 0));
+  var minSpend = Number(payload.Min_Spend !== undefined ? payload.Min_Spend : (payload.min_spend || 0));
+  var expiry = String(payload.Expiry_Date || payload.expiry_date || "2026-12-31").trim();
+  var limit = String(payload.Usage_Limit || payload.usage_limit || "Unlimited").trim();
+  var status = String(payload.Status || payload.status || "Active").trim();
+
+  var row = [oId, code, title, discTxt, discType, discVal, minSpend, expiry, limit, status, nowDhaka()];
+  var res = writeOrUpsertRow(sheet, row, function(r) {
+    var rId = String(r[0] || "").trim().toLowerCase();
+    var rCode = String(r[1] || "").trim().toLowerCase();
+    return rId === oId.toLowerCase() || (code && rCode === code.toLowerCase());
+  }, 3);
+  return { status: "success", success: true, data: { offer_id: oId, code: code, updated: res.updated } };
 }
 
 function handleBuyingAdd(ss, payload) {
