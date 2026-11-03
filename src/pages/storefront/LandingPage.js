@@ -3,11 +3,12 @@
  * Implements all user requirements:
  * - Exports `renderLandingPage(params = {})` returning an HTML string (100% compatible with `src/router.js`).
  * - Instant 0ms Page Open & 0ms Order Submit (even on weak 2G/3G internet): synchronous local cache read + non-blocking background sync.
- * - Free Delivery (`৳০`) automatically unlocked when Order Subtotal >= ৳2,000 (with live animated progress bar) or when campaign free_shipping is enabled.
- * - 5% Instant Discount (`৫% ছাড়`) when any Online Payment method (`BKASH`, `NAGAD`, `ROCKET`, `BANK`) is selected, with 1-click Copy Number & TrxID input.
+ * - Multi-Product Campaign Architecture: Removes standalone product-less prices from Section 1 of both the Admin Create Landing Page Form and the Public Hero Section.
+ * - Dynamic Delivery Areas & Payment Methods: Admin can select which Admin Panel Delivery Areas (`getGlobalDeliveryMethods`) and Payment Methods (`getGlobalPaymentMethods`) apply to each Landing Page inside the Create Landing Page Form; only those selected options appear on the Public Landing Page and drive live calculations.
+ * - Free Delivery (`৳০`) automatically unlocked when Order Subtotal >= ৳2,000 (with live animated progress bar) or when campaign `free_shipping` is enabled.
+ * - 5% Instant Discount (`৫% ছাড়`) automatically calculated when any Online Payment method (`BKASH`, `NAGAD`, `ROCKET`, `BANK`, or custom online method) is selected, with 1-click Copy Number, Gateway Link, Bank info & TrxID input.
  * - 3D Style Product Cards, Floating Image Pedestals, Glass Shimmer Sweep, and Tactile 3D Buttons.
  * - Shop Logo (`shopLogo`) displayed in Sticky Navbar, Hero Badge, Checkout Header, and Support Footer.
- * - Interactive Delivery Area Selection & Payment Option Selection.
  * - Automatic deduplication of Admin Landing Pages (`dcbd_landing_pages` & `landing_pages/list`).
  * - Clicking "🛒 অর্ডার করুন" / "🛒 অর্ডার কনফার্ম করুন" smoothly scrolls to "🛍️ ক্যাম্পেইনের পণ্যসমূহ" (`#lp-products-section`) on the SAME landing page.
  * - ONLY clicking "🛍️ মূল ওয়েবসাইটে যান" navigates to the main website's `/products` page.
@@ -181,8 +182,277 @@ LP_AUTHENTIC_THEMES.espresso_bronze = LP_AUTHENTIC_THEMES.chocolate;
 LP_AUTHENTIC_THEMES.obsidian_black = LP_AUTHENTIC_THEMES.obsidian;
 
 /**
+ * Helper: Detect if a Payment Method object represents Cash on Delivery (COD)
+ */
+export function isCodPaymentMethod(raw) {
+  if (!raw || typeof raw !== 'object') return false;
+  const codeStr = String(raw.code || '').toUpperCase().trim();
+  const idStr = String(raw.id || '').toUpperCase().trim();
+  const typeStr = String(raw.type || raw.accountType || '').toUpperCase().trim();
+  const nameStr = String(raw.name || raw.title || raw.method_name || '').toLowerCase().trim();
+  const numStr = String(raw.number || raw.account_number || '').toUpperCase().trim();
+
+  return (
+    codeStr === 'COD' ||
+    idStr === 'COD' ||
+    typeStr === 'COD' ||
+    numStr === 'COD' ||
+    nameStr.includes('ক্যাশ অন ডেলিভারি') ||
+    nameStr.includes('cash on delivery') ||
+    (nameStr.includes('cod') && !nameStr.includes('code'))
+  );
+}
+
+/**
+ * Normalizes any Delivery Method from Admin Panel (`dcbd_delivery_methods` / `getGlobalDeliveryMethods`)
+ */
+export function normalizeLpDeliveryMethod(raw, idx = 0) {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      id: `DLV-${idx + 1}`,
+      code: `zone_${idx + 1}`,
+      name: 'ডেলিভারি এরিয়া',
+      zone: 'ডেলিভারি এরিয়া',
+      charge: 80,
+      eta: '২৪-৭২ ঘণ্টা',
+      free_threshold: 2000,
+      status: 'Active'
+    };
+  }
+  const id = String(raw.id || raw.code || `DLV-${idx + 1}`).trim();
+  const code = String(raw.code || raw.id || `zone_${idx + 1}`).trim();
+  const name = String(raw.name || raw.zone || raw.title || 'ডেলিভারি এরিয়া').trim();
+  const charge = Number(raw.charge ?? raw.cost ?? raw.fee ?? 0);
+  const eta = String(raw.eta || raw.time || '২৪-৭২ ঘণ্টায় ডেলিভারি').trim();
+  const freeThreshold = Number(raw.free_threshold !== undefined ? raw.free_threshold : 2000);
+  const status = String(raw.status || 'Active').trim();
+
+  return {
+    ...raw,
+    id,
+    code,
+    name,
+    zone: name,
+    charge: Number.isFinite(charge) ? charge : 0,
+    eta,
+    free_threshold: Number.isFinite(freeThreshold) && freeThreshold > 0 ? freeThreshold : 2000,
+    status
+  };
+}
+
+/**
+ * Normalizes any Payment Method from Admin Panel (`dcbd_payment_methods` / `getGlobalPaymentMethods`)
+ */
+export function normalizeLpPaymentMethod(raw, idx = 0) {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      id: 'COD',
+      code: 'COD',
+      name: 'ক্যাশ অন ডেলিভারি (Cash on Delivery)',
+      title: 'ক্যাশ অন ডেলিভারি (Cash on Delivery)',
+      type: 'COD',
+      isCod: true,
+      isOnline: false,
+      number: '',
+      link: '',
+      discount_pct: 0,
+      instructions: 'পণ্য হাতে পেয়ে দেখে ডেলিভারি ম্যানের কাছে মূল্য পরিশোধ করুন।',
+      icon: '🚚',
+      status: 'Active'
+    };
+  }
+
+  const isCod = isCodPaymentMethod(raw);
+  const id = String(raw.id || raw.code || (isCod ? 'COD' : `PM-${idx + 1}`)).trim();
+  const code = String(raw.code || raw.id || (isCod ? 'COD' : `PM_${idx + 1}`)).trim();
+  const name = String(raw.name || raw.title || raw.method_name || (isCod ? 'ক্যাশ অন ডেলিভারি (COD)' : 'অনলাইন পেমেন্ট')).trim();
+  const rawNum = String(raw.number || raw.account_number || '').trim();
+  const number = rawNum.toUpperCase() === 'COD' ? '' : rawNum;
+  const rawLink = String(raw.link || raw.gatewayUrl || '').trim();
+  const link = rawLink || (number.startsWith('http://') || number.startsWith('https://') ? number : '');
+  const displayNumber = (number.startsWith('http://') || number.startsWith('https://')) ? '' : number;
+  const type = String(raw.type || raw.accountType || (isCod ? 'COD' : 'অনলাইন পেমেন্ট')).trim();
+  const instructions = String(
+    raw.instructions ||
+    raw.details ||
+    raw.instruction ||
+    (isCod
+      ? 'পণ্য হাতে পেয়ে দেখে ডেলিভারি ম্যানের কাছে মূল্য পরিশোধ করুন।'
+      : `নিচের ${name} নাম্বারে পেমেন্ট সম্পন্ন করে ট্রানজেকশন আইডি (TrxID) অথবা প্রেরক নাম্বারটি লিখুন।`)
+  ).trim();
+  const discountPct = isCod ? 0 : (Number(raw.discount_pct ?? raw.discount ?? 5) || 5);
+
+  const lowerKey = `${name} ${code} ${type}`.toLowerCase();
+  let icon = raw.icon || '';
+  if (!icon) {
+    if (isCod) icon = '🚚';
+    else if (lowerKey.includes('bkash') || lowerKey.includes('বিকাশ')) icon = '💗';
+    else if (lowerKey.includes('nagad') || lowerKey.includes('নগদ')) icon = '🧡';
+    else if (lowerKey.includes('rocket') || lowerKey.includes('রকেট')) icon = '💜';
+    else if (lowerKey.includes('upay') || lowerKey.includes('উপায়')) icon = '💛';
+    else if (lowerKey.includes('bank') || lowerKey.includes('ব্যাংক') || lowerKey.includes('ibbl') || lowerKey.includes('ইসলামী')) icon = '🏦';
+    else icon = '💳';
+  }
+
+  return {
+    ...raw,
+    id,
+    code,
+    name,
+    title: name,
+    type,
+    accountType: type,
+    isCod,
+    isOnline: !isCod,
+    number: displayNumber,
+    link,
+    gatewayUrl: link,
+    discount_pct: discountPct,
+    instructions,
+    details: instructions,
+    icon,
+    status: String(raw.status || 'Active').trim()
+  };
+}
+
+/**
+ * Resolves the Delivery Methods configured in Admin Panel and selected for a specific Landing Page
+ */
+export function resolveLandingPageDeliveryMethods(activePage) {
+  const rawGlobal = typeof getGlobalDeliveryMethods === 'function' ? getGlobalDeliveryMethods(false) : [];
+  const allGlobal = (Array.isArray(rawGlobal) ? rawGlobal : []).map((d, i) => normalizeLpDeliveryMethod(d, i));
+  const activeGlobal = allGlobal.filter(d => String(d.status || 'Active').toLowerCase() !== 'inactive');
+
+  if (!activePage || typeof activePage !== 'object') {
+    return activeGlobal.length > 0 ? activeGlobal : allGlobal;
+  }
+
+  const snapshotList = Array.isArray(activePage.delivery_methods_snapshot)
+    ? activePage.delivery_methods_snapshot.map((d, i) => normalizeLpDeliveryMethod(d, i))
+    : [];
+
+  let selectedIds = activePage.selected_delivery_methods;
+  if (typeof selectedIds === 'string' && selectedIds.trim()) {
+    try {
+      selectedIds = JSON.parse(selectedIds);
+    } catch (e) {
+      selectedIds = selectedIds.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+
+  if (Array.isArray(selectedIds) && selectedIds.length > 0) {
+    const resolved = [];
+    selectedIds.forEach((item, idx) => {
+      const targetId = typeof item === 'object'
+        ? String(item.id || item.code || item.name || '').trim().toLowerCase()
+        : String(item || '').trim().toLowerCase();
+      if (!targetId) return;
+
+      const fromGlobal = allGlobal.find(
+        g =>
+          g.id.toLowerCase() === targetId ||
+          g.code.toLowerCase() === targetId ||
+          g.name.toLowerCase() === targetId
+      );
+      if (fromGlobal) {
+        resolved.push(fromGlobal);
+        return;
+      }
+
+      const fromSnap = snapshotList.find(
+        s =>
+          s.id.toLowerCase() === targetId ||
+          s.code.toLowerCase() === targetId ||
+          s.name.toLowerCase() === targetId
+      );
+      if (fromSnap) {
+        resolved.push(fromSnap);
+        return;
+      }
+
+      if (typeof item === 'object' && (item.name || item.zone)) {
+        resolved.push(normalizeLpDeliveryMethod(item, idx));
+      }
+    });
+
+    if (resolved.length > 0) return resolved;
+  }
+
+  if (snapshotList.length > 0) return snapshotList;
+  return activeGlobal.length > 0 ? activeGlobal : allGlobal;
+}
+
+/**
+ * Resolves the Payment Methods configured in Admin Panel and selected for a specific Landing Page
+ */
+export function resolveLandingPagePaymentMethods(activePage) {
+  const rawGlobal = typeof getGlobalPaymentMethods === 'function' ? getGlobalPaymentMethods(false) : [];
+  const allGlobal = (Array.isArray(rawGlobal) ? rawGlobal : []).map((m, i) => normalizeLpPaymentMethod(m, i));
+  const activeGlobal = allGlobal.filter(m => String(m.status || 'Active').toLowerCase() !== 'inactive');
+
+  if (!activePage || typeof activePage !== 'object') {
+    return activeGlobal.length > 0 ? activeGlobal : allGlobal;
+  }
+
+  const snapshotList = Array.isArray(activePage.payment_methods_snapshot)
+    ? activePage.payment_methods_snapshot.map((m, i) => normalizeLpPaymentMethod(m, i))
+    : [];
+
+  let selectedIds = activePage.selected_payment_methods;
+  if (typeof selectedIds === 'string' && selectedIds.trim()) {
+    try {
+      selectedIds = JSON.parse(selectedIds);
+    } catch (e) {
+      selectedIds = selectedIds.split(',').map(s => s.trim()).filter(Boolean);
+    }
+  }
+
+  if (Array.isArray(selectedIds) && selectedIds.length > 0) {
+    const resolved = [];
+    selectedIds.forEach((item, idx) => {
+      const targetId = typeof item === 'object'
+        ? String(item.id || item.code || item.name || '').trim().toLowerCase()
+        : String(item || '').trim().toLowerCase();
+      if (!targetId) return;
+
+      const fromGlobal = allGlobal.find(
+        g =>
+          g.id.toLowerCase() === targetId ||
+          g.code.toLowerCase() === targetId ||
+          g.name.toLowerCase() === targetId
+      );
+      if (fromGlobal) {
+        resolved.push(fromGlobal);
+        return;
+      }
+
+      const fromSnap = snapshotList.find(
+        s =>
+          s.id.toLowerCase() === targetId ||
+          s.code.toLowerCase() === targetId ||
+          s.name.toLowerCase() === targetId
+      );
+      if (fromSnap) {
+        resolved.push(fromSnap);
+        return;
+      }
+
+      if (typeof item === 'object' && (item.name || item.title)) {
+        resolved.push(normalizeLpPaymentMethod(item, idx));
+      }
+    });
+
+    if (resolved.length > 0) return resolved;
+  }
+
+  if (snapshotList.length > 0) return snapshotList;
+  return activeGlobal.length > 0 ? activeGlobal : allGlobal;
+}
+
+/**
  * Deduplicates landing pages by ID, Slug, and Title so that merging Sheet rows and LocalStorage
  * never creates duplicate cards in the Admin Panel (`adm-saved-landing-pages-grid`).
+ * Preserves selected_delivery_methods and selected_payment_methods.
  */
 export function deduplicateLandingPagesList(rawList) {
   if (!Array.isArray(rawList)) return [];
@@ -193,9 +463,18 @@ export function deduplicateLandingPagesList(rawList) {
 
   rawList.forEach((item, idx) => {
     if (!item || typeof item !== 'object') return;
-    const rawTitle = String(item.title || item.slogan || item.Slogan || item.headline || '').trim();
-    const rawId = String(item.id || item.page_id || '').trim();
-    let rawSlug = String(item.slug || item.Slug || '').trim();
+    let extraMeta = {};
+    const rawMetaStr = item.Social_Icons || item.social_icons || item.content || '';
+    if (typeof rawMetaStr === 'string' && rawMetaStr.trim().startsWith('{')) {
+      try {
+        extraMeta = JSON.parse(rawMetaStr);
+      } catch (e) {}
+    }
+
+    const mergedSource = { ...extraMeta, ...item };
+    const rawTitle = String(mergedSource.title || mergedSource.slogan || mergedSource.Slogan || mergedSource.headline || '').trim();
+    const rawId = String(mergedSource.id || mergedSource.page_id || '').trim();
+    let rawSlug = String(mergedSource.slug || mergedSource.Slug || '').trim();
     if (!rawSlug || rawSlug === '-' || rawSlug.toLowerCase() === 'slug') {
       rawSlug = (rawId ? rawId.toLowerCase() : `lp-${101 + idx}`);
     }
@@ -203,7 +482,7 @@ export function deduplicateLandingPagesList(rawList) {
     const normSlug = rawSlug.toLowerCase();
     const normTitle = rawTitle.toLowerCase();
 
-    if (!rawTitle && (!item.selected_products || item.selected_products.length === 0) && !item.hero_banner && !item.banner) {
+    if (!rawTitle && (!mergedSource.selected_products || mergedSource.selected_products.length === 0) && !mergedSource.hero_banner && !mergedSource.banner) {
       return;
     }
 
@@ -217,11 +496,13 @@ export function deduplicateLandingPagesList(rawList) {
     }
 
     const normalizedItem = {
-      ...item,
+      ...mergedSource,
       id: rawId || `LP-${101 + result.length}`,
       page_id: rawId || `LP-${101 + result.length}`,
       slug: rawSlug,
-      title: rawTitle || 'ক্যাম্পেইন ল্যান্ডিং পেজ'
+      title: rawTitle || 'ক্যাম্পেইন ল্যান্ডিং পেজ',
+      regular_price: 0,
+      offer_price: 0
     };
 
     if (matchIdx >= 0) {
@@ -238,9 +519,23 @@ export function deduplicateLandingPagesList(rawList) {
         promo: normalizedItem.promo || prev.promo || '',
         theme: normalizedItem.theme || prev.theme || 'emerald',
         hero_banner: normalizedItem.hero_banner || normalizedItem.banner || prev.hero_banner || prev.banner || '',
+        regular_price: 0,
+        offer_price: 0,
         selected_products: (Array.isArray(normalizedItem.selected_products) && normalizedItem.selected_products.length > 0)
           ? normalizedItem.selected_products
           : (prev.selected_products || []),
+        selected_delivery_methods: (Array.isArray(normalizedItem.selected_delivery_methods) && normalizedItem.selected_delivery_methods.length > 0)
+          ? normalizedItem.selected_delivery_methods
+          : (prev.selected_delivery_methods || []),
+        delivery_methods_snapshot: (Array.isArray(normalizedItem.delivery_methods_snapshot) && normalizedItem.delivery_methods_snapshot.length > 0)
+          ? normalizedItem.delivery_methods_snapshot
+          : (prev.delivery_methods_snapshot || []),
+        selected_payment_methods: (Array.isArray(normalizedItem.selected_payment_methods) && normalizedItem.selected_payment_methods.length > 0)
+          ? normalizedItem.selected_payment_methods
+          : (prev.selected_payment_methods || []),
+        payment_methods_snapshot: (Array.isArray(normalizedItem.payment_methods_snapshot) && normalizedItem.payment_methods_snapshot.length > 0)
+          ? normalizedItem.payment_methods_snapshot
+          : (prev.payment_methods_snapshot || []),
         banners: (Array.isArray(normalizedItem.banners) && normalizedItem.banners.length > 0)
           ? normalizedItem.banners
           : (prev.banners || []),
@@ -264,23 +559,17 @@ export function deduplicateLandingPagesList(rawList) {
   return result;
 }
 
-function getZoneShippingCost(selectedArea, deliveryConfs) {
+/**
+ * Look up shipping cost for the currently selected delivery method ID/code
+ */
+function getZoneShippingCost(selectedAreaId, deliveryConfs) {
   const confs = Array.isArray(deliveryConfs) ? deliveryConfs : [];
-  if (selectedArea === 'dhaka') {
-    const found = confs.find(
-      c =>
-        String(c.id || c.area || c.title || '').toLowerCase().includes('dhaka') &&
-        !String(c.id || c.area || c.title || '').toLowerCase().includes('outside') &&
-        !String(c.id || c.area || c.title || '').toLowerCase().includes('sub')
-    );
-    return found ? Number(found.charge ?? found.cost ?? found.fee ?? 60) : 60;
-  }
-  if (selectedArea === 'sub_dhaka') {
-    const found = confs.find(c => String(c.id || c.area || c.title || '').toLowerCase().includes('sub'));
-    return found ? Number(found.charge ?? found.cost ?? found.fee ?? 100) : 100;
-  }
-  const found = confs.find(c => String(c.id || c.area || c.title || '').toLowerCase().includes('outside'));
-  return found ? Number(found.charge ?? found.cost ?? found.fee ?? 120) : 120;
+  if (confs.length === 0) return 80;
+  const target = String(selectedAreaId || '').trim().toLowerCase();
+  const found =
+    confs.find(c => String(c.id || '').trim().toLowerCase() === target || String(c.code || '').trim().toLowerCase() === target) ||
+    confs[0];
+  return found ? Number(found.charge ?? found.cost ?? found.fee ?? 0) : 0;
 }
 
 if (typeof window !== 'undefined') {
@@ -288,6 +577,7 @@ if (typeof window !== 'undefined') {
   window.__lpSelectedColor = '';
   window.__lpSelectedSize = '';
   window.__lpSelectedPayment = 'COD';
+  window.__lpSelectedDeliveryId = '';
   window.__lpQuantity = 1;
   window.__lpProductsList = [];
   window.__lpDeliveryConfs = [];
@@ -303,9 +593,7 @@ if (typeof window !== 'undefined') {
         const parsed = JSON.parse(rawSaved);
         if (Array.isArray(parsed)) {
           const deduped = deduplicateLandingPagesList(parsed);
-          if (deduped.length !== parsed.length) {
-            localStorage.setItem('dcbd_landing_pages', JSON.stringify(deduped));
-          }
+          localStorage.setItem('dcbd_landing_pages', JSON.stringify(deduped));
           if (window.__adminState && Array.isArray(window.__adminState.landingPages)) {
             window.__adminState.landingPages = deduplicateLandingPagesList(window.__adminState.landingPages);
           }
@@ -315,9 +603,193 @@ if (typeof window !== 'undefined') {
   };
   syncAndDeduplicateAdminLandingPages();
 
-  // 2. Automatically upgrade `#adm-lp-theme` dropdown in Admin Panel with all 10 Authentic Color Themes
-  const upgradeAdminThemeSelectIfPresent = function() {
+  /**
+   * 2. Renders Delivery Area & Payment Method selection checkboxes inside the Admin Panel's
+   * "Create Landing Page Form" (`#landing-builder-form-card`), directly synced with
+   * Admin System Settings (`getGlobalDeliveryMethods` & `getGlobalPaymentMethods`).
+   */
+  window.renderLpAdminDeliveryAndPaymentCheckboxes = function(draftObj = null) {
     if (typeof document === 'undefined') return;
+    const delBox = document.getElementById('adm-lp-delivery-methods-box');
+    const payBox = document.getElementById('adm-lp-payment-methods-box');
+    if (!delBox || !payBox) return;
+
+    const draft = draftObj || window.__currentLandingDraft || {};
+    const allDel = (typeof getGlobalDeliveryMethods === 'function' ? getGlobalDeliveryMethods(false) : []).map((d, i) =>
+      normalizeLpDeliveryMethod(d, i)
+    );
+    const allPay = (typeof getGlobalPaymentMethods === 'function' ? getGlobalPaymentMethods(false) : []).map((m, i) =>
+      normalizeLpPaymentMethod(m, i)
+    );
+
+    const hasSavedDel = Array.isArray(draft.selected_delivery_methods) && draft.selected_delivery_methods.length > 0;
+    const selectedDelSet = new Set(
+      hasSavedDel
+        ? draft.selected_delivery_methods.map(x => String(typeof x === 'object' ? (x.id || x.code) : x).toLowerCase())
+        : allDel.filter(d => String(d.status || 'Active').toLowerCase() !== 'inactive').map(d => d.id.toLowerCase())
+    );
+    if (selectedDelSet.size === 0 && allDel.length > 0) {
+      allDel.forEach(d => selectedDelSet.add(d.id.toLowerCase()));
+    }
+
+    const hasSavedPay = Array.isArray(draft.selected_payment_methods) && draft.selected_payment_methods.length > 0;
+    const selectedPaySet = new Set(
+      hasSavedPay
+        ? draft.selected_payment_methods.map(x => String(typeof x === 'object' ? (x.id || x.code) : x).toLowerCase())
+        : allPay.filter(m => String(m.status || 'Active').toLowerCase() !== 'inactive').map(m => m.id.toLowerCase())
+    );
+    if (selectedPaySet.size === 0 && allPay.length > 0) {
+      allPay.forEach(m => selectedPaySet.add(m.id.toLowerCase()));
+    }
+
+    delBox.innerHTML = allDel
+      .map(d => {
+        const isChecked = selectedDelSet.has(d.id.toLowerCase()) || selectedDelSet.has(d.code.toLowerCase());
+        const chargeTxt = d.charge === 0 ? 'ফ্রি (৳০)' : `৳${d.charge}`;
+        return `
+          <label class="flex items-start gap-2.5 p-2.5 rounded-xl border ${
+            isChecked
+              ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'
+              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900'
+          } cursor-pointer transition hover:border-emerald-400">
+            <input
+              type="checkbox"
+              class="adm-lp-del-chk w-4 h-4 mt-0.5 accent-emerald-600 rounded"
+              value="${d.id}"
+              ${isChecked ? 'checked' : ''}
+              onchange="window.syncLpAdminDeliveryPaymentSelection()"
+            />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-1.5 flex-wrap">
+                <span class="font-bold text-xs text-slate-900 dark:text-white">${d.name}</span>
+                <span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-black text-[10px]">${chargeTxt}</span>
+              </div>
+              <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                ⏱️ ${d.eta} • <span class="text-emerald-600 font-semibold">২,০০০+ অর্ডারে ফ্রি</span>
+              </div>
+            </div>
+          </label>
+        `;
+      })
+      .join('');
+
+    payBox.innerHTML = allPay
+      .map(m => {
+        const isChecked = selectedPaySet.has(m.id.toLowerCase()) || selectedPaySet.has(m.code.toLowerCase());
+        return `
+          <label class="flex items-start gap-2.5 p-2.5 rounded-xl border ${
+            isChecked
+              ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30'
+              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900'
+          } cursor-pointer transition hover:border-emerald-400">
+            <input
+              type="checkbox"
+              class="adm-lp-pay-chk w-4 h-4 mt-0.5 accent-emerald-600 rounded"
+              value="${m.id}"
+              ${isChecked ? 'checked' : ''}
+              onchange="window.syncLpAdminDeliveryPaymentSelection()"
+            />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-1.5 flex-wrap">
+                <span class="font-bold text-xs text-slate-900 dark:text-white">${m.icon} ${m.name}</span>
+                ${
+                  m.isCod
+                    ? `<span class="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[10px]">COD</span>`
+                    : `<span class="px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-black text-[10px]">৫% ছাড়</span>`
+                }
+              </div>
+              <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                ${m.isCod ? 'পণ্য হাতে পেয়ে পেমেন্ট' : `নম্বর/লিংক: ${m.number || m.link || 'অনলাইন গেটওয়ে'} (${m.type})`}
+              </div>
+            </div>
+          </label>
+        `;
+      })
+      .join('');
+
+    window.syncLpAdminDeliveryPaymentSelection();
+  };
+
+  window.syncLpAdminDeliveryPaymentSelection = function() {
+    if (typeof document === 'undefined') return;
+    const delChks = Array.from(document.querySelectorAll('.adm-lp-del-chk'));
+    const payChks = Array.from(document.querySelectorAll('.adm-lp-pay-chk'));
+    if (delChks.length === 0 && payChks.length === 0) return;
+
+    const allDel = (typeof getGlobalDeliveryMethods === 'function' ? getGlobalDeliveryMethods(false) : []).map((d, i) =>
+      normalizeLpDeliveryMethod(d, i)
+    );
+    const allPay = (typeof getGlobalPaymentMethods === 'function' ? getGlobalPaymentMethods(false) : []).map((m, i) =>
+      normalizeLpPaymentMethod(m, i)
+    );
+
+    const selectedDelIds = delChks.filter(c => c.checked).map(c => c.value);
+    const selectedPayIds = payChks.filter(c => c.checked).map(c => c.value);
+
+    // Update visual border highlight on label cards
+    delChks.forEach(c => {
+      const lbl = c.closest('label');
+      if (!lbl) return;
+      if (c.checked) {
+        lbl.classList.add('border-emerald-500', 'bg-emerald-50/60');
+        lbl.classList.remove('border-slate-200', 'bg-white');
+      } else {
+        lbl.classList.remove('border-emerald-500', 'bg-emerald-50/60');
+        lbl.classList.add('border-slate-200', 'bg-white');
+      }
+    });
+
+    payChks.forEach(c => {
+      const lbl = c.closest('label');
+      if (!lbl) return;
+      if (c.checked) {
+        lbl.classList.add('border-emerald-500', 'bg-emerald-50/60');
+        lbl.classList.remove('border-slate-200', 'bg-white');
+      } else {
+        lbl.classList.remove('border-emerald-500', 'bg-emerald-50/60');
+        lbl.classList.add('border-slate-200', 'bg-white');
+      }
+    });
+
+    const delCountBadge = document.getElementById('adm-lp-del-selected-count');
+    const payCountBadge = document.getElementById('adm-lp-pay-selected-count');
+    if (delCountBadge) delCountBadge.textContent = `${selectedDelIds.length}টি নির্বাচিত`;
+    if (payCountBadge) payCountBadge.textContent = `${selectedPayIds.length}টি নির্বাচিত`;
+
+    if (window.__currentLandingDraft && typeof window.__currentLandingDraft === 'object') {
+      window.__currentLandingDraft.selected_delivery_methods = selectedDelIds;
+      window.__currentLandingDraft.delivery_methods_snapshot = allDel.filter(d => selectedDelIds.includes(d.id));
+      window.__currentLandingDraft.selected_payment_methods = selectedPayIds;
+      window.__currentLandingDraft.payment_methods_snapshot = allPay.filter(m => selectedPayIds.includes(m.id));
+      window.__currentLandingDraft.regular_price = 0;
+      window.__currentLandingDraft.offer_price = 0;
+    }
+  };
+
+  window.toggleAllLpAdminDelivery = function(checkAll = true) {
+    document.querySelectorAll('.adm-lp-del-chk').forEach(c => {
+      c.checked = Boolean(checkAll);
+    });
+    window.syncLpAdminDeliveryPaymentSelection();
+  };
+
+  window.toggleAllLpAdminPayment = function(checkAll = true) {
+    document.querySelectorAll('.adm-lp-pay-chk').forEach(c => {
+      c.checked = Boolean(checkAll);
+    });
+    window.syncLpAdminDeliveryPaymentSelection();
+  };
+
+  /**
+   * 3. Automatically upgrades the Admin Panel Create Landing Page Form (`#landing-builder-form-card`):
+   * - Removes standalone product-less prices (`#adm-lp-regular-price` & `#adm-lp-offer-price`) from Section 1.
+   * - Upgrades `#adm-lp-theme` with all 10 Authentic Color Themes.
+   * - Injects Delivery Area & Payment Method selector panel synced with Admin Settings.
+   */
+  const upgradeAdminLandingBuilderForm = function() {
+    if (typeof document === 'undefined') return;
+
+    // A. Upgrade Theme Select Dropdown
     const themeSel = document.getElementById('adm-lp-theme');
     if (themeSel && !themeSel.getAttribute('data-authentic-upgraded')) {
       const currentVal = themeSel.value || 'emerald';
@@ -328,21 +800,223 @@ if (typeof window !== 'undefined') {
       themeSel.value = LP_AUTHENTIC_THEMES[currentVal] ? currentVal : 'emerald';
       themeSel.setAttribute('data-authentic-upgraded', 'true');
     }
+
+    // B. Remove standalone product-less prices from Section 1 of Create Landing Page Form
+    const regPriceInp = document.getElementById('adm-lp-regular-price');
+    const offPriceInp = document.getElementById('adm-lp-offer-price');
+    if (regPriceInp && !regPriceInp.getAttribute('data-lp-price-removed')) {
+      regPriceInp.value = '';
+      regPriceInp.setAttribute('data-lp-price-removed', 'true');
+      const regWrap = regPriceInp.closest('div');
+      if (regWrap) regWrap.style.display = 'none';
+    }
+    if (offPriceInp && !offPriceInp.getAttribute('data-lp-price-removed')) {
+      offPriceInp.value = '';
+      offPriceInp.setAttribute('data-lp-price-removed', 'true');
+      const offWrap = offPriceInp.closest('div');
+      if (offWrap) offWrap.style.display = 'none';
+      const parentGrid = offPriceInp.closest('.grid');
+      if (parentGrid) {
+        parentGrid.classList.remove('sm:grid-cols-4');
+        parentGrid.classList.add('sm:grid-cols-2');
+      }
+    }
+
+    // Update Section 1 title in Admin Form so it doesn't mention standalone price
+    const formCard = document.getElementById('landing-builder-form-card');
+    if (formCard && !formCard.getAttribute('data-lp-sec1-cleaned')) {
+      formCard.querySelectorAll('div, h4').forEach(el => {
+        if (el.children.length === 0 && el.textContent) {
+          if (el.textContent.includes('১. ক্যাম্পেইন শিরোনাম, স্লাগ, মূল্য ও অফার তথ্য')) {
+            el.textContent = '১. ক্যাম্পেইন শিরোনাম, স্লাগ ও অফার তথ্য (একাধিক পণ্যের ক্যাম্পেইন)';
+          } else if (el.textContent.includes('শিরোনাম, মূল্য, বিবরণ')) {
+            el.textContent = el.textContent.replace('শিরোনাম, মূল্য, বিবরণ', 'শিরোনাম, পণ্য, ডেলিভারি, পেমেন্ট, বিবরণ');
+          }
+        }
+      });
+      formCard.setAttribute('data-lp-sec1-cleaned', 'true');
+    }
+
+    // C. Inject Delivery Areas & Payment Options selector panel into Create Landing Page Form
+    const prodSearchBox = document.getElementById('adm-lp-selected-products-box');
+    const prodSectionCard = prodSearchBox ? prodSearchBox.closest('.p-4.rounded-2xl') : null;
+    if (prodSectionCard && !document.getElementById('adm-lp-delivery-payment-config-section')) {
+      const sectionEl = document.createElement('div');
+      sectionEl.id = 'adm-lp-delivery-payment-config-section';
+      sectionEl.className = 'p-4 rounded-2xl bg-indigo-50/40 dark:bg-slate-800/50 border border-indigo-200 dark:border-slate-700 space-y-3.5';
+      sectionEl.innerHTML = `
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-200/70 dark:border-slate-700 pb-2.5">
+          <div>
+            <div class="font-black text-xs text-slate-900 dark:text-white uppercase">
+              ২.৫ ডেলিভারি এরিয়া ও পেমেন্ট মেথড নির্বাচন (অ্যাডমিন প্যানেল থেকে সিঙ্ককৃত)
+            </div>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+              অ্যাডমিন প্যানেলে যুক্ত করা যে ডেলিভারি এরিয়া ও পেমেন্ট অপশনগুলো এখানে সিলেক্ট করবেন, শুধুমাত্র সেগুলোই পাবলিক ল্যান্ডিং পেজে দেখাবে ও সেই অনুযায়ী বিল হিসাব হবে।
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-black text-[10px]">
+              🚚 ২,০০০+ টাকায় ফ্রি ডেলিভারি
+            </span>
+            <span class="px-2.5 py-1 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-black text-[10px]">
+              💳 অনলাইন পেমেন্টে ৫% ছাড়
+            </span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Delivery Areas Selection Box -->
+          <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2.5">
+            <div class="flex items-center justify-between gap-2 flex-wrap border-b pb-2">
+              <div class="flex items-center gap-2">
+                <span class="font-black text-xs text-slate-800 dark:text-white">📍 ডেলিভারি এরিয়া / জোনসমূহ</span>
+                <span id="adm-lp-del-selected-count" class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">০টি নির্বাচিত</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="window.toggleAllLpAdminDelivery(true)" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-[10px] font-bold">সব সিলেক্ট</button>
+                <button type="button" onclick="window.openDeliveryMethodModal && window.openDeliveryMethodModal('')" class="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold">+ নতুন এরিয়া যোগ</button>
+              </div>
+            </div>
+            <div id="adm-lp-delivery-methods-box" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1"></div>
+          </div>
+
+          <!-- Payment Methods Selection Box -->
+          <div class="p-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 space-y-2.5">
+            <div class="flex items-center justify-between gap-2 flex-wrap border-b pb-2">
+              <div class="flex items-center gap-2">
+                <span class="font-black text-xs text-slate-800 dark:text-white">💳 পেমেন্ট মেথডসমূহ</span>
+                <span id="adm-lp-pay-selected-count" class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-bold text-[10px]">০টি নির্বাচিত</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="window.toggleAllLpAdminPayment(true)" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-[10px] font-bold">সব সিলেক্ট</button>
+                <button type="button" onclick="window.openPaymentMethodModal && window.openPaymentMethodModal('')" class="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[10px] font-bold">+ নতুন পেমেন্ট যোগ</button>
+              </div>
+            </div>
+            <div id="adm-lp-payment-methods-box" class="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1"></div>
+          </div>
+        </div>
+      `;
+      prodSectionCard.insertAdjacentElement('afterend', sectionEl);
+      window.renderLpAdminDeliveryAndPaymentCheckboxes(window.__currentLandingDraft);
+    }
   };
+
   if (typeof document !== 'undefined') {
-    setTimeout(upgradeAdminThemeSelectIfPresent, 120);
-    setTimeout(upgradeAdminThemeSelectIfPresent, 700);
+    setTimeout(upgradeAdminLandingBuilderForm, 100);
+    setTimeout(upgradeAdminLandingBuilderForm, 600);
     document.addEventListener('click', () => {
-      setTimeout(upgradeAdminThemeSelectIfPresent, 50);
+      setTimeout(upgradeAdminLandingBuilderForm, 40);
     });
   }
 
-  // 3. Wrap `apiClient.request` so `landing_pages/list` always returns deduplicated items
+  // 4. Hook `window.populateLandingBuilderForm` & `window.handleAdminSaveLandingConfig` & Admin Payment/Delivery save handlers
+  const installAdminHooks = function() {
+    if (typeof window === 'undefined') return;
+
+    // Hook populateLandingBuilderForm
+    const wrapPopulate = function(fn) {
+      if (typeof fn !== 'function' || fn.__lpUpgraded) return fn;
+      const wrapped = function(lp) {
+        const res = fn.apply(this, arguments);
+        upgradeAdminLandingBuilderForm();
+        window.renderLpAdminDeliveryAndPaymentCheckboxes(window.__currentLandingDraft || lp);
+        return res;
+      };
+      wrapped.__lpUpgraded = true;
+      return wrapped;
+    };
+    let _popFn = wrapPopulate(window.populateLandingBuilderForm);
+    try {
+      Object.defineProperty(window, 'populateLandingBuilderForm', {
+        configurable: true,
+        enumerable: true,
+        get() { return _popFn; },
+        set(newFn) { _popFn = wrapPopulate(newFn); }
+      });
+    } catch (e) {
+      window.populateLandingBuilderForm = _popFn;
+    }
+
+    // Hook handleAdminSaveLandingConfig so selected_delivery_methods & selected_payment_methods are saved before persisting
+    const wrapSaveLp = function(fn) {
+      if (typeof fn !== 'function' || fn.__lpUpgraded) return fn;
+      const wrapped = function(e) {
+        if (!window.__currentLandingDraft && typeof window.initLandingDraft === 'function') {
+          window.initLandingDraft();
+        }
+        window.syncLpAdminDeliveryPaymentSelection();
+        const regEl = document.getElementById('adm-lp-regular-price');
+        const offEl = document.getElementById('adm-lp-offer-price');
+        if (regEl) regEl.value = '';
+        if (offEl) offEl.value = '';
+        return fn.apply(this, arguments);
+      };
+      wrapped.__lpUpgraded = true;
+      return wrapped;
+    };
+    let _saveLpFn = wrapSaveLp(window.handleAdminSaveLandingConfig);
+    try {
+      Object.defineProperty(window, 'handleAdminSaveLandingConfig', {
+        configurable: true,
+        enumerable: true,
+        get() { return _saveLpFn; },
+        set(newFn) { _saveLpFn = wrapSaveLp(newFn); }
+      });
+    } catch (e) {
+      window.handleAdminSaveLandingConfig = _saveLpFn;
+    }
+
+    // Hook Admin Delivery/Payment mutations so checkboxes in Landing Page Builder refresh automatically
+    ['renderAdminPaymentMethodsDOM', 'renderAdminDeliveryMethodsDOM'].forEach(fnName => {
+      const wrapRender = function(fn) {
+        if (typeof fn !== 'function' || fn.__lpUpgraded) return fn;
+        const wrapped = function() {
+          const res = fn.apply(this, arguments);
+          if (typeof window.renderLpAdminDeliveryAndPaymentCheckboxes === 'function') {
+            window.renderLpAdminDeliveryAndPaymentCheckboxes(window.__currentLandingDraft);
+          }
+          return res;
+        };
+        wrapped.__lpUpgraded = true;
+        return wrapped;
+      };
+      let _fn = wrapRender(window[fnName]);
+      try {
+        Object.defineProperty(window, fnName, {
+          configurable: true,
+          enumerable: true,
+          get() { return _fn; },
+          set(newFn) { _fn = wrapRender(newFn); }
+        });
+      } catch (e) {
+        window[fnName] = _fn;
+      }
+    });
+  };
+  installAdminHooks();
+
+  // 5. Wrap `apiClient.request` so `landing_pages/list` is deduplicated AND `landing-pages/save` persists delivery/payment selections
   if (apiClient && typeof apiClient.request === 'function' && !apiClient.__lpDedupPatched) {
     const origRequest = apiClient.request.bind(apiClient);
     apiClient.request = async function(action, payloadOrMethod = {}, maybePayload = undefined) {
-      const res = await origRequest(action, payloadOrMethod, maybePayload);
       const act = String(action || '').toLowerCase();
+
+      // Ensure saving a landing page embeds full metadata JSON (including selected_delivery_methods & selected_payment_methods)
+      if (act.includes('landing_pages/save') || act.includes('landing-pages/save') || act.includes('landing_pages/add') || act.includes('landing-pages/add')) {
+        const targetPayload = (typeof payloadOrMethod === 'string' && maybePayload && typeof maybePayload === 'object')
+          ? maybePayload
+          : (payloadOrMethod && typeof payloadOrMethod === 'object' ? payloadOrMethod : null);
+        if (targetPayload) {
+          targetPayload.regular_price = 0;
+          targetPayload.offer_price = 0;
+          try {
+            targetPayload.Social_Icons = JSON.stringify(targetPayload);
+            targetPayload.social_icons = targetPayload.Social_Icons;
+          } catch (e) {}
+        }
+      }
+
+      const res = await origRequest(action, payloadOrMethod, maybePayload);
       if (act.includes('landing_pages/list') || act.includes('landing-pages/list')) {
         const listData = Array.isArray(res?.data?.items)
           ? res.data.items
@@ -368,7 +1042,7 @@ if (typeof window !== 'undefined') {
     apiClient.__lpDedupPatched = true;
   }
 
-  // 4. Intercept `window.getAdminLandingPages` via defineProperty so AdminPortal never renders duplicate cards
+  // 6. Intercept `window.getAdminLandingPages` via defineProperty so AdminPortal never renders duplicate cards
   const wrapAdminLpGetter = function(fn) {
     if (typeof fn !== 'function') return fn;
     if (fn.__dedupWrapped) return fn;
@@ -536,11 +1210,12 @@ if (typeof window !== 'undefined') {
     }
   };
 
-  window.selectLpAreaZone = function(zoneVal) {
+  window.selectLpAreaZone = function(zoneId) {
+    window.__lpSelectedDeliveryId = zoneId;
     const sel = document.getElementById('lp-delivery-area');
-    if (sel) sel.value = zoneVal;
+    if (sel) sel.value = zoneId;
     document.querySelectorAll('.lp-zone-chip').forEach(btn => {
-      if (btn.getAttribute('data-zone') === zoneVal) btn.classList.add('is-active');
+      if (btn.getAttribute('data-zone') === zoneId) btn.classList.add('is-active');
       else btn.classList.remove('is-active');
     });
     if (typeof window.updateLpOrderCalculation === 'function') {
@@ -549,15 +1224,28 @@ if (typeof window !== 'undefined') {
   };
 
   window.selectLpPaymentMethod = function(payId) {
-    const normalizedId = String(payId || 'COD').toUpperCase();
-    window.__lpSelectedPayment = normalizedId;
+    const methods = window.__lpPaymentMethods || [];
+    const target = String(payId || '').trim();
+    const selectedMethod =
+      methods.find(
+        m =>
+          String(m.id || '').toLowerCase() === target.toLowerCase() ||
+          String(m.code || '').toLowerCase() === target.toLowerCase()
+      ) ||
+      methods[0] ||
+      normalizeLpPaymentMethod({ id: 'COD', code: 'COD', name: 'ক্যাশ অন ডেলিভারি (COD)', type: 'COD' });
+
+    const activeId = selectedMethod.id;
+    window.__lpSelectedPayment = activeId;
     const hiddenInput = document.getElementById('lp-payment-method-input');
-    if (hiddenInput) hiddenInput.value = normalizedId;
+    if (hiddenInput) hiddenInput.value = activeId;
+
+    const existingTrxVal = document.getElementById('lp-trx-id-input')?.value || '';
 
     document.querySelectorAll('.lp-pay-option-card').forEach(card => {
-      const cid = String(card.getAttribute('data-pay-id') || '').toUpperCase();
+      const cid = String(card.getAttribute('data-pay-id') || '');
       const dot = card.querySelector('.lp-pay-radio-dot');
-      if (cid === normalizedId) {
+      if (cid.toLowerCase() === activeId.toLowerCase()) {
         card.classList.add('is-active');
         if (dot) dot.style.transform = 'scale(1)';
       } else {
@@ -566,52 +1254,110 @@ if (typeof window !== 'undefined') {
       }
     });
 
-    const methods = window.__lpPaymentMethods || [];
-    const selectedMethod = methods.find(m => String(m.id || '').toUpperCase() === normalizedId);
     const detailsBox = document.getElementById('lp-payment-details-panel');
     if (detailsBox) {
-      if (normalizedId === 'COD' || !selectedMethod) {
+      if (selectedMethod.isCod) {
         detailsBox.innerHTML = `
           <div class="lp-cod-box">
-            <span style="font-size:22px;">🤝</span>
-            <div>
-              <div style="font-weight:900;color:#065f46;font-size:13px;">ক্যাশ অন ডেলিভারি (Cash on Delivery)</div>
-              <div style="font-size:11.5px;color:#047857;font-weight:700;">পণ্য হাতে পেয়ে দেখে ডেলিভারি ম্যানের কাছে টাকা পরিশোধ করবেন। (অনলাইন পেমেন্ট সিলেক্ট করলে সাথে সাথে ৫% ছাড় পাবেন!)</div>
+            <span style="font-size:24px;flex-shrink:0;">🤝</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-weight:900;color:#065f46;font-size:13.5px;margin-bottom:2px;">${selectedMethod.name}</div>
+              <div style="font-size:12px;color:#047857;font-weight:700;line-height:1.45;">
+                ${selectedMethod.instructions || 'পণ্য হাতে পেয়ে দেখে ডেলিভারি ম্যানের কাছে টাকা পরিশোধ করবেন।'}
+              </div>
+              <div style="margin-top:6px;padding:5px 10px;border-radius:8px;background:#ffffff;border:1px dashed #6ee7b7;font-size:11.5px;color:#be123c;font-weight:800;">
+                💡 টিপস: উপরের যেকোনো <strong>অনলাইন পেমেন্ট</strong> সিলেক্ট করলেই পাচ্ছেন সাথে সাথে <strong>৫% ইনস্ট্যান্ট ডিসকাউন্ট (সাশ্রয় <span id="lp-cod-switch-save-hint">৳০</span>)</strong>!
+              </div>
             </div>
           </div>
         `;
       } else {
-        const accNumber = String(selectedMethod.number || '01577319660').trim();
-        const accType = String(selectedMethod.accountType || 'Personal / Send Money').trim();
-        const gwUrl = String(selectedMethod.gatewayUrl || '').trim();
+        const discPct = Number(selectedMethod.discount_pct || window.__lpOnlineDiscountPct || 5) || 5;
+        const rawNumbers = String(selectedMethod.number || '')
+          .split(/[,|/]/)
+          .map(s => s.trim())
+          .filter(Boolean);
+        const gwUrl = String(selectedMethod.link || selectedMethod.gatewayUrl || '').trim();
+        const hasBankInfo = Boolean(selectedMethod.bank_name || selectedMethod.account_name || selectedMethod.branch || selectedMethod.routing);
+
         detailsBox.innerHTML = `
           <div class="lp-online-pay-box">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-              <span style="font-size:13px;font-weight:900;color:#be123c;">🎁 অভিনন্দন! অনলাইন পেমেন্টে ৫% ইনস্ট্যান্ট ডিসকাউন্ট চালু হয়েছে!</span>
-              <span style="background:#e11d48;color:#fff;font-size:10.5px;font-weight:900;padding:2px 8px;border-radius:999px;">5% OFF</span>
+              <span style="font-size:13px;font-weight:900;color:#be123c;">
+                🎁 অভিনন্দন! ${selectedMethod.name}-এ ${discPct}% ইনস্ট্যান্ট ডিসকাউন্ট (-<span id="lp-online-pay-save-amount">৳০</span>) চালু হয়েছে!
+              </span>
+              <span style="background:#e11d48;color:#fff;font-size:10.5px;font-weight:900;padding:3px 9px;border-radius:999px;">
+                ${discPct}% OFF
+              </span>
             </div>
+
+            <div style="padding:8px 12px;border-radius:10px;background:#ffffff;border:1.5px solid #fda4af;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+              <span style="font-size:12px;font-weight:800;color:#334155;">৫% ডিসকাউন্ট বাদে পরিশোধযোগ্য নিট বিল:</span>
+              <span id="lp-online-pay-net-amount" style="font-size:16px;font-weight:900;color:#be123c;">৳০</span>
+            </div>
+
             <div style="font-size:12px;color:#334155;font-weight:700;margin-bottom:10px;line-height:1.5;">
-              ${selectedMethod.instructions || `নিচের ${selectedMethod.title} নাম্বারে পেমেন্ট সম্পন্ন করে ট্রানজেকশন আইডি (TrxID) অথবা আপনার নাম্বারটি লিখুন:`}
+              ${selectedMethod.instructions}
             </div>
-            <div class="lp-pay-number-bar">
-              <div>
-                <div style="font-size:10.5px;color:#64748b;font-weight:800;">${selectedMethod.title} নাম্বার (${accType}):</div>
-                <div style="font-size:16px;font-weight:900;color:#0f172a;letter-spacing:0.03em;">${accNumber}</div>
-              </div>
-              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-                <button type="button" onclick="window.copyLpPayNumber('${accNumber}')" class="lp-copy-num-btn">
-                  📋 নাম্বার কপি করুন
-                </button>
-                ${
-                  gwUrl
-                    ? `<a href="${gwUrl}" target="_blank" rel="noopener noreferrer" class="lp-gw-link-btn">⚡ পেমেন্ট লিংক</a>`
-                    : ''
-                }
-              </div>
-            </div>
-            <div style="margin-top:10px;">
-              <label class="lp-field-label" style="color:#881337;margin-bottom:4px;">🔢 ট্রানজেকশন আইডি (TrxID) / প্রেরক মোবাইল নাম্বার <span style="color:#e11d48;">*</span></label>
-              <input type="text" id="lp-trx-id-input" name="transaction_id" placeholder="যেমন: BGH789XYZ অথবা যে নাম্বার থেকে টাকা পাঠিয়েছেন" class="lp-input" style="border-color:#fda4af;background:#ffffff;">
+
+            ${
+              rawNumbers.length > 0
+                ? `<div style="display:flex;flex-direction:column;gap:7px;margin-bottom:10px;">
+                    ${rawNumbers
+                      .map(
+                        (accNumber, nIdx) => `
+                      <div class="lp-pay-number-bar">
+                        <div>
+                          <div style="font-size:10.5px;color:#64748b;font-weight:800;">
+                            ${selectedMethod.name} নম্বর ${rawNumbers.length > 1 ? nIdx + 1 : ''} (${selectedMethod.type}):
+                          </div>
+                          <div style="font-size:15.5px;font-weight:900;color:#0f172a;letter-spacing:0.03em;">${accNumber}</div>
+                        </div>
+                        <button type="button" onclick="window.copyLpPayNumber('${accNumber.replace(/[^0-9+]/g, '') || accNumber}')" class="lp-copy-num-btn">
+                          📋 নাম্বার কপি করুন
+                        </button>
+                      </div>
+                    `
+                      )
+                      .join('')}
+                  </div>`
+                : ''
+            }
+
+            ${
+              hasBankInfo
+                ? `<div style="background:#ffffff;border:1px solid #fecdd3;border-radius:11px;padding:9px 12px;margin-bottom:10px;font-size:11.5px;color:#334155;line-height:1.6;">
+                    ${selectedMethod.bank_name ? `<div><strong>ব্যাংক:</strong> ${selectedMethod.bank_name}</div>` : ''}
+                    ${selectedMethod.account_name ? `<div><strong>একাউন্ট নাম:</strong> ${selectedMethod.account_name}</div>` : ''}
+                    ${selectedMethod.branch ? `<div><strong>শাখা (Branch):</strong> ${selectedMethod.branch}</div>` : ''}
+                    ${selectedMethod.routing ? `<div><strong>রাউটিং (Routing):</strong> ${selectedMethod.routing}</div>` : ''}
+                  </div>`
+                : ''
+            }
+
+            ${
+              gwUrl
+                ? `<div style="margin-bottom:10px;">
+                    <a href="${gwUrl}" target="_blank" rel="noopener noreferrer" class="lp-gw-link-btn" style="display:inline-flex;align-items:center;justify-content:center;width:100%;padding:10px 14px;font-size:12.5px;border-radius:11px;">
+                      ⚡ অনলাইন পেমেন্ট গেটওয়ে লিংকে পেমেন্ট করুন (${selectedMethod.name}) ↗
+                    </a>
+                  </div>`
+                : ''
+            }
+
+            <div style="margin-top:8px;">
+              <label class="lp-field-label" style="color:#881337;margin-bottom:4px;">
+                🔢 ট্রানজেকশন আইডি (TrxID) / প্রেরক মোবাইল নাম্বার <span style="color:#e11d48;">*</span>
+              </label>
+              <input
+                type="text"
+                id="lp-trx-id-input"
+                name="transaction_id"
+                value="${existingTrxVal.replace(/"/g, '&quot;')}"
+                placeholder="যেমন: 9K2840FJA2 অথবা যে নাম্বার থেকে টাকা পাঠিয়েছেন"
+                class="lp-input"
+                style="border-color:#fda4af;background:#ffffff;"
+              >
             </div>
           </div>
         `;
@@ -636,7 +1382,7 @@ if (typeof window !== 'undefined') {
   };
 
   window.changeLpQty = function(delta) {
-    const next = Math.max(1, Math.min(20, (window.__lpQuantity || 1) + delta));
+    const next = Math.max(1, Math.min(50, (window.__lpQuantity || 1) + delta));
     window.__lpQuantity = next;
     const qtyEl = document.getElementById('lp-qty-display');
     const sumQtyEl = document.getElementById('lp-summary-qty');
@@ -649,8 +1395,9 @@ if (typeof window !== 'undefined') {
 
   /**
    * Live Order Calculation:
-   * 1. Free Delivery (`৳০`) if Subtotal >= ৳2,000 (or if campaign free_shipping is true)
-   * 2. 5% Instant Discount (`Math.round(subtotal * 0.05)`) if Online Payment (`BKASH`, `NAGAD`, `ROCKET`, `BANK`) is selected
+   * 1. Free Delivery (`৳০`) when Subtotal >= ৳2,000 (or if campaign free_shipping is true or zone charge === 0)
+   * 2. 5% Instant Discount (`Math.round(subtotal * 0.05)`) when any Online Payment method is selected
+   * 3. Uses exact Delivery Areas & Payment Options selected for this Landing Page from Admin Panel
    */
   window.updateLpOrderCalculation = function() {
     const unitPrice = Number(window.__lpPackagePrice || 0);
@@ -660,47 +1407,74 @@ if (typeof window !== 'undefined') {
     const regTotal = regUnitPrice * qty;
     const productSavings = Math.max(0, regTotal - subtotal);
 
+    const deliveryConfs = Array.isArray(window.__lpDeliveryConfs) ? window.__lpDeliveryConfs : [];
     const areaSelect = document.getElementById('lp-delivery-area');
-    const selectedArea = areaSelect ? areaSelect.value : 'dhaka';
+    const selectedAreaId = areaSelect
+      ? areaSelect.value
+      : (window.__lpSelectedDeliveryId || deliveryConfs[0]?.id || 'dhaka');
+    window.__lpSelectedDeliveryId = selectedAreaId;
+
+    const selectedZoneObj =
+      deliveryConfs.find(
+        d =>
+          String(d.id || '').toLowerCase() === String(selectedAreaId).toLowerCase() ||
+          String(d.code || '').toLowerCase() === String(selectedAreaId).toLowerCase()
+      ) || deliveryConfs[0];
+
     const campaignFreeShipping = Boolean(window.__lpFreeShipping);
     const freeThreshold = Number(window.__lpFreeThreshold || 2000);
-    const onlineDiscountPct = Number(window.__lpOnlineDiscountPct || 5);
-
-    const qualifiesFreeDelivery = campaignFreeShipping || subtotal >= freeThreshold;
-    const baseShippingCost = getZoneShippingCost(selectedArea, window.__lpDeliveryConfs);
+    const baseShippingCost = getZoneShippingCost(selectedAreaId, deliveryConfs);
+    const qualifiesFreeDelivery = campaignFreeShipping || subtotal >= freeThreshold || baseShippingCost === 0;
     const shippingCost = qualifiesFreeDelivery ? 0 : baseShippingCost;
 
-    // Update active state & dynamic fee display on Delivery Zone chips
-    const dhakaFee = getZoneShippingCost('dhaka', window.__lpDeliveryConfs);
-    const subFee = getZoneShippingCost('sub_dhaka', window.__lpDeliveryConfs);
-    const outFee = getZoneShippingCost('outside_dhaka', window.__lpDeliveryConfs);
-
+    // 1. Update Delivery Zone Chips & Select Dropdown Options dynamically
     document.querySelectorAll('.lp-zone-chip').forEach(btn => {
-      const z = btn.getAttribute('data-zone');
-      if (z === selectedArea) btn.classList.add('is-active');
-      else btn.classList.remove('is-active');
+      const zId = btn.getAttribute('data-zone');
+      if (String(zId).toLowerCase() === String(selectedAreaId).toLowerCase()) {
+        btn.classList.add('is-active');
+      } else {
+        btn.classList.remove('is-active');
+      }
 
       const feeSpan = btn.querySelector('.lp-zone-fee-text');
       if (feeSpan) {
-        const rawFee = z === 'dhaka' ? dhakaFee : (z === 'sub_dhaka' ? subFee : outFee);
+        const rawFee = getZoneShippingCost(zId, deliveryConfs);
         if (qualifiesFreeDelivery) {
-          feeSpan.innerHTML = `<del style="opacity:0.65;margin-right:3px;">৳${rawFee}</del> <strong style="color:#059669;">ফ্রি</strong>`;
+          feeSpan.innerHTML =
+            rawFee > 0
+              ? `<del style="opacity:0.65;margin-right:3px;">৳${rawFee}</del> <strong style="color:#059669;">ফ্রি (৳০)</strong>`
+              : `<strong style="color:#059669;">ফ্রি (৳০)</strong>`;
         } else {
-          feeSpan.textContent = `৳${rawFee}`;
+          feeSpan.textContent = rawFee === 0 ? 'ফ্রি (৳০)' : `৳${rawFee}`;
         }
       }
     });
 
-    // Update Free Delivery Progress Bar
+    if (areaSelect && areaSelect.options) {
+      Array.from(areaSelect.options).forEach(opt => {
+        const zId = opt.value;
+        const zObj = deliveryConfs.find(d => String(d.id) === String(zId));
+        if (zObj) {
+          const rawFee = Number(zObj.charge || 0);
+          if (qualifiesFreeDelivery) {
+            opt.textContent = `${zObj.name} — ফ্রি ডেলিভারি (৳০) [${zObj.eta}]`;
+          } else {
+            opt.textContent = `${zObj.name} — ${rawFee === 0 ? 'ফ্রি (৳০)' : '৳' + rawFee} (${zObj.eta}) [২,০০০+ অর্ডারে ফ্রি]`;
+          }
+        }
+      });
+    }
+
+    // 2. Update Free Delivery Animated Progress Bar
     const freeBarWrap = document.getElementById('lp-free-delivery-progress-box');
     if (freeBarWrap) {
       const pct = Math.min(100, Math.round((subtotal / freeThreshold) * 100));
       const remaining = Math.max(0, freeThreshold - subtotal);
       if (qualifiesFreeDelivery) {
         freeBarWrap.innerHTML = `
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;font-weight:900;color:#065f46;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:900;color:#065f46;">
             <span>🎉 অভিনন্দন! ২,০০০+ টাকার অর্ডারে আপনি পাচ্ছেন <strong>সম্পূর্ণ ফ্রি ডেলিভারি (৳০)</strong>!</span>
-            <span style="background:#059669;color:#ffffff;padding:2px 8px;border-radius:999px;font-size:10.5px;">FREE DELIVERY</span>
+            <span style="background:#059669;color:#ffffff;padding:2px 9px;border-radius:999px;font-size:10.5px;">FREE DELIVERY (৳০)</span>
           </div>
           <div class="lp-free-progress-track">
             <div class="lp-free-progress-fill" style="width:100%;"></div>
@@ -708,9 +1482,9 @@ if (typeof window !== 'undefined') {
         `;
       } else {
         freeBarWrap.innerHTML = `
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;font-weight:800;color:#1e293b;">
-            <span>🚚 আর মাত্র <strong style="color:#e11d48;">${formatCurrency(remaining)}</strong> টাকার পণ্য যোগ করলেই <strong>ডেলিভারি চার্জ সম্পূর্ণ ফ্রি!</strong></span>
-            <span style="font-size:11px;font-weight:900;color:#059669;">${pct}%</span>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:800;color:#1e293b;">
+            <span>🚚 ২,০০০+ টাকার অর্ডারে ডেলিভারি ফ্রি! আর মাত্র <strong style="color:#e11d48;">${formatCurrency(remaining)}</strong> টাকার পণ্য যোগ করলেই <strong>ডেলিভারি চার্জ সম্পূর্ণ ফ্রি (৳০)!</strong></span>
+            <button type="button" onclick="window.changeLpQty(1)" style="padding:3px 9px;border-radius:999px;background:#059669;color:#ffffff;border:none;font-size:10.5px;font-weight:900;cursor:pointer;">+ পরিমাণ বাড়ান (${pct}%)</button>
           </div>
           <div class="lp-free-progress-track">
             <div class="lp-free-progress-fill" style="width:${pct}%;"></div>
@@ -719,16 +1493,43 @@ if (typeof window !== 'undefined') {
       }
     }
 
-    // Online Payment 5% Discount
-    const selectedPayment = String(window.__lpSelectedPayment || 'COD').toUpperCase();
-    const isOnlinePayment = selectedPayment !== 'COD';
+    // 3. Calculate Online Payment 5% Discount
+    const paymentMethods = Array.isArray(window.__lpPaymentMethods) ? window.__lpPaymentMethods : [];
+    const selectedPaymentId = String(window.__lpSelectedPayment || 'COD');
+    const selectedMethodObj =
+      paymentMethods.find(
+        m =>
+          String(m.id || '').toLowerCase() === selectedPaymentId.toLowerCase() ||
+          String(m.code || '').toLowerCase() === selectedPaymentId.toLowerCase()
+      ) || paymentMethods[0];
+
+    const isOnlinePayment = selectedMethodObj ? !selectedMethodObj.isCod : selectedPaymentId.toUpperCase() !== 'COD';
+    const onlineDiscountPct = isOnlinePayment
+      ? Number(selectedMethodObj?.discount_pct || window.__lpOnlineDiscountPct || 5) || 5
+      : 0;
     const onlineDiscount = isOnlinePayment ? Math.round((subtotal * onlineDiscountPct) / 100) : 0;
+    const potentialOnlineSavings = Math.round((subtotal * (Number(window.__lpOnlineDiscountPct || 5) || 5)) / 100);
+
+    // Update 5% discount badges on each payment card with live savings amount
+    document.querySelectorAll('.lp-pay-5pct-tag').forEach(badge => {
+      badge.textContent = potentialOnlineSavings > 0 ? `৫% ছাড় (-৳${potentialOnlineSavings})` : '৫% ছাড়';
+    });
 
     const total = Math.max(0, subtotal - onlineDiscount + shippingCost);
     const totalSavings = productSavings + onlineDiscount + (qualifiesFreeDelivery ? baseShippingCost : 0);
 
+    // Update live values inside the active payment details panel
+    const netAmtEl = document.getElementById('lp-online-pay-net-amount');
+    const saveAmtEl = document.getElementById('lp-online-pay-save-amount');
+    const codSwitchHintEl = document.getElementById('lp-cod-switch-save-hint');
+    if (netAmtEl) netAmtEl.textContent = formatCurrency(total);
+    if (saveAmtEl) saveAmtEl.textContent = formatCurrency(onlineDiscount);
+    if (codSwitchHintEl) codSwitchHintEl.textContent = formatCurrency(potentialOnlineSavings);
+
+    // 4. Update Order Summary DOM
     const subEl = document.getElementById('lp-summary-subtotal');
     const shipEl = document.getElementById('lp-summary-shipping');
+    const zoneLblEl = document.getElementById('lp-summary-zone-label');
     const discRowEl = document.getElementById('lp-summary-discount-row');
     const discValEl = document.getElementById('lp-summary-discount-val');
     const saveRowEl = document.getElementById('lp-summary-savings-row');
@@ -740,9 +1541,15 @@ if (typeof window !== 'undefined') {
     const thumbEl = document.getElementById('lp-summary-thumb');
 
     if (subEl) subEl.textContent = formatCurrency(subtotal);
+    if (zoneLblEl && selectedZoneObj) {
+      zoneLblEl.textContent = `ডেলিভারি চার্জ (${selectedZoneObj.name}):`;
+    }
     if (shipEl) {
       if (qualifiesFreeDelivery) {
-        shipEl.innerHTML = `<del style="color:#94a3b8;font-size:11.5px;margin-right:5px;">${formatCurrency(baseShippingCost)}</del><span style="color:#34d399;font-weight:900;">ফ্রি ডেলিভারি (৳০)</span>`;
+        shipEl.innerHTML =
+          baseShippingCost > 0
+            ? `<del style="color:#94a3b8;font-size:11.5px;margin-right:5px;">${formatCurrency(baseShippingCost)}</del><span style="color:#34d399;font-weight:900;">ফ্রি ডেলিভারি (৳০)</span>`
+            : `<span style="color:#34d399;font-weight:900;">ফ্রি ডেলিভারি (৳০)</span>`;
       } else {
         shipEl.textContent = formatCurrency(shippingCost);
         shipEl.style.color = '#f8fafc';
@@ -793,7 +1600,7 @@ if (typeof window !== 'undefined') {
     const name = form.customer_name?.value?.trim();
     const phone = form.customer_phone?.value?.trim();
     const address = form.customer_address?.value?.trim();
-    const area = form.delivery_area?.value || 'dhaka';
+    const areaId = form.delivery_area?.value || window.__lpSelectedDeliveryId || 'dhaka';
     const note = form.order_note?.value?.trim() || '';
     const trxInput = document.getElementById('lp-trx-id-input');
     const trxId = trxInput ? trxInput.value.trim() : '';
@@ -809,10 +1616,18 @@ if (typeof window !== 'undefined') {
       return;
     }
 
-    const selectedPayment = String(window.__lpSelectedPayment || 'COD').toUpperCase();
-    const isOnlinePayment = selectedPayment !== 'COD';
+    const paymentMethods = Array.isArray(window.__lpPaymentMethods) ? window.__lpPaymentMethods : [];
+    const selectedPaymentId = String(window.__lpSelectedPayment || 'COD');
+    const matchedMethod =
+      paymentMethods.find(
+        m =>
+          String(m.id || '').toLowerCase() === selectedPaymentId.toLowerCase() ||
+          String(m.code || '').toLowerCase() === selectedPaymentId.toLowerCase()
+      ) || paymentMethods[0];
+
+    const isOnlinePayment = matchedMethod ? !matchedMethod.isCod : selectedPaymentId.toUpperCase() !== 'COD';
     if (isOnlinePayment && !trxId) {
-      toast.error('অনলাইন পেমেন্টে ৫% ছাড় পেতে অনুগ্রহ করে ট্রানজেকশন আইডি (TrxID) অথবা প্রেরক নাম্বারটি লিখুন।');
+      toast.error('অনলাইন পেমেন্টে ৫% ছাড় পেতে অনুগ্রহ করে ট্রানজেকশন আইডি (TrxID) অথবা প্রেরক নাম্বারটি লিখুন।');
       if (trxInput) trxInput.focus();
       return;
     }
@@ -821,27 +1636,29 @@ if (typeof window !== 'undefined') {
     const qty = Number(window.__lpQuantity || 1);
     const subtotal = unitPrice * qty;
     const freeThreshold = Number(window.__lpFreeThreshold || 2000);
-    const onlineDiscountPct = Number(window.__lpOnlineDiscountPct || 5);
-    const qualifiesFreeDelivery = Boolean(window.__lpFreeShipping) || subtotal >= freeThreshold;
+    const onlineDiscountPct = isOnlinePayment
+      ? Number(matchedMethod?.discount_pct || window.__lpOnlineDiscountPct || 5) || 5
+      : 0;
 
-    const baseShippingCost = getZoneShippingCost(area, window.__lpDeliveryConfs);
+    const deliveryConfs = Array.isArray(window.__lpDeliveryConfs) ? window.__lpDeliveryConfs : [];
+    const matchedZone =
+      deliveryConfs.find(
+        d =>
+          String(d.id || '').toLowerCase() === String(areaId).toLowerCase() ||
+          String(d.code || '').toLowerCase() === String(areaId).toLowerCase()
+      ) || deliveryConfs[0];
+
+    const baseShippingCost = getZoneShippingCost(areaId, deliveryConfs);
+    const qualifiesFreeDelivery = Boolean(window.__lpFreeShipping) || subtotal >= freeThreshold || baseShippingCost === 0;
     const shippingCost = qualifiesFreeDelivery ? 0 : baseShippingCost;
-
-    let deliveryAreaLabel = 'ঢাকার ভেতরে (Inside Dhaka)';
-    if (area === 'sub_dhaka') {
-      deliveryAreaLabel = 'ঢাকা সাব-এরিয়া (Sub Dhaka)';
-    } else if (area === 'outside_dhaka') {
-      deliveryAreaLabel = 'ঢাকার বাইরে (Outside Dhaka)';
-    }
+    const deliveryAreaLabel = matchedZone ? matchedZone.name : String(areaId);
 
     const discountAmount = isOnlinePayment ? Math.round((subtotal * onlineDiscountPct) / 100) : 0;
     const totalAmount = Math.max(0, subtotal - discountAmount + shippingCost);
 
-    const paymentMethods = window.__lpPaymentMethods || [];
-    const matchedMethod = paymentMethods.find(m => String(m.id || '').toUpperCase() === selectedPayment);
     const paymentLabel = isOnlinePayment
-      ? `${matchedMethod ? matchedMethod.title : selectedPayment} (৫% অনলাইন ছাড় - TrxID: ${trxId})`
-      : 'ক্যাশ অন ডেলিভারি (COD)';
+      ? `${matchedMethod ? matchedMethod.name : selectedPaymentId} (${onlineDiscountPct}% অনলাইন ছাড় - TrxID: ${trxId})`
+      : (matchedMethod ? matchedMethod.name : 'ক্যাশ অন ডেলিভারি (COD)');
 
     const variantDetails = [
       window.__lpSelectedColor ? `কালার: ${window.__lpSelectedColor}` : '',
@@ -863,7 +1680,7 @@ if (typeof window !== 'undefined') {
       customerPhone: phone,
       phone: phone,
       customer_email: '',
-      address: `${address} [এরিয়া: ${deliveryAreaLabel}]`,
+      address: `${address} [ডেলিভারি এরিয়া: ${deliveryAreaLabel}]`,
       customer_address: address,
       customerAddress: address,
       shipping_address: address,
@@ -887,7 +1704,7 @@ if (typeof window !== 'undefined') {
       total: totalAmount,
       payable_amount: totalAmount,
       payment_method: paymentLabel,
-      paymentMethod: selectedPayment,
+      paymentMethod: matchedMethod ? (matchedMethod.code || matchedMethod.id) : selectedPaymentId,
       transaction_id: trxId,
       transactionId: trxId,
       payment_status: isOnlinePayment ? 'Paid (Verify TrxID)' : 'Pending',
@@ -897,8 +1714,9 @@ if (typeof window !== 'undefined') {
       notes: [
         '[Landing Page Order]',
         variantDetails,
+        `ডেলিভারি এরিয়া: ${deliveryAreaLabel}`,
         qualifiesFreeDelivery ? 'ফ্রি ডেলিভারি (২০০০+ টাকা অর্ডার)' : '',
-        isOnlinePayment ? `৫% অনলাইন পেমেন্ট ছাড় (-৳${discountAmount}), TrxID: ${trxId}` : '',
+        isOnlinePayment ? `${onlineDiscountPct}% অনলাইন পেমেন্ট ছাড় (-৳${discountAmount}), TrxID: ${trxId}` : '',
         note
       ]
         .filter(Boolean)
@@ -1084,7 +1902,7 @@ function readInstantLocalPagesAndProducts() {
     cachedProducts = apiClient.products;
   } else {
     try {
-      const rawProds = localStorage.getItem('dcbd_products_cache') || localStorage.getItem('dcbd_products');
+      const rawProds = localStorage.getItem('dcbd_products_cache') || localStorage.getItem('dcbd_products') || localStorage.getItem('dcbd_sheet_products');
       if (rawProds) {
         const parsedProds = JSON.parse(rawProds);
         if (Array.isArray(parsedProds)) cachedProducts = parsedProds;
@@ -1174,22 +1992,6 @@ export async function renderLandingPage(params = {}) {
     }
 
     const siteSettings = typeof getGlobalSiteSettings === 'function' ? getGlobalSiteSettings() : {};
-    const deliveryConfs = typeof getGlobalDeliveryMethods === 'function' ? getGlobalDeliveryMethods() : [];
-    const paymentMethods = typeof getGlobalPaymentMethods === 'function'
-      ? getGlobalPaymentMethods(true)
-      : [
-          { id: 'COD', title: 'ক্যাশ অন ডেলিভারি (COD)', type: 'COD', icon: '🚚' },
-          { id: 'BKASH', title: 'বিকাশ (bKash)', type: 'MOBILE_BANKING', number: '01577319660', accountType: 'Personal / Send Money', icon: '💗' },
-          { id: 'NAGAD', title: 'নগদ (Nagad)', type: 'MOBILE_BANKING', number: '01577319660', accountType: 'Personal / Send Money', icon: '🧡' },
-          { id: 'ROCKET', title: 'রকেট (Rocket)', type: 'MOBILE_BANKING', number: '01577319660', accountType: 'Personal / Send Money', icon: '💜' }
-        ];
-
-    if (typeof window !== 'undefined') {
-      window.__lpDeliveryConfs = deliveryConfs;
-      window.__lpPaymentMethods = paymentMethods;
-      window.__lpFreeThreshold = Number(siteSettings?.freeDeliveryThreshold || 2000);
-      window.__lpOnlineDiscountPct = Number(siteSettings?.onlineDiscountPct || 5);
-    }
 
     // Pick matching landing page by slug or id, or fallback to latest active page
     let activePage = null;
@@ -1240,7 +2042,20 @@ export async function renderLandingPage(params = {}) {
       `;
     }
 
-    // Extract fields supporting both AdminPortal (`subtitle`, `badge`, `promo`, `selected_products`, `theme`) and custom fields
+    // Resolve Delivery Areas & Payment Options specifically selected for this Landing Page from Admin Panel
+    const deliveryConfs = resolveLandingPageDeliveryMethods(activePage);
+    const paymentMethods = resolveLandingPagePaymentMethods(activePage);
+
+    if (typeof window !== 'undefined') {
+      window.__lpDeliveryConfs = deliveryConfs;
+      window.__lpPaymentMethods = paymentMethods;
+      window.__lpSelectedDeliveryId = deliveryConfs[0]?.id || 'dhaka';
+      window.__lpSelectedPayment = paymentMethods[0]?.id || 'COD';
+      window.__lpFreeThreshold = Number(siteSettings?.freeDeliveryThreshold || 2000);
+      window.__lpOnlineDiscountPct = Number(siteSettings?.onlineDiscountPct || 5);
+    }
+
+    // Extract fields supporting AdminPortal (`subtitle`, `badge`, `promo`, `selected_products`, `theme`)
     const pageTitle = String(activePage.title || activePage.Slogan || activePage.slogan || '').trim();
     const heroHeadline = String(activePage.headline || pageTitle).trim();
     const heroSubheadline = String(activePage.subtitle || activePage.subheadline || '').trim();
@@ -1292,14 +2107,12 @@ export async function renderLandingPage(params = {}) {
             matched.selling_price ||
             matched.offer_price ||
             matched.price ||
-            activePage.offer_price ||
             0
         );
         const origP = Number(
           (typeof item === 'object' && item.regular_price) ||
             matched.original_price ||
             matched.regular_price ||
-            activePage.regular_price ||
             0
         );
         resolvedProducts.push({
@@ -1314,32 +2127,38 @@ export async function renderLandingPage(params = {}) {
         resolvedProducts.push({
           ...item,
           image_url: item.image_url || item.thumbnail || item.image || heroBanner || '',
-          offer_price: Number(item.offer_price || item.selling_price || item.price || activePage.offer_price || 0),
-          regular_price: Number(item.regular_price || item.original_price || activePage.regular_price || 0),
+          offer_price: Number(item.offer_price || item.selling_price || item.price || 0),
+          regular_price: Number(item.regular_price || item.original_price || 0),
           colors: normalizeStringList(item.colors || item.color),
           sizes: normalizeStringList(item.sizes || item.size)
         });
       }
     });
 
-    // Fallback virtual product if only page-level title/price was entered
-    if (resolvedProducts.length === 0 && (pageTitle || heroHeadline || Number(activePage.offer_price) > 0)) {
-      resolvedProducts.push({
-        id: activePage.id || 'LP-MAIN',
-        sku: activePage.slug || 'LP-MAIN',
-        name: pageTitle || heroHeadline,
-        image_url: heroBanner || '',
-        offer_price: Number(activePage.offer_price || 0),
-        regular_price: Number(activePage.regular_price || 0),
-        description: pageDescription,
-        colors: normalizeStringList(activePage.colors),
-        sizes: normalizeStringList(activePage.sizes)
+    // If no specific products were attached to this campaign yet, show top store products so campaign always has real products
+    if (resolvedProducts.length === 0 && allProducts.length > 0) {
+      allProducts.slice(0, 6).forEach(matched => {
+        const imgUrl =
+          matched.thumbnail ||
+          (Array.isArray(matched.images) && matched.images[0]) ||
+          matched.image_url ||
+          matched.image ||
+          heroBanner ||
+          '';
+        resolvedProducts.push({
+          ...matched,
+          image_url: imgUrl,
+          offer_price: Number(matched.selling_price || matched.offer_price || matched.price || 0),
+          regular_price: Number(matched.original_price || matched.regular_price || 0),
+          colors: normalizeStringList(matched.colors || matched.color),
+          sizes: normalizeStringList(matched.sizes || matched.size)
+        });
       });
     }
 
     const firstProd = resolvedProducts[0] || {};
-    const firstPrice = Number(firstProd.offer_price || firstProd.selling_price || firstProd.price || activePage.offer_price || 0);
-    const firstRegPrice = Number(firstProd.regular_price || firstProd.original_price || activePage.regular_price || 0);
+    const firstPrice = Number(firstProd.offer_price || firstProd.selling_price || firstProd.price || 0);
+    const firstRegPrice = Number(firstProd.regular_price || firstProd.original_price || 0);
     const firstTitle = firstProd.name || firstProd.p_name || pageTitle || heroHeadline || 'ক্যাম্পেইন পণ্য';
     const firstSku = firstProd.sku || firstProd.product_id || firstProd.id || 'LP-ITEM';
     const firstImg = firstProd.image_url || firstProd.thumbnail || heroBanner || '';
@@ -1359,7 +2178,6 @@ export async function renderLandingPage(params = {}) {
       window.__lpPackageSku = firstSku;
       window.__lpPackageImage = firstImg;
       window.__lpQuantity = 1;
-      window.__lpSelectedPayment = 'COD';
       window.__lpDefaultColors = defaultColors;
       window.__lpDefaultSizes = defaultSizes;
       window.__lpSelectedColor = defaultColors[0] || '';
@@ -1392,17 +2210,6 @@ export async function renderLandingPage(params = {}) {
     const contactPhone = activePage.hotline || siteSettings.hotline1 || siteSettings.contact_phone || siteSettings.supportPhone || '01581703822';
     const cleanPhone = String(contactPhone).replace(/[^0-9+]/g, '');
 
-    const displayRegularPrice = Number(activePage.regular_price || firstRegPrice || 0);
-    const displayOfferPrice = Number(activePage.offer_price || firstPrice || 0);
-    const displaySavings =
-      displayRegularPrice > displayOfferPrice && displayOfferPrice > 0
-        ? displayRegularPrice - displayOfferPrice
-        : 0;
-    const discountPct =
-      displayRegularPrice > displayOfferPrice && displayOfferPrice > 0
-        ? Math.round(((displayRegularPrice - displayOfferPrice) / displayRegularPrice) * 100)
-        : 0;
-
     const heroDisplayImg = heroBanner || firstImg || '';
     const prodGridClass =
       resolvedProducts.length === 1
@@ -1411,17 +2218,17 @@ export async function renderLandingPage(params = {}) {
         ? 'lp-products-grid is-double'
         : 'lp-products-grid';
 
-    const dhakaFeeInit = getZoneShippingCost('dhaka', deliveryConfs);
-    const subFeeInit = getZoneShippingCost('sub_dhaka', deliveryConfs);
-    const outFeeInit = getZoneShippingCost('outside_dhaka', deliveryConfs);
-    const initFree = freeShipping || firstPrice >= 2000;
-    const initShipping = initFree ? 0 : dhakaFeeInit;
+    const firstZone = deliveryConfs[0] || { id: 'dhaka', name: 'ঢাকা সিটি', charge: 80, eta: '২-৩ দিন' };
+    const firstZoneFee = Number(firstZone.charge || 0);
+    const initFree = freeShipping || firstPrice >= 2000 || firstZoneFee === 0;
+    const initShipping = initFree ? 0 : firstZoneFee;
+    const initOnlineSavings = Math.round((firstPrice * 5) / 100);
 
     // Start countdown timer and live calculation after router mounts HTML
     if (typeof window !== 'undefined') {
       setTimeout(() => {
         if (typeof window.selectLpPaymentMethod === 'function') {
-          window.selectLpPaymentMethod('COD');
+          window.selectLpPaymentMethod(paymentMethods[0]?.id || 'COD');
         }
         if (typeof window.updateLpOrderCalculation === 'function') {
           window.updateLpOrderCalculation();
@@ -1499,7 +2306,7 @@ export async function renderLandingPage(params = {}) {
           .lp-section-title { font-size: 21px; font-weight: 900; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 10px; }
           .lp-section-sub { font-size: 12.5px; font-weight: 800; color: ${palette.primary}; background: ${palette.light}; padding: 6px 14px; border-radius: 999px; border: 1.5px solid ${palette.border}; box-shadow: 0 3px 0 ${palette.border}; }
 
-          /* 3D Hero Showcase Card */
+          /* 3D Hero Showcase Card (Multi-Product Campaign Header — NO standalone product-less price) */
           .lp-hero-card { background: ${palette.heroBg}; border-radius: 28px; border: 2px solid ${palette.border}; border-bottom: 8px solid ${palette.primary}; box-shadow: 0 22px 48px -12px rgba(15, 23, 42, 0.10); margin-top: 20px; margin-bottom: 28px; overflow: hidden; perspective: 1200px; }
           .lp-hero-grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr); align-items: center; }
           .lp-hero-grid.is-single { grid-template-columns: minmax(0, 1fr); text-align: center; max-width: 800px; margin: 0 auto; }
@@ -1507,14 +2314,10 @@ export async function renderLandingPage(params = {}) {
           .lp-hero-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 15px; border-radius: 999px; font-size: 12.5px; font-weight: 800; background: ${palette.badgeBg}; color: ${palette.badgeText}; margin-bottom: 14px; box-shadow: 0 4px 12px ${palette.glow}; }
           .lp-hero-title { font-size: 31px; font-weight: 900; color: #0f172a; line-height: 1.3; margin: 0 0 12px; word-break: break-word; }
           .lp-hero-subtitle { font-size: 15.5px; color: #475569; line-height: 1.65; font-weight: 500; margin: 0 0 20px; word-break: break-word; }
-          .lp-hero-price-box { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 20px; border-radius: 18px; background: #ffffff; border: 2px solid ${palette.border}; border-bottom: 5px solid ${palette.primary}; margin-bottom: 16px; box-shadow: 0 10px 24px -8px ${palette.glow}; }
-          .lp-hero-reg-price { font-size: 13.5px; color: #64748b; font-weight: 700; }
-          .lp-hero-reg-price del { color: #ef4444; font-weight: 800; margin-left: 4px; }
-          .lp-hero-offer-price { font-size: 22px; font-weight: 900; color: ${palette.primary}; }
-          .lp-hero-save-badge { padding: 5px 11px; border-radius: 999px; background: linear-gradient(135deg, #e11d48, #be123c); color: #ffffff; font-size: 11.5px; font-weight: 900; box-shadow: 0 3px 8px rgba(225, 29, 72, 0.3); }
           .lp-promo-strip { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
-          .lp-promo-tag { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 800; background: #ecfdf5; color: #065f46; border: 1.5px solid #6ee7b7; }
-          .lp-promo-tag.is-online { background: #fff1f2; color: #be123c; border-color: #fda4af; }
+          .lp-promo-tag { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: 11px; font-size: 12.5px; font-weight: 800; background: #ecfdf5; color: #065f46; border: 1.5px solid #6ee7b7; border-bottom: 3px solid #10b981; }
+          .lp-promo-tag.is-online { background: #fff1f2; color: #be123c; border-color: #fda4af; border-bottom-color: #e11d48; }
+          .lp-promo-tag.is-count { background: ${palette.light}; color: ${palette.primary}; border-color: ${palette.border}; border-bottom-color: ${palette.primary}; }
           .lp-gift-banner { padding: 12px 16px; border-radius: 14px; background: #fffbeb; border: 1.5px solid #fde68a; border-bottom: 4px solid #f59e0b; color: #92400e; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
           .lp-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
           .lp-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; border-radius: 16px; font-weight: 900; font-size: 15.5px; color: #ffffff; background: linear-gradient(135deg, ${palette.primary}, ${palette.primaryDark}); text-decoration: none; border: none; border-bottom: 5px solid ${palette.bevel}; cursor: pointer; animation: lpPulseGlow 2.6s infinite; transition: all 0.2s ease; }
@@ -1523,8 +2326,8 @@ export async function renderLandingPage(params = {}) {
           .lp-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 22px; border-radius: 16px; font-weight: 800; font-size: 14px; color: #0f172a; background: #ffffff; border: 1.5px solid #cbd5e1; border-bottom: 4px solid #94a3b8; text-decoration: none; transition: all 0.2s ease; }
           .lp-btn-secondary:hover { border-color: ${palette.primary}; color: ${palette.primary}; background: ${palette.light}; transform: translateY(-2px); }
           .lp-hero-micro-trust { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; font-size: 12px; font-weight: 700; color: #475569; }
-          .lp-hero-media { padding: 28px; display: flex; align-items: center; justify-content: center; height: 100%; min-height: 320px; perspective: 1200px; }
-          .lp-hero-img-box { position: relative; width: 100%; max-width: 420px; height: 340px; background: #ffffff; border-radius: 24px; padding: 14px; border: 2px solid #e2e8f0; border-bottom: 7px solid #cbd5e1; box-shadow: 0 22px 42px -12px rgba(15, 23, 42, 0.16); display: flex; align-items: center; justify-content: center; overflow: hidden; animation: lpFloat3D 5s ease-in-out infinite; }
+          .lp-hero-media { padding: 28px; display: flex; align-items: center; justify-content: center; height: 100%; min-height: 300px; perspective: 1200px; }
+          .lp-hero-img-box { position: relative; width: 100%; max-width: 420px; height: 320px; background: #ffffff; border-radius: 24px; padding: 14px; border: 2px solid #e2e8f0; border-bottom: 7px solid #cbd5e1; box-shadow: 0 22px 42px -12px rgba(15, 23, 42, 0.16); display: flex; align-items: center; justify-content: center; overflow: hidden; animation: lpFloat3D 5s ease-in-out infinite; }
           .lp-hero-img-box img { width: 100%; height: 100%; object-fit: contain; border-radius: 14px; filter: drop-shadow(0 12px 18px rgba(15, 23, 42, 0.12)); }
 
           /* 3D Campaign Products Showcase Grid (Luxury 3D Product Cards) */
@@ -1588,7 +2391,6 @@ export async function renderLandingPage(params = {}) {
             margin-bottom: 14px;
             padding: 12px;
           }
-          /* 3D Floating Pedestal Shadow under Product Image */
           .lp-showcase-img-wrap::before {
             content: "";
             position: absolute;
@@ -1659,7 +2461,7 @@ export async function renderLandingPage(params = {}) {
           .lp-step-count-badge { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: ${palette.light}; color: ${palette.primary}; border: 1px solid ${palette.border}; }
 
           /* Free Delivery Animated Progress Bar */
-          .lp-free-delivery-box { padding: 13px 15px; border-radius: 16px; background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%); border: 1.5px solid #6ee7b7; border-bottom: 4px solid #10b981; margin-bottom: 16px; }
+          .lp-free-delivery-box { padding: 13px 15px; border-radius: 16px; background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%); border: 1.5px solid #6ee7b7; border-bottom: 4px solid #10b981; margin-bottom: 18px; }
           .lp-free-progress-track { width: 100%; height: 8px; border-radius: 999px; background: #d1fae5; overflow: hidden; margin-top: 7px; }
           .lp-free-progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #10b981 0%, #059669 100%); transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
 
@@ -1702,7 +2504,7 @@ export async function renderLandingPage(params = {}) {
           .lp-summary-thumb { width: 46px; height: 46px; border-radius: 10px; object-fit: contain; background: #ffffff; padding: 2px; flex-shrink: 0; }
           .lp-summary-prod-title { font-size: 13px; font-weight: 700; color: #f1f5f9; line-height: 1.35; flex: 1; min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
           .lp-summary-qty-badge { font-size: 12px; font-weight: 900; color: #34d399; background: rgba(52, 211, 153, 0.14); padding: 4px 9px; border-radius: 8px; white-space: nowrap; flex-shrink: 0; }
-          .lp-summary-line { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #cbd5e1; padding: 4px 0; }
+          .lp-summary-line { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #cbd5e1; padding: 4px 0; gap: 8px; }
           .lp-summary-total-line { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; margin-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.14); font-size: 16px; font-weight: 900; }
 
           /* Right Column Shipping & Payment Card */
@@ -1711,13 +2513,13 @@ export async function renderLandingPage(params = {}) {
           .lp-field-label { display: block; font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 6px; }
           .lp-input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #cbd5e1; background: #ffffff; font-size: 14px; font-weight: 600; color: #0f172a; transition: all 0.2s ease; }
           .lp-input:focus { outline: none; border-color: ${palette.primary}; box-shadow: 0 0 0 3px ${palette.glow}; }
-          .lp-zone-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
-          .lp-zone-chip { padding: 9px 6px; border-radius: 12px; border: 1.5px solid #cbd5e1; border-bottom: 4px solid #94a3b8; background: #ffffff; color: #334155; font-size: 11.5px; font-weight: 800; text-align: center; cursor: pointer; transition: all 0.18s ease; }
+          .lp-zone-chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 8px; margin-bottom: 8px; }
+          .lp-zone-chip { padding: 10px 8px; border-radius: 12px; border: 1.5px solid #cbd5e1; border-bottom: 4px solid #94a3b8; background: #ffffff; color: #334155; font-size: 11.5px; font-weight: 800; text-align: center; cursor: pointer; transition: all 0.18s ease; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
           .lp-zone-chip.is-active { border-color: ${palette.primary}; border-bottom-color: ${palette.bevel}; background: ${palette.light}; color: ${palette.primary}; box-shadow: 0 6px 14px -4px ${palette.glow}; }
 
           /* 3D Payment Option Cards (COD + Online Payment 5% OFF) */
           .lp-pay-options-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-bottom: 10px; }
-          .lp-pay-option-card { position: relative; display: flex; align-items: center; gap: 8px; padding: 10px 11px; border-radius: 14px; border: 2px solid #cbd5e1; border-bottom: 4px solid #94a3b8; background: #ffffff; cursor: pointer; transition: all 0.18s ease; }
+          .lp-pay-option-card { position: relative; display: flex; align-items: center; gap: 8px; padding: 11px 11px; border-radius: 14px; border: 2px solid #cbd5e1; border-bottom: 4px solid #94a3b8; background: #ffffff; cursor: pointer; transition: all 0.18s ease; }
           .lp-pay-option-card:hover { border-color: ${palette.primary}; transform: translateY(-2px); }
           .lp-pay-option-card.is-active { border-color: ${palette.primary}; border-bottom-color: ${palette.bevel}; background: ${palette.light}; box-shadow: 0 8px 18px -5px ${palette.glow}; }
           .lp-pay-radio { width: 18px; height: 18px; border-radius: 999px; border: 2px solid #94a3b8; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: #ffffff; }
@@ -1725,7 +2527,7 @@ export async function renderLandingPage(params = {}) {
           .lp-pay-radio-dot { width: 9px; height: 9px; border-radius: 999px; background: ${palette.primary}; transition: transform 0.2s ease; }
           .lp-pay-5pct-tag { position: absolute; top: -8px; right: 8px; background: linear-gradient(135deg, #e11d48, #be123c); color: #ffffff; font-size: 9.5px; font-weight: 900; padding: 2px 7px; border-radius: 999px; box-shadow: 0 2px 6px rgba(225, 29, 72, 0.3); }
 
-          .lp-cod-box { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: #ecfdf5; border: 1.5px solid #a7f3d0; color: #065f46; font-size: 12.5px; font-weight: 800; margin-bottom: 14px; }
+          .lp-cod-box { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 14px; background: #ecfdf5; border: 1.5px solid #a7f3d0; color: #065f46; font-size: 12.5px; font-weight: 800; margin-bottom: 14px; }
           .lp-online-pay-box { padding: 14px; border-radius: 16px; background: linear-gradient(135deg, #fff1f2 0%, #ffe4e6 100%); border: 2px solid #fda4af; border-bottom: 5px solid #e11d48; margin-bottom: 14px; }
           .lp-pay-number-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; background: #ffffff; padding: 9px 12px; border-radius: 12px; border: 1.5px solid #fecdd3; }
           .lp-copy-num-btn { padding: 6px 11px; border-radius: 9px; border: 1.5px solid #e11d48; background: #fff1f2; color: #be123c; font-size: 11.5px; font-weight: 800; cursor: pointer; }
@@ -1755,7 +2557,7 @@ export async function renderLandingPage(params = {}) {
             .lp-surface-card { padding: 18px 14px; border-radius: 20px; }
             .lp-hero-content { padding: 22px 16px; }
             .lp-hero-title { font-size: 22px; }
-            .lp-hero-img-box { height: 250px; }
+            .lp-hero-img-box { height: 240px; }
             .lp-products-grid, .lp-products-grid.is-double { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
             .lp-showcase-card { padding: 10px; border-radius: 16px; }
             .lp-showcase-img-wrap { height: 145px; padding: 6px; margin-bottom: 8px; }
@@ -1779,7 +2581,7 @@ export async function renderLandingPage(params = {}) {
               <div class="lp-top-badge">
                 <span>🔥</span>
                 <span>${badgeText || 'স্পেশাল ক্যাম্পেইন অফার চলছে!'}</span>
-                <span style="background:rgba(255,255,255,0.2);padding:2px 9px;border-radius:999px;font-size:11.5px;">🚚 ২,০০০+ টাকায় ফ্রি ডেলিভারি • 💳 অনলাইন পেমেন্টে ৫% ছাড়</span>
+                <span style="background:rgba(255,255,255,0.2);padding:2px 9px;border-radius:999px;font-size:11.5px;">🚚 ২,০০০+ টাকায় ফ্রি ডেলিভারি • 💳 অনলাইন পেমেন্টে ৫% ছাড়</span>
               </div>
               ${countdownHours > 0 ? `
                 <div class="lp-countdown-wrap">
@@ -1820,8 +2622,8 @@ export async function renderLandingPage(params = {}) {
         </header>
 
         <main class="lp-wrap">
-          <!-- 3D Hero Section -->
-          ${(heroHeadline || heroSubheadline || heroDisplayImg || displayOfferPrice > 0) ? `
+          <!-- 1. 3D Hero Section (Multi-Product Campaign Header — NO standalone product-less price) -->
+          ${(heroHeadline || heroSubheadline || heroDisplayImg) ? `
             <section class="lp-hero-card">
               <div class="lp-hero-grid ${heroDisplayImg ? '' : 'is-single'}">
                 <div class="lp-hero-content">
@@ -1835,25 +2637,13 @@ export async function renderLandingPage(params = {}) {
                   ${heroSubheadline ? `
                     <p class="lp-hero-subtitle">${heroSubheadline}</p>
                   ` : ''}
-                  ${displayOfferPrice > 0 ? `
-                    <div class="lp-hero-price-box">
-                      ${displayRegularPrice > displayOfferPrice ? `
-                        <div class="lp-hero-reg-price">
-                          রেগুলার মূল্য: <del>${formatCurrency(displayRegularPrice)}</del>
-                        </div>
-                      ` : ''}
-                      <div class="lp-hero-offer-price">
-                        অফার মূল্য: ${formatCurrency(displayOfferPrice)}
-                      </div>
-                      ${discountPct > 0 ? `
-                        <span class="lp-hero-save-badge">${discountPct}% ছাড় (সাশ্রয় ${formatCurrency(displaySavings)})</span>
-                      ` : ''}
-                    </div>
-                  ` : ''}
 
                   <div class="lp-promo-strip" style="${heroDisplayImg ? '' : 'justify-content:center;'}">
-                    <span class="lp-promo-tag">🚚 ২,০০০+ টাকার অর্ডারে ডেলিভারি চার্জ সম্পূর্ণ ফ্রি!</span>
-                    <span class="lp-promo-tag is-online">💳 অনলাইন পেমেন্টে সাথে সাথে ৫% ডিসকাউন্ট!</span>
+                    <span class="lp-promo-tag">🚚 ২,০০০ টাকার বেশি অর্ডারে ডেলিভারি চার্জ ফ্রি!</span>
+                    <span class="lp-promo-tag is-online">💳 অনলাইন পেমেন্ট করলে সাথে সাথে ৫% ডিসকাউন্ট!</span>
+                    ${resolvedProducts.length > 0 ? `
+                      <span class="lp-promo-tag is-count">🛍️ ${resolvedProducts.length}টি ক্যাম্পেইন পণ্য</span>
+                    ` : ''}
                   </div>
 
                   ${giftNote ? `
@@ -1881,11 +2671,6 @@ export async function renderLandingPage(params = {}) {
                   <div class="lp-hero-media">
                     <div class="lp-hero-img-box">
                       <img src="${heroDisplayImg}" alt="${heroHeadline || pageTitle}" fetchpriority="high" decoding="async" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'">
-                      ${discountPct > 0 ? `
-                        <span style="position:absolute;top:12px;right:12px;padding:6px 12px;border-radius:999px;background:#e11d48;color:#fff;font-size:12px;font-weight:900;box-shadow:0 6px 14px rgba(225,29,72,0.3);">
-                          -${discountPct}% OFF
-                        </span>
-                      ` : ''}
                     </div>
                   </div>
                 ` : ''}
@@ -1893,7 +2678,7 @@ export async function renderLandingPage(params = {}) {
             </section>
           ` : ''}
 
-          <!-- 3D Campaign Products Showcase Section ("🛍️ ক্যাম্পেইনের পণ্যসমূহ") -->
+          <!-- 2. 3D Campaign Products Showcase Section ("🛍️ ক্যাম্পেইনের পণ্যসমূহ") -->
           ${resolvedProducts.length > 0 ? `
             <section id="lp-products-section" class="lp-surface-card">
               <div class="lp-section-header">
@@ -1901,7 +2686,7 @@ export async function renderLandingPage(params = {}) {
                   <span>🛍️</span>
                   <span>ক্যাম্পেইনের পণ্যসমূহ (${resolvedProducts.length}টি)</span>
                 </h2>
-                <span class="lp-section-sub">👇 পছন্দের ৩ডি প্রোডাক্ট কার্ডে ক্লিক করলেই নিচের অর্ডার ফর্মে সিলেক্ট হয়ে যাবে</span>
+                <span class="lp-section-sub">👇 পছন্দের ৩ডি প্রোডাক্ট কার্ডে ক্লিক করলেই নিচের অর্ডার ফর্মে সিলেক্ট হয়ে যাবে</span>
               </div>
               <div class="${prodGridClass}">
                 ${resolvedProducts.map((p, idx) => {
@@ -2056,37 +2841,37 @@ export async function renderLandingPage(params = {}) {
             <div class="lp-trust-card">
               <div class="lp-trust-icon">🚚</div>
               <div>
-                <div style="font-size:14px;font-weight:900;color:#0f172a;">২,০০০+ টাকায় ফ্রি ডেলিভারি</div>
-                <div style="font-size:12px;color:#64748b;font-weight:600;">সারাদেশে দ্রুত হোম ডেলিভারি সুবিধা</div>
+                <div style="font-size:14px;font-weight:900;color:#0f172a;">২,০০০+ টাকায় ফ্রি ডেলিভারি</div>
+                <div style="font-size:12px;color:#64748b;font-weight:600;">২,০০০ টাকার বেশি অর্ডার করলেই ডেলিভারি চার্জ ৳০</div>
               </div>
             </div>
             <div class="lp-trust-card">
               <div class="lp-trust-icon">💳</div>
               <div>
-                <div style="font-size:14px;font-weight:900;color:#0f172a;">অনলাইন পেমেন্টে ৫% ছাড়</div>
-                <div style="font-size:12px;color:#64748b;font-weight:600;">বিকাশ, নগদ ও রকেট পেমেন্টে ইনস্ট্যান্ট ছাড়</div>
+                <div style="font-size:14px;font-weight:900;color:#0f172a;">অনলাইন পেমেন্টে ৫% ছাড়</div>
+                <div style="font-size:12px;color:#64748b;font-weight:600;">বিকাশ, নগদ, রকেট বা ব্যাংক পেমেন্টে তাৎক্ষণিক ৫% ছাড়</div>
               </div>
             </div>
             <div class="lp-trust-card">
               <div class="lp-trust-icon">🛡️</div>
               <div>
                 <div style="font-size:14px;font-weight:900;color:#0f172a;">১০০% অরিজিনাল পণ্য</div>
-                <div style="font-size:12px;color:#64748b;font-weight:600;">ডেলিভারি ম্যানের সামনেই চেক করে নিন</div>
+                <div style="font-size:12px;color:#64748b;font-weight:600;">পণ্য হাতে পেয়ে দেখে পরিশোধের সুবিধা</div>
               </div>
             </div>
           </div>
 
           <!-- =========================================================
-               CHECKOUT SECTION (3D CARDS, FREE DELIVERY >= 2000 & 5% ONLINE DISCOUNT)
+               CHECKOUT SECTION (SYNCED ADMIN DELIVERY & PAYMENT + FREE DELIVERY >= 2000 & 5% ONLINE DISCOUNT)
                ========================================================= -->
           <section id="lp-checkout-section" class="lp-checkout-shell">
             <div class="lp-checkout-banner">
               <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.16);padding:4px 14px;border-radius:999px;font-size:12px;font-weight:800;margin-bottom:8px;">
                 <img src="${shopLogo}" alt="" style="width:18px;height:18px;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">
-                <span>${shopName} — এক্সপ্রেস চেকআউট</span>
+                <span>${shopName} — এক্সপ্রেস অর্ডার ফর্ম</span>
               </div>
               <h2>অর্ডার কনফার্ম করতে নিচের ফর্মটি পূরণ করুন</h2>
-              <p>🚚 ২,০০০+ টাকার অর্ডারে ডেলিভারি চার্জ সম্পূর্ণ ফ্রি এবং 💳 অনলাইন পেমেন্ট করলে সাথে সাথে ৫% ডিসকাউন্ট!</p>
+              <p>🚚 ২,০০০ টাকার বেশি অর্ডার করলে ডেলিভারি চার্জ সম্পূর্ণ ফ্রি (৳০) এবং 💳 অনলাইন পেমেন্ট করলে সাথে সাথে ৫% ডিসকাউন্ট!</p>
             </div>
 
             <form onsubmit="window.submitLpDirectOrder(event)" class="lp-checkout-body">
@@ -2162,7 +2947,10 @@ export async function renderLandingPage(params = {}) {
 
                   <!-- Quantity Stepper -->
                   <div class="lp-qty-bar">
-                    <span style="font-size:13.5px;font-weight:800;color:#1e293b;">📦 পণ্যের পরিমাণ (Quantity):</span>
+                    <div>
+                      <div style="font-size:13.5px;font-weight:800;color:#1e293b;">📦 পণ্যের পরিমাণ (Quantity):</div>
+                      <div style="font-size:11px;color:#059669;font-weight:700;">২,০০০+ টাকার অর্ডারে ডেলিভারি চার্জ ফ্রি!</div>
+                    </div>
                     <div class="lp-qty-controls">
                       <button type="button" onclick="window.changeLpQty(-1)" class="lp-qty-btn">−</button>
                       <span id="lp-qty-display" class="lp-qty-num">1</span>
@@ -2173,8 +2961,8 @@ export async function renderLandingPage(params = {}) {
                   <!-- Live Order Summary Box -->
                   <div class="lp-summary-box">
                     <div class="lp-summary-head">
-                      <span>অর্ডার সামারি (Order Summary)</span>
-                      <span style="color:#34d399;">● লাইভ হিসাব</span>
+                      <span>অর্ডার সামারি ও বিল হিসাব (Live Calculation)</span>
+                      <span style="color:#34d399;">● লাইভ আপডেট</span>
                     </div>
                     <div class="lp-summary-prod-row">
                       <img id="lp-summary-thumb" src="${firstImg}" alt="" class="lp-summary-thumb" style="display:${firstImg ? 'block' : 'none'};">
@@ -2183,15 +2971,15 @@ export async function renderLandingPage(params = {}) {
                     </div>
                     <div id="lp-summary-meta" style="font-size:12px;color:#34d399;font-weight:700;margin-bottom:8px;display:none;"></div>
                     <div class="lp-summary-line">
-                      <span>পণ্যের মূল্য (Subtotal):</span>
+                      <span>পণ্যের মোট মূল্য (Subtotal):</span>
                       <span id="lp-summary-subtotal" style="font-weight:800;color:#ffffff;">${formatCurrency(firstPrice)}</span>
                     </div>
                     <div id="lp-summary-discount-row" class="lp-summary-line" style="display:none;color:#fda4af;font-weight:800;">
-                      <span>🎁 অনলাইন পেমেন্ট ছাড় (৫%):</span>
+                      <span>🎁 অনলাইন পেমেন্ট ডিসকাউন্ট (৫% ছাড়):</span>
                       <span id="lp-summary-discount-val" style="color:#fb7185;font-weight:900;">- ৳০</span>
                     </div>
                     <div class="lp-summary-line">
-                      <span>ডেলিভারি চার্জ:</span>
+                      <span id="lp-summary-zone-label">ডেলিভারি চার্জ (${firstZone.name}):</span>
                       <span id="lp-summary-shipping" style="font-weight:800;">${initFree ? 'ফ্রি ডেলিভারি (৳০)' : formatCurrency(initShipping)}</span>
                     </div>
                     <div id="lp-summary-savings-row" class="lp-summary-line" style="display:none;color:#6ee7b7;font-weight:800;">
@@ -2205,72 +2993,94 @@ export async function renderLandingPage(params = {}) {
                   </div>
                 </div>
 
-                <!-- Right Column: Customer Delivery Details & Payment Options -->
+                <!-- Right Column: Customer Delivery Details, Admin-Synced Delivery Areas & Admin-Synced Payment Options -->
                 <div class="lp-checkout-col">
                   <div class="lp-shipping-card">
                     <div class="lp-step-heading" style="margin-bottom:16px;">
-                      <span>২. ডেলিভারি ও পেমেন্ট তথ্য দিন:</span>
+                      <span>২. ডেলিভারি ঠিকানা ও পেমেন্ট অপশন:</span>
                     </div>
 
                     <div class="lp-field-group">
                       <label class="lp-field-label">👤 আপনার সম্পূর্ণ নাম <span style="color:#e11d48;">*</span></label>
-                      <input type="text" name="customer_name" required placeholder="আপনার নাম লিখুন" class="lp-input">
+                      <input type="text" id="landing-name" name="customer_name" required placeholder="আপনার নাম লিখুন" class="lp-input">
                     </div>
 
                     <div class="lp-field-group">
                       <label class="lp-field-label">📞 মোবাইল নাম্বার (১১ ডিজিট) <span style="color:#e11d48;">*</span></label>
-                      <input type="tel" name="customer_phone" required placeholder="017XXXXXXXX" class="lp-input">
+                      <input type="tel" id="landing-phone" name="customer_phone" required placeholder="017XXXXXXXX" class="lp-input">
                     </div>
 
+                    <!-- Admin-Configured & Selected Delivery Areas -->
                     <div class="lp-field-group">
-                      <label class="lp-field-label">📍 ডেলিভারি এরিয়া সিলেক্ট করুন <span style="color:#e11d48;">*</span></label>
-                      <div class="lp-zone-chips">
-                        <button type="button" data-zone="dhaka" onclick="window.selectLpAreaZone('dhaka')" class="lp-zone-chip is-active">
-                          ঢাকার ভেতরে (<span class="lp-zone-fee-text">${initFree ? 'ফ্রি' : '৳' + dhakaFeeInit}</span>)
-                        </button>
-                        <button type="button" data-zone="sub_dhaka" onclick="window.selectLpAreaZone('sub_dhaka')" class="lp-zone-chip">
-                          সাব-এরিয়া (<span class="lp-zone-fee-text">${initFree ? 'ফ্রি' : '৳' + subFeeInit}</span>)
-                        </button>
-                        <button type="button" data-zone="outside_dhaka" onclick="window.selectLpAreaZone('outside_dhaka')" class="lp-zone-chip">
-                          ঢাকার বাইরে (<span class="lp-zone-fee-text">${initFree ? 'ফ্রি' : '৳' + outFeeInit}</span>)
-                        </button>
+                      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
+                        <label class="lp-field-label" style="margin-bottom:0;">📍 ডেলিভারি এরিয়া সিলেক্ট করুন <span style="color:#e11d48;">*</span></label>
+                        <span style="font-size:10.5px;font-weight:900;color:#065f46;background:#d1fae5;padding:2px 9px;border-radius:999px;">
+                          🚚 ২,০০০+ টাকার অর্ডারে ডেলিভারি ফ্রি!
+                        </span>
                       </div>
-                      <select id="lp-delivery-area" name="delivery_area" onchange="window.updateLpOrderCalculation()" class="lp-input">
-                        <option value="dhaka">ঢাকার ভেতরে (Inside Dhaka) — ৳${dhakaFeeInit} (২,০০০+ অর্ডারে ফ্রি)</option>
-                        <option value="sub_dhaka">ঢাকা সাব-এরিয়া (গাজীপুর, নারায়ণগঞ্জ, সাভার) — ৳${subFeeInit} (২,০০০+ অর্ডারে ফ্রি)</option>
-                        <option value="outside_dhaka">ঢাকার বাইরে (Outside Dhaka) — ৳${outFeeInit} (২,০০০+ অর্ডারে ফ্রি)</option>
+                      <div class="lp-zone-chips">
+                        ${deliveryConfs.map((dm, dIdx) => {
+                          const dmFee = Number(dm.charge || 0);
+                          const dmFree = initFree || dmFee === 0;
+                          return `
+                            <button
+                              type="button"
+                              data-zone="${dm.id}"
+                              onclick="window.selectLpAreaZone('${String(dm.id).replace(/'/g, "\\'")}')"
+                              class="lp-zone-chip ${dIdx === 0 ? 'is-active' : ''}">
+                              <span style="line-height:1.25;">${dm.name}</span>
+                              <span class="lp-zone-fee-text" style="font-size:11px;">
+                                ${dmFree ? (dmFee > 0 ? `<del style="opacity:0.65;margin-right:3px;">৳${dmFee}</del> <strong style="color:#059669;">ফ্রি (৳০)</strong>` : '<strong style="color:#059669;">ফ্রি (৳০)</strong>') : '৳' + dmFee}
+                              </span>
+                            </button>
+                          `;
+                        }).join('')}
+                      </div>
+                      <select id="lp-delivery-area" name="delivery_area" onchange="window.selectLpAreaZone(this.value)" class="lp-input">
+                        ${deliveryConfs.map((dm, dIdx) => {
+                          const dmFee = Number(dm.charge || 0);
+                          return `
+                            <option value="${dm.id}" ${dIdx === 0 ? 'selected' : ''}>
+                              ${dm.name} — ${initFree ? 'ফ্রি ডেলিভারি (৳০)' : (dmFee === 0 ? 'ফ্রি (৳০)' : '৳' + dmFee)} (${dm.eta})
+                            </option>
+                          `;
+                        }).join('')}
                       </select>
                     </div>
 
                     <div class="lp-field-group">
-                      <label class="lp-field-label">🏠 সম্পূর্ণ ঠিকানা (বাসা নং, রোড, থানা, জেলা) <span style="color:#e11d48;">*</span></label>
-                      <textarea name="customer_address" rows="2" required placeholder="আপনার সম্পূর্ণ ঠিকানা বিস্তারিত লিখুন..." class="lp-input" style="resize:vertical;"></textarea>
+                      <label class="lp-field-label">🏠 সম্পূর্ণ ডেলিভারি ঠিকানা (বাসা নং, রোড, থানা, জেলা) <span style="color:#e11d48;">*</span></label>
+                      <textarea id="landing-address" name="customer_address" rows="2" required placeholder="আপনার সম্পূর্ণ ঠিকানা বিস্তারিত লিখুন..." class="lp-input" style="resize:vertical;"></textarea>
                     </div>
 
-                    <!-- Payment Method Selection (COD + Online Payment 5% OFF) -->
+                    <!-- Admin-Configured & Selected Payment Methods (COD + Online Payment 5% OFF) -->
                     <div class="lp-field-group">
                       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
                         <label class="lp-field-label" style="margin-bottom:0;">💳 পেমেন্ট অপশন সিলেক্ট করুন <span style="color:#e11d48;">*</span></label>
-                        <span style="font-size:11px;font-weight:900;color:#be123c;background:#ffe4e6;padding:2px 9px;border-radius:999px;">🔥 অনলাইন পেমেন্টে ৫% ডিসকাউন্ট!</span>
+                        <span style="font-size:11px;font-weight:900;color:#be123c;background:#ffe4e6;padding:2px 9px;border-radius:999px;">
+                          🔥 অনলাইন পেমেন্টে ৫% ইনস্ট্যান্ট ছাড়!
+                        </span>
                       </div>
-                      <input type="hidden" id="lp-payment-method-input" name="payment_method_id" value="COD">
+                      <input type="hidden" id="lp-payment-method-input" name="payment_method_id" value="${paymentMethods[0]?.id || 'COD'}">
                       <div class="lp-pay-options-grid">
                         ${paymentMethods.map((pm, pIdx) => {
-                          const pmId = String(pm.id || 'COD').toUpperCase();
-                          const isOnline = pmId !== 'COD';
+                          const isOnline = !pm.isCod;
+                          const discPct = Number(pm.discount_pct || 5) || 5;
                           return `
                             <div
-                              data-pay-id="${pmId}"
-                              onclick="window.selectLpPaymentMethod('${pmId}')"
+                              data-pay-id="${pm.id}"
+                              onclick="window.selectLpPaymentMethod('${String(pm.id).replace(/'/g, "\\'")}')"
                               class="lp-pay-option-card ${pIdx === 0 ? 'is-active' : ''}">
-                              ${isOnline ? `<span class="lp-pay-5pct-tag">৫% ছাড়</span>` : ''}
+                              ${isOnline ? `<span class="lp-pay-5pct-tag">${discPct}% ছাড়${initOnlineSavings > 0 ? ` (-৳${initOnlineSavings})` : ''}</span>` : ''}
                               <div class="lp-pay-radio">
                                 <div class="lp-pay-radio-dot" style="transform:scale(${pIdx === 0 ? '1' : '0'});"></div>
                               </div>
-                              <span style="font-size:18px;flex-shrink:0;">${pm.icon || (isOnline ? '💳' : '🚚')}</span>
+                              <span style="font-size:18px;flex-shrink:0;">${pm.icon}</span>
                               <div style="min-width:0;">
-                                <div style="font-size:12.5px;font-weight:900;color:#0f172a;line-height:1.25;">${pm.title}</div>
-                                <div style="font-size:10.5px;color:#64748b;font-weight:700;">${isOnline ? 'সাথে সাথে ৫% ছাড়' : 'পণ্য হাতে পেয়ে পেমেন্ট'}</div>
+                                <div style="font-size:12.5px;font-weight:900;color:#0f172a;line-height:1.25;">${pm.name}</div>
+                                <div style="font-size:10.5px;color:#64748b;font-weight:700;">
+                                  ${isOnline ? `সাথে সাথে ${discPct}% ছাড় পাবেন` : 'পণ্য হাতে পেয়ে পেমেন্ট'}
+                                </div>
                               </div>
                             </div>
                           `;
