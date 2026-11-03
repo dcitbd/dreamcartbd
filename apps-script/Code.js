@@ -3,11 +3,11 @@
  * Connected Google Spreadsheet ID: 1BGi8IXV6S7uXDi4IaR_sCJYhtpfzyLGuldo4NnGVmR8
  * Live Web App Gateway: https://script.google.com/macros/s/AKfycbwflHuBqMKWpKPTTVNY-grU_dnNphwELXbk6Hn-wcBjxJk4xvqScmT2n8i3ZQCStMI3/exec
  * Lead Developer: Jainal Abedin (CEO, Dream Career IT BD)
- * Notifications: jainal.dcitbd@gmail.com
+ * Notifications: jainal.dcitbd@gmail.com, saiful05333@gmail.com
  */
 
 var SPREADSHEET_ID = "1BGi8IXV6S7uXDi4IaR_sCJYhtpfzyLGuldo4NnGVmR8";
-var NOTIFICATION_EMAIL = "jainal.dcitbd@gmail.com";
+var NOTIFICATION_EMAIL = "jainal.dcitbd@gmail.com, saiful05333@gmail.com";
 
 function doGet(e) {
   return handleRequest(e, "GET");
@@ -1360,20 +1360,339 @@ function handleReviewAdd(ss, payload) {
   return { status: "success", success: true, data: { review_id: revId } };
 }
 
+function formatBdtAmount(num) {
+  var n = Number(num || 0);
+  if (isNaN(n)) n = 0;
+  return "৳" + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function parseOrderItemsList(orderData, totalAmt, defaultQty) {
+  if (orderData && Array.isArray(orderData.items) && orderData.items.length > 0) {
+    return orderData.items.map(function(it) {
+      return {
+        name: String(it.name || it.p_name || it.title || "পণ্য"),
+        color: String(it.color || ""),
+        size: String(it.size || ""),
+        variant: String(it.variant || it.selectedVariant || ""),
+        quantity: Number(it.quantity || it.qty || 1) || 1,
+        price: Number(it.price || it.selling_price || it.unit_price || 0)
+      };
+    });
+  }
+
+  var rawProds = String((orderData && (orderData.Products || orderData.products || orderData.product_name)) || "");
+  if (rawProds) {
+    var parts = rawProds.split(/\s*\|\s*/).filter(Boolean);
+    if (parts.length > 0) {
+      return parts.map(function(pStr) {
+        var qtyMatch = pStr.match(/x(\d+)\s*$/i);
+        var qty = qtyMatch ? Number(qtyMatch[1]) : (Number(defaultQty) || 1);
+        var cleanName = pStr.replace(/\s*x\d+\s*$/i, "").trim();
+        var unitPrice = parts.length === 1 ? Math.round(Number(totalAmt || 0) / Math.max(1, qty)) : 0;
+        return {
+          name: cleanName || "পণ্য",
+          color: String((orderData && (orderData.Color || orderData.color)) || ""),
+          size: String((orderData && (orderData.Size || orderData.size)) || ""),
+          variant: "",
+          quantity: qty,
+          price: unitPrice
+        };
+      });
+    }
+  }
+
+  return [{
+    name: "পণ্য সমাহার",
+    color: String((orderData && (orderData.Color || orderData.color)) || ""),
+    size: String((orderData && (orderData.Size || orderData.size)) || ""),
+    variant: "",
+    quantity: Number(defaultQty) || 1,
+    price: Number(totalAmt || 0)
+  }];
+}
+
+function buildOfficialVoucherHtml(orderId, orderData, dateStr, isForPdf) {
+  var customerName = String(orderData.Customer_Name || orderData.customer_name || orderData.customerName || orderData.name || "সম্মানিত গ্রাহক").trim();
+  var customerPhone = String(orderData.Phone || orderData.phone || orderData.customerPhone || "01700000000").trim();
+  var customerAddress = String(orderData.Address || orderData.address || orderData.customerAddress || "বাংলাদেশ").trim();
+  var paymentMethod = String(orderData.Payment_method || orderData.payment_method || orderData.paymentMethod || "Cash On Delivery (COD)").trim();
+  var isCod = paymentMethod.toLowerCase().indexOf("cod") !== -1 || paymentMethod.toLowerCase().indexOf("cash") !== -1 || paymentMethod.indexOf("ক্যাশ") !== -1;
+  var rawPayStatus = String(orderData.Payment_Status || orderData.payment_status || (isCod ? "COD" : "Paid")).trim();
+  var isPaid = rawPayStatus.toLowerCase() === "paid";
+  var orderStatus = String(orderData.Order_Status || orderData.order_status || orderData.status || "Order Placed").trim();
+  var trxId = String(orderData.Transaction_ID || orderData.transaction_id || "").trim();
+  var customerNote = String(orderData.customer_note || orderData.note || orderData.notes || "").trim();
+
+  var defaultQty = Number(orderData.Quantity || orderData.quantity || 1) || 1;
+  var totalAmount = Number(orderData.Total_Amount !== undefined ? orderData.Total_Amount : (orderData.total_amount !== undefined ? orderData.total_amount : (orderData.total || 0)));
+  var items = parseOrderItemsList(orderData, totalAmount, defaultQty);
+
+  var calcSubtotal = 0;
+  for (var i = 0; i < items.length; i++) {
+    calcSubtotal += Number(items[i].price || 0) * Number(items[i].quantity || 1);
+  }
+  var subtotal = Number(orderData.subtotal !== undefined && orderData.subtotal > 0 ? orderData.subtotal : (calcSubtotal > 0 ? calcSubtotal : totalAmount));
+  if (totalAmount <= 0 && subtotal > 0) totalAmount = subtotal;
+
+  var deliveryFee = orderData.delivery_fee !== undefined
+    ? Number(orderData.delivery_fee)
+    : (orderData.deliveryCharge !== undefined
+        ? Number(orderData.deliveryCharge)
+        : (orderData.delivery_charge !== undefined
+            ? Number(orderData.delivery_charge)
+            : (subtotal >= 2000 ? 0 : Math.max(0, totalAmount - subtotal))));
+
+  var discountAmt = Number(orderData.discount || orderData.online_discount || orderData.coupon_discount || 0);
+  if (discountAmt <= 0 && (subtotal + deliveryFee > totalAmount)) {
+    discountAmt = (subtotal + deliveryFee) - totalAmount;
+  }
+
+  var itemsRowsHtml = "";
+  for (var idx = 0; idx < items.length; idx++) {
+    var it = items[idx];
+    var qty = Number(it.quantity || 1);
+    var price = Number(it.price || 0);
+    var lineTotal = price * qty;
+
+    var variantParts = [];
+    if (it.color && it.color.toLowerCase() !== "standard") variantParts.push(it.color);
+    if (it.size && it.size.toLowerCase() !== "free size" && it.size.toLowerCase() !== "std") variantParts.push(it.size);
+    if (variantParts.length === 0 && it.variant) variantParts.push(it.variant);
+    var hasInNameParen = it.name.indexOf("(") !== -1 && it.name.indexOf(")") !== -1;
+    var variantHtml = (variantParts.length > 0 && !hasInNameParen)
+      ? ' <span style="font-size: 11px; color: #059669; font-weight: 500; margin-left: 4px;">(' + variantParts.join(", ") + ')</span>'
+      : '';
+
+    itemsRowsHtml += '' +
+      '<tr style="border-bottom: 1px solid #e2e8f0;">' +
+        '<td style="padding: 12px 10px; color: #64748b; font-size: 12px; vertical-align: middle;">' + (idx + 1) + '</td>' +
+        '<td style="padding: 12px 10px; color: #0f172a; font-size: 12px; font-weight: 700; line-height: 1.45; vertical-align: middle;">' +
+          it.name + variantHtml +
+        '</td>' +
+        '<td style="padding: 12px 10px; text-align: center; color: #0f172a; font-size: 12px; font-weight: 800; vertical-align: middle;">' + qty + '</td>' +
+        '<td style="padding: 12px 10px; text-align: right; color: #334155; font-size: 12px; font-family: monospace; vertical-align: middle;">' + formatBdtAmount(price) + '</td>' +
+        '<td style="padding: 12px 10px; text-align: right; color: #0f172a; font-size: 12px; font-weight: 800; font-family: monospace; vertical-align: middle;">' + formatBdtAmount(lineTotal) + '</td>' +
+      '</tr>';
+  }
+
+  var barcodeBarsHtml = "";
+  for (var b = 0; b < 28; b++) {
+    var barW = (b % 3 === 0) ? "3px" : "1.5px";
+    barcodeBarsHtml += '<td style="padding: 0 1px;"><div style="height: 24px; width: ' + barW + '; background-color: #0f172a;"></div></td>';
+  }
+
+  var payBadgeStyle = isPaid
+    ? "background-color: #d1fae5; color: #065f46;"
+    : "background-color: #fef3c7; color: #92400e;";
+
+  var siteOrderUrl = "https://dreamcartbd.com/order-success?orderId=" + encodeURIComponent(orderId);
+  var logoUrl = "https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg";
+
+  return '<!DOCTYPE html>' +
+  '<html lang="bn">' +
+  '<head>' +
+    '<meta charset="UTF-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>Official Invoice - ' + orderId + ' - Dream Cart BD</title>' +
+  '</head>' +
+  '<body style="margin: 0; padding: ' + (isForPdf ? '0' : '24px 12px') + '; background-color: ' + (isForPdf ? '#ffffff' : '#f1f5f9') + '; font-family: \'Plus Jakarta Sans\', \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #0f172a;">' +
+    '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: ' + (isForPdf ? '#ffffff' : '#f1f5f9') + ';">' +
+      '<tr>' +
+        '<td align="center">' +
+          '<!-- Main White Paper Invoice Card -->' +
+          '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 680px; width: 100%; background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 18px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08); position: relative;">' +
+            '<tr>' +
+              '<td style="padding: 28px 30px; position: relative; background-image: url(\'' + logoUrl + '\'); background-repeat: no-repeat; background-position: center center; background-size: 240px;">' +
+                '<div style="background-color: rgba(255, 255, 255, 0.93); padding: 4px; border-radius: 12px;">' +
+
+                  '<!-- 1. Header Table -->' +
+                  '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse; border-bottom: 2px solid #059669; padding-bottom: 14px; margin-bottom: 18px;">' +
+                    '<tr>' +
+                      '<td style="vertical-align: top; width: 62%; padding-bottom: 14px;">' +
+                        '<table border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">' +
+                          '<tr>' +
+                            '<td style="vertical-align: top; padding-right: 12px; width: 58px;">' +
+                              '<img src="' + logoUrl + '" alt="Dream Cart BD" width="52" height="52" style="width: 52px; height: 52px; object-fit: contain; border-radius: 12px; border: 1px solid #e2e8f0; padding: 2px; background-color: #ffffff; display: block;" />' +
+                            '</td>' +
+                            '<td style="vertical-align: top;">' +
+                              '<div style="font-size: 22px; font-weight: 900; color: #0f172a; line-height: 1.2;">' +
+                                'Dream Cart <span style="color: #059669;">BD</span>' +
+                              '</div>' +
+                              '<div style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.6px; margin-top: 3px;">' +
+                                'SMART DIGITAL COMMERCE PLATFORM' +
+                              '</div>' +
+                              '<div style="font-size: 11px; color: #475569; margin-top: 4px; line-height: 1.45;">' +
+                                'চৌধুরী প্লাজা, পদুয়ার বাজার বিশ্বরোড, সদর দক্ষিণ, কুমিল্লা।<br/>' +
+                                'হটলাইন: <strong style="color: #0f172a;">01581703822, 01818273838</strong>' +
+                              '</div>' +
+                            '</td>' +
+                          '</tr>' +
+                        '</table>' +
+                      '</td>' +
+                      '<td style="vertical-align: top; text-align: right; width: 38%; padding-bottom: 14px;">' +
+                        '<div style="display: inline-block; background-color: #059669; color: #ffffff; font-size: 11px; font-weight: 800; padding: 5px 14px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">' +
+                          'OFFICIAL INVOICE' +
+                        '</div>' +
+                        '<div style="font-size: 13px; font-weight: 700; color: #334155;">' +
+                          'Order ID: <span style="font-family: monospace; font-size: 15px; font-weight: 900; color: #059669;">' + orderId + '</span>' +
+                        '</div>' +
+                        '<div style="font-size: 11px; color: #64748b; margin-top: 3px;">' +
+                          'তারিখ: <span style="color: #334155; font-weight: 600;">' + dateStr + '</span>' +
+                        '</div>' +
+                      '</td>' +
+                    '</tr>' +
+                  '</table>' +
+
+                  '<!-- 2. Customer & Payment Info Boxes -->' +
+                  '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin-bottom: 18px;">' +
+                    '<tr>' +
+                      '<td style="width: 50%; vertical-align: top; padding-right: 8px;">' +
+                        '<div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; min-height: 92px;">' +
+                          '<div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #059669; letter-spacing: 0.5px; margin-bottom: 6px;">' +
+                            'গ্রাহকের বিবরণ:' +
+                          '</div>' +
+                          '<div style="font-size: 14px; font-weight: 800; color: #0f172a; margin-bottom: 4px;">' +
+                            customerName +
+                          '</div>' +
+                          '<div style="font-size: 11.5px; color: #475569; margin-bottom: 4px;">' +
+                            '📞 মোবাইল: <a href="tel:' + customerPhone + '" style="color: #0f172a; font-weight: 800; font-family: monospace; text-decoration: none;">' + customerPhone + '</a>' +
+                          '</div>' +
+                          '<div style="font-size: 11.5px; color: #475569; line-height: 1.45;">' +
+                            '📍 ঠিকানা: <span style="color: #1e293b;">' + customerAddress + '</span>' +
+                          '</div>' +
+                          (customerNote && customerNote !== "N/A" ? '<div style="font-size: 11px; color: #b45309; margin-top: 4px;">📝 নোট: ' + customerNote + '</div>' : '') +
+                        '</div>' +
+                      '</td>' +
+                      '<td style="width: 50%; vertical-align: top; padding-left: 8px;">' +
+                        '<div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; min-height: 92px;">' +
+                          '<div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #059669; letter-spacing: 0.5px; margin-bottom: 6px;">' +
+                            'পেমেন্ট বিবরণ:' +
+                          '</div>' +
+                          '<div style="font-size: 11.5px; color: #475569; margin-bottom: 5px;">' +
+                            'মেথড: <strong style="color: #0f172a;">' + paymentMethod + '</strong>' +
+                          '</div>' +
+                          (trxId && trxId !== "N/A" && trxId !== "COD" ? '<div style="font-size: 11px; color: #475569; margin-bottom: 5px;">TrxID: <strong style="color: #0f172a; font-family: monospace;">' + trxId + '</strong></div>' : '') +
+                          '<div style="font-size: 11.5px; color: #475569; margin-bottom: 5px;">' +
+                            'পেমেন্ট স্ট্যাটাস: <span style="display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; ' + payBadgeStyle + '">' + rawPayStatus + '</span>' +
+                          '</div>' +
+                          '<div style="font-size: 11.5px; color: #475569;">' +
+                            'অর্ডার স্ট্যাটাস: <strong style="color: #059669;">' + orderStatus + '</strong>' +
+                          '</div>' +
+                        '</div>' +
+                      '</td>' +
+                    '</tr>' +
+                  '</table>' +
+
+                  '<!-- 3. Itemized Products Table -->' +
+                  '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 12px;">' +
+                    '<thead>' +
+                      '<tr style="background-color: #f1f5f9; border-top: 1px solid #e2e8f0; border-bottom: 2px solid #cbd5e1; color: #475569; font-size: 11px; text-transform: uppercase;">' +
+                        '<th style="padding: 10px; text-align: left; width: 7%; font-weight: 800;">নং</th>' +
+                        '<th style="padding: 10px; text-align: left; width: 53%; font-weight: 800;">পণ্য বিবরণ</th>' +
+                        '<th style="padding: 10px; text-align: center; width: 12%; font-weight: 800;">পরিমাণ</th>' +
+                        '<th style="padding: 10px; text-align: right; width: 14%; font-weight: 800;">দর</th>' +
+                        '<th style="padding: 10px; text-align: right; width: 14%; font-weight: 800;">মোট</th>' +
+                      '</tr>' +
+                    '</thead>' +
+                    '<tbody>' +
+                      itemsRowsHtml +
+                    '</tbody>' +
+                  '</table>' +
+
+                  '<!-- 4. Barcode Tracker & Totals Summary -->' +
+                  '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: collapse; margin-bottom: 16px;">' +
+                    '<tr>' +
+                      '<td style="width: 50%; vertical-align: top;">' +
+                        '<div style="font-size: 9px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">' +
+                          'BARCODE TRACKER' +
+                        '</div>' +
+                        '<table border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 5px 8px;">' +
+                          '<tr>' + barcodeBarsHtml + '</tr>' +
+                        '</table>' +
+                        '<div style="font-family: monospace; font-size: 10px; font-weight: 800; color: #334155; margin-top: 4px;">' +
+                          orderId +
+                        '</div>' +
+                      '</td>' +
+                      '<td style="width: 50%; vertical-align: top;">' +
+                        '<table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: collapse; font-size: 12.5px;">' +
+                          '<tr>' +
+                            '<td style="padding: 5px 0; color: #475569;">সাবটোটাল:</td>' +
+                            '<td style="padding: 5px 0; text-align: right; font-weight: 700; color: #0f172a; font-family: monospace;">' + formatBdtAmount(subtotal) + '</td>' +
+                          '</tr>' +
+                          '<tr>' +
+                            '<td style="padding: 5px 0; color: #475569;">ডেলিভারি চার্জ:</td>' +
+                            '<td style="padding: 5px 0; text-align: right; font-weight: 700; color: #059669; font-family: monospace;">' + (deliveryFee === 0 ? 'ফ্রি (৳০)' : formatBdtAmount(deliveryFee)) + '</td>' +
+                          '</tr>' +
+                          (discountAmt > 0 ? (
+                            '<tr>' +
+                              '<td style="padding: 5px 0; color: #dc2626;">ডিসকাউন্ট ছাড়:</td>' +
+                              '<td style="padding: 5px 0; text-align: right; font-weight: 700; color: #dc2626; font-family: monospace;">-' + formatBdtAmount(discountAmt) + '</td>' +
+                            '</tr>'
+                          ) : '') +
+                          '<tr style="border-top: 2px solid #cbd5e1;">' +
+                            '<td style="padding: 8px 0 4px; font-size: 14px; font-weight: 900; color: #0f172a;">সর্বমোট:</td>' +
+                            '<td style="padding: 8px 0 4px; text-align: right; font-size: 18px; font-weight: 900; color: #059669; font-family: monospace;">' + formatBdtAmount(totalAmount) + '</td>' +
+                          '</tr>' +
+                        '</table>' +
+                      '</td>' +
+                    '</tr>' +
+                  '</table>' +
+
+                  '<!-- 5. Footer Thank You & Action Button -->' +
+                  '<div style="text-align: center; border-top: 1px dashed #cbd5e1; padding-top: 12px; margin-top: 6px;">' +
+                    '<div style="font-size: 12px; font-weight: 700; color: #059669; margin-bottom: 12px;">' +
+                      '✨ ড্রিম কার্ট বিডি-র সাথে কেনাকাটা করার জন্য ধন্যবাদ!' +
+                    '</div>' +
+                    (!isForPdf ? (
+                      '<div style="margin-top: 8px;">' +
+                        '<a href="' + siteOrderUrl + '" target="_blank" style="display: inline-block; background-color: #059669; color: #ffffff; font-size: 13px; font-weight: 800; padding: 10px 26px; border-radius: 9999px; text-decoration: none; box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);">' +
+                          '🖨️ ভাউচার প্রিন্ট / ডাউনলোড' +
+                        '</a>' +
+                      '</div>'
+                    ) : '') +
+                  '</div>' +
+
+                '</div>' +
+              '</td>' +
+            '</tr>' +
+          '</table>' +
+        '</td>' +
+      '</tr>' +
+    '</table>' +
+  '</body>' +
+  '</html>';
+}
+
 function sendOrderReminderEmail(orderId, orderData, dateStr) {
   try {
-    var recipient = NOTIFICATION_EMAIL;
-    var subject = "🔔 [নতুন অর্ডার] " + orderId + " — " + (orderData.customer_name || "গ্রাহক") + " (৳" + (orderData.total_amount || 0) + ")";
-    var htmlBody = "<div style=\"font-family: sans-serif; padding: 20px;\">" +
-      "<h2>Dream Cart BD — নতুন অর্ডার: " + orderId + "</h2>" +
-      "<p><b>তারিখ:</b> " + dateStr + "</p>" +
-      "<p><b>গ্রাহক:</b> " + (orderData.customer_name || "N/A") + " (" + (orderData.phone || "N/A") + ")</p>" +
-      "<p><b>ঠিকানা:</b> " + (orderData.address || "N/A") + "</p>" +
-      "<p><b>পণ্য:</b> " + (orderData.products || "পণ্য") + "</p>" +
-      "<p><b>মোট বিল:</b> ৳" + (orderData.total_amount || 0) + " (" + (orderData.payment_method || "COD") + ")</p>" +
-      "</div>";
-    MailApp.sendEmail({ to: recipient, subject: subject, htmlBody: htmlBody });
-  } catch (err) {}
+    var recipients = NOTIFICATION_EMAIL; // "jainal.dcitbd@gmail.com, saiful05333@gmail.com"
+    var customerName = String(orderData.Customer_Name || orderData.customer_name || orderData.customerName || orderData.name || "গ্রাহক").trim();
+    var totalAmt = Number(orderData.Total_Amount !== undefined ? orderData.Total_Amount : (orderData.total_amount !== undefined ? orderData.total_amount : (orderData.total || 0)));
+    var subject = "🛒 [নতুন অর্ডার ভাউচার] " + orderId + " — " + customerName + " (৳" + totalAmt + ")";
+
+    var emailHtml = buildOfficialVoucherHtml(orderId, orderData, dateStr, false);
+    var pdfHtml = buildOfficialVoucherHtml(orderId, orderData, dateStr, true);
+
+    var mailOptions = {
+      to: recipients,
+      subject: subject,
+      htmlBody: emailHtml,
+      name: "Dream Cart BD Official Invoice"
+    };
+
+    try {
+      var pdfBlob = Utilities.newBlob(pdfHtml, "text/html", "Voucher_" + orderId + ".html")
+        .getAs("application/pdf")
+        .setName("Voucher_" + orderId + ".pdf");
+      mailOptions.attachments = [pdfBlob];
+    } catch (pdfErr) {
+      Logger.log("PDF Voucher Attachment Error: " + pdfErr.toString());
+    }
+
+    MailApp.sendEmail(mailOptions);
+  } catch (err) {
+    Logger.log("Order Email Send Error: " + err.toString());
+  }
 }
 
 function getSheetDataAsJson(ss, sheetName, opts) {
