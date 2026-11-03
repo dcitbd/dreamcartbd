@@ -1004,10 +1004,10 @@ export async function renderLandingPage(params = {}) {
               <a href="tel:${cleanPhone}" class="lp-nav-phone">
                 📞 ${contactPhone}
               </a>
-              <a href="/products" class="lp-nav-store-btn">
+              <a href="/products">
                 🛍️ মূল ওয়েবসাইটে যান
               </a>
-              <a href="#lp-checkout-section" class="lp-nav-order-btn">
+              <a href="#lp-section-sub" class="lp-nav-order-btn">
                 🛒 অর্ডার করুন
               </a>
             </div>
@@ -1052,7 +1052,7 @@ export async function renderLandingPage(params = {}) {
                     </div>
                   ` : ''}
                   <div class="lp-hero-actions" style="${heroDisplayImg ? '' : 'justify-content:center;'}">
-                    <a href="#lp-checkout-section" class="lp-btn-primary">
+                    <a href="#lp-section-sub" class="lp-btn-primary">
                       🛒 ${ctaText}
                     </a>
                     <a href="/products" class="lp-btn-secondary">
