@@ -3,13 +3,159 @@
  * Implements user requirements:
  * - Exports `renderLandingPage(params = {})` returning an HTML string (100% compatible with `src/router.js`).
  * - Automatic deduplication of Admin Landing Pages (`dcbd_landing_pages` & `landing_pages/list`) so each landing page never shows twice in Admin Panel.
- * - Zero hardcoded/default texts from other pages (100% driven by Admin Panel Landing Page Builder & Selected Products).
- * - Prominent "🛍️ মূল ওয়েবসাইটে যান" (Visit Main Website) button linking directly to Customer View `/products`.
- * - 100% Self-Contained Responsive Scoped CSS for Product Showcase Cards & Checkout Form (no text overflow, crisp product thumbnails).
+ * - Clicking "🛒 অর্ডার করুন" / "🛒 অর্ডার কনফার্ম করুন" smoothly scrolls to "🛍️ ক্যাম্পেইনের পণ্যসমূহ" (`#lp-products-section`) on the SAME landing page.
+ * - ONLY clicking "🛍️ মূল ওয়েবসাইটে যান" navigates to the main website's `/products` page.
+ * - 10 Authentic Luxury Color Themes (Royal Emerald, Midnight Navy & Gold, Velvet Rose, Imperial Indigo, Arabian Amber, Ocean Teal, Flash Crimson, Royal Plum, Espresso Bronze, Obsidian Black) synced with Admin Builder.
+ * - 100% Self-Contained Responsive Scoped CSS for Hero, Product Showcase Cards, Specs, and Checkout Form (zero overflow, crisp thumbnails).
  */
 import { apiClient, getGlobalDeliveryMethods, getGlobalSiteSettings } from '../../api/client.js';
 import { formatCurrency } from '../../utils/format.js';
 import { toast } from '../../components/Toast.js';
+/**
+ * 10 Authentic E-Commerce Campaign Color Themes
+ */
+export const LP_AUTHENTIC_THEMES = {
+  emerald: {
+    label: '🌿 Royal Emerald (রয়্যাল গ্রিন)',
+    primary: '#047857',
+    primaryDark: '#064e3b',
+    accent: '#f59e0b',
+    pageBg: 'linear-gradient(180deg, #f0fdf4 0%, #f8fafc 45%, #f1f5f9 100%)',
+    topBarBg: 'linear-gradient(90deg, #064e3b 0%, #047857 50%, #059669 100%)',
+    heroBg: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)',
+    light: '#ecfdf5',
+    border: '#6ee7b7',
+    glow: 'rgba(4, 120, 87, 0.25)',
+    badgeBg: '#065f46',
+    badgeText: '#ecfdf5'
+  },
+  midnight: {
+    label: '🌌 Midnight Navy & Gold (নেভি ও গোল্ড)',
+    primary: '#1e3a8a',
+    primaryDark: '#0f172a',
+    accent: '#d97706',
+    pageBg: 'linear-gradient(180deg, #eff6ff 0%, #f8fafc 45%, #f1f5f9 100%)',
+    topBarBg: 'linear-gradient(90deg, #0f172a 0%, #1e3a8a 55%, #1d4ed8 100%)',
+    heroBg: 'linear-gradient(135deg, #ffffff 0%, #eff6ff 100%)',
+    light: '#eff6ff',
+    border: '#93c5fd',
+    glow: 'rgba(30, 58, 138, 0.25)',
+    badgeBg: '#1e3a8a',
+    badgeText: '#fef3c7'
+  },
+  rose: {
+    label: '🌹 Velvet Burgundy & Rose (বার্গান্ডি রোজ)',
+    primary: '#be123c',
+    primaryDark: '#881337',
+    accent: '#f43f5e',
+    pageBg: 'linear-gradient(180deg, #fff1f2 0%, #f8fafc 45%, #f1f5f9 100%)',
+    topBarBg: 'linear-gradient(90deg, #4c0519 0%, #881337 50%, #be123c 100%)',
+    heroBg: 'linear-gradient(135deg, #ffffff 0%, #fff1f2 100%)',
+    light: '#fff1f2',
+    border: '#fda4af',
+    glow: 'rgba(190, 18, 60, 0.25)',
+    badgeBg: '#9f1239',
+    badgeText: '#ffe4e6'
+  },
+  indigo: {
+    label: '👑 Imperial Royal Indigo (রয়্যাল ইন্ডিগো)',
+    primary: '#4338ca',
+    primaryDark: '#312e81',
+    accent: '#8b5cf6',
+    pageBg: 'linear-gradient(180deg, #eef2ff 0%, #f8fafc 45%, #f1f5f9 100%)',
+    topBarBg: 'linear-gradient(90deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%)',
+    heroBg: 'linear-gradient(135deg, #ffffff 0%, #eef2ff 100%)',
+    light: '#eef2ff',
+    border: '#a5b4fc',
+    glow: 'rgba(67, 56, 202, 0.25)',
+    badgeBg: '#3730a3',
+    badgeText: '#e0e7ff'
+  },
+  amber: {
+    label: '✨ Arabian Amber & Gold (অ্যারাবিয়ান গোল্ড)',
+    primary: '#b45309',
+    primaryDark: '#78350f',
+    accent: '#d97706',
+    pageBg: 'linear-gradient(180deg, #fffbeb 0%, #f8fafc 45%, #f1f5f9 100%)',
+    topBarBg: 'linear-gradient(90deg, #451a03 0%, #78350f 50%, #b45309 100%)',
+    heroBg: 'linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)',
+    light: '#fffbeb',
+    border: '#fcd34d',
+    glow: 'rgba(180, 83, 9, 0.25)',
+    badgeBg: '#92400e',
+    badgeText: '#fef3c7'
+  },
+  teal: {
+    label: '🌊 Ocean Teal & Cyan (ওশান টিল)',
+    primary: '#0f766e',
+    primaryDark: '#134e4a',
+    accent: '#0d9488',
+    pageBg: 'linear-gradient(180deg, #f0fdfa 0%, #f8fafc 45%, #f1f5f9 100%)',
+    topBarBg: 'linear-gradient(90deg, #042f2e 0%, #134e4a 50%, #0f766e 100%)',
+    heroBg: 'linear-gradient(135deg, #ffffff 0%, #f0fdfa 100%)',
+    light: '#f0fdfa',
+    border: '#5eead4',
+    glow: 'rgba(15, 118, 110, 0.25)',
+    badgeBg: '#115e59',
+    badgeText: '#ccfbf1'
+  },
+  crimson: {
+    label: '🔥 Flash Sale Crimson Red (ফ্ল্যাশ সেল রেড)',
+    primary: '#dc2626',
+    primaryDark: '#7f1d1d',
+    accent: '#ea580c',
+    pageBg: 'linear-gradient(180deg, #fef2f2 0%, #f8fafc 45%, #f1f5f9 100%)',
+    topBarBg: 'linear-gradient(90deg, #450a0a 0%, #991b1b 50%, #dc2626 100%)',
+    heroBg: 'linear-gradient(135deg, #ffffff 0%, #fef2f2 100%)',
+    light: '#fef2f2',
+    border: '#fca5a5',
+    glow: 'rgba(220, 38, 38, 0.25)',
+    badgeBg: '#991b1b',
+    badgeText: '#fee2e2'
+  },
+  plum: {
+    label: '🍇 Royal Plum & Magenta (রয়্যাল প্লাম)',
+    primary: '#86198f',
+    primaryDark: '#4a044e',
+    accent: '#c026d3',
+    pageBg: 'linear-gradient(180deg, #fdf4ff 0%, #f8fafc 45%, #f1f5f9 100%)',
+    topBarBg: 'linear-gradient(90deg, #2e1065 0%, #581c87 50%, #86198f 100%)',
+    heroBg: 'linear-gradient(135deg, #ffffff 0%, #fdf4ff 100%)',
+    light: '#fdf4ff',
+    border: '#f0abfc',
+    glow: 'rgba(134, 25, 143, 0.25)',
+    badgeBg: '#701a75',
+    badgeText: '#fae8ff'
+  },
+  chocolate: {
+    label: '🍫 Espresso Mocha & Bronze (এসপ্রেসো ব্রোঞ্জ)',
+    primary: '#7c2d12',
+    primaryDark: '#431407',
+    accent: '#c2410c',
+    pageBg: 'linear-gradient(180deg, #fff7ed 0%, #f8fafc 45%, #f1f5f9 100%)',
+    topBarBg: 'linear-gradient(90deg, #271206 0%, #431407 50%, #7c2d12 100%)',
+    heroBg: 'linear-gradient(135deg, #ffffff 0%, #fff7ed 100%)',
+    light: '#fff7ed',
+    border: '#fdba74',
+    glow: 'rgba(124, 45, 18, 0.25)',
+    badgeBg: '#7c2d12',
+    badgeText: '#ffedd5'
+  },
+  obsidian: {
+    label: '🖤 Obsidian Luxury Black (প্রিমিয়াম ব্ল্যাক)',
+    primary: '#18181b',
+    primaryDark: '#09090b',
+    accent: '#10b981',
+    pageBg: 'linear-gradient(180deg, #f4f4f5 0%, #f8fafc 45%, #f1f5f9 100%)',
+    topBarBg: 'linear-gradient(90deg, #09090b 0%, #18181b 55%, #27272a 100%)',
+    heroBg: 'linear-gradient(135deg, #ffffff 0%, #f4f4f5 100%)',
+    light: '#f4f4f5',
+    border: '#a1a1aa',
+    glow: 'rgba(24, 24, 27, 0.26)',
+    badgeBg: '#18181b',
+    badgeText: '#f4f4f5'
+  }
+};
 /**
  * Deduplicates landing pages by ID, Slug, and Title so that merging Sheet rows and LocalStorage
  * never creates duplicate cards in the Admin Panel (`adm-saved-landing-pages-grid`).
@@ -25,14 +171,12 @@ export function deduplicateLandingPagesList(rawList) {
     const rawTitle = String(item.title || item.slogan || item.Slogan || item.headline || '').trim();
     const rawId = String(item.id || item.page_id || '').trim();
     let rawSlug = String(item.slug || item.Slug || '').trim();
-    // Fix invalid "-" or empty slugs generated from Bengali titles
     if (!rawSlug || rawSlug === '-' || rawSlug.toLowerCase() === 'slug') {
       rawSlug = (rawId ? rawId.toLowerCase() : `lp-${101 + idx}`);
     }
     const normId = rawId.toLowerCase();
     const normSlug = rawSlug.toLowerCase();
     const normTitle = rawTitle.toLowerCase();
-    // Skip empty placeholder rows
     if (!rawTitle && (!item.selected_products || item.selected_products.length === 0) && !item.hero_banner && !item.banner) {
       return;
     }
@@ -63,6 +207,7 @@ export function deduplicateLandingPagesList(rawList) {
         subtitle: normalizedItem.subtitle || prev.subtitle || '',
         badge: normalizedItem.badge || prev.badge || '',
         promo: normalizedItem.promo || prev.promo || '',
+        theme: normalizedItem.theme || prev.theme || 'emerald',
         hero_banner: normalizedItem.hero_banner || normalizedItem.banner || prev.hero_banner || prev.banner || '',
         selected_products: (Array.isArray(normalizedItem.selected_products) && normalizedItem.selected_products.length > 0)
           ? normalizedItem.selected_products
@@ -114,7 +259,27 @@ if (typeof window !== 'undefined') {
     } catch (e) {}
   };
   syncAndDeduplicateAdminLandingPages();
-  // 2. Wrap `apiClient.request` so `landing_pages/list` always returns deduplicated items
+  // 2. Automatically upgrade `#adm-lp-theme` dropdown in Admin Panel with all 10 Authentic Color Themes
+  const upgradeAdminThemeSelectIfPresent = function() {
+    if (typeof document === 'undefined') return;
+    const themeSel = document.getElementById('adm-lp-theme');
+    if (themeSel && !themeSel.getAttribute('data-authentic-upgraded')) {
+      const currentVal = themeSel.value || 'emerald';
+      themeSel.innerHTML = Object.entries(LP_AUTHENTIC_THEMES)
+        .map(([key, cfg]) => `<option value="${key}">${cfg.label}</option>`)
+        .join('');
+      themeSel.value = LP_AUTHENTIC_THEMES[currentVal] ? currentVal : 'emerald';
+      themeSel.setAttribute('data-authentic-upgraded', 'true');
+    }
+  };
+  if (typeof document !== 'undefined') {
+    setTimeout(upgradeAdminThemeSelectIfPresent, 120);
+    setTimeout(upgradeAdminThemeSelectIfPresent, 700);
+    document.addEventListener('click', () => {
+      setTimeout(upgradeAdminThemeSelectIfPresent, 50);
+    });
+  }
+  // 3. Wrap `apiClient.request` so `landing_pages/list` always returns deduplicated items
   if (apiClient && typeof apiClient.request === 'function' && !apiClient.__lpDedupPatched) {
     const origRequest = apiClient.request.bind(apiClient);
     apiClient.request = async function(action, payloadOrMethod = {}, maybePayload = undefined) {
@@ -137,7 +302,7 @@ if (typeof window !== 'undefined') {
     };
     apiClient.__lpDedupPatched = true;
   }
-  // 3. Intercept `window.getAdminLandingPages` via defineProperty so AdminPortal never renders duplicate cards
+  // 4. Intercept `window.getAdminLandingPages` via defineProperty so AdminPortal never renders duplicate cards
   const wrapAdminLpGetter = function(fn) {
     if (typeof fn !== 'function') return fn;
     if (fn.__dedupWrapped) return fn;
@@ -153,7 +318,6 @@ if (typeof window !== 'undefined') {
     wrapped.__dedupWrapped = true;
     return wrapped;
   };
-
   let _adminLpGetter = wrapAdminLpGetter(window.getAdminLandingPages);
   try {
     Object.defineProperty(window, 'getAdminLandingPages', {
@@ -169,6 +333,21 @@ if (typeof window !== 'undefined') {
   } catch (e) {
     window.getAdminLandingPages = _adminLpGetter;
   }
+  /**
+   * Smoothly scrolls within the SAME Landing Page without changing the URL or triggering SPA router navigation.
+   * Clicking "🛒 অর্ডার করুন" / "🛒 অর্ডার কনফার্ম করুন" scrolls directly to `#lp-products-section` ("🛍️ ক্যাম্পেইনের পণ্যসমূহ").
+   */
+  window.scrollToLpSection = function(targetId, event) {
+    if (event && typeof event.preventDefault === 'function') {
+      event.preventDefault();
+    }
+    const targetEl = document.getElementById(targetId) || document.getElementById('lp-products-section') || document.getElementById('lp-checkout-section');
+    if (targetEl) {
+      const stickyOffset = 78;
+      const y = targetEl.getBoundingClientRect().top + window.pageYOffset - stickyOffset;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    }
+  };
   // Interactive Product / Package Selection on Customer Landing Page
   window.selectLpProduct = function(idx, scrollToCheckout) {
     const list = window.__lpProductsList || [];
@@ -194,14 +373,14 @@ if (typeof window !== 'undefined') {
         if (statusBadge) statusBadge.style.display = 'none';
       }
     });
-    // Highlight selected card in the top Showcase Grid
+    // Highlight selected card in the top Showcase Grid ("🛍️ ক্যাম্পেইনের পণ্যসমূহ")
     document.querySelectorAll('.lp-showcase-card').forEach((card, i) => {
       const badge = card.querySelector('.lp-showcase-selected-pill');
       const btn = card.querySelector('.lp-showcase-select-btn');
       if (i === idx) {
         card.classList.add('is-selected');
         if (badge) badge.style.display = 'inline-flex';
-        if (btn) btn.innerHTML = '✓ নির্বাচিত পণ্য — অর্ডার ফর্মে যান';
+        if (btn) btn.innerHTML = '✓ নির্বাচিত পণ্য — নিচে অর্ডার ফর্ম পূরণ করুন ↓';
       } else {
         card.classList.remove('is-selected');
         if (badge) badge.style.display = 'none';
@@ -249,10 +428,7 @@ if (typeof window !== 'undefined') {
       window.updateLpOrderCalculation();
     }
     if (scrollToCheckout) {
-      const checkoutEl = document.getElementById('lp-checkout-section');
-      if (checkoutEl) {
-        checkoutEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      window.scrollToLpSection('lp-checkout-section');
     }
   };
   window.selectLpColor = function(color, btnEl) {
@@ -267,6 +443,17 @@ if (typeof window !== 'undefined') {
     window.__lpSelectedSize = size;
     document.querySelectorAll('.lp-size-btn').forEach(btn => btn.classList.remove('is-active'));
     if (btnEl) btnEl.classList.add('is-active');
+    if (typeof window.updateLpOrderCalculation === 'function') {
+      window.updateLpOrderCalculation();
+    }
+  };
+  window.selectLpAreaZone = function(zoneVal) {
+    const sel = document.getElementById('lp-delivery-area');
+    if (sel) sel.value = zoneVal;
+    document.querySelectorAll('.lp-zone-chip').forEach(btn => {
+      if (btn.getAttribute('data-zone') === zoneVal) btn.classList.add('is-active');
+      else btn.classList.remove('is-active');
+    });
     if (typeof window.updateLpOrderCalculation === 'function') {
       window.updateLpOrderCalculation();
     }
@@ -289,6 +476,10 @@ if (typeof window !== 'undefined') {
     const areaSelect = document.getElementById('lp-delivery-area');
     const selectedArea = areaSelect ? areaSelect.value : 'dhaka';
     const isFreeShipping = Boolean(window.__lpFreeShipping);
+    document.querySelectorAll('.lp-zone-chip').forEach(btn => {
+      if (btn.getAttribute('data-zone') === selectedArea) btn.classList.add('is-active');
+      else btn.classList.remove('is-active');
+    });
     let shippingCost = 0;
     if (!isFreeShipping) {
       const confs = window.__lpDeliveryConfs || [];
@@ -313,7 +504,7 @@ if (typeof window !== 'undefined') {
     const thumbEl = document.getElementById('lp-summary-thumb');
     if (subEl) subEl.textContent = formatCurrency(subtotal);
     if (shipEl) {
-      shipEl.textContent = isFreeShipping ? 'ফ্রি ডেলিভারি' : formatCurrency(shippingCost);
+      shipEl.textContent = isFreeShipping ? 'ফ্রি ডেলিভারি (৳০)' : formatCurrency(shippingCost);
       shipEl.style.color = isFreeShipping ? '#34d399' : '#f8fafc';
     }
     if (totalEl) totalEl.textContent = formatCurrency(total);
@@ -484,7 +675,7 @@ function normalizeSpecs(rawSpecs) {
             value: line.slice(idx + 1).trim()
           };
         }
-        return { label: 'বৈশিষ্ট্য', value: line };
+        return { label: '', value: line };
       });
   }
   return [];
@@ -630,14 +821,7 @@ export async function renderLandingPage(params = {}) {
     if (typeof window !== 'undefined') {
       window.__lpFreeShipping = freeShipping;
     }
-    // Theme Color Palettes
-    const palettes = {
-      emerald: { primary: '#059669', primaryDark: '#047857', light: '#ecfdf5', border: '#6ee7b7', glow: 'rgba(5, 150, 105, 0.22)' },
-      rose:    { primary: '#e11d48', primaryDark: '#be123c', light: '#fff1f2', border: '#fda4af', glow: 'rgba(225, 29, 72, 0.22)' },
-      indigo:  { primary: '#4f46e5', primaryDark: '#4338ca', light: '#eef2ff', border: '#a5b4fc', glow: 'rgba(79, 70, 229, 0.22)' },
-      amber:   { primary: '#d97706', primaryDark: '#b45309', light: '#fffbeb', border: '#fcd34d', glow: 'rgba(217, 119, 6, 0.22)' }
-    };
-    const palette = palettes[themeColor] || palettes.emerald;
+    const palette = LP_AUTHENTIC_THEMES[themeColor] || LP_AUTHENTIC_THEMES.emerald;
     // Resolve products selected in Admin Landing Page Builder (`selected_products`, `selected_skus`, or `products`)
     const rawSelectedProds = parseJsonSafe(
       activePage.selected_products || activePage.selected_skus || activePage.products || activePage.Products,
@@ -677,7 +861,7 @@ export async function renderLandingPage(params = {}) {
         });
       }
     });
-    // If Admin didn't link catalog products or only entered page-level details, create a clean campaign product item
+    // Fallback virtual product if only page-level title/price was entered
     if (resolvedProducts.length === 0 && (pageTitle || heroHeadline || Number(activePage.offer_price) > 0)) {
       resolvedProducts.push({
         id: activePage.id || 'LP-MAIN',
@@ -716,7 +900,7 @@ export async function renderLandingPage(params = {}) {
       window.__lpSelectedColor = defaultColors[0] || '';
       window.__lpSelectedSize = defaultSizes[0] || '';
     }
-    // Normalize Banners (supports `{ url, caption }`, `{ image_url, caption }`, or string URL)
+    // Normalize Banners
     const rawBanners = parseJsonSafe(activePage.banners, []);
     const banners = (Array.isArray(rawBanners) ? rawBanners : [])
       .map(b => {
@@ -726,7 +910,7 @@ export async function renderLandingPage(params = {}) {
         return u ? { image_url: u, caption: String(b.caption || b.title || '').trim() } : null;
       })
       .filter(Boolean);
-    // Normalize Videos (supports `{ url, title }`, `{ video_url, title }`, or string URL)
+    // Normalize Videos
     const rawVideos = parseJsonSafe(activePage.videos, []);
     const videos = (Array.isArray(rawVideos) ? rawVideos : [])
       .map(v => {
@@ -743,6 +927,9 @@ export async function renderLandingPage(params = {}) {
     const shopLogo = siteSettings.logo_url || siteSettings.site_logo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
     const displayRegularPrice = Number(activePage.regular_price || firstRegPrice || 0);
     const displayOfferPrice = Number(activePage.offer_price || firstPrice || 0);
+    const displaySavings = (displayRegularPrice > displayOfferPrice && displayOfferPrice > 0)
+      ? (displayRegularPrice - displayOfferPrice)
+      : 0;
     const discountPct = (displayRegularPrice > displayOfferPrice && displayOfferPrice > 0)
       ? Math.round(((displayRegularPrice - displayOfferPrice) / displayRegularPrice) * 100)
       : 0;
@@ -788,62 +975,64 @@ export async function renderLandingPage(params = {}) {
           }
           @keyframes lpFloatSlow { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-5px); } }
           .lp-page-root, .lp-page-root * { box-sizing: border-box; font-family: 'Hind Siliguri', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; }
-          .lp-page-root { min-height: 100vh; background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%); color: #0f172a; padding-bottom: 56px; overflow-x: hidden; width: 100%; }
+          .lp-page-root { min-height: 100vh; background: ${palette.pageBg}; color: #0f172a; padding-bottom: 56px; overflow-x: hidden; width: 100%; }
           .lp-wrap { max-width: 1160px; margin: 0 auto; padding: 0 16px; width: 100%; }
           /* Top Announcement Bar */
-          .lp-top-bar { background: linear-gradient(90deg, ${palette.primaryDark}, ${palette.primary}); color: #ffffff; padding: 10px 0; box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08); }
+          .lp-top-bar { background: ${palette.topBarBg}; color: #ffffff; padding: 10px 0; box-shadow: 0 2px 12px rgba(15, 23, 42, 0.12); }
           .lp-top-bar-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
           .lp-top-badge { font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
           .lp-countdown-wrap { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; }
           .lp-timer-group { display: flex; align-items: center; gap: 5px; }
-          .lp-timer-box { background: rgba(15, 23, 42, 0.45); border: 1px solid rgba(255, 255, 255, 0.25); color: #ffffff; border-radius: 8px; padding: 3px 8px; min-width: 42px; text-align: center; font-weight: 900; font-size: 12px; }
+          .lp-timer-box { background: rgba(15, 23, 42, 0.45); border: 1px solid rgba(255, 255, 255, 0.28); color: #ffffff; border-radius: 8px; padding: 3px 8px; min-width: 44px; text-align: center; font-weight: 900; font-size: 12px; }
           /* Sticky Header Navigation */
-          .lp-navbar { position: sticky; top: 0; z-index: 45; background: rgba(255, 255, 255, 0.94); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(226, 232, 240, 0.9); box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.05); }
+          .lp-navbar { position: sticky; top: 0; z-index: 45; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(226, 232, 240, 0.9); box-shadow: 0 4px 20px -4px rgba(15, 23, 42, 0.06); }
           .lp-navbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; }
-          .lp-brand-link { display: flex; align-items: center; gap: 10px; text-decoration: none; min-width: 0; }
-          .lp-brand-logo { height: 38px; width: auto; object-fit: contain; border-radius: 8px; flex-shrink: 0; }
-          .lp-brand-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: 900; font-size: 18px; background: ${palette.primary}; flex-shrink: 0; }
+          .lp-brand-link { display: flex; align-items: center; gap: 10px; text-decoration: none; min-width: 0; cursor: pointer; user-select: none; }
+          .lp-brand-logo { height: 40px; width: 40px; object-fit: cover; border-radius: 10px; border: 1px solid #e2e8f0; flex-shrink: 0; background: #fff; }
+          .lp-brand-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #ffffff; font-weight: 900; font-size: 18px; background: ${palette.primary}; flex-shrink: 0; }
           .lp-brand-name { font-size: 16px; font-weight: 900; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .lp-brand-sub { font-size: 11px; color: #64748b; font-weight: 600; }
+          .lp-brand-sub { font-size: 11px; color: #64748b; font-weight: 700; display: flex; align-items: center; gap: 4px; }
           .lp-nav-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
           .lp-nav-phone { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: #f1f5f9; color: #1e293b; font-weight: 800; font-size: 12px; text-decoration: none; transition: background 0.2s; }
           .lp-nav-phone:hover { background: #e2e8f0; }
-          .lp-nav-store-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: #ffffff; color: #0f172a; border: 1.5px solid #cbd5e1; font-weight: 800; font-size: 12px; text-decoration: none; transition: all 0.2s; }
-          .lp-nav-store-btn:hover { border-color: #0f172a; background: #f8fafc; }
-          .lp-nav-order-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; background: ${palette.primary}; color: #ffffff; font-weight: 800; font-size: 12px; text-decoration: none; box-shadow: 0 4px 12px ${palette.glow}; }
+          .lp-nav-store-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 15px; border-radius: 999px; background: #ffffff; color: #0f172a; border: 1.5px solid #cbd5e1; font-weight: 800; font-size: 12.5px; text-decoration: none; transition: all 0.2s; box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04); }
+          .lp-nav-store-btn:hover { border-color: ${palette.primary}; color: ${palette.primary}; background: ${palette.light}; }
+          .lp-nav-order-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 999px; background: linear-gradient(135deg, ${palette.primary}, ${palette.primaryDark}); color: #ffffff; font-weight: 800; font-size: 12.5px; text-decoration: none; border: none; cursor: pointer; box-shadow: 0 4px 14px ${palette.glow}; transition: transform 0.2s; }
+          .lp-nav-order-btn:hover { transform: translateY(-1px); }
           /* Surface Cards */
-          .lp-surface-card { background: #ffffff; border-radius: 24px; border: 1px solid rgba(226, 232, 240, 0.9); box-shadow: 0 12px 32px -8px rgba(15, 23, 42, 0.05); padding: 28px; margin-bottom: 26px; overflow: hidden; }
-          .lp-section-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #f1f5f9; }
+          .lp-surface-card { background: #ffffff; border-radius: 24px; border: 1px solid rgba(226, 232, 240, 0.95); box-shadow: 0 12px 32px -8px rgba(15, 23, 42, 0.05); padding: 28px; margin-bottom: 26px; overflow: hidden; scroll-margin-top: 84px; }
+          .lp-section-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1.5px solid #f1f5f9; }
           .lp-section-title { font-size: 20px; font-weight: 900; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 10px; }
-          .lp-section-sub { font-size: 12px; font-weight: 700; color: #64748b; }
+          .lp-section-sub { font-size: 12.5px; font-weight: 700; color: ${palette.primary}; background: ${palette.light}; padding: 5px 12px; border-radius: 999px; border: 1px solid ${palette.border}; }
           /* Hero Showcase Card */
-          .lp-hero-card { background: #ffffff; border-radius: 26px; border: 1px solid rgba(226, 232, 240, 0.95); box-shadow: 0 16px 40px -12px rgba(15, 23, 42, 0.07); margin-top: 20px; margin-bottom: 26px; overflow: hidden; }
-          .lp-hero-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); align-items: center; }
-          .lp-hero-grid.is-single { grid-template-columns: minmax(0, 1fr); text-align: center; max-width: 780px; margin: 0 auto; }
+          .lp-hero-card { background: ${palette.heroBg}; border-radius: 28px; border: 1.5px solid ${palette.border}; box-shadow: 0 18px 42px -12px rgba(15, 23, 42, 0.08); margin-top: 20px; margin-bottom: 26px; overflow: hidden; }
+          .lp-hero-grid { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr); align-items: center; }
+          .lp-hero-grid.is-single { grid-template-columns: minmax(0, 1fr); text-align: center; max-width: 800px; margin: 0 auto; }
           .lp-hero-content { padding: 36px 34px; min-width: 0; }
-          .lp-hero-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 800; background: ${palette.light}; color: ${palette.primary}; border: 1px solid ${palette.border}; margin-bottom: 14px; }
-          .lp-hero-title { font-size: 30px; font-weight: 900; color: #0f172a; line-height: 1.3; margin: 0 0 12px; word-break: break-word; }
+          .lp-hero-pill { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 800; background: ${palette.badgeBg}; color: ${palette.badgeText}; margin-bottom: 14px; box-shadow: 0 4px 12px ${palette.glow}; }
+          .lp-hero-title { font-size: 30px; font-weight: 900; color: #0f172a; line-height: 1.32; margin: 0 0 12px; word-break: break-word; }
           .lp-hero-subtitle { font-size: 15px; color: #475569; line-height: 1.65; font-weight: 500; margin: 0 0 20px; word-break: break-word; }
-          .lp-hero-price-box { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 20px; border-radius: 18px; background: #f8fafc; border: 1.5px solid #e2e8f0; margin-bottom: 18px; }
-          .lp-hero-reg-price { font-size: 13px; color: #64748b; font-weight: 700; }
+          .lp-hero-price-box { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 20px; border-radius: 18px; background: #ffffff; border: 1.5px solid ${palette.border}; margin-bottom: 18px; box-shadow: 0 6px 18px -6px rgba(15, 23, 42, 0.05); }
+          .lp-hero-reg-price { font-size: 13.5px; color: #64748b; font-weight: 700; }
           .lp-hero-reg-price del { color: #ef4444; font-weight: 800; margin-left: 4px; }
-          .lp-hero-offer-price { font-size: 20px; font-weight: 900; color: ${palette.primary}; }
-          .lp-hero-save-badge { padding: 4px 10px; border-radius: 999px; background: #e11d48; color: #ffffff; font-size: 11px; font-weight: 900; }
+          .lp-hero-offer-price { font-size: 21px; font-weight: 900; color: ${palette.primary}; }
+          .lp-hero-save-badge { padding: 5px 11px; border-radius: 999px; background: #e11d48; color: #ffffff; font-size: 11.5px; font-weight: 900; }
           .lp-gift-banner { padding: 12px 16px; border-radius: 14px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
           .lp-hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
           .lp-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; border-radius: 16px; font-weight: 900; font-size: 15px; color: #ffffff; background: linear-gradient(135deg, ${palette.primary}, ${palette.primaryDark}); text-decoration: none; border: none; cursor: pointer; animation: lpPulseGlow 2.6s infinite; transition: transform 0.2s ease; }
           .lp-btn-primary:hover { transform: scale(1.02); }
-          .lp-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 22px; border-radius: 16px; font-weight: 800; font-size: 14px; color: #1e293b; background: #f1f5f9; border: 1px solid #cbd5e1; text-decoration: none; transition: all 0.2s ease; }
-          .lp-btn-secondary:hover { background: #e2e8f0; }
-          .lp-hero-media { background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); padding: 28px; display: flex; align-items: center; justify-content: center; height: 100%; min-height: 320px; border-left: 1px solid #f1f5f9; }
-          .lp-hero-img-box { width: 100%; max-width: 420px; height: 340px; background: #ffffff; border-radius: 20px; padding: 14px; border: 1px solid #e2e8f0; box-shadow: 0 14px 30px -10px rgba(15, 23, 42, 0.08); display: flex; align-items: center; justify-content: center; overflow: hidden; animation: lpFloatSlow 5s ease-in-out infinite; }
-          .lp-hero-img-box img { width: 100%; height: 100%; object-fit: contain; border-radius: 12px; }
+          .lp-btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 22px; border-radius: 16px; font-weight: 800; font-size: 14px; color: #0f172a; background: #ffffff; border: 1.5px solid #cbd5e1; text-decoration: none; transition: all 0.2s ease; }
+          .lp-btn-secondary:hover { border-color: ${palette.primary}; color: ${palette.primary}; background: ${palette.light}; }
+          .lp-hero-micro-trust { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; font-size: 12px; font-weight: 700; color: #475569; }
+          .lp-hero-media { padding: 28px; display: flex; align-items: center; justify-content: center; height: 100%; min-height: 320px; }
+          .lp-hero-img-box { position: relative; width: 100%; max-width: 420px; height: 340px; background: #ffffff; border-radius: 22px; padding: 14px; border: 1.5px solid #e2e8f0; box-shadow: 0 16px 34px -10px rgba(15, 23, 42, 0.1); display: flex; align-items: center; justify-content: center; overflow: hidden; animation: lpFloatSlow 5s ease-in-out infinite; }
+          .lp-hero-img-box img { width: 100%; height: 100%; object-fit: contain; border-radius: 14px; }
           /* Campaign Products Showcase Grid (Luxury Product View) */
           .lp-products-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
           .lp-products-grid.is-single { grid-template-columns: minmax(0, 400px); justify-content: center; }
           .lp-products-grid.is-double { grid-template-columns: repeat(2, minmax(0, 380px)); justify-content: center; }
           .lp-showcase-card { position: relative; display: flex; flex-direction: column; background: #ffffff; border: 2px solid #e2e8f0; border-radius: 20px; padding: 14px; transition: all 0.25s ease; cursor: pointer; min-width: 0; overflow: hidden; box-shadow: 0 4px 14px -4px rgba(15, 23, 42, 0.04); }
-          .lp-showcase-card:hover { transform: translateY(-4px); border-color: ${palette.border}; box-shadow: 0 16px 32px -10px rgba(15, 23, 42, 0.1); }
+          .lp-showcase-card:hover { transform: translateY(-4px); border-color: ${palette.border}; box-shadow: 0 16px 32px -10px rgba(15, 23, 42, 0.12); }
           .lp-showcase-card.is-selected { border-color: ${palette.primary}; background: linear-gradient(180deg, #ffffff 0%, ${palette.light} 100%); box-shadow: 0 12px 28px -8px ${palette.glow}; }
           .lp-showcase-img-wrap { position: relative; width: 100%; height: 215px; border-radius: 14px; background: #f8fafc; border: 1px solid #f1f5f9; overflow: hidden; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; padding: 10px; }
           .lp-showcase-img-wrap img { width: 100%; height: 100%; object-fit: contain; transition: transform 0.35s ease; }
@@ -852,6 +1041,7 @@ export async function renderLandingPage(params = {}) {
           .lp-showcase-selected-pill { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 999px; background: ${palette.primary}; color: #ffffff; font-size: 11px; font-weight: 900; box-shadow: 0 4px 10px ${palette.glow}; z-index: 2; }
           .lp-showcase-stock-tag { position: absolute; bottom: 8px; left: 10px; padding: 3px 9px; border-radius: 6px; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); color: #34d399; font-size: 10px; font-weight: 800; z-index: 2; }
           .lp-showcase-body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+          .lp-showcase-meta { font-size: 10.5px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
           .lp-showcase-title { font-size: 15px; font-weight: 800; color: #0f172a; line-height: 1.4; margin: 0 0 8px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; min-height: 42px; }
           .lp-showcase-price-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; margin-bottom: 12px; }
           .lp-showcase-offer { font-size: 19px; font-weight: 900; color: ${palette.primary}; }
@@ -866,9 +1056,11 @@ export async function renderLandingPage(params = {}) {
           .lp-info-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr); gap: 22px; margin-bottom: 26px; }
           .lp-info-grid.is-single { grid-template-columns: minmax(0, 1fr); }
           .lp-spec-table { width: 100%; border-collapse: collapse; }
-          .lp-spec-row { display: grid; grid-template-columns: 42% 58%; gap: 10px; padding: 11px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+          .lp-spec-row { display: grid; grid-template-columns: 40% 60%; gap: 10px; padding: 11px 12px; border-bottom: 1px solid #f1f5f9; font-size: 13.5px; border-radius: 8px; }
+          .lp-spec-row:nth-child(odd) { background: #f8fafc; }
+          .lp-spec-row.is-full { grid-template-columns: 1fr; }
           .lp-spec-row:last-child { border-bottom: none; }
-          .lp-spec-label { font-weight: 700; color: #64748b; word-break: break-word; }
+          .lp-spec-label { font-weight: 700; color: #475569; word-break: break-word; }
           .lp-spec-val { font-weight: 800; color: #0f172a; word-break: break-word; }
           .lp-gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
           .lp-gallery-card { border-radius: 18px; overflow: hidden; border: 1px solid #e2e8f0; background: #f8fafc; }
@@ -876,15 +1068,15 @@ export async function renderLandingPage(params = {}) {
           .lp-video-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
           .lp-video-grid.is-single { grid-template-columns: minmax(0, 720px); justify-content: center; }
           /* Checkout Form Section — 100% Responsive & Zero Overflow */
-          .lp-checkout-shell { background: #ffffff; border-radius: 26px; border: 2px solid ${palette.border}; box-shadow: 0 22px 48px -12px rgba(15, 23, 42, 0.09); overflow: hidden; margin-top: 12px; }
-          .lp-checkout-banner { background: linear-gradient(135deg, ${palette.primary}, ${palette.primaryDark}); padding: 24px 20px; text-align: center; color: #ffffff; }
+          .lp-checkout-shell { background: #ffffff; border-radius: 26px; border: 2px solid ${palette.border}; box-shadow: 0 22px 48px -12px rgba(15, 23, 42, 0.09); overflow: hidden; margin-top: 12px; scroll-margin-top: 84px; }
+          .lp-checkout-banner { background: ${palette.topBarBg}; padding: 24px 20px; text-align: center; color: #ffffff; }
           .lp-checkout-banner h2 { font-size: 22px; font-weight: 900; margin: 0 0 6px; line-height: 1.35; }
           .lp-checkout-banner p { font-size: 13px; margin: 0; opacity: 0.92; font-weight: 600; }
           .lp-checkout-body { padding: 26px; }
           .lp-checkout-grid { display: grid; grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr); gap: 26px; align-items: start; }
           .lp-checkout-col { min-width: 0; width: 100%; }
           .lp-step-heading { font-size: 15px; font-weight: 900; color: #0f172a; margin: 0 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-          .lp-step-count-badge { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: ${palette.light}; color: ${palette.primary}; }
+          .lp-step-count-badge { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: ${palette.light}; color: ${palette.primary}; border: 1px solid ${palette.border}; }
           /* Product Selector List inside Checkout */
           .lp-pkg-list-scroll { display: flex; flex-direction: column; gap: 10px; max-height: 360px; overflow-y: auto; padding: 2px 4px 4px 2px; margin-bottom: 16px; }
           .lp-pkg-list-scroll::-webkit-scrollbar { width: 5px; }
@@ -909,7 +1101,7 @@ export async function renderLandingPage(params = {}) {
           .lp-variant-label { display: block; font-size: 12.5px; font-weight: 800; color: #334155; margin-bottom: 8px; }
           .lp-pill-list { display: flex; flex-wrap: wrap; gap: 8px; }
           .lp-color-btn, .lp-size-btn { padding: 7px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 800; border: 1.5px solid #cbd5e1; background: #ffffff; color: #334155; cursor: pointer; transition: all 0.15s ease; }
-          .lp-color-btn.is-active, .lp-size-btn.is-active { border-color: #0f172a; background: #0f172a; color: #ffffff; }
+          .lp-color-btn.is-active, .lp-size-btn.is-active { border-color: ${palette.primary}; background: ${palette.primary}; color: #ffffff; }
           .lp-qty-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 16px; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 14px; }
           .lp-qty-controls { display: flex; align-items: center; gap: 10px; }
           .lp-qty-btn { width: 34px; height: 34px; border-radius: 10px; background: #ffffff; border: 1px solid #cbd5e1; font-weight: 900; font-size: 16px; color: #0f172a; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -923,12 +1115,15 @@ export async function renderLandingPage(params = {}) {
           .lp-summary-qty-badge { font-size: 12px; font-weight: 900; color: #34d399; background: rgba(52, 211, 153, 0.14); padding: 4px 9px; border-radius: 8px; white-space: nowrap; flex-shrink: 0; }
           .lp-summary-line { display: flex; align-items: center; justify-content: space-between; font-size: 13px; color: #cbd5e1; padding: 4px 0; }
           .lp-summary-total-line { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; margin-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.12); font-size: 16px; font-weight: 900; }
-          /* Right Column Shipping Card & Trust Grid */
+          /* Right Column Shipping Card & Quick Zone Chips */
           .lp-shipping-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 20px; padding: 20px; }
           .lp-field-group { margin-bottom: 14px; }
           .lp-field-label { display: block; font-size: 13px; font-weight: 800; color: #1e293b; margin-bottom: 6px; }
           .lp-input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid #cbd5e1; background: #ffffff; font-size: 14px; font-weight: 600; color: #0f172a; transition: all 0.2s ease; }
           .lp-input:focus { outline: none; border-color: ${palette.primary}; box-shadow: 0 0 0 3px ${palette.glow}; }
+          .lp-zone-chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
+          .lp-zone-chip { padding: 8px 6px; border-radius: 10px; border: 1.5px solid #cbd5e1; background: #ffffff; color: #334155; font-size: 11.5px; font-weight: 800; text-align: center; cursor: pointer; transition: all 0.15s ease; }
+          .lp-zone-chip.is-active { border-color: ${palette.primary}; background: ${palette.light}; color: ${palette.primary}; }
           .lp-cod-box { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; font-size: 12.5px; font-weight: 800; margin-bottom: 16px; }
           .lp-submit-btn { width: 100%; padding: 15px 20px; border-radius: 14px; border: none; background: linear-gradient(135deg, ${palette.primary}, ${palette.primaryDark}); color: #ffffff; font-size: 16px; font-weight: 900; cursor: pointer; box-shadow: 0 10px 25px -5px ${palette.glow}; transition: transform 0.2s ease; }
           .lp-submit-btn:hover { transform: translateY(-1px); }
@@ -938,7 +1133,7 @@ export async function renderLandingPage(params = {}) {
           /* Responsive Breakpoints */
           @media (max-width: 960px) {
             .lp-hero-grid, .lp-info-grid, .lp-checkout-grid, .lp-trust-grid { grid-template-columns: minmax(0, 1fr); }
-            .lp-hero-media { border-left: none; border-top: 1px solid #f1f5f9; padding: 20px; }
+            .lp-hero-media { border-top: 1px solid rgba(226, 232, 240, 0.7); padding: 20px; }
             .lp-checkout-grid { gap: 20px; }
             .lp-products-grid, .lp-gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
           }
@@ -946,6 +1141,7 @@ export async function renderLandingPage(params = {}) {
             .lp-wrap { padding: 0 12px; }
             .lp-top-bar-inner { justify-content: center; text-align: center; }
             .lp-nav-phone { display: none; }
+            .lp-nav-store-btn, .lp-nav-order-btn { padding: 7px 11px; font-size: 11.5px; }
             .lp-surface-card { padding: 18px 14px; border-radius: 20px; }
             .lp-hero-content { padding: 22px 16px; }
             .lp-hero-title { font-size: 22px; }
@@ -961,6 +1157,7 @@ export async function renderLandingPage(params = {}) {
             .lp-checkout-body, .lp-shipping-card { padding: 16px 12px; }
             .lp-pkg-thumb { width: 52px; height: 52px; }
             .lp-pkg-title { font-size: 12.5px; }
+            .lp-zone-chips { grid-template-columns: 1fr; }
           }
         </style>
         <!-- Top Urgency / Campaign Bar -->
@@ -986,10 +1183,10 @@ export async function renderLandingPage(params = {}) {
             </div>
           </div>
         ` : ''}
-        <!-- Sticky Header with "মূল ওয়েবসাইটে যান" Button -->
+        <!-- Sticky Header: Brand scrolls to top, "মূল ওয়েবসাইটে যান" goes to /products, "অর্ডার করুন" scrolls to #lp-products-section -->
         <header class="lp-navbar">
           <div class="lp-wrap lp-navbar-inner">
-            <a href="/products" class="lp-brand-link" title="মূল ওয়েবসাইটে ফিরে যান">
+            <div onclick="window.scrollTo({top:0,behavior:'smooth'})" class="lp-brand-link" title="পেজের শুরুতে যান">
               ${shopLogo ? `
                 <img src="${shopLogo}" alt="${shopName}" class="lp-brand-logo" onerror="this.style.display='none'">
               ` : `
@@ -997,19 +1194,19 @@ export async function renderLandingPage(params = {}) {
               `}
               <div style="min-width:0;">
                 <div class="lp-brand-name">${shopName}</div>
-                <div class="lp-brand-sub">অফিসিয়াল ক্যাম্পেইন স্টোর</div>
+                <div class="lp-brand-sub"><span style="color:#10b981;">●</span> অফিসিয়াল ক্যাম্পেইন স্টোর</div>
               </div>
-            </a>
+            </div>
             <div class="lp-nav-actions">
               <a href="tel:${cleanPhone}" class="lp-nav-phone">
                 📞 ${contactPhone}
               </a>
-              <a href="/products">
+              <a href="/products" class="lp-nav-store-btn">
                 🛍️ মূল ওয়েবসাইটে যান
               </a>
-              <a href="#lp-section-sub" class="lp-nav-order-btn">
+              <button type="button" onclick="window.scrollToLpSection('lp-products-section', event)" class="lp-nav-order-btn">
                 🛒 অর্ডার করুন
-              </a>
+              </button>
             </div>
           </div>
         </header>
@@ -1041,7 +1238,7 @@ export async function renderLandingPage(params = {}) {
                         অফার মূল্য: ${formatCurrency(displayOfferPrice)}
                       </div>
                       ${discountPct > 0 ? `
-                        <span class="lp-hero-save-badge">${discountPct}% ছাড়</span>
+                        <span class="lp-hero-save-badge">${discountPct}% ছাড় (সাশ্রয় ${formatCurrency(displaySavings)})</span>
                       ` : ''}
                     </div>
                   ` : ''}
@@ -1052,33 +1249,44 @@ export async function renderLandingPage(params = {}) {
                     </div>
                   ` : ''}
                   <div class="lp-hero-actions" style="${heroDisplayImg ? '' : 'justify-content:center;'}">
-                    <a href="#lp-section-sub" class="lp-btn-primary">
+                    <button type="button" onclick="window.scrollToLpSection('lp-products-section', event)" class="lp-btn-primary">
                       🛒 ${ctaText}
-                    </a>
+                    </button>
                     <a href="/products" class="lp-btn-secondary">
                       🛍️ মূল ওয়েবসাইটে যান
                     </a>
+                  </div>
+                  <div class="lp-hero-micro-trust" style="${heroDisplayImg ? '' : 'justify-content:center;'}">
+                    <span>✅ ১০০% অরিজিনাল গ্যারান্টি</span>
+                    <span>•</span>
+                    <span>🚚 ক্যাশ অন ডেলিভারি</span>
+                    ${freeShipping ? `<span>•</span><span style="color:${palette.primary};">🎉 সম্পূর্ণ ফ্রি ডেলিভারি</span>` : ''}
                   </div>
                 </div>
                 ${heroDisplayImg ? `
                   <div class="lp-hero-media">
                     <div class="lp-hero-img-box">
-                      <img src="${heroDisplayImg}" alt="${heroHeadline || pageTitle}">
+                      <img src="${heroDisplayImg}" alt="${heroHeadline || pageTitle}" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'">
+                      ${discountPct > 0 ? `
+                        <span style="position:absolute;top:12px;right:12px;padding:6px 12px;border-radius:999px;background:#e11d48;color:#fff;font-size:12px;font-weight:900;box-shadow:0 6px 14px rgba(225,29,72,0.3);">
+                          -${discountPct}% OFF
+                        </span>
+                      ` : ''}
                     </div>
                   </div>
                 ` : ''}
               </div>
             </section>
           ` : ''}
-          <!-- Campaign Products Showcase Section -->
+          <!-- Campaign Products Showcase Section ("🛍️ ক্যাম্পেইনের পণ্যসমূহ") -->
           ${resolvedProducts.length > 0 ? `
-            <section class="lp-surface-card">
+            <section id="lp-products-section" class="lp-surface-card">
               <div class="lp-section-header">
                 <h2 class="lp-section-title">
                   <span>🛍️</span>
                   <span>ক্যাম্পেইনের পণ্যসমূহ (${resolvedProducts.length}টি)</span>
                 </h2>
-                <span class="lp-section-sub">পছন্দের পণ্যটিতে ক্লিক করে সরাসরি অর্ডার করুন</span>
+                <span class="lp-section-sub">👇 পছন্দের পণ্যটিতে ক্লিক করলেই নিচের অর্ডার ফর্মে নিয়ে যাবে</span>
               </div>
               <div class="${prodGridClass}">
                 ${resolvedProducts.map((p, idx) => {
@@ -1087,12 +1295,13 @@ export async function renderLandingPage(params = {}) {
                   const pDisc = (pReg > pPrice && pPrice > 0) ? Math.round(((pReg - pPrice) / pReg) * 100) : 0;
                   const pImg = p.image_url || p.thumbnail || (Array.isArray(p.images) && p.images[0]) || p.image || heroDisplayImg || '';
                   const pTitle = p.name || p.p_name || 'পণ্য';
+                  const pMeta = p.brand || p.category || '';
                   return `
                     <div onclick="window.selectLpProduct(${idx}, true)"
                       class="lp-showcase-card ${idx === 0 ? 'is-selected' : ''}">
                       <div class="lp-showcase-img-wrap">
                         ${pImg ? `
-                          <img src="${pImg}" alt="${pTitle}" loading="lazy">
+                          <img src="${pImg}" alt="${pTitle}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600'">
                         ` : `
                           <div style="font-size:36px;">🛍️</div>
                         `}
@@ -1103,6 +1312,7 @@ export async function renderLandingPage(params = {}) {
                         <span class="lp-showcase-stock-tag">● স্টকে আছে</span>
                       </div>
                       <div class="lp-showcase-body">
+                        ${pMeta ? `<div class="lp-showcase-meta">${pMeta}</div>` : ''}
                         <h3 class="lp-showcase-title">${pTitle}</h3>
                         <div class="lp-showcase-price-row">
                           <span class="lp-showcase-offer">${formatCurrency(pPrice)}</span>
@@ -1111,7 +1321,7 @@ export async function renderLandingPage(params = {}) {
                           ` : ''}
                         </div>
                         <button type="button" class="lp-showcase-select-btn">
-                          ${idx === 0 ? '✓ নির্বাচিত পণ্য — অর্ডার ফর্মে যান' : '🛒 এটি সিলেক্ট করে অর্ডার করুন'}
+                          ${idx === 0 ? '✓ নির্বাচিত পণ্য — নিচে অর্ডার ফর্ম পূরণ করুন ↓' : '🛒 এটি সিলেক্ট করে অর্ডার করুন'}
                         </button>
                       </div>
                     </div>
@@ -1147,7 +1357,7 @@ export async function renderLandingPage(params = {}) {
                   <div class="lp-section-header">
                     <h2 class="lp-section-title">📝 বিস্তারিত বিবরণ</h2>
                   </div>
-                  <div style="font-size:14px;color:#334155;line-height:1.75;white-space:pre-line;word-break:break-word;">${finalDescription}</div>
+                  <div style="font-size:14.5px;color:#334155;line-height:1.8;white-space:pre-line;word-break:break-word;">${finalDescription}</div>
                 </div>
               ` : ''}
               ${specRows.length > 0 ? `
@@ -1156,12 +1366,19 @@ export async function renderLandingPage(params = {}) {
                     <h2 class="lp-section-title">📋 পণ্যের স্পেসিফিকেশন</h2>
                   </div>
                   <div class="lp-spec-table">
-                    ${specRows.map(r => `
-                      <div class="lp-spec-row">
-                        <span class="lp-spec-label">${r.label || r.key || 'বৈশিষ্ট্য'}</span>
-                        <span class="lp-spec-val">${r.value || ''}</span>
-                      </div>
-                    `).join('')}
+                    ${specRows.map(r => {
+                      const hasLbl = Boolean(r.label || r.key);
+                      return hasLbl ? `
+                        <div class="lp-spec-row">
+                          <span class="lp-spec-label">${r.label || r.key}</span>
+                          <span class="lp-spec-val">${r.value || ''}</span>
+                        </div>
+                      ` : `
+                        <div class="lp-spec-row is-full">
+                          <span class="lp-spec-val">✦ ${r.value || ''}</span>
+                        </div>
+                      `;
+                    }).join('')}
                   </div>
                 </div>
               ` : ''}
@@ -1269,7 +1486,7 @@ export async function renderLandingPage(params = {}) {
                               <div class="lp-pkg-radio">
                                 <div class="lp-pkg-radio-dot" style="transform:scale(${idx === 0 ? '1' : '0'});"></div>
                               </div>
-                              ${pImg ? `<img src="${pImg}" class="lp-pkg-thumb" alt="${pTitle}">` : ''}
+                              ${pImg ? `<img src="${pImg}" class="lp-pkg-thumb" alt="${pTitle}" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=200'">` : ''}
                               <div class="lp-pkg-info">
                                 <div class="lp-pkg-title">${pTitle}</div>
                                 <div class="lp-pkg-price-wrap">
@@ -1338,7 +1555,7 @@ export async function renderLandingPage(params = {}) {
                     </div>
                     <div class="lp-summary-line">
                       <span>ডেলিভারি চার্জ:</span>
-                      <span id="lp-summary-shipping" style="font-weight:800;">${freeShipping ? 'ফ্রি ডেলিভারি' : formatCurrency(60)}</span>
+                      <span id="lp-summary-shipping" style="font-weight:800;">${freeShipping ? 'ফ্রি ডেলিভারি (৳০)' : formatCurrency(60)}</span>
                     </div>
                     <div class="lp-summary-total-line">
                       <span>সর্বমোট প্রদেয় বিল:</span>
@@ -1353,15 +1570,26 @@ export async function renderLandingPage(params = {}) {
                       <span>২. ডেলিভারির তথ্য দিন:</span>
                     </div>
                     <div class="lp-field-group">
-                      <label class="lp-field-label">আপনার সম্পূর্ণ নাম <span style="color:#e11d48;">*</span></label>
+                      <label class="lp-field-label">👤 আপনার সম্পূর্ণ নাম <span style="color:#e11d48;">*</span></label>
                       <input type="text" name="customer_name" required placeholder="আপনার নাম লিখুন" class="lp-input">
                     </div>
                     <div class="lp-field-group">
-                      <label class="lp-field-label">মোবাইল নাম্বার (১১ ডিজিট) <span style="color:#e11d48;">*</span></label>
+                      <label class="lp-field-label">📞 মোবাইল নাম্বার (১১ ডিজিট) <span style="color:#e11d48;">*</span></label>
                       <input type="tel" name="customer_phone" required placeholder="017XXXXXXXX" class="lp-input">
                     </div>
                     <div class="lp-field-group">
-                      <label class="lp-field-label">ডেলিভারি এরিয়া সিলেক্ট করুন <span style="color:#e11d48;">*</span></label>
+                      <label class="lp-field-label">📍 ডেলিভারি এরিয়া সিলেক্ট করুন <span style="color:#e11d48;">*</span></label>
+                      <div class="lp-zone-chips">
+                        <button type="button" data-zone="dhaka" onclick="window.selectLpAreaZone('dhaka')" class="lp-zone-chip is-active">
+                          ঢাকার ভেতরে (${freeShipping ? 'ফ্রি' : '৳60'})
+                        </button>
+                        <button type="button" data-zone="sub_dhaka" onclick="window.selectLpAreaZone('sub_dhaka')" class="lp-zone-chip">
+                          সাব-এরিয়া (${freeShipping ? 'ফ্রি' : '৳100'})
+                        </button>
+                        <button type="button" data-zone="outside_dhaka" onclick="window.selectLpAreaZone('outside_dhaka')" class="lp-zone-chip">
+                          ঢাকার বাইরে (${freeShipping ? 'ফ্রি' : '৳120'})
+                        </button>
+                      </div>
                       <select id="lp-delivery-area" name="delivery_area" onchange="window.updateLpOrderCalculation()" class="lp-input">
                         <option value="dhaka">ঢাকার ভেতরে (Inside Dhaka) — ${freeShipping ? 'ফ্রি' : '৳60'}</option>
                         <option value="sub_dhaka">ঢাকা সাব-এরিয়া ( গাজীপুর, নারায়ণগঞ্জ, সাভার ) — ${freeShipping ? 'ফ্রি' : '৳100'}</option>
@@ -1369,11 +1597,11 @@ export async function renderLandingPage(params = {}) {
                       </select>
                     </div>
                     <div class="lp-field-group">
-                      <label class="lp-field-label">সম্পূর্ণ ঠিকানা (বাসা নং, রোড, থানা, জেলা) <span style="color:#e11d48;">*</span></label>
+                      <label class="lp-field-label">🏠 সম্পূর্ণ ঠিকানা (বাসা নং, রোড, থানা, জেলা) <span style="color:#e11d48;">*</span></label>
                       <textarea name="customer_address" rows="3" required placeholder="আপনার সম্পূর্ণ ঠিকানা বিস্তারিত লিখুন..." class="lp-input" style="resize:vertical;"></textarea>
                     </div>
                     <div class="lp-field-group">
-                      <label class="lp-field-label">অর্ডার নোট (ঐচ্ছিক)</label>
+                      <label class="lp-field-label">📝 অর্ডার নোট (ঐচ্ছিক)</label>
                       <input type="text" name="order_note" placeholder="স্পেশাল কোনো নির্দেশনা থাকলে লিখুন..." class="lp-input">
                     </div>
                     <div class="lp-cod-box">
@@ -1399,7 +1627,7 @@ export async function renderLandingPage(params = {}) {
                 <a href="tel:${cleanPhone}" style="padding:10px 18px;border-radius:12px;background:#0f172a;color:#ffffff;font-weight:800;font-size:13px;text-decoration:none;">
                   📞 কল করুন
                 </a>
-                <a href="/products" style="padding:10px 18px;border-radius:12px;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;font-weight:800;font-size:13px;text-decoration:none;">
+                <a href="/products" style="padding:10px 18px;border-radius:12px;background:${palette.light};color:${palette.primary};border:1px solid ${palette.border};font-weight:800;font-size:13px;text-decoration:none;">
                   🛍️ মূল ওয়েবসাইটে যান
                 </a>
               </div>
