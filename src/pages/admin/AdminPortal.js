@@ -5126,12 +5126,18 @@ window.openBulkSelectedProductsModal = function(mode) {
     window.renderAdminBannersList();
   };
 
-  window.handleBannerFileUpload = function(fileInput) {
+  window.handleBannerFileUpload = async function(fileInput) {
     const file = fileInput?.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      const dataUrl = evt.target?.result;
+    try {
+      const dataUrl = window.compressAdminUploadedImage
+        ? await window.compressAdminUploadedImage(file, 960, 0.72)
+        : await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (evt) => resolve(evt.target?.result || '');
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(file);
+          });
       if (!dataUrl) return;
       const urlInp = document.getElementById('adm-new-banner-image');
       const prevImg = document.getElementById('adm-banner-modal-preview');
@@ -5140,8 +5146,10 @@ window.openBulkSelectedProductsModal = function(mode) {
         prevImg.src = dataUrl;
         prevImg.classList.remove('hidden');
       }
-    };
-    reader.readAsDataURL(file);
+      if (toast && toast.show) {
+        toast.show({ type: 'success', title: 'ব্যানার ছবি প্রস্তুত', message: 'ব্যানারের ছবি অপ্টিমাইজ করে প্রিভিউতে যুক্ত হয়েছে!' });
+      }
+    } catch (e) {}
   };
 
   window.openAdminBannerModal = function(bannerId = '') {
@@ -5212,40 +5220,67 @@ window.openBulkSelectedProductsModal = function(mode) {
         if (b.banner_id === editId) {
           targetPayload = {
             ...b,
+            banner_id: editId,
+            Banner_ID: editId,
             title,
+            Title: title,
             subtitle: subtitle || '',
             image_url: image,
+            Image_URL: image,
             link_url: link,
+            Link: link,
             cta_text: ctaText,
+            button_text: ctaText,
             position,
-            status
+            Sort_Order: position,
+            status,
+            Status: status
           };
           return targetPayload;
         }
         return b;
       });
-      if (targetPayload) {
-        apiClient.request('banners/update', targetPayload).catch(() => {});
-      }
-      if (toast && toast.success) toast.success(`"${title}" সফলভাবে আপডেট ও গুগল শিটে সংরক্ষিত হয়েছে!`, 'ব্যানার আপডেট সম্পন্ন');
     } else {
-      const newBanner = {
-        banner_id: 'BAN-' + Math.floor(100 + Math.random() * 900),
+      const bannerId = 'BAN-' + Math.floor(100 + Math.random() * 900);
+      targetPayload = {
+        banner_id: bannerId,
+        Banner_ID: bannerId,
+        id: bannerId,
         title,
+        Title: title,
         subtitle: subtitle || '',
         image_url: image,
+        Image_URL: image,
         link_url: link,
+        Link: link,
         cta_text: ctaText,
+        button_text: ctaText,
         position,
-        status
+        Sort_Order: position,
+        status,
+        Status: status,
+        Created_At: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dhaka' })
       };
-      banners.unshift(newBanner);
-      apiClient.request('banners/add', newBanner).catch(() => {});
-      if (toast && toast.success) toast.success(`"${title}" স্লাইডার ও গুগল শিটে সংরক্ষিত হয়েছে!`, 'নতুন ব্যানার যুক্ত');
+      banners.unshift(targetPayload);
     }
 
-    localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
+    if (apiClient) apiClient.sheetBanners = banners;
+    if (apiClient && apiClient.saveLocal) {
+      apiClient.saveLocal('dcbd_sheet_banners', banners);
+    } else {
+      try { localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners)); } catch (err) {}
+    }
     if (window.__adminState) window.__adminState.banners = banners;
+
+    if (targetPayload) {
+      apiClient.request(editId ? 'banners/update' : 'banners/add', targetPayload).catch(() => {});
+    }
+    if (toast && toast.success) {
+      toast.success(
+        editId ? `"${title}" সফলভাবে আপডেট ও গুগল শিটে সংরক্ষিত হয়েছে!` : `"${title}" স্লাইডার ও গুগল শিটে সংরক্ষিত হয়েছে!`,
+        editId ? 'ব্যানার আপডেট সম্পন্ন' : 'নতুন ব্যানার যুক্ত'
+      );
+    }
 
     document.getElementById('form-add-banner-dedicated')?.reset();
     document.getElementById('modal-add-banner')?.classList.add('hidden');
@@ -5259,12 +5294,17 @@ window.openBulkSelectedProductsModal = function(mode) {
     banners = banners.map(b => {
       if (b.banner_id === bannerId) {
         newStatus = (b.status || 'Active') === 'Active' ? 'Inactive' : 'Active';
-        changed = { ...b, status: newStatus };
+        changed = { ...b, status: newStatus, Status: newStatus };
         return changed;
       }
       return b;
     });
-    localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
+    if (apiClient) apiClient.sheetBanners = banners;
+    if (apiClient && apiClient.saveLocal) {
+      apiClient.saveLocal('dcbd_sheet_banners', banners);
+    } else {
+      try { localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners)); } catch (err) {}
+    }
     if (window.__adminState) window.__adminState.banners = banners;
     if (changed) apiClient.request('banners/update', changed).catch(() => {});
     window.renderAdminBannersList();
@@ -5282,8 +5322,13 @@ window.openBulkSelectedProductsModal = function(mode) {
     const temp = banners[idx];
     banners[idx] = banners[targetIdx];
     banners[targetIdx] = temp;
-    banners = banners.map((b, i) => ({ ...b, position: i + 1 }));
-    localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
+    banners = banners.map((b, i) => ({ ...b, position: i + 1, Sort_Order: i + 1 }));
+    if (apiClient) apiClient.sheetBanners = banners;
+    if (apiClient && apiClient.saveLocal) {
+      apiClient.saveLocal('dcbd_sheet_banners', banners);
+    } else {
+      try { localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners)); } catch (err) {}
+    }
     if (window.__adminState) window.__adminState.banners = banners;
     const moved = banners[targetIdx];
     if (moved) apiClient.request('banners/update', moved).catch(() => {});
@@ -5293,7 +5338,12 @@ window.openBulkSelectedProductsModal = function(mode) {
   window.handleDeleteAdminBanner = function(bannerId) {
     if (!confirm(`আপনি কি নিশ্চিত যে এই ব্যানার স্লাইডটি (${bannerId}) ডিলিট করতে চান?`)) return;
     let banners = window.getAdminBannersList().filter(b => b.banner_id !== bannerId);
-    localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
+    if (apiClient) apiClient.sheetBanners = banners;
+    if (apiClient && apiClient.saveLocal) {
+      apiClient.saveLocal('dcbd_sheet_banners', banners);
+    } else {
+      try { localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners)); } catch (err) {}
+    }
     if (window.__adminState) window.__adminState.banners = banners;
     apiClient.request('banners/delete', { banner_id: bannerId }).catch(() => {});
     window.renderAdminBannersList();
