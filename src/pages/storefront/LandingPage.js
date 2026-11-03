@@ -2664,7 +2664,7 @@ export async function renderLandingPage(params = {}) {
                     <span>✅ ১০০% অরিজিনাল গ্যারান্টি</span>
                     <span>•</span>
                     <span>🚚 ক্যাশ অন ডেলিভারি ও অনলাইন পেমেন্ট</span>
-                    ${freeShipping ? `<span>•</span><span style="color:${palette.primary};">🎉 ২০০০ টাকা বা তার বেশি শপিং করলে সম্পূর্ণ ফ্রি ডেলিভারি ি</span>` : ''}
+                    ${freeShipping ? `<span>•</span><span style="color:${palette.primary};">🎉 ২০০০ টাকা বা তার বেশি শপিং করলে সম্পূর্ণ ফ্রি ডেলিভারি</span>` : ''}
                   </div>
                 </div>
                 ${heroDisplayImg ? `
