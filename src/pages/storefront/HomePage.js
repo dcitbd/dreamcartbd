@@ -17,17 +17,19 @@
 import { renderProductCard } from '../../components/ProductCard.js';
 import { apiClient } from '../../api/client.js';
 
-// Auto-refresh homepage whenever live Google Sheets background sync completes
+// Auto-refresh homepage whenever live Google Sheets background sync (products or banners) completes
 if (typeof window !== 'undefined' && !window.__dcbdProductsSyncListener) {
   window.__dcbdProductsSyncListener = true;
-  window.addEventListener('dcbd:products-synced', () => {
+  const refreshHomeIfActive = () => {
     const p = window.location.pathname;
     if (p === '/' || p === '' || p === '/index.html' || (window.__APP_BASE__ && p === window.__APP_BASE__)) {
       if (window.router && window.router.resolve) {
         window.router.resolve();
       }
     }
-  });
+  };
+  window.addEventListener('dcbd:products-synced', refreshHomeIfActive);
+  window.addEventListener('dcbd:banners-synced', refreshHomeIfActive);
 }
 
 
@@ -1587,7 +1589,7 @@ export async function renderHomePage() {
             const tag = (b.tag || b.Tag || fallback.tag || 'বিশেষ অফার').trim();
             const highlight = (b.highlight || b.Highlight || fallback.highlight || '১০০% অথেন্টিক পণ্য').trim();
             const features = Array.isArray(b.features) && b.features.length > 0 ? b.features : (fallback.features || ["✓ ১০০% অরিজিনাল পণ্য", "✓ ক্যাশ অন ডেলিভারি"]);
-            const btnText = (b.button_text || b.Button_Text || fallback.button_text || 'এখনই দেখুন').trim();
+            const btnText = String(b.cta_text || b.button_text || b.Button_Text || fallback.button_text || 'এখনই দেখুন').replace(/\s*→\s*$/, '').trim();
             const linkUrl = b.link_url || b.link || b.Link || b.Link_URL || fallback.link_url || '/products';
             const isActive = idx === 0;
 
