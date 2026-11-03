@@ -4,7 +4,7 @@
  * - Zero hardcoded/default texts from other pages (100% driven by Admin Panel Landing Page Builder & Selected Products).
  * - Only renders sections that the Admin has actually filled in or selected.
  * - Prominent "🛍️ মূল ওয়েবসাইটে যান" (Visit Main Website) button linking directly to Customer View `/products`.
- * - Ultra-aesthetic modern design: smooth animations, glassmorphism badges, elevated cards, balanced margins & padding, theme color accents.
+ * - 100% Self-Contained Responsive CSS (zero text overflow across columns, clean 2-line clamped product titles, scrollable package list, responsive 2-column order form across mobile, tablet, laptop & desktop).
  * - Interactive Multi-Product / Package selection, dynamic Color & Size pills, live Order Summary, and 0ms instant Checkout.
  */
 
@@ -64,11 +64,12 @@ if (typeof window !== 'undefined') {
     if (colorWrap) {
       if (colors.length > 0) {
         colorWrap.classList.remove('hidden');
+        colorWrap.style.display = 'block';
         colorWrap.innerHTML = `
-          <div class="text-xs font-extrabold text-slate-700 mb-2">
-            কালার নির্বাচন করুন: <span id="lp-summary-color-label" class="text-emerald-600 font-black">${window.__lpSelectedColor}</span>
+          <div style="font-size: 12px; font-weight: 800; color: #334155; margin-bottom: 8px;">
+            কালার নির্বাচন করুন: <span id="lp-summary-color-label" style="color: #059669; font-weight: 900;">${window.__lpSelectedColor}</span>
           </div>
-          <div class="flex items-center gap-2 flex-wrap">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             ${colors.map((c, i) => {
               const safeC = String(c).replace(/'/g, "\\'");
               return `<button type="button" onclick="window.selectLpColor('${safeC}', this)" class="lp-pill-btn ${i === 0 ? 'active' : ''} lp-color-pill">${c}</button>`;
@@ -77,6 +78,7 @@ if (typeof window !== 'undefined') {
         `;
       } else {
         colorWrap.classList.add('hidden');
+        colorWrap.style.display = 'none';
         colorWrap.innerHTML = '';
       }
     }
@@ -84,11 +86,12 @@ if (typeof window !== 'undefined') {
     if (sizeWrap) {
       if (sizes.length > 0) {
         sizeWrap.classList.remove('hidden');
+        sizeWrap.style.display = 'block';
         sizeWrap.innerHTML = `
-          <div class="text-xs font-extrabold text-slate-700 mb-2">
-            সাইজ নির্বাচন করুন: <span id="lp-summary-size-label" class="text-emerald-600 font-black">${window.__lpSelectedSize}</span>
+          <div style="font-size: 12px; font-weight: 800; color: #334155; margin-bottom: 8px;">
+            সাইজ নির্বাচন করুন: <span id="lp-summary-size-label" style="color: #059669; font-weight: 900;">${window.__lpSelectedSize}</span>
           </div>
-          <div class="flex items-center gap-2 flex-wrap">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             ${sizes.map((s, i) => {
               const safeS = String(s).replace(/'/g, "\\'");
               return `<button type="button" onclick="window.selectLpSize('${safeS}', this)" class="lp-pill-btn ${i === 0 ? 'active' : ''} lp-size-pill">${s}</button>`;
@@ -97,6 +100,7 @@ if (typeof window !== 'undefined') {
         `;
       } else {
         sizeWrap.classList.add('hidden');
+        sizeWrap.style.display = 'none';
         sizeWrap.innerHTML = '';
       }
     }
@@ -149,8 +153,8 @@ if (typeof window !== 'undefined') {
     if (subEl) subEl.textContent = formatCurrency(subtotal);
     if (delEl) {
       delEl.innerHTML = deliveryCharge <= 0
-        ? `<span class="text-emerald-600 font-black">ফ্রি ডেলিভারি (৳০)</span>`
-        : `<span class="font-bold text-slate-800">${formatCurrency(deliveryCharge)}</span>`;
+        ? `<span style="color: #059669; font-weight: 900;">ফ্রি ডেলিভারি (৳০)</span>`
+        : `<span style="font-weight: 800; color: #1e293b;">${formatCurrency(deliveryCharge)}</span>`;
     }
     if (grandEl) grandEl.textContent = formatCurrency(grandTotal);
     if (btnGrandEl) btnGrandEl.textContent = formatCurrency(grandTotal);
@@ -321,7 +325,7 @@ function getThemePalette(theme = 'emerald') {
       accent: '#10b981',
       gradient: 'linear-gradient(135deg, #064e3b 0%, #047857 50%, #059669 100%)',
       btnGradient: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-      glow: 'rgba(16, 185, 129, 0.28)'
+      glow: 'rgba(16, 185, 129, 0.25)'
     },
     amber: {
       primary: '#d97706',
@@ -330,7 +334,7 @@ function getThemePalette(theme = 'emerald') {
       accent: '#f59e0b',
       gradient: 'linear-gradient(135deg, #78350f 0%, #b45309 50%, #d97706 100%)',
       btnGradient: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-      glow: 'rgba(245, 158, 11, 0.28)'
+      glow: 'rgba(245, 158, 11, 0.25)'
     },
     indigo: {
       primary: '#4f46e5',
@@ -339,7 +343,7 @@ function getThemePalette(theme = 'emerald') {
       accent: '#6366f1',
       gradient: 'linear-gradient(135deg, #1e1b4b 0%, #3730a3 50%, #4f46e5 100%)',
       btnGradient: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)',
-      glow: 'rgba(99, 102, 241, 0.28)'
+      glow: 'rgba(99, 102, 241, 0.25)'
     },
     rose: {
       primary: '#e11d48',
@@ -348,7 +352,7 @@ function getThemePalette(theme = 'emerald') {
       accent: '#f43f5e',
       gradient: 'linear-gradient(135deg, #881337 0%, #be123c 50%, #e11d48 100%)',
       btnGradient: 'linear-gradient(135deg, #e11d48 0%, #be123c 100%)',
-      glow: 'rgba(244, 63, 94, 0.28)'
+      glow: 'rgba(244, 63, 94, 0.25)'
     }
   };
   return palettes[theme] || palettes.emerald;
@@ -403,7 +407,6 @@ export async function renderLandingPage(params = {}) {
   const shopName = siteSettings.shopName || 'Dream Cart BD';
   const shopLogo = siteSettings.shopLogo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
 
-  // If no Landing Page has been created in Admin Panel yet, show a clean empty state with "মূল ওয়েবসাইটে যান" button
   if (!customPage) {
     return `
       <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center font-sans">
@@ -424,7 +427,6 @@ export async function renderLandingPage(params = {}) {
     `;
   }
 
-  // Strictly use ONLY what Admin provided — ZERO hardcoded burqa/foreign text!
   const palette = getThemePalette(customPage.theme || 'emerald');
   const title = String(customPage.title || '').trim();
   const subtitle = String(customPage.subtitle || '').trim();
@@ -441,7 +443,6 @@ export async function renderLandingPage(params = {}) {
   const cleanPhone = contactPhone.replace(/[^0-9]/g, '');
   const intlPhone = cleanPhone ? (cleanPhone.startsWith('88') ? cleanPhone : ('88' + cleanPhone)) : '';
 
-  // Selected products from Admin Builder
   const selectedIds = Array.isArray(customPage.selected_products)
     ? customPage.selected_products
     : (Array.isArray(customPage.selected_skus) ? customPage.selected_skus : []);
@@ -450,7 +451,6 @@ export async function renderLandingPage(params = {}) {
     .map(id => allProducts.find(p => String(p.sku || p.product_id || '').toLowerCase() === String(id).toLowerCase()))
     .filter(Boolean);
 
-  // Build normalized campaign product packages
   const customColors = String(customPage.colors || '')
     .split(/[,|\n]/)
     .map(s => s.trim())
@@ -489,7 +489,6 @@ export async function renderLandingPage(params = {}) {
     };
   });
 
-  // If Admin did not select a catalog product but entered title & price directly on the Landing Page form
   if (lpProducts.length === 0 && (title || customOfferPrice > 0)) {
     lpProducts = [
       {
@@ -511,12 +510,10 @@ export async function renderLandingPage(params = {}) {
   const displayOfferPrice = customOfferPrice > 0 ? customOfferPrice : Number(primaryProduct?.offer_price || 0);
   const displayRegularPrice = customRegularPrice > 0 ? customRegularPrice : Number(primaryProduct?.regular_price || 0);
 
-  // Features list (Strictly what Admin entered)
   const features = (Array.isArray(customPage.features) ? customPage.features : (Array.isArray(customPage.bullets) ? customPage.bullets : []))
     .map(f => String(f || '').trim())
     .filter(Boolean);
 
-  // Specifications list (From Admin specifications field or selected product's specification)
   const rawSpecsText = String(customPage.specifications || primaryProduct?.specification || '').trim();
   const specRows = rawSpecsText
     ? rawSpecsText.split(/\r?\n|\|/).map(line => line.trim()).filter(Boolean).map(line => {
@@ -528,20 +525,16 @@ export async function renderLandingPage(params = {}) {
       })
     : [];
 
-  // Detailed description (From Admin description field or selected product's description if Admin left it empty)
   const finalDescription = description || String(primaryProduct?.description || '').trim();
 
-  // Gallery banners (Strictly what Admin added)
   const galleryBanners = (Array.isArray(customPage.banners) ? customPage.banners : [])
     .map(b => (typeof b === 'string' ? { url: b, caption: '' } : { url: b?.url || '', caption: b?.caption || '' }))
     .filter(b => b.url);
 
-  // Videos (Strictly what Admin added)
   const videos = (Array.isArray(customPage.videos) ? customPage.videos : [])
     .map(v => (typeof v === 'string' ? { url: v, title: '' } : { url: v?.url || '', title: v?.title || '' }))
     .filter(v => v.url);
 
-  // Delivery areas
   const activeDeliveryMethods = getGlobalDeliveryMethods(true);
 
   if (typeof window !== 'undefined') {
@@ -560,16 +553,12 @@ export async function renderLandingPage(params = {}) {
   return `
     <style id="dcbd-lp-modern-styles">
       @keyframes lpFadeUp {
-        from { opacity: 0; transform: translateY(18px); }
+        from { opacity: 0; transform: translateY(16px); }
         to { opacity: 1; transform: translateY(0); }
       }
       @keyframes lpPulseGlow {
         0%, 100% { box-shadow: 0 10px 25px -4px ${palette.glow}; transform: scale(1); }
-        50% { box-shadow: 0 16px 35px -2px ${palette.glow}; transform: scale(1.015); }
-      }
-      @keyframes lpFloatSlow {
-        0%, 100% { transform: translateY(0px); }
-        50% { transform: translateY(-5px); }
+        50% { box-shadow: 0 15px 32px -2px ${palette.glow}; transform: scale(1.01); }
       }
 
       .lp-modern-root {
@@ -580,16 +569,21 @@ export async function renderLandingPage(params = {}) {
         margin: 0;
         padding: 0;
         overflow-x: hidden;
+        box-sizing: border-box;
+      }
+      .lp-modern-root *, .lp-modern-root *::before, .lp-modern-root *::after {
+        box-sizing: border-box;
       }
 
       .lp-wrap {
         max-width: 1120px;
         margin: 0 auto;
         padding: 0 16px;
+        width: 100%;
       }
 
       .lp-animate-card {
-        animation: lpFadeUp 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+        animation: lpFadeUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
       }
 
       /* Sticky Glass Header Bar */
@@ -597,10 +591,10 @@ export async function renderLandingPage(params = {}) {
         position: sticky;
         top: 0;
         z-index: 50;
-        background: rgba(255, 255, 255, 0.88);
+        background: rgba(255, 255, 255, 0.92);
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
-        border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+        border-bottom: 1px solid rgba(226, 232, 240, 0.9);
         box-shadow: 0 4px 20px -6px rgba(15, 23, 42, 0.06);
       }
 
@@ -618,6 +612,7 @@ export async function renderLandingPage(params = {}) {
         box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
         transition: all 0.2s ease;
         text-decoration: none;
+        white-space: nowrap;
       }
       .lp-main-site-btn:hover {
         border-color: ${palette.primary};
@@ -649,7 +644,7 @@ export async function renderLandingPage(params = {}) {
         color: #ffffff !important;
         font-weight: 800;
         font-size: 15px;
-        padding: 14px 34px;
+        padding: 14px 32px;
         border-radius: 16px;
         display: inline-flex;
         align-items: center;
@@ -660,9 +655,10 @@ export async function renderLandingPage(params = {}) {
         text-decoration: none;
         animation: lpPulseGlow 3s infinite ease-in-out;
         transition: all 0.25s ease;
+        max-width: 100%;
       }
       .lp-cta-button:hover {
-        transform: translateY(-2px) scale(1.02);
+        transform: translateY(-2px);
         filter: brightness(1.06);
       }
 
@@ -670,15 +666,15 @@ export async function renderLandingPage(params = {}) {
       .lp-surface-card {
         background: #ffffff;
         border-radius: 24px;
-        padding: 28px 24px;
+        padding: 24px 18px;
         border: 1px solid #e2e8f0;
         box-shadow: 0 12px 32px -12px rgba(15, 23, 42, 0.06);
         margin-bottom: 28px;
-        transition: transform 0.25s ease, box-shadow 0.25s ease;
+        overflow: hidden;
       }
       @media (min-width: 640px) {
         .lp-surface-card {
-          padding: 36px 34px;
+          padding: 34px 32px;
         }
       }
 
@@ -721,14 +717,63 @@ export async function renderLandingPage(params = {}) {
         box-shadow: 0 10px 24px -10px rgba(15, 23, 42, 0.08);
       }
 
-      /* Product / Package Selection Card */
+      /* =================================================================== */
+      /* STRICT RESPONSIVE CHECKOUT GRID & PRODUCT SELECTION CARDS           */
+      /* Prevents long product names from EVER overflowing outside the card! */
+      /* =================================================================== */
+      .lp-checkout-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 28px;
+        align-items: start;
+        width: 100%;
+      }
+      @media (min-width: 960px) {
+        .lp-checkout-grid {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 32px;
+        }
+      }
+
+      .lp-checkout-col {
+        min-width: 0;
+        max-width: 100%;
+        width: 100%;
+        overflow: hidden;
+      }
+
+      .lp-pkg-list-scroll {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        max-height: 430px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 4px;
+        width: 100%;
+      }
+      .lp-pkg-list-scroll::-webkit-scrollbar {
+        width: 5px;
+      }
+      .lp-pkg-list-scroll::-webkit-scrollbar-track {
+        background: #f1f5f9;
+        border-radius: 9999px;
+      }
+      .lp-pkg-list-scroll::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 9999px;
+      }
+
       .lp-pkg-card {
         background: #ffffff;
         border: 2px solid #e2e8f0;
         border-radius: 18px;
-        padding: 16px;
+        padding: 12px 14px;
         cursor: pointer;
         transition: all 0.2s ease;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
       }
       .lp-pkg-card:hover {
         border-color: #94a3b8;
@@ -736,7 +781,93 @@ export async function renderLandingPage(params = {}) {
       .lp-pkg-card.lp-pkg-active {
         border-color: ${palette.primary};
         background: ${palette.primaryLight};
-        box-shadow: 0 8px 20px -6px ${palette.glow};
+        box-shadow: 0 6px 18px -6px ${palette.glow};
+      }
+
+      .lp-pkg-card-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .lp-pkg-thumb {
+        width: 56px;
+        height: 56px;
+        min-width: 56px;
+        border-radius: 12px;
+        object-fit: cover;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        flex-shrink: 0;
+      }
+
+      .lp-pkg-info {
+        flex: 1 1 0%;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+      }
+
+      .lp-pkg-title {
+        font-size: 13px;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.38;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        margin-bottom: 4px;
+      }
+
+      .lp-summary-box {
+        border-radius: 18px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        padding: 16px;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+      }
+
+      .lp-summary-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 12px;
+        margin-bottom: 12px;
+        width: 100%;
+        min-width: 0;
+      }
+
+      .lp-summary-prod-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1 1 0%;
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .lp-summary-prod-title {
+        font-size: 13px;
+        font-weight: 800;
+        color: #0f172a;
+        line-height: 1.35;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        word-break: break-word;
+        overflow-wrap: anywhere;
       }
 
       /* Color & Size Pills */
@@ -762,7 +893,9 @@ export async function renderLandingPage(params = {}) {
       }
 
       .lp-input {
+        display: block;
         width: 100%;
+        max-width: 100%;
         padding: 12px 14px;
         border-radius: 14px;
         border: 1.5px solid #cbd5e1;
@@ -782,7 +915,7 @@ export async function renderLandingPage(params = {}) {
 
     <div class="lp-modern-root pb-20">
 
-      <!-- 1. OPTIONAL TOP PROMO & COUNTDOWN BAR (Renders ONLY if promo or countdown_hours is set by Admin) -->
+      <!-- 1. OPTIONAL TOP PROMO & COUNTDOWN BAR -->
       ${(promo || countdownHours > 0) ? `
         <div class="lp-promo-topbar">
           <div class="lp-wrap flex flex-col sm:flex-row items-center justify-between gap-2.5 text-center sm:text-left">
@@ -820,19 +953,19 @@ export async function renderLandingPage(params = {}) {
       <!-- 2. STICKY BRAND HEADER WITH "মূল ওয়েবসাইটে যান" BUTTON -->
       <nav class="lp-sticky-nav">
         <div class="lp-wrap py-3 flex items-center justify-between gap-3">
-          <a href="/products" class="flex items-center gap-2.5 text-decoration-none group">
+          <a href="/products" class="flex items-center gap-2.5 text-decoration-none group" style="min-width: 0;">
             <img 
               src="${shopLogo}" 
               alt="${shopName}" 
-              class="w-10 h-10 rounded-xl object-contain border border-slate-200 bg-white p-1 shadow-xs group-hover:scale-105 transition" 
+              class="w-10 h-10 rounded-xl object-contain border border-slate-200 bg-white p-1 shadow-xs group-hover:scale-105 transition flex-shrink-0" 
             />
-            <div>
-              <div class="text-sm sm:text-base font-black text-slate-900 leading-tight">${shopName}</div>
+            <div style="min-width: 0;">
+              <div class="text-sm sm:text-base font-black text-slate-900 leading-tight truncate">${shopName}</div>
               <div class="text-[10px] font-bold text-emerald-600">অফিশিয়াল স্টোর</div>
             </div>
           </a>
 
-          <div class="flex items-center gap-2.5">
+          <div class="flex items-center gap-2.5 flex-shrink-0">
             ${contactPhone ? `
               <a href="tel:${cleanPhone}" class="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition">
                 <span>📞</span>
@@ -850,13 +983,13 @@ export async function renderLandingPage(params = {}) {
 
       <main class="lp-wrap pt-2">
 
-        <!-- 3. HERO SHOWCASE CARD (Renders strictly from Admin inputs) -->
+        <!-- 3. HERO SHOWCASE CARD -->
         ${(title || subtitle || badge || heroBanner || displayOfferPrice > 0) ? `
           <div class="lp-hero-card lp-animate-card">
             <div class="grid grid-cols-1 ${heroBanner ? 'lg:grid-cols-12' : ''} items-center">
               
               <!-- Left Content Column -->
-              <div class="${heroBanner ? 'lg:col-span-7' : 'col-span-full text-center max-w-3xl mx-auto'} p-6 sm:p-10 lg:p-12 space-y-5">
+              <div class="${heroBanner ? 'lg:col-span-7' : 'col-span-full text-center max-w-3xl mx-auto'} p-6 sm:p-10 lg:p-12 space-y-5" style="min-width: 0;">
                 
                 ${badge ? `
                   <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-extrabold shadow-xs" style="background-color: ${palette.primaryLight}; color: ${palette.primary}; border: 1px solid ${palette.glow};">
@@ -865,13 +998,13 @@ export async function renderLandingPage(params = {}) {
                 ` : ''}
 
                 ${title ? `
-                  <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 leading-tight tracking-tight">
+                  <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 leading-tight tracking-tight" style="word-break: break-word;">
                     ${title}
                   </h1>
                 ` : ''}
 
                 ${subtitle ? `
-                  <p class="text-sm sm:text-base text-slate-600 leading-relaxed font-medium">
+                  <p class="text-sm sm:text-base text-slate-600 leading-relaxed font-medium" style="word-break: break-word;">
                     ${subtitle}
                   </p>
                 ` : ''}
@@ -894,7 +1027,7 @@ export async function renderLandingPage(params = {}) {
                 ${giftNote ? `
                   <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-900 text-xs sm:text-sm font-bold flex items-center gap-2">
                     <span>🎁</span>
-                    <span>${giftNote}</span>
+                    <span style="word-break: break-word;">${giftNote}</span>
                   </div>
                 ` : ''}
 
@@ -926,7 +1059,7 @@ export async function renderLandingPage(params = {}) {
           </div>
         ` : ''}
 
-        <!-- 4. BULLET FEATURES / WHY CHOOSE US (Renders ONLY if Admin added features) -->
+        <!-- 4. BULLET FEATURES / WHY CHOOSE US -->
         ${features.length > 0 ? `
           <div class="lp-surface-card lp-animate-card">
             <h2 class="lp-section-title">বিশেষ সুবিধাসমূহ</h2>
@@ -936,21 +1069,21 @@ export async function renderLandingPage(params = {}) {
                   <span class="w-7 h-7 rounded-xl flex items-center justify-center text-white font-black text-xs flex-shrink-0 shadow-xs" style="background: ${palette.btnGradient};">
                     ✓
                   </span>
-                  <span class="text-xs sm:text-sm font-bold text-slate-800 leading-relaxed pt-0.5">${ft}</span>
+                  <span class="text-xs sm:text-sm font-bold text-slate-800 leading-relaxed pt-0.5" style="word-break: break-word;">${ft}</span>
                 </div>
               `).join('')}
             </div>
           </div>
         ` : ''}
 
-        <!-- 5. DETAILED DESCRIPTION & SPECIFICATIONS (Renders ONLY if description or specifications exist) -->
+        <!-- 5. DETAILED DESCRIPTION & SPECIFICATIONS -->
         ${(finalDescription || specRows.length > 0) ? `
           <div class="grid grid-cols-1 ${finalDescription && specRows.length > 0 ? 'lg:grid-cols-12' : ''} gap-6 mb-7">
             
             ${finalDescription ? `
               <div class="${specRows.length > 0 ? 'lg:col-span-7' : 'col-span-full'} lp-surface-card !mb-0">
                 <h2 class="lp-section-title !text-left after:!left-0 after:!translate-x-0">বিস্তারিত বিবরণ</h2>
-                <div class="text-xs sm:text-sm text-slate-700 leading-relaxed space-y-3 whitespace-pre-line font-medium">
+                <div class="text-xs sm:text-sm text-slate-700 leading-relaxed space-y-3 whitespace-pre-line font-medium" style="word-break: break-word;">
                   ${finalDescription}
                 </div>
               </div>
@@ -964,9 +1097,9 @@ export async function renderLandingPage(params = {}) {
                     <div class="py-2.5 flex items-start justify-between gap-3">
                       ${r.label ? `
                         <span class="font-extrabold text-slate-800 w-36 flex-shrink-0">${r.label}:</span>
-                        <span class="text-slate-600 font-semibold text-right flex-1">${r.value}</span>
+                        <span class="text-slate-600 font-semibold text-right flex-1" style="word-break: break-word;">${r.value}</span>
                       ` : `
-                        <span class="text-slate-700 font-semibold">${r.value}</span>
+                        <span class="text-slate-700 font-semibold" style="word-break: break-word;">${r.value}</span>
                       `}
                     </div>
                   `).join('')}
@@ -977,19 +1110,19 @@ export async function renderLandingPage(params = {}) {
           </div>
         ` : ''}
 
-        <!-- 6. SELECTED PRODUCTS SHOWCASE GRID (Renders when Admin selected products for this landing page) -->
+        <!-- 6. SELECTED PRODUCTS SHOWCASE GRID -->
         ${matchedProducts.length > 0 ? `
           <div class="lp-surface-card lp-animate-card">
             <h2 class="lp-section-title">ক্যাম্পেইনের পণ্যসমূহ</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${Math.min(3, matchedProducts.length)} gap-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               ${lpProducts.map((p, idx) => {
                 const thumb = p.thumbnail || (Array.isArray(p.images) && p.images[0]) || shopLogo;
                 const price = Number(p.offer_price || p.selling_price || 0);
                 const orig = Number(p.regular_price || p.original_price || 0);
                 const discPct = (orig > price && orig > 0) ? Math.round(((orig - price) / orig) * 100) : 0;
                 return `
-                  <div class="rounded-3xl border border-slate-200/90 bg-slate-50/60 hover:bg-white p-4 flex flex-col justify-between transition duration-300 hover:shadow-xl hover:-translate-y-1">
-                    <div>
+                  <div class="rounded-3xl border border-slate-200/90 bg-slate-50/60 hover:bg-white p-4 flex flex-col justify-between transition duration-300 hover:shadow-xl hover:-translate-y-1" style="min-width: 0; overflow: hidden;">
+                    <div style="min-width: 0;">
                       <div class="relative h-56 rounded-2xl overflow-hidden bg-white border border-slate-100 mb-3.5">
                         <img src="${thumb}" alt="${p.name}" class="w-full h-full object-contain p-2 transition duration-500 hover:scale-105" />
                         ${discPct > 0 ? `
@@ -998,7 +1131,7 @@ export async function renderLandingPage(params = {}) {
                           </span>
                         ` : ''}
                       </div>
-                      <h3 class="font-extrabold text-sm sm:text-base text-slate-900 line-clamp-2 leading-snug mb-2">
+                      <h3 class="lp-pkg-title" style="font-size: 14px; margin-bottom: 8px;">
                         ${p.name || p.p_name}
                       </h3>
                     </div>
@@ -1015,8 +1148,8 @@ export async function renderLandingPage(params = {}) {
                       <button 
                         type="button" 
                         onclick="window.scrollToLpOrder(${idx})" 
-                        class="px-4 py-2.5 rounded-xl text-white font-extrabold text-xs shadow-md transition hover:opacity-95 cursor-pointer"
-                        style="background: ${palette.btnGradient};"
+                        class="px-4 py-2.5 rounded-xl text-white font-extrabold text-xs shadow-md transition hover:opacity-95 cursor-pointer flex-shrink-0"
+                        style="background: ${palette.btnGradient}; border: none;"
                       >
                         🛒 অর্ডার করুন
                       </button>
@@ -1028,7 +1161,7 @@ export async function renderLandingPage(params = {}) {
           </div>
         ` : ''}
 
-        <!-- 7. GALLERY BANNERS / IMAGES (Renders ONLY if Admin uploaded gallery images) -->
+        <!-- 7. GALLERY BANNERS / IMAGES -->
         ${galleryBanners.length > 0 ? `
           <div class="lp-surface-card lp-animate-card">
             <h2 class="lp-section-title">ফটো গ্যালারি</h2>
@@ -1047,7 +1180,7 @@ export async function renderLandingPage(params = {}) {
           </div>
         ` : ''}
 
-        <!-- 8. VIDEOS SECTION (Renders ONLY if Admin added videos) -->
+        <!-- 8. VIDEOS SECTION -->
         ${videos.length > 0 ? `
           <div class="lp-surface-card lp-animate-card">
             <h2 class="lp-section-title">ভিডিও ও রিভিউ</h2>
@@ -1066,29 +1199,29 @@ export async function renderLandingPage(params = {}) {
           </div>
         ` : ''}
 
-        <!-- 9. TWO-COLUMN ORDER CHECKOUT SECTION -->
-        <section id="lp-checkout-section" class="scroll-mt-20">
-          <div class="lp-surface-card !border-2" style="border-color: ${palette.primary};">
-            <div class="text-center max-w-xl mx-auto mb-8">
-              <span class="inline-block px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider mb-2" style="background: ${palette.primaryLight}; color: ${palette.primary};">
+        <!-- 9. FULLY RESPONSIVE TWO-COLUMN ORDER CHECKOUT SECTION -->
+        <section id="lp-checkout-section" style="scroll-margin-top: 80px;">
+          <div class="lp-surface-card" style="border: 2px solid ${palette.primary};">
+            <div style="text-align: center; max-width: 580px; margin: 0 auto 28px;">
+              <span style="display: inline-block; padding: 5px 14px; border-radius: 9999px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; background: ${palette.primaryLight}; color: ${palette.primary};">
                 সহজ অর্ডার ফর্ম
               </span>
-              <h2 class="text-xl sm:text-2xl font-black text-slate-900">
+              <h2 style="font-size: 22px; font-weight: 900; color: #0f172a; line-height: 1.3;">
                 অর্ডার কনফার্ম করতে নিচের ফর্মটি পূরণ করুন
               </h2>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            <div class="lp-checkout-grid">
               
-              <!-- LEFT COLUMN: Product / Package Selection & Live Summary (6 cols) -->
-              <div class="lg:col-span-6 space-y-5">
-                <div class="font-extrabold text-sm text-slate-800 flex items-center gap-2 border-b pb-2.5">
-                  <span class="w-6 h-6 rounded-full text-white text-xs font-black flex items-center justify-center" style="background: ${palette.primary};">১</span>
+              <!-- LEFT COLUMN: Product / Package Selection & Live Summary -->
+              <div class="lp-checkout-col" style="display: flex; flex-direction: column; gap: 18px;">
+                <div style="font-weight: 800; font-size: 14px; color: #1e293b; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+                  <span style="width: 24px; height: 24px; border-radius: 9999px; color: #ffffff; font-size: 12px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: ${palette.primary};">১</span>
                   <span>পণ্য নির্বাচন ও অর্ডারের বিবরণ</span>
                 </div>
 
-                <!-- Product Radio Cards -->
-                <div class="space-y-3">
+                <!-- Product Radio Cards (Contained & Scrollable if many products) -->
+                <div class="lp-pkg-list-scroll">
                   ${lpProducts.map((p, idx) => {
                     const thumb = p.thumbnail || (Array.isArray(p.images) && p.images[0]) || shopLogo;
                     const price = Number(p.offer_price || p.selling_price || 0);
@@ -1099,14 +1232,16 @@ export async function renderLandingPage(params = {}) {
                         data-pkg-idx="${idx}"
                         onclick="window.selectLpProduct(${idx})"
                       >
-                        <div class="flex items-center gap-3.5">
-                          <input type="radio" name="lp_product_choice" ${idx === 0 ? 'checked' : ''} class="w-4 h-4 accent-emerald-600" />
-                          <img src="${thumb}" alt="${p.name}" class="w-14 h-14 rounded-xl object-cover border bg-white flex-shrink-0" />
-                          <div class="flex-1 min-w-0">
-                            <div class="font-extrabold text-xs sm:text-sm text-slate-900 truncate">${p.name || p.p_name}</div>
-                            <div class="flex items-baseline gap-2 mt-1">
-                              <span class="font-black text-sm font-mono" style="color: ${palette.primary};">${formatCurrency(price)}</span>
-                              ${orig > price ? `<span class="text-xs text-slate-400 line-through font-mono">${formatCurrency(orig)}</span>` : ''}
+                        <div class="lp-pkg-card-row">
+                          <input type="radio" name="lp_product_choice" ${idx === 0 ? 'checked' : ''} style="width: 16px; height: 16px; flex-shrink: 0; accent-color: ${palette.primary}; cursor: pointer;" />
+                          <img src="${thumb}" alt="${p.name || 'Product'}" class="lp-pkg-thumb" />
+                          <div class="lp-pkg-info">
+                            <div class="lp-pkg-title" title="${(p.name || p.p_name || '').replace(/"/g, '&quot;')}">
+                              ${p.name || p.p_name}
+                            </div>
+                            <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+                              <span style="font-weight: 900; font-size: 14px; font-family: monospace; color: ${palette.primary};">${formatCurrency(price)}</span>
+                              ${orig > price ? `<span style="font-size: 11.5px; color: #94a3b8; text-decoration: line-through; font-family: monospace;">${formatCurrency(orig)}</span>` : ''}
                             </div>
                           </div>
                         </div>
@@ -1115,44 +1250,44 @@ export async function renderLandingPage(params = {}) {
                   }).join('')}
                 </div>
 
-                <!-- Dynamic Color & Size Selector Containers (Only visible if product/campaign has colors or sizes) -->
-                <div id="lp-dynamic-colors-wrap" class="hidden p-4 rounded-2xl bg-slate-50 border border-slate-200/80"></div>
-                <div id="lp-dynamic-sizes-wrap" class="hidden p-4 rounded-2xl bg-slate-50 border border-slate-200/80"></div>
+                <!-- Dynamic Color & Size Selector Containers -->
+                <div id="lp-dynamic-colors-wrap" class="hidden" style="display: none; padding: 14px; border-radius: 16px; background: #f8fafc; border: 1px solid #e2e8f0;"></div>
+                <div id="lp-dynamic-sizes-wrap" class="hidden" style="display: none; padding: 14px; border-radius: 16px; background: #f8fafc; border: 1px solid #e2e8f0;"></div>
 
-                <!-- Order Summary Box -->
-                <div class="rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:p-5 space-y-3.5 text-xs">
-                  <div class="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
-                    <div class="flex items-center gap-3 min-w-0">
-                      <img id="lp-summary-prod-thumb" src="${primaryProduct?.thumbnail || heroBanner || shopLogo}" class="w-12 h-12 rounded-xl object-cover border bg-white flex-shrink-0" />
-                      <div class="min-w-0">
-                        <div id="lp-summary-prod-title" class="font-extrabold text-slate-900 text-xs sm:text-sm truncate">
+                <!-- Live Order Summary Breakdown Box -->
+                <div class="lp-summary-box">
+                  <div class="lp-summary-top">
+                    <div class="lp-summary-prod-left">
+                      <img id="lp-summary-prod-thumb" src="${primaryProduct?.thumbnail || heroBanner || shopLogo}" style="width: 48px; height: 48px; min-width: 48px; border-radius: 12px; object-fit: cover; border: 1px solid #e2e8f0; background: #ffffff; flex-shrink: 0;" />
+                      <div style="min-width: 0; flex: 1;">
+                        <div id="lp-summary-prod-title" class="lp-summary-prod-title">
                           ${primaryProduct?.name || title || shopName}
                         </div>
-                        <div id="lp-summary-prod-meta" class="text-[11px] text-emerald-700 font-bold mt-0.5"></div>
+                        <div id="lp-summary-prod-meta" style="font-size: 11px; color: #059669; font-weight: 700; margin-top: 2px;"></div>
                       </div>
                     </div>
 
-                    <div class="flex items-center border border-slate-300 rounded-xl bg-white overflow-hidden flex-shrink-0">
-                      <button type="button" onclick="window.stepLpQty(-1)" class="px-3 py-1.5 font-black text-slate-700 hover:bg-slate-100 cursor-pointer">−</button>
-                      <span id="lp-qty-val" class="px-3 py-1.5 font-black text-slate-900 font-mono">1</span>
-                      <button type="button" onclick="window.stepLpQty(1)" class="px-3 py-1.5 font-black text-slate-700 hover:bg-slate-100 cursor-pointer">+</button>
+                    <div style="display: inline-flex; align-items: center; border: 1.5px solid #cbd5e1; border-radius: 12px; background: #ffffff; overflow: hidden; flex-shrink: 0;">
+                      <button type="button" onclick="window.stepLpQty(-1)" style="padding: 6px 12px; font-weight: 900; color: #334155; background: transparent; border: none; cursor: pointer;">−</button>
+                      <span id="lp-qty-val" style="padding: 6px 10px; font-weight: 900; color: #0f172a; font-family: monospace; font-size: 13px;">1</span>
+                      <button type="button" onclick="window.stepLpQty(1)" style="padding: 6px 12px; font-weight: 900; color: #334155; background: transparent; border: none; cursor: pointer;">+</button>
                     </div>
                   </div>
 
-                  <div class="space-y-2 text-slate-600">
-                    <div class="flex justify-between items-center">
+                  <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #475569;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
                       <span>পণ্যের মূল্য:</span>
-                      <span id="lp-calc-subtotal" class="font-bold text-slate-900 font-mono">${formatCurrency(displayOfferPrice)}</span>
+                      <span id="lp-calc-subtotal" style="font-weight: 800; color: #0f172a; font-family: monospace;">${formatCurrency(displayOfferPrice)}</span>
                     </div>
-                    <div class="flex justify-between items-center">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
                       <span>ডেলিভারি চার্জ:</span>
-                      <span id="lp-calc-delivery" class="font-bold font-mono">
-                        ${freeShipping ? '<span class="text-emerald-600 font-black">ফ্রি ডেলিভারি (৳০)</span>' : formatCurrency(activeDeliveryMethods[0]?.charge || 70)}
+                      <span id="lp-calc-delivery" style="font-weight: 800; font-family: monospace;">
+                        ${freeShipping ? '<span style="color: #059669; font-weight: 900;">ফ্রি ডেলিভারি (৳০)</span>' : formatCurrency(activeDeliveryMethods[0]?.charge || 70)}
                       </span>
                     </div>
-                    <div class="flex justify-between items-center pt-2.5 border-t border-slate-200 text-sm sm:text-base font-black text-slate-900">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1.5px dashed #cbd5e1; font-size: 15px; font-weight: 900; color: #0f172a;">
                       <span>সর্বমোট প্রদেয়:</span>
-                      <span id="lp-calc-grand" class="font-mono text-lg" style="color: ${palette.primary};">
+                      <span id="lp-calc-grand" style="font-family: monospace; font-size: 18px; color: ${palette.primary};">
                         ${formatCurrency(displayOfferPrice + (freeShipping ? 0 : Number(activeDeliveryMethods[0]?.charge || 70)))}
                       </span>
                     </div>
@@ -1160,17 +1295,17 @@ export async function renderLandingPage(params = {}) {
                 </div>
               </div>
 
-              <!-- RIGHT COLUMN: Customer Shipping Form (6 cols) -->
-              <div class="lg:col-span-6 space-y-4">
-                <div class="font-extrabold text-sm text-slate-800 flex items-center gap-2 border-b pb-2.5">
-                  <span class="w-6 h-6 rounded-full text-white text-xs font-black flex items-center justify-center" style="background: ${palette.primary};">২</span>
+              <!-- RIGHT COLUMN: Customer Shipping Form -->
+              <div class="lp-checkout-col" style="display: flex; flex-direction: column; gap: 16px;">
+                <div style="font-weight: 800; font-size: 14px; color: #1e293b; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">
+                  <span style="width: 24px; height: 24px; border-radius: 9999px; color: #ffffff; font-size: 12px; font-weight: 900; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: ${palette.primary};">২</span>
                   <span>আপনার নাম ও ডেলিভারি ঠিকানা দিন</span>
                 </div>
 
-                <form onsubmit="window.submitLpOrderForm(event)" class="space-y-4 text-xs">
+                <form onsubmit="window.submitLpOrderForm(event)" style="display: flex; flex-direction: column; gap: 16px; font-size: 12.5px; width: 100%;">
                   <div>
-                    <label class="block font-extrabold text-slate-700 mb-1.5">
-                      আপনার নাম <span class="text-rose-500">*</span>
+                    <label style="display: block; font-weight: 800; color: #334155; margin-bottom: 6px;">
+                      আপনার নাম <span style="color: #e11d48;">*</span>
                     </label>
                     <input 
                       type="text" 
@@ -1182,26 +1317,28 @@ export async function renderLandingPage(params = {}) {
                   </div>
 
                   <div>
-                    <label class="block font-extrabold text-slate-700 mb-1.5">
-                      মোবাইল নম্বর (১১ ডিজিট) <span class="text-rose-500">*</span>
+                    <label style="display: block; font-weight: 800; color: #334155; margin-bottom: 6px;">
+                      মোবাইল নম্বর (১১ ডিজিট) <span style="color: #e11d48;">*</span>
                     </label>
                     <input 
                       type="tel" 
                       id="lp-cust-phone" 
                       required 
                       placeholder="01XXXXXXXXX" 
-                      class="lp-input font-mono"
+                      class="lp-input"
+                      style="font-family: monospace;"
                     />
                   </div>
 
                   <div>
-                    <label class="block font-extrabold text-slate-700 mb-1.5">
-                      ডেলিভারি এরিয়া <span class="text-rose-500">*</span>
+                    <label style="display: block; font-weight: 800; color: #334155; margin-bottom: 6px;">
+                      ডেলিভারি এরিয়া <span style="color: #e11d48;">*</span>
                     </label>
                     <select 
                       id="lp-cust-area" 
                       onchange="window.updateLpOrderSummary()" 
-                      class="lp-input cursor-pointer"
+                      class="lp-input"
+                      style="cursor: pointer;"
                     >
                       ${freeShipping ? `
                         <option value="free" data-charge="0" data-zone-label="ফ্রি হোম ডেলিভারি">সারা বাংলাদেশ — ফ্রি হোম ডেলিভারি (৳০)</option>
@@ -1213,8 +1350,8 @@ export async function renderLandingPage(params = {}) {
                   </div>
 
                   <div>
-                    <label class="block font-extrabold text-slate-700 mb-1.5">
-                      সম্পূর্ণ ডেলিভারি ঠিকানা <span class="text-rose-500">*</span>
+                    <label style="display: block; font-weight: 800; color: #334155; margin-bottom: 6px;">
+                      সম্পূর্ণ ডেলিভারি ঠিকানা <span style="color: #e11d48;">*</span>
                     </label>
                     <textarea 
                       id="lp-cust-address" 
@@ -1222,11 +1359,12 @@ export async function renderLandingPage(params = {}) {
                       required 
                       placeholder="বাসা/হোল্ডিং নং, রোড নং, গ্রাম/এলাকা, থানা ও জেলা লিখুন..." 
                       class="lp-input"
+                      style="resize: vertical;"
                     ></textarea>
                   </div>
 
                   <div>
-                    <label class="block font-extrabold text-slate-700 mb-1.5">
+                    <label style="display: block; font-weight: 800; color: #334155; margin-bottom: 6px;">
                       অতিরিক্ত নোট (যদি থাকে)
                     </label>
                     <input 
@@ -1237,14 +1375,15 @@ export async function renderLandingPage(params = {}) {
                     />
                   </div>
 
-                  <div class="pt-2">
+                  <div style="padding-top: 6px;">
                     <button 
                       type="submit" 
                       id="lp-submit-btn" 
-                      class="lp-cta-button w-full py-4 text-sm sm:text-base rounded-2xl shadow-xl"
+                      class="lp-cta-button"
+                      style="width: 100%; padding: 16px 24px; font-size: 15px; border-radius: 16px;"
                     >
                       <span>✓ অর্ডার কনফার্ম করুন</span>
-                      <span>(<span id="lp-submit-btn-price" class="font-mono">${formatCurrency(displayOfferPrice)}</span>)</span>
+                      <span>(<span id="lp-submit-btn-price" style="font-family: monospace;">${formatCurrency(displayOfferPrice)}</span>)</span>
                     </button>
                   </div>
                 </form>
