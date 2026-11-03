@@ -2967,10 +2967,13 @@ class ApiClient {
       case "banners/update": {
         const bannerId = safeStr(payload.banner_id || payload.Banner_ID || payload.id || ("BAN-" + Math.floor(100 + Math.random() * 900)));
         const title = safeStr(payload.title || payload.Title || "ব্যানার স্লাইডার");
+        const subTitle = safeStr(payload.subtitle || payload.Subtitle || "");
         const imgUrl = normalizeSingleImageUrl(payload.image_url || payload.Image_URL || payload.image || DEFAULT_PRODUCT_THUMB);
         const linkUrl = safeStr(payload.link_url || payload.Link || payload.link || "/products");
+        const ctaText = safeStr(payload.cta_text || payload.button_text || "এখনই কিনুন →");
         const pos = Number(payload.position || payload.Sort_Order || 1);
         const status = safeStr(payload.status || payload.Status || "Active");
+        const createdAt = safeStr(payload.Created_At || payload.created_at || new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dhaka' }));
 
         const newBanner = {
           banner_id: bannerId,
@@ -2978,20 +2981,34 @@ class ApiClient {
           id: bannerId,
           title: title,
           Title: title,
-          subtitle: safeStr(payload.subtitle || ""),
+          subtitle: subTitle,
+          Subtitle: subTitle,
           image_url: imgUrl,
           Image_URL: imgUrl,
           link_url: linkUrl,
           Link: linkUrl,
-          cta_text: safeStr(payload.cta_text || payload.button_text || "এখনই কিনুন →"),
+          cta_text: ctaText,
+          button_text: ctaText,
           position: pos,
           Sort_Order: pos,
           status: status,
           Status: status,
-          Created_At: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dhaka' })
+          Created_At: createdAt,
+          created_at: createdAt
         };
 
-        let currentBanners = this.sheetBanners || this.loadLocal('dcbd_sheet_banners', null) || [];
+        const storedBanners = this.loadLocal('dcbd_sheet_banners', []);
+        let currentBanners = (Array.isArray(storedBanners) && storedBanners.length > 0)
+          ? storedBanners
+          : (Array.isArray(this.sheetBanners) ? this.sheetBanners : []);
+
+        // Remove deleted ID from deleted set if re-added
+        try {
+          const delSet = new Set(this.loadLocal('dcbd_deleted_banners', []));
+          delSet.delete(String(bannerId).toLowerCase());
+          this.saveLocal('dcbd_deleted_banners', Array.from(delSet));
+        } catch (e) {}
+
         const existingIdx = currentBanners.findIndex(b => String(b.banner_id || b.id).toLowerCase() === String(bannerId).toLowerCase());
         if (existingIdx >= 0) {
           currentBanners[existingIdx] = { ...currentBanners[existingIdx], ...newBanner };
@@ -3000,24 +3017,36 @@ class ApiClient {
         }
         this.sheetBanners = currentBanners;
         this.saveLocal('dcbd_sheet_banners', currentBanners);
-        if (typeof window !== 'undefined' && window.__adminState) {
-          window.__adminState.banners = currentBanners;
+        if (typeof window !== 'undefined') {
+          if (window.__adminState) window.__adminState.banners = currentBanners;
+          window.dispatchEvent(new CustomEvent('dcbd:banners-synced', { detail: { banners: currentBanners } }));
         }
 
-        await sendToAppsScript("banners/add", newBanner);
+        // Non-blocking sync to Google Sheets Banners tab
+        sendToAppsScript("banners/add", newBanner).catch(() => {});
         return { success: true, status: "success", data: newBanner, message: "ব্যানার তালিকা ও গুগল শিটে সংরক্ষিত হয়েছে!" };
       }
 
       case "banners/delete": {
         const id = String(payload.banner_id || payload.id || '').trim().toLowerCase();
-        let currentBanners = this.sheetBanners || this.loadLocal('dcbd_sheet_banners', null) || [];
+        try {
+          const delSet = new Set(this.loadLocal('dcbd_deleted_banners', []));
+          if (id) delSet.add(id);
+          this.saveLocal('dcbd_deleted_banners', Array.from(delSet));
+        } catch (e) {}
+
+        const storedBanners = this.loadLocal('dcbd_sheet_banners', []);
+        let currentBanners = (Array.isArray(storedBanners) && storedBanners.length > 0)
+          ? storedBanners
+          : (Array.isArray(this.sheetBanners) ? this.sheetBanners : []);
         currentBanners = currentBanners.filter(b => String(b.banner_id || b.id).toLowerCase() !== id);
         this.sheetBanners = currentBanners;
         this.saveLocal('dcbd_sheet_banners', currentBanners);
-        if (typeof window !== 'undefined' && window.__adminState) {
-          window.__adminState.banners = currentBanners;
+        if (typeof window !== 'undefined') {
+          if (window.__adminState) window.__adminState.banners = currentBanners;
+          window.dispatchEvent(new CustomEvent('dcbd:banners-synced', { detail: { banners: currentBanners } }));
         }
-        await sendToAppsScript("banners/delete", payload);
+        sendToAppsScript("banners/delete", payload).catch(() => {});
         return { success: true, status: "success" };
       }
 
@@ -3066,43 +3095,111 @@ class ApiClient {
 
       case "banners/list": {
         const defaultBanners = [
-          { banner_id: "BAN-01", title: "স্মার্ট গ্যাজেট ও লাইফস্টাইল কালেকশন", subtitle: "সেরা মূল্যে ১০০% জেনুইন গ্যাজেট", image_url: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1600&auto=format&fit=crop&q=80", link_url: "/products", tag: "বিশেষ অফার", button_text: "এখনই অর্ডার করুন", status: "Active" },
-          { banner_id: "BAN-02", title: "অর্গানিক ফুড ও হেলথ সাপ্লিমেন্ট", subtitle: "প্রাকৃতিক খাঁটি উপাদান ও সুস্থ জীবন", image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=1600&auto=format&fit=crop&q=80", link_url: "/products?cat=Organic%20%26%20Health", tag: "স্বাস্থ্যকর জীবন", button_text: "কালেকশন দেখুন", status: "Active" }
+          { banner_id: "BAN-01", title: "স্মার্ট কিচেন ও নিরাপদ কুকিং গ্যাজেট কালেকশন", subtitle: "সর্বোচ্চ ৩০% বিশেষ ছাড় চলছে!", image_url: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1600&auto=format&fit=crop&q=80", link_url: "/products?cat=Kitchen", tag: "🔥 কিচেন স্পেশাল", cta_text: "এখনই কিনুন →", button_text: "কিচেন আইটেম দেখুন", position: 1, status: "Active" },
+          { banner_id: "BAN-02", title: "১০০% খাঁটি অর্গানিক ফুড ও ন্যাচারাল হেলথ সাপ্লিমেন্ট", subtitle: "সুন্দরবনের প্রাকৃতিক চাকের মধু ও চিয়া সিড", image_url: "https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=1600&auto=format&fit=crop&q=80", link_url: "/products?cat=Organic%20%26%20Health", tag: "🌿 অর্গানিক ও ন্যাচারাল", cta_text: "অর্ডার করুন →", button_text: "অর্গানিক ফুড দেখুন", position: 2, status: "Active" }
         ];
 
-        let localBanners = this.sheetBanners || this.loadLocal('dcbd_sheet_banners', null) || [];
-        try {
-          const rows = await fetchLiveSheetRows('Banners', 'banners/list', 10000);
-          if (rows && rows.length > 0) {
-            const sheetBanners = rows.map((r, i) => ({
-              banner_id: safeStr(r.banner_id || r.Banner_ID || r.col_0 || `BAN-${101 + i}`),
-              id: safeStr(r.banner_id || r.Banner_ID || r.col_0 || `BAN-${101 + i}`),
-              title: safeStr(r.title || r.Title || r.col_1 || 'ব্যানার স্লাইডার'),
-              subtitle: safeStr(r.subtitle || 'সেরা মানের শতভাগ অরিজিনাল পণ্যের সমাহার'),
+        const deletedSet = new Set(this.loadLocal('dcbd_deleted_banners', []));
+        const storedLocal = this.loadLocal('dcbd_sheet_banners', null);
+        let localBanners = (Array.isArray(storedLocal) && storedLocal.length > 0)
+          ? storedLocal
+          : (Array.isArray(this.sheetBanners) && this.sheetBanners.length > 0 ? this.sheetBanners : []);
+        localBanners = localBanners.filter(b => !deletedSet.has(String(b.banner_id || b.id || '').toLowerCase()));
+
+        const mergeSheetAndLocalBanners = (rows) => {
+          if (!Array.isArray(rows) || rows.length === 0) return null;
+          const sheetBanners = rows.map((r, i) => {
+            const rawTitleCell = safeStr(r.title || r.Title || r.col_1 || 'ব্যানার স্লাইডার');
+            const titleParts = rawTitleCell.split(/\s*\|\|\s*/);
+            const mainTitle = titleParts[0] || 'ব্যানার স্লাইডার';
+            const subFromTitle = titleParts[1] || '';
+
+            const rawLinkCell = safeStr(r.link || r.Link || r.link_url || r.col_3 || '/products');
+            const linkParts = rawLinkCell.split(/\s*\|\|\s*/);
+            const mainLink = linkParts[0] || '/products';
+            const ctaFromLink = linkParts[1] || '';
+
+            const bId = safeStr(r.banner_id || r.Banner_ID || r.col_0 || `BAN-${101 + i}`);
+            return {
+              banner_id: bId,
+              id: bId,
+              title: mainTitle,
+              subtitle: safeStr(r.subtitle || r.Subtitle || subFromTitle || 'সেরা মানের শতভাগ অরিজিনাল পণ্যের সমাহার'),
               image_url: normalizeSingleImageUrl(r.image_url || r.Image_URL || r.col_2 || DEFAULT_PRODUCT_THUMB),
-              link_url: safeStr(r.link || r.Link || r.link_url || r.col_3 || '/products'),
+              link_url: mainLink,
+              cta_text: safeStr(r.cta_text || r.button_text || ctaFromLink || 'এখনই কিনুন →'),
+              button_text: safeStr(r.button_text || r.cta_text || ctaFromLink || 'এখনই দেখুন'),
               position: safeNumber(r.sort_order !== undefined ? r.sort_order : (r.Sort_Order !== undefined ? r.Sort_Order : r.col_4), i + 1),
               status: safeStr(r.status || r.Status || r.col_5 || 'Active'),
               created_at: safeStr(r.created_at || r.Created_At || r.col_6 || '')
-            })).filter(b => b.banner_id && b.banner_id.toLowerCase() !== 'banner_id');
+            };
+          }).filter(b => b.banner_id && b.banner_id.toLowerCase() !== 'banner_id' && !deletedSet.has(b.banner_id.toLowerCase()));
 
-            if (sheetBanners.length > 0) {
-              const byId = new Map();
-              sheetBanners.forEach(b => byId.set(String(b.banner_id).toLowerCase(), b));
-              localBanners.forEach(b => {
-                const k = String(b.banner_id || b.id || '').toLowerCase();
-                if (k && !['ban-01', 'ban-02'].includes(k)) {
-                  byId.set(k, { ...(byId.get(k) || {}), ...b });
-                }
-              });
-              const merged = Array.from(byId.values());
-              this.sheetBanners = merged;
-              this.saveLocal('dcbd_sheet_banners', merged);
-              if (typeof window !== 'undefined' && window.__adminState) {
-                window.__adminState.banners = merged;
-              }
-              return { success: true, data: { items: merged, total: merged.length } };
+          if (sheetBanners.length === 0) return null;
+
+          const byId = new Map();
+          // Put local custom banners first so newly added banners appear at the top immediately
+          localBanners.forEach(b => {
+            const k = String(b.banner_id || b.id || '').toLowerCase();
+            if (k && !['ban-01', 'ban-02'].includes(k)) {
+              byId.set(k, b);
             }
+          });
+          sheetBanners.forEach(b => {
+            const k = String(b.banner_id || b.id || '').toLowerCase();
+            if (!k) return;
+            if (byId.has(k)) {
+              const loc = byId.get(k);
+              byId.set(k, {
+                ...b,
+                ...loc,
+                subtitle: loc.subtitle || b.subtitle,
+                cta_text: loc.cta_text || b.cta_text,
+                button_text: loc.button_text || loc.cta_text || b.button_text
+              });
+            } else {
+              byId.set(k, b);
+            }
+          });
+          localBanners.forEach(b => {
+            const k = String(b.banner_id || b.id || '').toLowerCase();
+            if (k && ['ban-01', 'ban-02'].includes(k) && !byId.has(k)) {
+              byId.set(k, b);
+            }
+          });
+
+          const merged = Array.from(byId.values()).sort((a, b) => Number(a.position || 99) - Number(b.position || 99));
+          this.sheetBanners = merged;
+          this.saveLocal('dcbd_sheet_banners', merged);
+          if (typeof window !== 'undefined' && window.__adminState) {
+            window.__adminState.banners = merged;
+          }
+          return merged;
+        };
+
+        // Fast instant return if localBanners already exist, while syncing from Google Sheet in background!
+        if (localBanners && localBanners.length > 0 && !payload.force) {
+          this.sheetBanners = localBanners;
+          fetchLiveSheetRows('Banners', 'banners/list', 8000)
+            .then(rows => {
+              const prevJson = JSON.stringify(localBanners.map(b => b.banner_id + ':' + b.status + ':' + b.image_url));
+              const merged = mergeSheetAndLocalBanners(rows);
+              if (merged && typeof window !== 'undefined') {
+                const nextJson = JSON.stringify(merged.map(b => b.banner_id + ':' + b.status + ':' + b.image_url));
+                if (prevJson !== nextJson) {
+                  window.dispatchEvent(new CustomEvent('dcbd:banners-synced', { detail: { banners: merged } }));
+                }
+              }
+            })
+            .catch(() => {});
+          return { success: true, data: { items: localBanners, total: localBanners.length } };
+        }
+
+        try {
+          const rows = await fetchLiveSheetRows('Banners', 'banners/list', 8000);
+          const merged = mergeSheetAndLocalBanners(rows);
+          if (merged && merged.length > 0) {
+            return { success: true, data: { items: merged, total: merged.length } };
           }
         } catch (e) {}
 
