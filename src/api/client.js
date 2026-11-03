@@ -728,8 +728,11 @@ export function normalizeSheetOrderRow(r, idx = 0) {
     size: safeStr(r.size || r.Size || r.col_8 || 'Free Size'),
     quantity: safeNumber(r.quantity !== undefined ? r.quantity : r.col_9, 1) || 1,
     unit_price: safeNumber(r.unit_price, safeNumber(r.total_amount !== undefined ? r.total_amount : r.col_10, 0)),
+    subtotal: safeNumber(r.subtotal, 0),
     total_amount: safeNumber(r.total_amount !== undefined ? r.total_amount : r.col_10, 0),
-    delivery_fee: safeNumber(r.delivery_fee, 70),
+    delivery_fee: r.delivery_fee !== undefined ? safeNumber(r.delivery_fee, 0) : (r.delivery_charge !== undefined ? safeNumber(r.delivery_charge, 0) : undefined),
+    discount: safeNumber(r.discount, 0),
+    customer_note: safeStr(r.customer_note || r.note || ''),
     payment_method: safeStr(r.payment_method || r.Payment_method || r.col_11 || 'Cash On Delivery (COD)'),
     transaction_id: safeStr(r.transaction_id || r.Transaction_ID || r.col_12 || 'COD'),
     payment_status: safeStr(r.payment_status || r.Payment_Status || r.col_13 || 'Pending'),
@@ -1850,7 +1853,8 @@ class ApiClient {
           }
         }
 
-        await sendToAppsScript("orders/create", orderData);
+        // Non-blocking background sync to Google Sheets & Admin Email + PDF Voucher (0ms UI response, zero 1-5s delay)
+        sendToAppsScript("orders/create", { ...payload, ...orderData }).catch(() => {});
 
         return {
           success: true,
@@ -1966,7 +1970,7 @@ class ApiClient {
           window.__adminState.incompleteOrders = incList;
         }
 
-        await sendToAppsScript("incomplete_orders/create", incItem);
+        sendToAppsScript("incomplete_orders/create", incItem).catch(() => {});
         return { success: true, status: "success", data: incItem };
       }
 
