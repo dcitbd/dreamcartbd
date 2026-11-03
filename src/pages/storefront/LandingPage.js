@@ -5,8 +5,11 @@
  * - Instant 0ms Page Open & 0ms Order Submit (even on weak 2G/3G internet): synchronous local cache read + non-blocking background sync.
  * - Multi-Product Campaign Architecture: Removes standalone product-less prices from Section 1 of both the Admin Create Landing Page Form and the Public Hero Section.
  * - Dynamic Delivery Areas & Payment Methods: Admin can select which Admin Panel Delivery Areas (`getGlobalDeliveryMethods`) and Payment Methods (`getGlobalPaymentMethods`) apply to each Landing Page inside the Create Landing Page Form; only those selected options appear on the Public Landing Page and drive live calculations.
- * - Free Delivery (`৳০`) automatically unlocked when Order Subtotal >= ৳2,000 (with live animated progress bar) or when campaign `free_shipping` is enabled.
- * - 5% Instant Discount (`৫% ছাড়`) automatically calculated when any Online Payment method (`BKASH`, `NAGAD`, `ROCKET`, `BANK`, or custom online method) is selected, with 1-click Copy Number, Gateway Link, Bank info & TrxID input.
+ * - Accurate Order Form Calculation:
+ *   • Subtotal = Selected Product Offer Price × Quantity
+ *   • Delivery Charge = Exact charge of the selected Delivery Area (`+ ৳70`, `+ ৳90`, `+ ৳120`, or `৳0` only if that specific zone's configured charge is `0`). Never counts delivery charge as a discount!
+ *   • Online Payment Discount = 5% Instant Discount (`- ৫% ছাড়`) on Product Subtotal when any Online Payment method (`BKASH`, `NAGAD`, `ROCKET`, `BANK`, etc.) is selected (`৳0` when Cash on Delivery is selected).
+ *   • Grand Total (`সর্বমোট প্রদেয় বিল`) = `Subtotal - Online Payment Discount + Delivery Charge`.
  * - 3D Style Product Cards, Floating Image Pedestals, Glass Shimmer Sweep, and Tactile 3D Buttons.
  * - Shop Logo (`shopLogo`) displayed in Sticky Navbar, Hero Badge, Checkout Header, and Support Footer.
  * - Automatic deduplication of Admin Landing Pages (`dcbd_landing_pages` & `landing_pages/list`).
@@ -16,6 +19,20 @@
 import { apiClient, getGlobalDeliveryMethods, getGlobalPaymentMethods, getGlobalSiteSettings } from '../../api/client.js';
 import { formatCurrency } from '../../utils/format.js';
 import { toast } from '../../components/Toast.js';
+
+/**
+ * Safely parses numbers including Bengali numerals (`০-৯`) and formatted currency strings (`৳ ১,২৫০`)
+ */
+export function parseLpNumber(val, fallback = 0) {
+  if (typeof val === 'number') return Number.isFinite(val) ? val : fallback;
+  if (val === null || val === undefined) return fallback;
+  const normalized = String(val)
+    .replace(/[০-৯]/g, d => String('০১২৩৪৫৬৭৮৯'.indexOf(d)))
+    .replace(/[^0-9.-]/g, '');
+  if (!normalized || normalized === '-' || normalized === '.') return fallback;
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : fallback;
+}
 
 /**
  * 10 Authentic E-Commerce Campaign Color Themes (with 3D bevel accents)
@@ -215,16 +232,15 @@ export function normalizeLpDeliveryMethod(raw, idx = 0) {
       zone: 'ডেলিভারি এরিয়া',
       charge: 80,
       eta: '২৪-৭২ ঘণ্টা',
-      free_threshold: 2000,
       status: 'Active'
     };
   }
   const id = String(raw.id || raw.code || `DLV-${idx + 1}`).trim();
   const code = String(raw.code || raw.id || `zone_${idx + 1}`).trim();
   const name = String(raw.name || raw.zone || raw.title || 'ডেলিভারি এরিয়া').trim();
-  const charge = Number(raw.charge ?? raw.cost ?? raw.fee ?? 0);
+  const rawChargeVal = raw.charge ?? raw.cost ?? raw.fee ?? raw.delivery_charge ?? raw.rate ?? 0;
+  const charge = Math.max(0, parseLpNumber(rawChargeVal, 0));
   const eta = String(raw.eta || raw.time || '২৪-৭২ ঘণ্টায় ডেলিভারি').trim();
-  const freeThreshold = Number(raw.free_threshold !== undefined ? raw.free_threshold : 2000);
   const status = String(raw.status || 'Active').trim();
 
   return {
@@ -233,9 +249,8 @@ export function normalizeLpDeliveryMethod(raw, idx = 0) {
     code,
     name,
     zone: name,
-    charge: Number.isFinite(charge) ? charge : 0,
+    charge,
     eta,
-    free_threshold: Number.isFinite(freeThreshold) && freeThreshold > 0 ? freeThreshold : 2000,
     status
   };
 }
@@ -280,7 +295,8 @@ export function normalizeLpPaymentMethod(raw, idx = 0) {
       ? 'পণ্য হাতে পেয়ে দেখে ডেলিভারি ম্যানের কাছে মূল্য পরিশোধ করুন।'
       : `নিচের ${name} নাম্বারে পেমেন্ট সম্পন্ন করে ট্রানজেকশন আইডি (TrxID) অথবা প্রেরক নাম্বারটি লিখুন।`)
   ).trim();
-  const discountPct = isCod ? 0 : (Number(raw.discount_pct ?? raw.discount ?? 5) || 5);
+  const parsedDisc = parseLpNumber(raw.discount_pct ?? raw.discount, 5);
+  const discountPct = isCod ? 0 : (parsedDisc > 0 ? parsedDisc : 5);
 
   const lowerKey = `${name} ${code} ${type}`.toLowerCase();
   let icon = raw.icon || '';
@@ -560,16 +576,22 @@ export function deduplicateLandingPagesList(rawList) {
 }
 
 /**
- * Look up shipping cost for the currently selected delivery method ID/code
+ * Look up exact shipping cost for the currently selected delivery method ID/code/name
  */
-function getZoneShippingCost(selectedAreaId, deliveryConfs) {
+export function getZoneShippingCost(selectedAreaId, deliveryConfs) {
   const confs = Array.isArray(deliveryConfs) ? deliveryConfs : [];
   if (confs.length === 0) return 80;
   const target = String(selectedAreaId || '').trim().toLowerCase();
   const found =
-    confs.find(c => String(c.id || '').trim().toLowerCase() === target || String(c.code || '').trim().toLowerCase() === target) ||
-    confs[0];
-  return found ? Number(found.charge ?? found.cost ?? found.fee ?? 0) : 0;
+    confs.find(
+      c =>
+        String(c.id || '').trim().toLowerCase() === target ||
+        String(c.code || '').trim().toLowerCase() === target ||
+        String(c.name || '').trim().toLowerCase() === target
+    ) || confs[0];
+  if (!found) return 0;
+  const rawFee = found.charge ?? found.cost ?? found.fee ?? found.delivery_charge ?? found.rate ?? 0;
+  return Math.max(0, parseLpNumber(rawFee, 0));
 }
 
 if (typeof window !== 'undefined') {
@@ -582,7 +604,6 @@ if (typeof window !== 'undefined') {
   window.__lpProductsList = [];
   window.__lpDeliveryConfs = [];
   window.__lpPaymentMethods = [];
-  window.__lpFreeThreshold = 2000;
   window.__lpOnlineDiscountPct = 5;
 
   // 1. Immediately deduplicate localStorage `dcbd_landing_pages` & `window.__adminState.landingPages`
@@ -665,7 +686,7 @@ if (typeof window !== 'undefined') {
                 <span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-black text-[10px]">${chargeTxt}</span>
               </div>
               <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-                ⏱️ ${d.eta} • <span class="text-emerald-600 font-semibold">২,০০০+ অর্ডারে ফ্রি</span>
+                ⏱️ ${d.eta} • <span class="text-emerald-600 font-semibold">নির্ধারিত চার্জ: ${chargeTxt}</span>
               </div>
             </div>
           </label>
@@ -763,6 +784,7 @@ if (typeof window !== 'undefined') {
       window.__currentLandingDraft.payment_methods_snapshot = allPay.filter(m => selectedPayIds.includes(m.id));
       window.__currentLandingDraft.regular_price = 0;
       window.__currentLandingDraft.offer_price = 0;
+      window.__currentLandingDraft.free_shipping = false;
     }
   };
 
@@ -801,9 +823,10 @@ if (typeof window !== 'undefined') {
       themeSel.setAttribute('data-authentic-upgraded', 'true');
     }
 
-    // B. Remove standalone product-less prices from Section 1 of Create Landing Page Form
+    // B. Remove standalone product-less prices & legacy global free-shipping override from Section 1
     const regPriceInp = document.getElementById('adm-lp-regular-price');
     const offPriceInp = document.getElementById('adm-lp-offer-price');
+    const freeShipChk = document.getElementById('adm-lp-free-shipping');
     if (regPriceInp && !regPriceInp.getAttribute('data-lp-price-removed')) {
       regPriceInp.value = '';
       regPriceInp.setAttribute('data-lp-price-removed', 'true');
@@ -820,6 +843,12 @@ if (typeof window !== 'undefined') {
         parentGrid.classList.remove('sm:grid-cols-4');
         parentGrid.classList.add('sm:grid-cols-2');
       }
+    }
+    if (freeShipChk && !freeShipChk.getAttribute('data-lp-freeship-cleaned')) {
+      freeShipChk.checked = false;
+      freeShipChk.setAttribute('data-lp-freeship-cleaned', 'true');
+      const freeWrap = freeShipChk.closest('div');
+      if (freeWrap) freeWrap.style.display = 'none';
     }
 
     // Update Section 1 title in Admin Form so it doesn't mention standalone price
@@ -851,12 +880,12 @@ if (typeof window !== 'undefined') {
               ২.৫ ডেলিভারি এরিয়া ও পেমেন্ট মেথড নির্বাচন (অ্যাডমিন প্যানেল থেকে সিঙ্ককৃত)
             </div>
             <p class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
-              অ্যাডমিন প্যানেলে যুক্ত করা যে ডেলিভারি এরিয়া ও পেমেন্ট অপশনগুলো এখানে সিলেক্ট করবেন, শুধুমাত্র সেগুলোই পাবলিক ল্যান্ডিং পেজে দেখাবে ও সেই অনুযায়ী বিল হিসাব হবে।
+              অ্যাডমিন প্যানেলে যুক্ত করা যে ডেলিভারি এরিয়া ও পেমেন্ট অপশনগুলো এখানে সিলেক্ট করবেন, শুধুমাত্র সেগুলোই পাবলিক ল্যান্ডিং পেজে দেখাবে ও সেই অনুযায়ী সঠিক ডেলিভারি চার্জ ও বিল হিসাব হবে।
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-1.5">
             <span class="px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 font-black text-[10px]">
-              🚚 ২,০০০+ টাকায় ফ্রি ডেলিভারি
+              🚚 এরিয়া অনুযায়ী সঠিক ডেলিভারি চার্জ
             </span>
             <span class="px-2.5 py-1 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 font-black text-[10px]">
               💳 অনলাইন পেমেন্টে ৫% ছাড়
@@ -947,8 +976,10 @@ if (typeof window !== 'undefined') {
         window.syncLpAdminDeliveryPaymentSelection();
         const regEl = document.getElementById('adm-lp-regular-price');
         const offEl = document.getElementById('adm-lp-offer-price');
+        const freeShipEl = document.getElementById('adm-lp-free-shipping');
         if (regEl) regEl.value = '';
         if (offEl) offEl.value = '';
+        if (freeShipEl) freeShipEl.checked = false;
         return fn.apply(this, arguments);
       };
       wrapped.__lpUpgraded = true;
@@ -1099,8 +1130,8 @@ if (typeof window !== 'undefined') {
     if (!prod) return;
 
     window.__lpSelectedPackage = idx;
-    window.__lpPackagePrice = Number(prod.offer_price || prod.selling_price || prod.price || 0);
-    window.__lpPackageRegularPrice = Number(prod.regular_price || prod.original_price || 0);
+    window.__lpPackagePrice = parseLpNumber(prod.offer_price || prod.selling_price || prod.price, 0);
+    window.__lpPackageRegularPrice = parseLpNumber(prod.regular_price || prod.original_price, 0);
     window.__lpPackageTitle = prod.name || prod.p_name || '';
     window.__lpPackageSku = prod.sku || prod.product_id || prod.id || '';
     window.__lpPackageImage =
@@ -1215,8 +1246,11 @@ if (typeof window !== 'undefined') {
     const sel = document.getElementById('lp-delivery-area');
     if (sel) sel.value = zoneId;
     document.querySelectorAll('.lp-zone-chip').forEach(btn => {
-      if (btn.getAttribute('data-zone') === zoneId) btn.classList.add('is-active');
-      else btn.classList.remove('is-active');
+      if (String(btn.getAttribute('data-zone') || '').toLowerCase() === String(zoneId || '').toLowerCase()) {
+        btn.classList.add('is-active');
+      } else {
+        btn.classList.remove('is-active');
+      }
     });
     if (typeof window.updateLpOrderCalculation === 'function') {
       window.updateLpOrderCalculation();
@@ -1266,13 +1300,13 @@ if (typeof window !== 'undefined') {
                 ${selectedMethod.instructions || 'পণ্য হাতে পেয়ে দেখে ডেলিভারি ম্যানের কাছে টাকা পরিশোধ করবেন।'}
               </div>
               <div style="margin-top:6px;padding:5px 10px;border-radius:8px;background:#ffffff;border:1px dashed #6ee7b7;font-size:11.5px;color:#be123c;font-weight:800;">
-                💡 টিপস: উপরের যেকোনো <strong>অনলাইন পেমেন্ট</strong> সিলেক্ট করলেই পাচ্ছেন সাথে সাথে <strong>৫% ইনস্ট্যান্ট ডিসকাউন্ট (সাশ্রয় <span id="lp-cod-switch-save-hint">৳০</span>)</strong>!
+                💡 টিপস: উপরের যেকোনো <strong>অনলাইন পেমেন্ট</strong> সিলেক্ট করলেই পণ্যের মূল্যের উপর পাচ্ছেন সাথে সাথে <strong>৫% ইনস্ট্যান্ট ডিসকাউন্ট (সাশ্রয় <span id="lp-cod-switch-save-hint">৳০</span>)</strong>!
               </div>
             </div>
           </div>
         `;
       } else {
-        const discPct = Number(selectedMethod.discount_pct || window.__lpOnlineDiscountPct || 5) || 5;
+        const discPct = parseLpNumber(selectedMethod.discount_pct || window.__lpOnlineDiscountPct, 5) || 5;
         const rawNumbers = String(selectedMethod.number || '')
           .split(/[,|/]/)
           .map(s => s.trim())
@@ -1292,7 +1326,7 @@ if (typeof window !== 'undefined') {
             </div>
 
             <div style="padding:8px 12px;border-radius:10px;background:#ffffff;border:1.5px solid #fda4af;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-              <span style="font-size:12px;font-weight:800;color:#334155;">৫% ডিসকাউন্ট বাদে পরিশোধযোগ্য নিট বিল:</span>
+              <span style="font-size:12px;font-weight:800;color:#334155;">৫% ডিসকাউন্ট বাদে ডেলিভারি চার্জসহ পরিশোধযোগ্য নিট বিল:</span>
               <span id="lp-online-pay-net-amount" style="font-size:16px;font-weight:900;color:#be123c;">৳০</span>
             </div>
 
@@ -1394,15 +1428,18 @@ if (typeof window !== 'undefined') {
   };
 
   /**
-   * Live Order Calculation:
-   * 1. Free Delivery (`৳০`) when Subtotal >= ৳2,000 (or if campaign free_shipping is true or zone charge === 0)
-   * 2. 5% Instant Discount (`Math.round(subtotal * 0.05)`) when any Online Payment method is selected
-   * 3. Uses exact Delivery Areas & Payment Options selected for this Landing Page from Admin Panel
+   * Accurate Live Order Calculation:
+   * 1. Product Subtotal = Unit Offer Price × Quantity
+   * 2. Delivery Charge (`shippingCost`) = Exact charge configured for the selected Delivery Area (`+ ৳70`, `+ ৳90`, `+ ৳120`, etc., or `৳0` ONLY if that specific zone's configured charge is `0`).
+   *    Never treats delivery charge as a discount or subtracts/waives paid delivery zones!
+   * 3. Online Payment Discount (`onlineDiscount`) = 5% of Product Subtotal when any Online Payment method is selected (`0` for COD).
+   * 4. Grand Total (`total`) = `Subtotal - Online Payment Discount + Delivery Charge`
+   * 5. Total Savings (`totalSavings`) = `Product Regular-to-Offer Savings + Online Payment Discount` (never includes delivery charge).
    */
   window.updateLpOrderCalculation = function() {
-    const unitPrice = Number(window.__lpPackagePrice || 0);
-    const regUnitPrice = Number(window.__lpPackageRegularPrice || unitPrice);
-    const qty = Number(window.__lpQuantity || 1);
+    const unitPrice = parseLpNumber(window.__lpPackagePrice, 0);
+    const regUnitPrice = parseLpNumber(window.__lpPackageRegularPrice, unitPrice) || unitPrice;
+    const qty = Math.max(1, parseLpNumber(window.__lpQuantity, 1));
     const subtotal = unitPrice * qty;
     const regTotal = regUnitPrice * qty;
     const productSavings = Math.max(0, regTotal - subtotal);
@@ -1418,16 +1455,13 @@ if (typeof window !== 'undefined') {
       deliveryConfs.find(
         d =>
           String(d.id || '').toLowerCase() === String(selectedAreaId).toLowerCase() ||
-          String(d.code || '').toLowerCase() === String(selectedAreaId).toLowerCase()
+          String(d.code || '').toLowerCase() === String(selectedAreaId).toLowerCase() ||
+          String(d.name || '').toLowerCase() === String(selectedAreaId).toLowerCase()
       ) || deliveryConfs[0];
 
-    const campaignFreeShipping = Boolean(window.__lpFreeShipping);
-    const freeThreshold = Number(window.__lpFreeThreshold || 2000);
-    const baseShippingCost = getZoneShippingCost(selectedAreaId, deliveryConfs);
-    const qualifiesFreeDelivery = campaignFreeShipping || subtotal >= freeThreshold || baseShippingCost === 0;
-    const shippingCost = qualifiesFreeDelivery ? 0 : baseShippingCost;
+    const shippingCost = getZoneShippingCost(selectedAreaId, deliveryConfs);
 
-    // 1. Update Delivery Zone Chips & Select Dropdown Options dynamically
+    // 1. Update Delivery Zone Chips & Select Dropdown Options with their exact configured charge
     document.querySelectorAll('.lp-zone-chip').forEach(btn => {
       const zId = btn.getAttribute('data-zone');
       if (String(zId).toLowerCase() === String(selectedAreaId).toLowerCase()) {
@@ -1439,61 +1473,22 @@ if (typeof window !== 'undefined') {
       const feeSpan = btn.querySelector('.lp-zone-fee-text');
       if (feeSpan) {
         const rawFee = getZoneShippingCost(zId, deliveryConfs);
-        if (qualifiesFreeDelivery) {
-          feeSpan.innerHTML =
-            rawFee > 0
-              ? `<del style="opacity:0.65;margin-right:3px;">৳${rawFee}</del> <strong style="color:#059669;">ফ্রি (৳০)</strong>`
-              : `<strong style="color:#059669;">ফ্রি (৳০)</strong>`;
-        } else {
-          feeSpan.textContent = rawFee === 0 ? 'ফ্রি (৳০)' : `৳${rawFee}`;
-        }
+        feeSpan.textContent = rawFee === 0 ? 'ফ্রি (৳০)' : `৳${rawFee}`;
       }
     });
 
     if (areaSelect && areaSelect.options) {
       Array.from(areaSelect.options).forEach(opt => {
         const zId = opt.value;
-        const zObj = deliveryConfs.find(d => String(d.id) === String(zId));
+        const zObj = deliveryConfs.find(d => String(d.id).toLowerCase() === String(zId).toLowerCase());
         if (zObj) {
-          const rawFee = Number(zObj.charge || 0);
-          if (qualifiesFreeDelivery) {
-            opt.textContent = `${zObj.name} — ফ্রি ডেলিভারি (৳০) [${zObj.eta}]`;
-          } else {
-            opt.textContent = `${zObj.name} — ${rawFee === 0 ? 'ফ্রি (৳০)' : '৳' + rawFee} (${zObj.eta}) [২,০০০+ অর্ডারে ফ্রি]`;
-          }
+          const rawFee = getZoneShippingCost(zId, deliveryConfs);
+          opt.textContent = `${zObj.name} — ${rawFee === 0 ? 'ফ্রি (৳০)' : '৳' + rawFee} (${zObj.eta})`;
         }
       });
     }
 
-    // 2. Update Free Delivery Animated Progress Bar
-    const freeBarWrap = document.getElementById('lp-free-delivery-progress-box');
-    if (freeBarWrap) {
-      const pct = Math.min(100, Math.round((subtotal / freeThreshold) * 100));
-      const remaining = Math.max(0, freeThreshold - subtotal);
-      if (qualifiesFreeDelivery) {
-        freeBarWrap.innerHTML = `
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:900;color:#065f46;">
-            <span>🎉 অভিনন্দন! ২,০০০+ টাকার অর্ডারে আপনি পাচ্ছেন <strong> সম্পূর্ণ ফ্রি ডেলিভারি (৳০)</strong>!</span>
-            <span style="background:#059669;color:#ffffff;padding:2px 9px;border-radius:999px;font-size:10.5px;">FREE DELIVERY (৳০)</span>
-          </div>
-          <div class="lp-free-progress-track">
-            <div class="lp-free-progress-fill" style="width:100%;"></div>
-          </div>
-        `;
-      } else {
-        freeBarWrap.innerHTML = `
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:800;color:#1e293b;">
-            <span>🚚 ২,০০০+ টাকার অর্ডারে ডেলিভারি ফ্রি! আর মাত্র <strong style="color:#e11d48;">${formatCurrency(remaining)}</strong> টাকার পণ্য যোগ করলেই <strong>ডেলিভারি চার্জ সম্পূর্ণ ফ্রি (৳০)!</strong></span>
-            <button type="button" onclick="window.changeLpQty(1)" style="padding:3px 9px;border-radius:999px;background:#059669;color:#ffffff;border:none;font-size:10.5px;font-weight:900;cursor:pointer;">+ পরিমাণ বাড়ান (${pct}%)</button>
-          </div>
-          <div class="lp-free-progress-track">
-            <div class="lp-free-progress-fill" style="width:${pct}%;"></div>
-          </div>
-        `;
-      }
-    }
-
-    // 3. Calculate Online Payment 5% Discount
+    // 2. Calculate Online Payment 5% Discount (strictly on Product Subtotal)
     const paymentMethods = Array.isArray(window.__lpPaymentMethods) ? window.__lpPaymentMethods : [];
     const selectedPaymentId = String(window.__lpSelectedPayment || 'COD');
     const selectedMethodObj =
@@ -1505,18 +1500,35 @@ if (typeof window !== 'undefined') {
 
     const isOnlinePayment = selectedMethodObj ? !selectedMethodObj.isCod : selectedPaymentId.toUpperCase() !== 'COD';
     const onlineDiscountPct = isOnlinePayment
-      ? Number(selectedMethodObj?.discount_pct || window.__lpOnlineDiscountPct || 5) || 5
+      ? parseLpNumber(selectedMethodObj?.discount_pct || window.__lpOnlineDiscountPct, 5) || 5
       : 0;
     const onlineDiscount = isOnlinePayment ? Math.round((subtotal * onlineDiscountPct) / 100) : 0;
-    const potentialOnlineSavings = Math.round((subtotal * (Number(window.__lpOnlineDiscountPct || 5) || 5)) / 100);
+    const potentialOnlineSavings = Math.round((subtotal * (parseLpNumber(window.__lpOnlineDiscountPct, 5) || 5)) / 100);
 
     // Update 5% discount badges on each payment card with live savings amount
     document.querySelectorAll('.lp-pay-5pct-tag').forEach(badge => {
       badge.textContent = potentialOnlineSavings > 0 ? `৫% ছাড় (-৳${potentialOnlineSavings})` : '৫% ছাড়';
     });
 
+    // 3. Final Payable Total = Subtotal - Online Payment Discount + Delivery Charge
     const total = Math.max(0, subtotal - onlineDiscount + shippingCost);
-    const totalSavings = productSavings + onlineDiscount + (qualifiesFreeDelivery ? baseShippingCost : 0);
+    // Total Savings = Product Offer Savings + Online Payment 5% Discount (never includes delivery charge)
+    const totalSavings = productSavings + onlineDiscount;
+
+    // Update live top status bar inside Checkout Form
+    const freeBarWrap = document.getElementById('lp-free-delivery-progress-box');
+    if (freeBarWrap) {
+      const zoneNameTxt = selectedZoneObj ? selectedZoneObj.name : 'ডেলিভারি এরিয়া';
+      const chargeBadgeTxt = shippingCost === 0 ? 'ফ্রি (৳০)' : formatCurrency(shippingCost);
+      freeBarWrap.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:800;color:#0f172a;">
+          <span>🚚 নির্বাচিত ডেলিভারি এরিয়া: <strong style="color:#047857;">${zoneNameTxt}</strong> (ডেলিভারি চার্জ: <strong style="color:#047857;">${chargeBadgeTxt}</strong>)</span>
+          <span style="background:${isOnlinePayment ? '#e11d48' : '#059669'};color:#ffffff;padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:900;">
+            ${isOnlinePayment ? `🎁 অনলাইন পেমেন্টে ৫% ছাড় (-${formatCurrency(onlineDiscount)})` : `💳 অনলাইন পেমেন্টে ৫% ছাড় (-${formatCurrency(potentialOnlineSavings)})`}
+          </span>
+        </div>
+      `;
+    }
 
     // Update live values inside the active payment details panel
     const netAmtEl = document.getElementById('lp-online-pay-net-amount');
@@ -1545,13 +1557,10 @@ if (typeof window !== 'undefined') {
       zoneLblEl.textContent = `ডেলিভারি চার্জ (${selectedZoneObj.name}):`;
     }
     if (shipEl) {
-      if (qualifiesFreeDelivery) {
-        shipEl.innerHTML =
-          baseShippingCost > 0
-            ? `<del style="color:#94a3b8;font-size:11.5px;margin-right:5px;">${formatCurrency(baseShippingCost)}</del><span style="color:#34d399;font-weight:900;">ফ্রি ডেলিভারি (৳০)</span>`
-            : `<span style="color:#34d399;font-weight:900;">ফ্রি ডেলিভারি (৳০)</span>`;
+      if (shippingCost === 0) {
+        shipEl.innerHTML = `<span style="color:#34d399;font-weight:900;">ফ্রি (৳০)</span>`;
       } else {
-        shipEl.textContent = formatCurrency(shippingCost);
+        shipEl.textContent = `+ ${formatCurrency(shippingCost)}`;
         shipEl.style.color = '#f8fafc';
       }
     }
@@ -1632,12 +1641,11 @@ if (typeof window !== 'undefined') {
       return;
     }
 
-    const unitPrice = Number(window.__lpPackagePrice || 0);
-    const qty = Number(window.__lpQuantity || 1);
+    const unitPrice = parseLpNumber(window.__lpPackagePrice, 0);
+    const qty = Math.max(1, parseLpNumber(window.__lpQuantity, 1));
     const subtotal = unitPrice * qty;
-    const freeThreshold = Number(window.__lpFreeThreshold || 2000);
     const onlineDiscountPct = isOnlinePayment
-      ? Number(matchedMethod?.discount_pct || window.__lpOnlineDiscountPct || 5) || 5
+      ? parseLpNumber(matchedMethod?.discount_pct || window.__lpOnlineDiscountPct, 5) || 5
       : 0;
 
     const deliveryConfs = Array.isArray(window.__lpDeliveryConfs) ? window.__lpDeliveryConfs : [];
@@ -1645,12 +1653,11 @@ if (typeof window !== 'undefined') {
       deliveryConfs.find(
         d =>
           String(d.id || '').toLowerCase() === String(areaId).toLowerCase() ||
-          String(d.code || '').toLowerCase() === String(areaId).toLowerCase()
+          String(d.code || '').toLowerCase() === String(areaId).toLowerCase() ||
+          String(d.name || '').toLowerCase() === String(areaId).toLowerCase()
       ) || deliveryConfs[0];
 
-    const baseShippingCost = getZoneShippingCost(areaId, deliveryConfs);
-    const qualifiesFreeDelivery = Boolean(window.__lpFreeShipping) || subtotal >= freeThreshold || baseShippingCost === 0;
-    const shippingCost = qualifiesFreeDelivery ? 0 : baseShippingCost;
+    const shippingCost = getZoneShippingCost(areaId, deliveryConfs);
     const deliveryAreaLabel = matchedZone ? matchedZone.name : String(areaId);
 
     const discountAmount = isOnlinePayment ? Math.round((subtotal * onlineDiscountPct) / 100) : 0;
@@ -1714,8 +1721,7 @@ if (typeof window !== 'undefined') {
       notes: [
         '[Landing Page Order]',
         variantDetails,
-        `ডেলিভারি এরিয়া: ${deliveryAreaLabel}`,
-        qualifiesFreeDelivery ? 'ফ্রি ডেলিভারি (২০০০+ টাকা অর্ডার)' : '',
+        `ডেলিভারি এরিয়া: ${deliveryAreaLabel} (চার্জ: ৳${shippingCost})`,
         isOnlinePayment ? `${onlineDiscountPct}% অনলাইন পেমেন্ট ছাড় (-৳${discountAmount}), TrxID: ${trxId}` : '',
         note
       ]
@@ -2018,10 +2024,11 @@ export async function renderLandingPage(params = {}) {
       } catch (e) {}
     }
 
-    const shopName = siteSettings.site_name || siteSettings.shop_name || siteSettings.storeName || 'Dream Cart BD';
+    const shopName = siteSettings.site_name || siteSettings.shop_name || siteSettings.storeName || siteSettings.shopName || 'Dream Cart BD';
     const shopLogo =
       siteSettings.logo_url ||
       siteSettings.site_logo ||
+      siteSettings.shopLogo ||
       'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
 
     // Empty state if no landing page exists
@@ -2051,8 +2058,7 @@ export async function renderLandingPage(params = {}) {
       window.__lpPaymentMethods = paymentMethods;
       window.__lpSelectedDeliveryId = deliveryConfs[0]?.id || 'dhaka';
       window.__lpSelectedPayment = paymentMethods[0]?.id || 'COD';
-      window.__lpFreeThreshold = Number(siteSettings?.freeDeliveryThreshold || 2000);
-      window.__lpOnlineDiscountPct = Number(siteSettings?.onlineDiscountPct || 5);
+      window.__lpOnlineDiscountPct = parseLpNumber(siteSettings?.onlineDiscountPct, 5) || 5;
     }
 
     // Extract fields supporting AdminPortal (`subtitle`, `badge`, `promo`, `selected_products`, `theme`)
@@ -2064,13 +2070,8 @@ export async function renderLandingPage(params = {}) {
     const heroBanner = String(activePage.hero_banner || activePage.banner || '').trim();
     const giftNote = String(activePage.gift_note || activePage.promo || '').trim();
     const pageDescription = String(activePage.description || '').trim();
-    const freeShipping = Boolean(activePage.free_shipping === true || activePage.free_shipping === 'true');
-    const countdownHours = Number(activePage.countdown_hours ?? 12);
+    const countdownHours = parseLpNumber(activePage.countdown_hours, 12);
     const themeColor = String(activePage.theme || activePage.theme_color || 'emerald').toLowerCase();
-
-    if (typeof window !== 'undefined') {
-      window.__lpFreeShipping = freeShipping;
-    }
 
     const palette = LP_AUTHENTIC_THEMES[themeColor] || LP_AUTHENTIC_THEMES.emerald;
 
@@ -2102,18 +2103,18 @@ export async function renderLandingPage(params = {}) {
           matched.image ||
           heroBanner ||
           '';
-        const sellP = Number(
+        const sellP = parseLpNumber(
           (typeof item === 'object' && item.offer_price) ||
             matched.selling_price ||
             matched.offer_price ||
-            matched.price ||
-            0
+            matched.price,
+          0
         );
-        const origP = Number(
+        const origP = parseLpNumber(
           (typeof item === 'object' && item.regular_price) ||
             matched.original_price ||
-            matched.regular_price ||
-            0
+            matched.regular_price,
+          0
         );
         resolvedProducts.push({
           ...matched,
@@ -2127,8 +2128,8 @@ export async function renderLandingPage(params = {}) {
         resolvedProducts.push({
           ...item,
           image_url: item.image_url || item.thumbnail || item.image || heroBanner || '',
-          offer_price: Number(item.offer_price || item.selling_price || item.price || 0),
-          regular_price: Number(item.regular_price || item.original_price || 0),
+          offer_price: parseLpNumber(item.offer_price || item.selling_price || item.price, 0),
+          regular_price: parseLpNumber(item.regular_price || item.original_price, 0),
           colors: normalizeStringList(item.colors || item.color),
           sizes: normalizeStringList(item.sizes || item.size)
         });
@@ -2148,8 +2149,8 @@ export async function renderLandingPage(params = {}) {
         resolvedProducts.push({
           ...matched,
           image_url: imgUrl,
-          offer_price: Number(matched.selling_price || matched.offer_price || matched.price || 0),
-          regular_price: Number(matched.original_price || matched.regular_price || 0),
+          offer_price: parseLpNumber(matched.selling_price || matched.offer_price || matched.price, 0),
+          regular_price: parseLpNumber(matched.original_price || matched.regular_price, 0),
           colors: normalizeStringList(matched.colors || matched.color),
           sizes: normalizeStringList(matched.sizes || matched.size)
         });
@@ -2157,8 +2158,8 @@ export async function renderLandingPage(params = {}) {
     }
 
     const firstProd = resolvedProducts[0] || {};
-    const firstPrice = Number(firstProd.offer_price || firstProd.selling_price || firstProd.price || 0);
-    const firstRegPrice = Number(firstProd.regular_price || firstProd.original_price || 0);
+    const firstPrice = parseLpNumber(firstProd.offer_price || firstProd.selling_price || firstProd.price, 0);
+    const firstRegPrice = parseLpNumber(firstProd.regular_price || firstProd.original_price, 0);
     const firstTitle = firstProd.name || firstProd.p_name || pageTitle || heroHeadline || 'ক্যাম্পেইন পণ্য';
     const firstSku = firstProd.sku || firstProd.product_id || firstProd.id || 'LP-ITEM';
     const firstImg = firstProd.image_url || firstProd.thumbnail || heroBanner || '';
@@ -2219,9 +2220,7 @@ export async function renderLandingPage(params = {}) {
         : 'lp-products-grid';
 
     const firstZone = deliveryConfs[0] || { id: 'dhaka', name: 'ঢাকা সিটি', charge: 80, eta: '২-৩ দিন' };
-    const firstZoneFee = Number(firstZone.charge || 0);
-    const initFree = freeShipping || firstPrice >= 2000 || firstZoneFee === 0;
-    const initShipping = initFree ? 0 : firstZoneFee;
+    const initShipping = getZoneShippingCost(firstZone.id, deliveryConfs);
     const initOnlineSavings = Math.round((firstPrice * 5) / 100);
 
     // Start countdown timer and live calculation after router mounts HTML
@@ -2460,10 +2459,8 @@ export async function renderLandingPage(params = {}) {
           .lp-step-heading { font-size: 15.5px; font-weight: 900; color: #0f172a; margin: 0 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
           .lp-step-count-badge { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: ${palette.light}; color: ${palette.primary}; border: 1px solid ${palette.border}; }
 
-          /* Free Delivery Animated Progress Bar */
+          /* Live Delivery & Discount Status Bar */
           .lp-free-delivery-box { padding: 13px 15px; border-radius: 16px; background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%); border: 1.5px solid #6ee7b7; border-bottom: 4px solid #10b981; margin-bottom: 18px; }
-          .lp-free-progress-track { width: 100%; height: 8px; border-radius: 999px; background: #d1fae5; overflow: hidden; margin-top: 7px; }
-          .lp-free-progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #10b981 0%, #059669 100%); transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
 
           /* 3D Product Selector List inside Checkout */
           .lp-pkg-list-scroll { display: flex; flex-direction: column; gap: 11px; max-height: 370px; overflow-y: auto; padding: 2px 4px 6px 2px; margin-bottom: 16px; }
@@ -2581,7 +2578,7 @@ export async function renderLandingPage(params = {}) {
               <div class="lp-top-badge">
                 <span>🔥</span>
                 <span>${badgeText || 'স্পেশাল ক্যাম্পেইন অফার চলছে!'}</span>
-                <span style="background:rgba(255,255,255,0.2);padding:2px 9px;border-radius:999px;font-size:11.5px;">🚚 ২,০০০+ টাকায় ফ্রি ডেলিভারি • 💳 অনলাইন পেমেন্টে ৫% ছাড়</span>
+                <span style="background:rgba(255,255,255,0.2);padding:2px 9px;border-radius:999px;font-size:11.5px;">🚚 দ্রুত হোম ডেলিভারি • 💳 অনলাইন পেমেন্টে ৫% ছাড়</span>
               </div>
               ${countdownHours > 0 ? `
                 <div class="lp-countdown-wrap">
@@ -2639,7 +2636,7 @@ export async function renderLandingPage(params = {}) {
                   ` : ''}
 
                   <div class="lp-promo-strip" style="${heroDisplayImg ? '' : 'justify-content:center;'}">
-                    <span class="lp-promo-tag">🚚 ২,০০০ টাকার বেশি অর্ডারে ডেলিভারি চার্জ ফ্রি!</span>
+                    <span class="lp-promo-tag">🚚 সারাদেশে দ্রুত ও নিরাপদ হোম ডেলিভারি</span>
                     <span class="lp-promo-tag is-online">💳 অনলাইন পেমেন্ট করলে সাথে সাথে ৫% ডিসকাউন্ট!</span>
                     ${resolvedProducts.length > 0 ? `
                       <span class="lp-promo-tag is-count">🛍️ ${resolvedProducts.length}টি ক্যাম্পেইন পণ্য</span>
@@ -2664,7 +2661,6 @@ export async function renderLandingPage(params = {}) {
                     <span>✅ ১০০% অরিজিনাল গ্যারান্টি</span>
                     <span>•</span>
                     <span>🚚 ক্যাশ অন ডেলিভারি ও অনলাইন পেমেন্ট</span>
-                    ${freeShipping ? `<span>•</span><span style="color:${palette.primary};">🎉 ২০০০ টাকা বা তার বেশি শপিং করলে সম্পূর্ণ ফ্রি ডেলিভারি</span>` : ''}
                   </div>
                 </div>
                 ${heroDisplayImg ? `
@@ -2690,8 +2686,8 @@ export async function renderLandingPage(params = {}) {
               </div>
               <div class="${prodGridClass}">
                 ${resolvedProducts.map((p, idx) => {
-                  const pPrice = Number(p.offer_price || p.selling_price || p.price || 0);
-                  const pReg = Number(p.regular_price || p.original_price || 0);
+                  const pPrice = parseLpNumber(p.offer_price || p.selling_price || p.price, 0);
+                  const pReg = parseLpNumber(p.regular_price || p.original_price, 0);
                   const pDisc = (pReg > pPrice && pPrice > 0) ? Math.round(((pReg - pPrice) / pReg) * 100) : 0;
                   const pImg = p.image_url || p.thumbnail || (Array.isArray(p.images) && p.images[0]) || p.image || heroDisplayImg || '';
                   const pTitle = p.name || p.p_name || 'পণ্য';
@@ -2841,8 +2837,8 @@ export async function renderLandingPage(params = {}) {
             <div class="lp-trust-card">
               <div class="lp-trust-icon">🚚</div>
               <div>
-                <div style="font-size:14px;font-weight:900;color:#0f172a;">২,০০০+ টাকায় ফ্রি ডেলিভারি</div>
-                <div style="font-size:12px;color:#64748b;font-weight:600;">২,০০০ টাকার বেশি অর্ডার করলেই ডেলিভারি চার্জ ৳০</div>
+                <div style="font-size:14px;font-weight:900;color:#0f172a;">দ্রুত ও নিরাপদ ডেলিভারি</div>
+                <div style="font-size:12px;color:#64748b;font-weight:600;">নির্বাচিত ডেলিভারি এরিয়া অনুযায়ী দ্রুত হোম ডেলিভারি</div>
               </div>
             </div>
             <div class="lp-trust-card">
@@ -2862,7 +2858,7 @@ export async function renderLandingPage(params = {}) {
           </div>
 
           <!-- =========================================================
-               CHECKOUT SECTION (SYNCED ADMIN DELIVERY & PAYMENT + FREE DELIVERY >= 2000 & 5% ONLINE DISCOUNT)
+               CHECKOUT SECTION (ACCURATE DELIVERY CHARGE & 5% ONLINE DISCOUNT CALCULATION)
                ========================================================= -->
           <section id="lp-checkout-section" class="lp-checkout-shell">
             <div class="lp-checkout-banner">
@@ -2871,11 +2867,11 @@ export async function renderLandingPage(params = {}) {
                 <span>${shopName} — এক্সপ্রেস অর্ডার ফর্ম</span>
               </div>
               <h2>অর্ডার কনফার্ম করতে নিচের ফর্মটি পূরণ করুন</h2>
-              <p>🚚 ২,০০০ টাকার বেশি অর্ডার করলে ডেলিভারি চার্জ সম্পূর্ণ ফ্রি (৳০) এবং 💳 অনলাইন পেমেন্ট করলে সাথে সাথে ৫% ডিসকাউন্ট!</p>
+              <p>🚚 আপনার ডেলিভারি এরিয়া সিলেক্ট করুন এবং 💳 অনলাইন পেমেন্ট করলে পণ্যের মূল্যের উপর সাথে সাথে ৫% ডিসকাউন্ট পান!</p>
             </div>
 
             <form onsubmit="window.submitLpDirectOrder(event)" class="lp-checkout-body">
-              <!-- Live Animated Free Delivery Progress Bar -->
+              <!-- Live Delivery Area & Online Discount Status Bar -->
               <div id="lp-free-delivery-progress-box" class="lp-free-delivery-box"></div>
 
               <div class="lp-checkout-grid">
@@ -2889,8 +2885,8 @@ export async function renderLandingPage(params = {}) {
                       </div>
                       <div class="lp-pkg-list-scroll">
                         ${resolvedProducts.map((p, idx) => {
-                          const pPrice = Number(p.offer_price || p.selling_price || p.price || 0);
-                          const pReg = Number(p.regular_price || p.original_price || 0);
+                          const pPrice = parseLpNumber(p.offer_price || p.selling_price || p.price, 0);
+                          const pReg = parseLpNumber(p.regular_price || p.original_price, 0);
                           const pDisc = (pReg > pPrice && pPrice > 0) ? Math.round(((pReg - pPrice) / pReg) * 100) : 0;
                           const pImg = p.image_url || p.thumbnail || (Array.isArray(p.images) && p.images[0]) || p.image || heroDisplayImg || '';
                           const pTitle = p.name || p.p_name || 'পণ্য';
@@ -2949,7 +2945,7 @@ export async function renderLandingPage(params = {}) {
                   <div class="lp-qty-bar">
                     <div>
                       <div style="font-size:13.5px;font-weight:800;color:#1e293b;">📦 পণ্যের পরিমাণ (Quantity):</div>
-                      <div style="font-size:11px;color:#059669;font-weight:700;">২,০০০+ টাকার অর্ডারে ডেলিভারি চার্জ ফ্রি!</div>
+                      <div style="font-size:11px;color:#059669;font-weight:700;">পরিমাণ বাড়ালে অটোমেটিক বিল আপডেট হবে</div>
                     </div>
                     <div class="lp-qty-controls">
                       <button type="button" onclick="window.changeLpQty(-1)" class="lp-qty-btn">−</button>
@@ -2980,7 +2976,7 @@ export async function renderLandingPage(params = {}) {
                     </div>
                     <div class="lp-summary-line">
                       <span id="lp-summary-zone-label">ডেলিভারি চার্জ (${firstZone.name}):</span>
-                      <span id="lp-summary-shipping" style="font-weight:800;">${initFree ? 'ফ্রি ডেলিভারি (৳০)' : formatCurrency(initShipping)}</span>
+                      <span id="lp-summary-shipping" style="font-weight:800;">${initShipping === 0 ? '<span style="color:#34d399;font-weight:900;">ফ্রি (৳০)</span>' : '+ ' + formatCurrency(initShipping)}</span>
                     </div>
                     <div id="lp-summary-savings-row" class="lp-summary-line" style="display:none;color:#6ee7b7;font-weight:800;">
                       <span>🎉 আপনার মোট সাশ্রয়:</span>
@@ -3015,13 +3011,12 @@ export async function renderLandingPage(params = {}) {
                       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;">
                         <label class="lp-field-label" style="margin-bottom:0;">📍 ডেলিভারি এরিয়া সিলেক্ট করুন <span style="color:#e11d48;">*</span></label>
                         <span style="font-size:10.5px;font-weight:900;color:#065f46;background:#d1fae5;padding:2px 9px;border-radius:999px;">
-                          🚚 ২,০০০+ টাকার অর্ডারে ডেলিভারি ফ্রি!
+                          🚚 এরিয়া অনুযায়ী নির্ধারিত ডেলিভারি চার্জ
                         </span>
                       </div>
                       <div class="lp-zone-chips">
                         ${deliveryConfs.map((dm, dIdx) => {
-                          const dmFee = Number(dm.charge || 0);
-                          const dmFree = initFree || dmFee === 0;
+                          const dmFee = getZoneShippingCost(dm.id, deliveryConfs);
                           return `
                             <button
                               type="button"
@@ -3030,7 +3025,7 @@ export async function renderLandingPage(params = {}) {
                               class="lp-zone-chip ${dIdx === 0 ? 'is-active' : ''}">
                               <span style="line-height:1.25;">${dm.name}</span>
                               <span class="lp-zone-fee-text" style="font-size:11px;">
-                                ${dmFree ? (dmFee > 0 ? `<del style="opacity:0.65;margin-right:3px;">৳${dmFee}</del> <strong style="color:#059669;">ফ্রি (৳০)</strong>` : '<strong style="color:#059669;">ফ্রি (৳০)</strong>') : '৳' + dmFee}
+                                ${dmFee === 0 ? 'ফ্রি (৳০)' : '৳' + dmFee}
                               </span>
                             </button>
                           `;
@@ -3038,10 +3033,10 @@ export async function renderLandingPage(params = {}) {
                       </div>
                       <select id="lp-delivery-area" name="delivery_area" onchange="window.selectLpAreaZone(this.value)" class="lp-input">
                         ${deliveryConfs.map((dm, dIdx) => {
-                          const dmFee = Number(dm.charge || 0);
+                          const dmFee = getZoneShippingCost(dm.id, deliveryConfs);
                           return `
                             <option value="${dm.id}" ${dIdx === 0 ? 'selected' : ''}>
-                              ${dm.name} — ${initFree ? 'ফ্রি ডেলিভারি (৳০)' : (dmFee === 0 ? 'ফ্রি (৳০)' : '৳' + dmFee)} (${dm.eta})
+                              ${dm.name} — ${dmFee === 0 ? 'ফ্রি (৳০)' : '৳' + dmFee} (${dm.eta})
                             </option>
                           `;
                         }).join('')}
@@ -3065,7 +3060,7 @@ export async function renderLandingPage(params = {}) {
                       <div class="lp-pay-options-grid">
                         ${paymentMethods.map((pm, pIdx) => {
                           const isOnline = !pm.isCod;
-                          const discPct = Number(pm.discount_pct || 5) || 5;
+                          const discPct = parseLpNumber(pm.discount_pct, 5) || 5;
                           return `
                             <div
                               data-pay-id="${pm.id}"
