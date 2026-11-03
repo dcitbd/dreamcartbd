@@ -1473,7 +1473,7 @@ if (typeof window !== 'undefined') {
       if (qualifiesFreeDelivery) {
         freeBarWrap.innerHTML = `
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:900;color:#065f46;">
-            <span>🎉 অভিনন্দন! ২,০০০+ টাকার অর্ডারে আপনি পাচ্ছেন <strong>সম্পূর্ণ ফ্রি ডেলিভারি (৳০)</strong>!</span>
+            <span>🎉 অভিনন্দন! ২,০০০+ টাকার অর্ডারে আপনি পাচ্ছেন <strong> সম্পূর্ণ ফ্রি ডেলিভারি (৳০)</strong>!</span>
             <span style="background:#059669;color:#ffffff;padding:2px 9px;border-radius:999px;font-size:10.5px;">FREE DELIVERY (৳০)</span>
           </div>
           <div class="lp-free-progress-track">
@@ -2664,7 +2664,7 @@ export async function renderLandingPage(params = {}) {
                     <span>✅ ১০০% অরিজিনাল গ্যারান্টি</span>
                     <span>•</span>
                     <span>🚚 ক্যাশ অন ডেলিভারি ও অনলাইন পেমেন্ট</span>
-                    ${freeShipping ? `<span>•</span><span style="color:${palette.primary};">🎉 সম্পূর্ণ ফ্রি ডেলিভারি</span>` : ''}
+                    ${freeShipping ? `<span>•</span><span style="color:${palette.primary};">🎉 ২০০০ টাকা বা তার বেশি শপিং করলে সম্পূর্ণ ফ্রি ডেলিভারি ি</span>` : ''}
                   </div>
                 </div>
                 ${heroDisplayImg ? `
@@ -2686,7 +2686,7 @@ export async function renderLandingPage(params = {}) {
                   <span>🛍️</span>
                   <span>ক্যাম্পেইনের পণ্যসমূহ (${resolvedProducts.length}টি)</span>
                 </h2>
-                <span class="lp-section-sub">👇 পছন্দের ৩ডি প্রোডাক্ট কার্ডে ক্লিক করলেই নিচের অর্ডার ফর্মে সিলেক্ট হয়ে যাবে</span>
+                <span class="lp-section-sub">👇 পছন্দের প্রোডাক্ট কার্ডে ক্লিক করলেই নিচের অর্ডার ফর্মে সিলেক্ট হয়ে যাবে</span>
               </div>
               <div class="${prodGridClass}">
                 ${resolvedProducts.map((p, idx) => {
@@ -2721,7 +2721,7 @@ export async function renderLandingPage(params = {}) {
                           ` : ''}
                         </div>
                         <button type="button" class="lp-showcase-select-btn">
-                          ${idx === 0 ? '✓ নির্বাচিত পণ্য — নিচে অর্ডার ফর্ম পূরণ করুন ↓' : '🛒 এটি সিলেক্ট করে অর্ডার করুন'}
+                          ${idx === 0 ? '✓ নির্বাচিত পণ্য — নিচে অর্ডার ফর্ম পূরণ করুন ↓' : '🛒 অর্ডার করুন'}
                         </button>
                       </div>
                     </div>
