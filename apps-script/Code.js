@@ -425,9 +425,11 @@ function dispatchAction(action, payload) {
     case "workers/delete":
       return handleGenericDelete(ss, "Admin/Worker", [0, 3, 8], payload.user_id || payload.USER_ID || payload.id || payload.user_name);
 
-    // --- SYSTEM SETTINGS: Payment_Method, Delivery_Area, Offer_or_Coupon ---
+    // --- SYSTEM SETTINGS: Payment_Method, Delivery_Area, Offer_or_Coupon, Worker-Logs ---
     case "payment_method/list":
       return getSheetDataAsJson(ss, "Payment_Method");
+    case "payment_method/seed":
+      return handlePaymentMethodBulkSeed(ss, payload);
     case "payment_method/add":
     case "payment_method/create":
     case "payment_method/update":
@@ -437,6 +439,8 @@ function dispatchAction(action, payload) {
 
     case "delivery_area/list":
       return getSheetDataAsJson(ss, "Delivery_Area");
+    case "delivery_area/seed":
+      return handleDeliveryAreaBulkSeed(ss, payload);
     case "delivery_area/add":
     case "delivery_area/create":
     case "delivery_area/update":
@@ -446,12 +450,22 @@ function dispatchAction(action, payload) {
 
     case "offer_or_coupon/list":
       return getSheetDataAsJson(ss, "Offer_or_Coupon");
+    case "offer_or_coupon/seed":
+      return handleOfferOrCouponBulkSeed(ss, payload);
     case "offer_or_coupon/add":
     case "offer_or_coupon/create":
     case "offer_or_coupon/update":
       return handleOfferOrCouponSheetUpsert(ss, payload);
     case "offer_or_coupon/delete":
       return handleGenericDelete(ss, "Offer_or_Coupon", [0, 1, 2], payload.offer_id || payload.id || payload.code || payload.coupon_code);
+
+    case "worker_logs/list":
+      return getSheetDataAsJson(ss, "Worker-Logs");
+    case "worker_logs/add":
+    case "worker_logs/create":
+      return handleWorkerLogUpsert(ss, payload);
+    case "worker_logs/delete":
+      return handleGenericDelete(ss, "Worker-Logs", [0], payload.log_id || payload.id);
 
     // --- FINANCE & INVENTORY: BUYING, COSTS, INVEST, PAYMENTS ---
     case "buying/list":
@@ -1410,6 +1424,26 @@ function handleSettingsUpdate(ss, payload) {
     return String(r[0] || "").trim().toLowerCase() === name.toLowerCase();
   }, 2);
 
+  // Mirror structured settings arrays directly into their dedicated tabs (Payment_Method, Delivery_Area, Offer_or_Coupon, AdminWorker)
+  try {
+    var normName = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (normName === "paymentmethod" || normName === "paymentmethods") {
+      var pmArr = JSON.parse(details);
+      if (Array.isArray(pmArr)) handlePaymentMethodBulkSeed(ss, { items: pmArr });
+    } else if (normName === "deliveryarea" || normName === "deliverymethods") {
+      var daArr = JSON.parse(details);
+      if (Array.isArray(daArr)) handleDeliveryAreaBulkSeed(ss, { items: daArr });
+    } else if (normName === "offerorcoupon" || normName === "offersjson") {
+      var ocArr = JSON.parse(details);
+      if (Array.isArray(ocArr)) handleOfferOrCouponBulkSeed(ss, { items: ocArr });
+    } else if (normName === "adminworkerjson" || normName === "adminworker") {
+      var awArr = JSON.parse(details);
+      if (Array.isArray(awArr)) {
+        awArr.forEach(function(u) { if (u && (u.name || u.Name)) handleAdminWorkerUpsert(ss, u); });
+      }
+    }
+  } catch (mirrorErr) {}
+
   return { status: "success", success: true, message: res.updated ? "Setting updated" : "Setting created" };
 }
 
@@ -2040,4 +2074,56 @@ function handleCustomerLogin(ss, payload) {
     success: false,
     message: "মোবাইল নম্বর/ইমেইল অথবা পাসওয়ার্ড সঠিক নয়। Customers তালিকায় আপনার তথ্য পাওয়া যায়নি।"
   };
+}
+
+
+function handlePaymentMethodBulkSeed(ss, payload) {
+  var items = (payload && Array.isArray(payload.items)) ? payload.items : [];
+  items.forEach(function(item) {
+    if (item && (item.name || item.method_name)) {
+      handlePaymentMethodSheetUpsert(ss, item);
+    }
+  });
+  return { status: "success", success: true, seeded: items.length };
+}
+
+function handleDeliveryAreaBulkSeed(ss, payload) {
+  var items = (payload && Array.isArray(payload.items)) ? payload.items : [];
+  items.forEach(function(item) {
+    if (item && (item.name || item.area_name || item.zone)) {
+      handleDeliveryAreaSheetUpsert(ss, item);
+    }
+  });
+  return { status: "success", success: true, seeded: items.length };
+}
+
+function handleOfferOrCouponBulkSeed(ss, payload) {
+  var items = (payload && Array.isArray(payload.items)) ? payload.items : [];
+  items.forEach(function(item) {
+    if (item && (item.code || item.coupon_code)) {
+      handleOfferOrCouponSheetUpsert(ss, item);
+    }
+  });
+  return { status: "success", success: true, seeded: items.length };
+}
+
+function handleWorkerLogUpsert(ss, payload) {
+  var sheet = ensureSheetWithHeaders(ss, "Worker-Logs", [
+    "Log_ID", "Timestamp", "User_ID", "User_Name", "Role", "Action", "Details", "IP_Address"
+  ]);
+  var logId = String(payload.id || payload.log_id || ("LOG-" + Math.floor(100000 + Math.random() * 900000))).trim();
+  var row = [
+    logId,
+    String(payload.time || payload.timestamp || nowDhaka()),
+    String(payload.user_id || "ADM-01"),
+    String(payload.user || payload.user_name || "Admin"),
+    String(payload.role || "Master Admin"),
+    String(payload.event || payload.action || "System Action"),
+    String(payload.details || payload.event || ""),
+    String(payload.ip || "103.114.98.12")
+  ];
+  writeOrUpsertRow(sheet, row, function(r) {
+    return String(r[0] || "").trim().toLowerCase() === logId.toLowerCase();
+  }, 2);
+  return { status: "success", success: true, data: { log_id: logId } };
 }
