@@ -11,6 +11,14 @@ import { authStore } from '../../store/authStore.js';
 import { formatCurrency } from '../../utils/format.js';
 import { toast } from '../../components/Toast.js';
 
+// Ensure global settings/payment/delivery/offer helpers are bound on apiClient (zero conflict with client.js)
+if (apiClient && typeof apiClient === 'object') {
+  if (!apiClient.getGlobalSiteSettings) apiClient.getGlobalSiteSettings = getGlobalSiteSettings;
+  if (!apiClient.getGlobalPaymentMethods) apiClient.getGlobalPaymentMethods = getGlobalPaymentMethods;
+  if (!apiClient.getGlobalDeliveryMethods) apiClient.getGlobalDeliveryMethods = getGlobalDeliveryMethods;
+  if (!apiClient.getGlobalOffers) apiClient.getGlobalOffers = getGlobalOffers;
+}
+
 // Bulletproof Storage Protection: Intercepts localStorage.setItem to completely prevent QuotaExceededError
 (function installSafeLocalStorage() {
   if (typeof window === 'undefined' || !window.localStorage) return;
@@ -1497,10 +1505,10 @@ const ADMIN_ROUTES = {
   'payments': { pageId: 'page-courier-payments', groupId: 'group-courier', slug: 'payments', module: 'couriers_settings', title: '💳 অনলাইন পেমেন্ট গেটওয়ে', subtitle: 'বিকাশ মার্চেন্ট, SSLCommerz, সূর্যপে ও নগদ ইন্টিগ্রেশন' },
   'settings': { pageId: 'page-set-info', groupId: 'group-settings', slug: 'settings', module: 'couriers_settings', title: '⚙️ দোকানের তথ্য ও সেটিংস', subtitle: 'নাম, লোগো, ঠিকানা, হটলাইন ও শীর্ষ নোটিশ বার' },
   'shop-info': { pageId: 'page-set-info', groupId: 'group-settings', slug: 'settings', module: 'couriers_settings', title: '🏢 দোকানের তথ্য ও হটলাইন', subtitle: 'নাম, লোগো, ঠিকানা, হটলাইন ও শীর্ষ নোটিশ বার' },
-  'logs': { pageId: 'page-set-logs', groupId: 'group-settings', slug: 'logs', module: 'couriers_settings', title: '📜 অডিট লগ ও কর্মী অ্যাক্টিভিটি', subtitle: 'লগইন হিস্ট্রি, আইপি অ্যাড্রেস ও ইউজার অ্যাকশন' },
-  'payment-methods': { pageId: 'page-set-payment', groupId: 'group-settings', slug: 'payment-methods', module: 'couriers_settings', title: '💳 পেমেন্ট মেথড কনফিগারেশন', subtitle: 'ক্যাশ অন ডেলিভারি, বিকাশ ও নগদ সেটিংস' },
-  'delivery': { pageId: 'page-set-delivery', groupId: 'group-settings', slug: 'delivery', module: 'couriers_settings', title: '🚚 ডেলিভারি চার্জ ও জোন', subtitle: 'কুমিল্লা, ঢাকা ও ঢাকার বাইরে ডেলিভারি ফি নির্ধারণ' },
-  'offers': { pageId: 'page-set-offers', groupId: 'group-settings', slug: 'offers', module: 'couriers_settings', title: '🎁 অফার ও প্রমো কুপন কোড', subtitle: 'ডিসকাউন্ট কুপন তৈরি ও সক্রিয়করণ' },
+  'logs': { pageId: 'page-set-logs', groupId: 'group-settings', slug: 'logs', module: 'couriers_settings', title: '📜 অডিট ও কর্মী লগ (Sheet: Admin/Worker)', subtitle: 'লিষ্ট, এড, এডিট, ডিলিট, কুইকভিউ, ডিজিটাল কার্ড কাউন্টার ও ফিল্টার' },
+  'payment-methods': { pageId: 'page-set-payment', groupId: 'group-settings', slug: 'payment-methods', module: 'couriers_settings', title: '💳 পেমেন্ট মেথড আপডেট (Sheet: Payment_Method)', subtitle: 'লিষ্ট, এড, এডিট, ডিলিট, কুইকভিউ, ডিজিটাল কার্ড কাউন্টার ও ফিল্টার' },
+  'delivery': { pageId: 'page-set-delivery', groupId: 'group-settings', slug: 'delivery', module: 'couriers_settings', title: '🚚 ডেলিভারি মেথড কনফিগ (Sheet: Delivery_Area)', subtitle: 'লিষ্ট, এড, এডিট, ডিলিট, কুইকভিউ, ডিজিটাল কার্ড কাউন্টার ও ফিল্টার' },
+  'offers': { pageId: 'page-set-offers', groupId: 'group-settings', slug: 'offers', module: 'couriers_settings', title: '🎁 অফার ও কুপন ডিসকাউন্ট (Sheet: Offer_or_Coupon)', subtitle: 'লিষ্ট, এড, এডিট, ডিলিট, কুইকভিউ, ডিজিটাল কার্ড কাউন্টার ও ফিল্টার' },
   'profile': { pageId: 'page-set-profile', groupId: 'group-settings', slug: 'profile', module: 'couriers_settings', title: '👤 অ্যাডমিন প্রোফাইল আপডেট', subtitle: 'ব্যবহারকারীর নাম ও পদবী' },
   'password': { pageId: 'page-set-password', groupId: 'group-settings', slug: 'password', module: 'couriers_settings', title: '🔒 পাসওয়ার্ড পরিবর্তন', subtitle: 'নতুন সুরক্ষিত পাসওয়ার্ড নির্ধারণ' },
   'others': { pageId: 'page-others-hub', groupId: 'group-others', slug: 'others', module: 'others', title: '🧩 অন্যান্য মডিউল ও অপারেশনস হাব', subtitle: 'পার্টনার, মার্কেটপ্লেস, ফাইন্যান্স, কুরিয়ার, ফ্রড চেকার, রিপোর্ট ও সেটিংস কুইক হাব' }
@@ -1616,10 +1624,10 @@ function initAdminGlobalState() {
     'page-courier-fraud': { title: '🛡️ কাস্টমার ফ্রড চেকার (Fraud Check)', subtitle: 'কুরিয়ার ডেলিভারি সাকসেস ও রিটার্ন রেট বিশ্লেষণ' },
     'page-courier-payments': { title: '💳 অনলাইন পেমেন্ট গেটওয়ে যুক্ত', subtitle: 'বিকাশ মার্চেন্ট, SSLCommerz, সূর্যপে ও নগদ ইন্টিগ্রেশন' },
     // Settings
-    'page-set-logs': { title: '📜 অডিট লগ ও কর্মী অ্যাক্টিভিটি', subtitle: 'লগইন হিস্ট্রি, আইপি অ্যাড্রেস ও ইউজার অ্যাকশন' },
-    'page-set-payment': { title: '💳 পেমেন্ট মেথড কনফিগারেশন', subtitle: 'ক্যাশ অন ডেলিভারি, বিকাশ ও নগদ সেটিংস' },
-    'page-set-delivery': { title: '🚚 ডেলিভারি চার্জ ও জোন', subtitle: 'কুমিল্লা, ঢাকা ও ঢাকার বাইরে ডেলিভারি ফি নির্ধারণ' },
-    'page-set-offers': { title: '🎁 অফার ও প্রমো কুপন কোড', subtitle: 'ডিসকাউন্ট কুপন তৈরি ও সক্রিয়করণ' },
+    'page-set-logs': { title: '📜 অডিট ও কর্মী লগ (Sheet: Admin/Worker)', subtitle: 'লিষ্ট, এড, এডিট, ডিলিট, কুইকভিউ, ডিজিটাল কার্ড কাউন্টার ও ফিল্টার' },
+    'page-set-payment': { title: '💳 পেমেন্ট মেথড আপডেট (Sheet: Payment_Method)', subtitle: 'লিষ্ট, এড, এডিট, ডিলিট, কুইকভিউ, ডিজিটাল কার্ড কাউন্টার ও ফিল্টার' },
+    'page-set-delivery': { title: '🚚 ডেলিভারি মেথড কনফিগ (Sheet: Delivery_Area)', subtitle: 'লিষ্ট, এড, এডিট, ডিলিট, কুইকভিউ, ডিজিটাল কার্ড কাউন্টার ও ফিল্টার' },
+    'page-set-offers': { title: '🎁 অফার ও কুপন ডিসকাউন্ট (Sheet: Offer_or_Coupon)', subtitle: 'লিষ্ট, এড, এডিট, ডিলিট, কুইকভিউ, ডিজিটাল কার্ড কাউন্টার ও ফিল্টার' },
     'page-set-info': { title: '🏢 দোকানের তথ্য ও যোগাযোগ হটলাইন', subtitle: 'নাম, লোগো, ঠিকানা, হটলাইন ও শীর্ষ নোটিশ বার' },
     'page-set-profile': { title: '👤 অ্যাডমিন প্রোফাইল আপডেট', subtitle: 'ব্যবহারকারীর নাম ও পদবী' },
     'page-set-password': { title: '🔒 পাসওয়ার্ড পরিবর্তন ও সিকিউরিটি', subtitle: 'নতুন সুরক্ষিত পাসওয়ার্ড নির্ধারণ' }
@@ -1698,6 +1706,22 @@ function initAdminGlobalState() {
     }
     if (pageId === 'page-prod-landing-add' && window.renderLandingDraftMedia) {
       window.renderLandingDraftMedia();
+    }
+    if (pageId === 'page-set-logs' && window.renderAdminSetLogsDOM) {
+      window.renderAdminSetLogsDOM();
+      if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
+    }
+    if (pageId === 'page-set-payment' && window.renderAdminPaymentMethodsDOM) {
+      window.renderAdminPaymentMethodsDOM();
+      if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
+    }
+    if (pageId === 'page-set-delivery' && window.renderAdminDeliveryMethodsDOM) {
+      window.renderAdminDeliveryMethodsDOM();
+      if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
+    }
+    if (pageId === 'page-set-offers' && window.renderAdminOffersDOM) {
+      window.renderAdminOffersDOM();
+      if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
     }
 
     // Update top route tabs & URL badge
@@ -7232,28 +7256,974 @@ window.openBulkSelectedProductsModal = function(mode) {
   };
 
   // ============================================================================
-  // SYSTEM SETTINGS: 1) PAYMENT METHODS (Active/Add/Edit/Delete/List + Storefront & Sheet Sync)
+  // SYSTEM SETTINGS LIVE GOOGLE SHEETS ENGINE & FULL CRUD + QUICKVIEW + FILTERS
+  // Sheets:
+  //   1. অডিট ও কর্মী লগ (Sheet Name: Admin/Worker)
+  //   2. পেমেন্ট মেথড আপডেট (Sheet Name: Payment_Method)
+  //   3. ডেলিভারি মেথড কনফিগ (Sheet Name: Delivery_Area)
+  //   4. অফার ও কুপন ডিসকাউন্ট (Sheet Name: Offer_or_Coupon)
   // ============================================================================
+
+  window.__sysSettingsUiState = window.__sysSettingsUiState || {
+    logs: { search: '', roleFilter: 'ALL', statusFilter: 'ALL', viewMode: 'cards', tabMode: 'workers' },
+    payment: { search: '', typeFilter: 'ALL', statusFilter: 'ALL', viewMode: 'cards' },
+    delivery: { search: '', zoneFilter: 'ALL', statusFilter: 'ALL', viewMode: 'cards' },
+    offers: { search: '', typeFilter: 'ALL', statusFilter: 'ALL', viewMode: 'cards' },
+    lastSyncAt: 0,
+    syncing: false
+  };
+
+  function escapeSysHtml(val) {
+    return String(val ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function escapeSysJsStr(val) {
+    return String(val ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  }
+
+  function getDeletedSysSet(storageKey) {
+    try {
+      const arr = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      return new Set(Array.isArray(arr) ? arr.map(x => String(x || '').trim().toLowerCase()).filter(Boolean) : []);
+    } catch (e) {
+      return new Set();
+    }
+  }
+
+  function addDeletedSysId(storageKey, id) {
+    if (!id) return;
+    try {
+      const s = getDeletedSysSet(storageKey);
+      s.add(String(id).trim().toLowerCase());
+      localStorage.setItem(storageKey, JSON.stringify(Array.from(s)));
+    } catch (e) {}
+  }
+
+  function removeDeletedSysId(storageKey, id) {
+    if (!id) return;
+    try {
+      const s = getDeletedSysSet(storageKey);
+      s.delete(String(id).trim().toLowerCase());
+      localStorage.setItem(storageKey, JSON.stringify(Array.from(s)));
+    } catch (e) {}
+  }
+
+  // Lightweight, non-blocking GViz JSONP reader for any Google Sheet tab
+  const _sysGvizInflight = new Map();
+  function fetchSysSheetRowsViaGviz(sheetName, timeoutMs = 6500) {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return Promise.resolve([]);
+    const cleanSheet = String(sheetName || '').trim();
+    if (!cleanSheet) return Promise.resolve([]);
+    const cacheKey = cleanSheet.toLowerCase();
+    if (_sysGvizInflight.has(cacheKey)) return _sysGvizInflight.get(cacheKey);
+
+    const spreadsheetId = (apiClient && apiClient.spreadsheetId) || '1BGi8IXV6S7uXDi4IaR_sCJYhtpfzyLGuldo4NnGVmR8';
+    const p = new Promise(resolve => {
+      const cbName = 'dcbd_sys_gviz_' + Math.random().toString(36).slice(2, 9) + '_' + Date.now().toString(36);
+      const script = document.createElement('script');
+      const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=responseHandler:${cbName}&sheet=${encodeURIComponent(cleanSheet)}&headers=1`;
+      let done = false;
+
+      function finish(rows) {
+        if (done) return;
+        done = true;
+        _sysGvizInflight.delete(cacheKey);
+        clearTimeout(timer);
+        if (script.parentNode) script.parentNode.removeChild(script);
+        window[cbName] = function() { try { delete window[cbName]; } catch (e) {} };
+        setTimeout(() => { try { delete window[cbName]; } catch (e) {} }, 6000);
+        resolve(Array.isArray(rows) ? rows : []);
+      }
+
+      const timer = setTimeout(() => finish([]), timeoutMs);
+
+      window[cbName] = function(resp) {
+        try {
+          if (!resp || !resp.table || !Array.isArray(resp.table.rows)) return finish([]);
+          const rawCols = resp.table.cols || [];
+          let labels = rawCols.map(c => (c && c.label ? String(c.label).trim() : ''));
+          const rawRows = resp.table.rows || [];
+          let startIdx = 0;
+
+          if (labels.filter(Boolean).length === 0 && rawRows.length > 0 && rawRows[0] && Array.isArray(rawRows[0].c)) {
+            const firstRow = rawRows[0].c.map(cell => (cell && cell.v !== null && cell.v !== undefined ? String(cell.v).trim() : ''));
+            const headerHints = ['user_id', 'id', 'payment_id', 'delivery_id', 'offer_id', 'coupon_code', 'code', 'name', 'method_name', 'area_name', 'zone'];
+            if (firstRow.some(v => headerHints.includes(v.toLowerCase()))) {
+              labels = firstRow;
+              startIdx = 1;
+            }
+          }
+
+          const parsed = [];
+          for (let i = startIdx; i < rawRows.length; i++) {
+            const r = rawRows[i];
+            if (!r || !Array.isArray(r.c)) continue;
+            const obj = {};
+            let hasContent = false;
+            r.c.forEach((cell, cIdx) => {
+              let v = '';
+              if (cell) {
+                if (typeof cell.v === 'number' || typeof cell.v === 'boolean') v = cell.v;
+                else if (cell.f !== undefined && cell.f !== null && String(cell.f).trim() !== '') v = String(cell.f).trim();
+                else if (cell.v !== undefined && cell.v !== null) v = String(cell.v).trim();
+              }
+              const rawLbl = labels[cIdx] || `col_${cIdx}`;
+              const normKey = rawLbl.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+              obj[rawLbl] = v;
+              obj[normKey] = v;
+              obj[`col_${cIdx}`] = v;
+              if (v !== '' && v !== false) hasContent = true;
+            });
+            const c0 = String(obj.col_0 ?? '').trim().toLowerCase();
+            if (['user_id', 'payment_id', 'delivery_id', 'offer_id', 'coupon_code', 'id', 'request_id'].includes(c0)) continue;
+            if (hasContent) parsed.push(obj);
+          }
+          finish(parsed);
+        } catch (err) {
+          finish([]);
+        }
+      };
+
+      script.onerror = () => finish([]);
+      script.src = url;
+      document.head.appendChild(script);
+    });
+
+    _sysGvizInflight.set(cacheKey, p);
+    return p;
+  }
+
+  // Record an Audit Log entry automatically and persist in localStorage + Sheet
+  window.recordAdminAuditLog = function(eventText, moduleName = 'System Settings', detailsText = '') {
+    try {
+      const currentUser = (authStore && authStore.getUserDisplayName && authStore.getUserDisplayName()) || 'Jainal Abedin';
+      const currentRole = (authStore && authStore.user && (authStore.user.worker_type || authStore.user.role)) || 'Master Admin';
+      const nowStr = new Date().toLocaleString('bn-BD', { hour: '2-digit', minute: '2-digit', year: 'numeric', month: 'short', day: '2-digit' });
+      const newLog = {
+        id: 'LOG-' + Math.floor(1000 + Math.random() * 9000),
+        time: nowStr,
+        user: currentUser,
+        role: currentRole,
+        module: moduleName,
+        event: eventText,
+        details: detailsText || eventText,
+        ip: '103.114.98.12',
+        status: 'Verified'
+      };
+      const existing = window.getAdminAuditLogsList();
+      const updated = [newLog, ...existing].slice(0, 100);
+      localStorage.setItem('dcbd_audit_logs_list', JSON.stringify(updated));
+      if (window.__adminState) window.__adminState.auditLogs = updated;
+    } catch (e) {}
+  };
+
+  window.getAdminAuditLogsList = function() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('dcbd_audit_logs_list') || 'null');
+      if (Array.isArray(saved) && saved.length > 0) return saved;
+    } catch (e) {}
+    const defaults = [
+      { id: 'LOG-101', time: 'আজ ১২:৩০ PM', user: 'MD. Saiful Islam', role: 'Admin', module: 'Orders & Stock', event: 'অর্ডার স্ট্যাটাস ও কুরিয়ার বুকিং আপডেট করেছেন', details: 'Steadfast কুরিয়ারে অর্ডার প্রেরণ ও ট্র্যাকিং আইডি সিঙ্ক।', ip: '103.114.98.12', status: 'Verified' },
+      { id: 'LOG-102', time: 'আজ ১১:১৫ AM', user: 'Jainal Abedin', role: 'CEO & Master Admin', module: 'System Settings', event: 'পণ্য ক্যাটালগ ও সিস্টেম সেটিংস Google Sheet সিঙ্ক করেছেন', details: 'Admin/Worker, Payment_Method, Delivery_Area ও Offer_or_Coupon শিট সিঙ্ক সম্পন্ন।', ip: '103.114.98.15', status: 'Verified' }
+    ];
+    localStorage.setItem('dcbd_audit_logs_list', JSON.stringify(defaults));
+    return defaults;
+  };
+
+  // ----------------------------------------------------------------------------
+  // 1) অডিট ও কর্মী লগ (Sheet Name: Admin/Worker) — State, Sync, CRUD & QuickView
+  // ----------------------------------------------------------------------------
+  window.getUnifiedAdminWorkerList = function() {
+    const delSet = getDeletedSysSet('dcbd_deleted_admin_worker');
+    const st = window.__adminState || {};
+    let admins = Array.isArray(st.admins) && st.admins.length > 0
+      ? st.admins
+      : JSON.parse(localStorage.getItem('dcbd_admins') || '[]');
+    let workers = Array.isArray(st.workers) && st.workers.length > 0
+      ? st.workers
+      : JSON.parse(localStorage.getItem('dcbd_workers') || '[]');
+
+    if (admins.length === 0 && workers.length === 0) {
+      admins = [
+        { id: 'ADM-01', user_id: 'ADM-01', profile_photo: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', name: 'Jainal Abedin', mobile: '01581703822', phone: '01581703822', mail: 'jainal.dcitbd@gmail.com', email: 'jainal.dcitbd@gmail.com', address: 'কুমিল্লা সদর দক্ষিণ', worker_type: 'Admin', role: 'CEO & Master Admin', user_name: 'Jainal Abedin', password: 'admin123', status: 'Active', last_activity: 'সিস্টেম কনফিগারেশন ও মাস্টার অডিট' },
+        { id: 'ADM-02', user_id: 'ADM-02', profile_photo: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', name: 'MD. Saiful Islam', mobile: '01818273838', phone: '01818273838', mail: 'admin@dreamcart.bd', email: 'admin@dreamcart.bd', address: 'পদুয়ার বাজার বিশ্বরোড, কুমিল্লা', worker_type: 'Admin', role: 'Lead Operations', user_name: 'MD. Saiful Islam', password: 'admin123', status: 'Active', last_activity: 'অর্ডার ও কুরিয়ার ম্যানেজমেন্ট' }
+      ];
+      workers = [
+        { id: 'WRK-01', user_id: 'WRK-01', profile_photo: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', name: 'রাকিবুল হাসান', mobile: '01633445566', phone: '01633445566', mail: 'rakib@dreamcart.bd', email: 'rakib@dreamcart.bd', address: 'কুমিল্লা', worker_type: 'Order Desk', role: 'Order Management', user_name: 'rakib_staff', password: 'admin123', status: 'Active', last_activity: 'ডেইলি অর্ডার কনফার্মেশন ও প্যাকিং' }
+      ];
+    }
+
+    const byId = new Map();
+    [...admins, ...workers].forEach((u, idx) => {
+      if (!u || typeof u !== 'object') return;
+      const uid = String(u.user_id || u.USER_ID || u.id || `USR-${101 + idx}`).trim();
+      if (!uid || delSet.has(uid.toLowerCase())) return;
+      const wType = String(u.worker_type || u.Worker_Type || (uid.toUpperCase().startsWith('ADM') ? 'Admin' : 'Full-Time Staff')).trim();
+      const role = String(u.role || u.Role || (wType.toLowerCase().includes('admin') ? 'Super Admin' : 'Order Management')).trim();
+      const name = String(u.name || u.Name || '').trim();
+      if (!name) return;
+      const mob = String(u.mobile || u.Mobile || u.phone || '').trim();
+      const mail = String(u.mail || u.Mail || u.email || '').trim();
+      byId.set(uid.toLowerCase(), {
+        id: uid,
+        user_id: uid,
+        USER_ID: uid,
+        profile_photo: u.profile_photo || u.Profile_Photo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+        name,
+        mobile: mob,
+        phone: mob,
+        mail,
+        email: mail,
+        address: String(u.address || u.Address || 'কুমিল্লা').trim(),
+        worker_type: wType,
+        role,
+        user_name: String(u.user_name || u.User_Name || name).trim(),
+        password: String(u.password || u.Password || 'admin123').trim(),
+        status: String(u.status || u.Status || 'Active').trim(),
+        last_activity: String(u.last_activity || u.activity || 'সক্রিয় কর্মী ও সিস্টেম অ্যাক্সেস').trim()
+      });
+    });
+
+    return Array.from(byId.values());
+  };
+
+  window.saveUnifiedAdminWorkerList = function(allList) {
+    const clean = Array.isArray(allList) ? allList : [];
+    const admins = clean.filter(u => String(u.worker_type || '').toLowerCase().includes('admin') || String(u.user_id || '').toUpperCase().startsWith('ADM'));
+    const workers = clean.filter(u => !(String(u.worker_type || '').toLowerCase().includes('admin') || String(u.user_id || '').toUpperCase().startsWith('ADM')));
+    localStorage.setItem('dcbd_admins', JSON.stringify(admins));
+    localStorage.setItem('dcbd_workers', JSON.stringify(workers));
+    if (window.__adminState) {
+      window.__adminState.admins = admins;
+      window.__adminState.workers = workers;
+    }
+    if (window.renderAdminsAndWorkersDOM) window.renderAdminsAndWorkersDOM();
+  };
+
+  window.renderAdminSetLogsDOM = function() {
+    const kpiContainer = document.getElementById('admin-set-logs-kpi');
+    const listContainer = document.getElementById('admin-set-logs-list-container');
+    const countBadge = document.getElementById('admin-set-logs-total-badge');
+    const st = window.__sysSettingsUiState.logs;
+    const allMembers = window.getUnifiedAdminWorkerList();
+    const auditLogs = window.getAdminAuditLogsList();
+
+    if (countBadge) countBadge.textContent = allMembers.length;
+
+    const totalMembers = allMembers.length;
+    const masterAdminsCount = allMembers.filter(u => String(u.worker_type || '').toLowerCase().includes('admin') || String(u.role || '').toLowerCase().includes('admin')).length;
+    const staffWorkersCount = Math.max(0, totalMembers - masterAdminsCount);
+    const activeMembersCount = allMembers.filter(u => String(u.status || 'Active').toLowerCase() !== 'inactive').length;
+
+    if (kpiContainer) {
+      kpiContainer.innerHTML = `
+        <div onclick="window.setSysLogsFilter('roleFilter', 'ALL', 'workers')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-emerald-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">মোট অ্যাডমিন ও কর্মী (Admin/Worker)</div>
+            <div class="text-2xl font-black text-slate-900 dark:text-white font-mono mt-1">${totalMembers} জন</div>
+            <div class="text-[10px] text-emerald-600 font-bold mt-0.5">● Sheet: Admin/Worker</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xl font-black">👥</div>
+        </div>
+        <div onclick="window.setSysLogsFilter('roleFilter', 'Admin', 'workers')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-indigo-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">মাস্টার অ্যাডমিন একাউন্ট</div>
+            <div class="text-2xl font-black text-indigo-600 font-mono mt-1">${masterAdminsCount} জন</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">পূর্ণ সিস্টেম কন্ট্রোল</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-xl font-black">👑</div>
+        </div>
+        <div onclick="window.setSysLogsFilter('roleFilter', 'Staff', 'workers')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-amber-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">কর্মী ও অপারেশন স্টাফ</div>
+            <div class="text-2xl font-black text-amber-600 font-mono mt-1">${staffWorkersCount} জন</div>
+            <div class="text-[10px] text-emerald-600 font-bold mt-0.5">সক্রিয়: ${activeMembersCount} জন</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center text-xl font-black">👷</div>
+        </div>
+        <div onclick="window.setSysLogsFilter('tabMode', 'audit', 'audit')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-rose-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">অডিট ও অ্যাক্টিভিটি লগ</div>
+            <div class="text-2xl font-black text-rose-600 font-mono mt-1">${auditLogs.length} টি</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">লগইন ও সিস্টেম অ্যাকশন</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center text-xl font-black">📜</div>
+        </div>
+      `;
+    }
+
+    if (!listContainer) return;
+
+    const q = String(st.search || '').toLowerCase().trim();
+
+    if (st.tabMode === 'audit') {
+      const filteredLogs = auditLogs.filter(l => {
+        if (!q) return true;
+        return (
+          String(l.event || '').toLowerCase().includes(q) ||
+          String(l.user || '').toLowerCase().includes(q) ||
+          String(l.module || '').toLowerCase().includes(q) ||
+          String(l.ip || '').toLowerCase().includes(q) ||
+          String(l.id || '').toLowerCase().includes(q)
+        );
+      });
+
+      if (filteredLogs.length === 0) {
+        listContainer.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs border rounded-2xl">কোনো অডিট লগ পাওয়া যায়নি।</div>`;
+        return;
+      }
+
+      listContainer.innerHTML = `
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b text-slate-400 uppercase text-[10px]">
+                <th class="py-2.5 px-3">লগ আইডি ও সময়</th>
+                <th class="py-2.5 px-3">অ্যাডমিন / কর্মী</th>
+                <th class="py-2.5 px-3">মডিউল</th>
+                <th class="py-2.5 px-3">অ্যাক্টিভিটি / অডিট বিবরণ</th>
+                <th class="py-2.5 px-3">IP অ্যাড্রেস</th>
+                <th class="py-2.5 px-3 text-right">অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+              ${filteredLogs.map((l, idx) => {
+                const lid = l.id || `LOG-${101 + idx}`;
+                const safeId = escapeSysJsStr(lid);
+                return `
+                  <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <td class="py-2.5 px-3 font-mono">
+                      <div class="font-bold text-emerald-600">${escapeSysHtml(lid)}</div>
+                      <div class="text-[10px] text-slate-400">${escapeSysHtml(l.time || 'আজ')}</div>
+                    </td>
+                    <td class="py-2.5 px-3">
+                      <div class="font-bold text-slate-900 dark:text-white">${escapeSysHtml(l.user || 'Admin')}</div>
+                      <div class="text-[10px] text-indigo-600 font-bold">${escapeSysHtml(l.role || 'Master Admin')}</div>
+                    </td>
+                    <td class="py-2.5 px-3"><span class="badge badge-info text-[10px]">${escapeSysHtml(l.module || 'System')}</span></td>
+                    <td class="py-2.5 px-3">
+                      <div class="font-bold text-slate-800 dark:text-slate-200">${escapeSysHtml(l.event || '')}</div>
+                      <div class="text-[10px] text-slate-400">${escapeSysHtml(l.details || '')}</div>
+                    </td>
+                    <td class="py-2.5 px-3 font-mono text-slate-500">${escapeSysHtml(l.ip || '103.114.98.12')}</td>
+                    <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+                      <button type="button" onclick="window.openAuditLogQuickView('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-indigo-600">👁️ কুইকভিউ</button>
+                      <button type="button" onclick="window.openAuditLogEntryModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-emerald-600">✏️ এডিট</button>
+                      <button type="button" onclick="window.deleteAuditLogEntry('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-rose-600 border-rose-200">🗑️ ডিলিট</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      return;
+    }
+
+    const filtered = allMembers.filter(u => {
+      if (st.statusFilter !== 'ALL') {
+        const isAct = String(u.status || 'Active').toLowerCase() !== 'inactive';
+        if (st.statusFilter === 'Active' && !isAct) return false;
+        if (st.statusFilter === 'Inactive' && isAct) return false;
+      }
+      if (st.roleFilter !== 'ALL') {
+        const wt = String(u.worker_type || '').toLowerCase();
+        const rl = String(u.role || '').toLowerCase();
+        if (st.roleFilter === 'Admin') {
+          if (!wt.includes('admin') && !rl.includes('admin')) return false;
+        } else if (st.roleFilter === 'Staff') {
+          if (wt.includes('admin') && rl.includes('admin')) return false;
+        } else {
+          if (!wt.includes(st.roleFilter.toLowerCase()) && !rl.includes(st.roleFilter.toLowerCase())) return false;
+        }
+      }
+      if (!q) return true;
+      return (
+        String(u.name || '').toLowerCase().includes(q) ||
+        String(u.user_id || '').toLowerCase().includes(q) ||
+        String(u.mobile || '').toLowerCase().includes(q) ||
+        String(u.mail || '').toLowerCase().includes(q) ||
+        String(u.role || '').toLowerCase().includes(q) ||
+        String(u.worker_type || '').toLowerCase().includes(q) ||
+        String(u.user_name || '').toLowerCase().includes(q) ||
+        String(u.address || '').toLowerCase().includes(q)
+      );
+    });
+
+    if (filtered.length === 0) {
+      listContainer.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs border rounded-2xl">কোনো অ্যাডমিন বা কর্মী তথ্য পাওয়া যায়নি। "+ নতুন অ্যাডমিন / কর্মী যুক্ত" বাটনে ক্লিক করে যুক্ত করুন।</div>`;
+      return;
+    }
+
+    if (st.viewMode === 'table') {
+      listContainer.innerHTML = `
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b text-slate-400 uppercase text-[10px]">
+                <th class="py-2.5 px-3">USER_ID</th>
+                <th class="py-2.5 px-3">ছবি, নাম ও ইউজারনেম</th>
+                <th class="py-2.5 px-3">মোবাইল ও ইমেইল</th>
+                <th class="py-2.5 px-3">ধরন ও রোল (Worker_Type / Role)</th>
+                <th class="py-2.5 px-3">ঠিকানা ও অডিট নোট</th>
+                <th class="py-2.5 px-3">স্ট্যাটাস</th>
+                <th class="py-2.5 px-3 text-right">অ্যাকশন (QuickView / Edit / Delete)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y">
+              ${filtered.map(u => {
+                const safeId = escapeSysJsStr(u.user_id || u.id);
+                const isAct = String(u.status || 'Active').toLowerCase() !== 'inactive';
+                const photo = u.profile_photo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+                return `
+                  <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                    <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${escapeSysHtml(u.user_id)}</td>
+                    <td class="py-2.5 px-3">
+                      <div class="flex items-center gap-2.5">
+                        <img src="${escapeSysHtml(photo)}" class="w-9 h-9 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                        <div>
+                          <div class="font-bold text-slate-900 dark:text-white">${escapeSysHtml(u.name)}</div>
+                          <div class="text-[10px] text-slate-400 font-mono">User: ${escapeSysHtml(u.user_name || u.name)}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="py-2.5 px-3 font-mono">
+                      <div class="font-bold">${escapeSysHtml(u.mobile || 'N/A')}</div>
+                      <div class="text-[10px] text-slate-400">${escapeSysHtml(u.mail || '—')}</div>
+                    </td>
+                    <td class="py-2.5 px-3">
+                      <span class="badge badge-info text-[10px]">${escapeSysHtml(u.worker_type)}</span>
+                      <div class="text-[11px] font-bold text-emerald-600 mt-0.5">${escapeSysHtml(u.role)}</div>
+                    </td>
+                    <td class="py-2.5 px-3 text-[11px]">
+                      <div>📍 ${escapeSysHtml(u.address || 'কুমিল্লা')}</div>
+                      <div class="text-[10px] text-slate-400 truncate max-w-xs">${escapeSysHtml(u.last_activity || '')}</div>
+                    </td>
+                    <td class="py-2.5 px-3">
+                      <button type="button" onclick="window.toggleSetLogWorkerStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
+                        ${isAct ? '● Active' : '○ Inactive'}
+                      </button>
+                    </td>
+                    <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+                      <button type="button" onclick="window.openSetLogWorkerQuickView('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-indigo-600">👁️ কুইকভিউ</button>
+                      <button type="button" onclick="window.openSetLogWorkerModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-emerald-600">✏️ এডিট</button>
+                      <button type="button" onclick="window.deleteSetLogWorkerItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-rose-600 border-rose-200">🗑️ ডিলিট</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      return;
+    }
+
+    // Default Cards Grid View
+    listContainer.innerHTML = `
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+        ${filtered.map(u => {
+          const safeId = escapeSysJsStr(u.user_id || u.id);
+          const isAct = String(u.status || 'Active').toLowerCase() !== 'inactive';
+          const photo = u.profile_photo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+          return `
+            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-3 flex flex-col justify-between">
+              <div class="space-y-2">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="flex items-center gap-3">
+                    <img src="${escapeSysHtml(photo)}" class="w-12 h-12 rounded-2xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                    <div>
+                      <div class="flex items-center gap-1.5">
+                        <span class="font-mono text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">${escapeSysHtml(u.user_id)}</span>
+                        <span class="badge badge-info text-[9px]">${escapeSysHtml(u.worker_type)}</span>
+                      </div>
+                      <div class="font-bold text-slate-900 dark:text-white text-sm mt-0.5">${escapeSysHtml(u.name)}</div>
+                      <div class="text-[11px] font-bold text-emerald-600">রোল: ${escapeSysHtml(u.role)}</div>
+                    </div>
+                  </div>
+                  <button type="button" onclick="window.toggleSetLogWorkerStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
+                    ${isAct ? '● সক্রিয়' : '○ নিষ্ক্রিয়'}
+                  </button>
+                </div>
+                <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900/70 space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
+                  <div class="font-mono">📞 <strong>${escapeSysHtml(u.mobile || 'N/A')}</strong> • ✉️ ${escapeSysHtml(u.mail || '—')}</div>
+                  <div>👤 ইউজারনেম: <span class="font-mono font-bold">${escapeSysHtml(u.user_name || u.name)}</span></div>
+                  <div>📍 ঠিকানা: ${escapeSysHtml(u.address || 'কুমিল্লা')}</div>
+                  <div class="text-[10px] text-slate-400">📝 অডিট নোট: ${escapeSysHtml(u.last_activity || 'সক্রিয় একাউন্ট')}</div>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t">
+                <button type="button" onclick="window.openSetLogWorkerQuickView('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-indigo-600 flex-1">👁️ কুইকভিউ</button>
+                <button type="button" onclick="window.openSetLogWorkerModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-emerald-600">✏️ এডিট</button>
+                <button type="button" onclick="window.deleteSetLogWorkerItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-rose-600 border-rose-200">🗑️ ডিলিট</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  };
+
+  window.setSysLogsFilter = function(key, val, forceTab) {
+    const st = window.__sysSettingsUiState.logs;
+    st[key] = val;
+    if (forceTab) st.tabMode = forceTab;
+    const roleEl = document.getElementById('set-logs-role-filter');
+    if (roleEl && key === 'roleFilter') roleEl.value = val;
+    window.renderAdminSetLogsDOM();
+  };
+
+  window.openSetLogWorkerModal = function(editId = '') {
+    const list = window.getUnifiedAdminWorkerList();
+    const ex = editId ? list.find(u => String(u.user_id || u.id).toLowerCase() === String(editId).toLowerCase()) : null;
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+    const defaultId = ex ? ex.user_id : ('WRK-' + Math.floor(100 + Math.random() * 900));
+    setV('set-aw-edit-flag', ex ? ex.user_id : '');
+    setV('set-aw-id', defaultId);
+    setV('set-aw-photo', ex ? ex.profile_photo : 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg');
+    setV('set-aw-name', ex ? ex.name : '');
+    setV('set-aw-mobile', ex ? ex.mobile : '');
+    setV('set-aw-mail', ex ? ex.mail : '');
+    setV('set-aw-address', ex ? ex.address : 'কুমিল্লা');
+    setV('set-aw-wtype', ex ? ex.worker_type : 'Admin');
+    setV('set-aw-role', ex ? ex.role : 'Super Admin');
+    setV('set-aw-uname', ex ? ex.user_name : '');
+    setV('set-aw-pass', ex ? ex.password : 'admin123');
+    setV('set-aw-status', ex ? (ex.status || 'Active') : 'Active');
+    setV('set-aw-activity', ex ? (ex.last_activity || '') : 'অ্যাডমিন প্যানেল ও শিট অ্যাক্সেস');
+    document.getElementById('modal-set-admin-worker')?.classList.remove('hidden');
+  };
+
+  window.handleSaveSetLogWorker = async function(e) {
+    e.preventDefault();
+    const getV = id => (document.getElementById(id)?.value || '').trim();
+    const editId = getV('set-aw-edit-flag');
+    const userId = getV('set-aw-id') || ('WRK-' + Math.floor(100 + Math.random() * 900));
+    const name = getV('set-aw-name');
+    const mobile = getV('set-aw-mobile');
+    if (!name || !mobile) return;
+
+    const entry = {
+      id: userId,
+      user_id: userId,
+      USER_ID: userId,
+      profile_photo: getV('set-aw-photo') || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+      Profile_Photo: getV('set-aw-photo') || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+      name,
+      Name: name,
+      mobile,
+      Mobile: mobile,
+      phone: mobile,
+      mail: getV('set-aw-mail') || `${name.toLowerCase().replace(/\s+/g, '')}@dreamcart.bd`,
+      Mail: getV('set-aw-mail') || `${name.toLowerCase().replace(/\s+/g, '')}@dreamcart.bd`,
+      email: getV('set-aw-mail') || `${name.toLowerCase().replace(/\s+/g, '')}@dreamcart.bd`,
+      address: getV('set-aw-address') || 'কুমিল্লা',
+      Address: getV('set-aw-address') || 'কুমিল্লা',
+      worker_type: getV('set-aw-wtype') || 'Admin',
+      Worker_Type: getV('set-aw-wtype') || 'Admin',
+      role: getV('set-aw-role') || 'Super Admin',
+      Role: getV('set-aw-role') || 'Super Admin',
+      user_name: getV('set-aw-uname') || name,
+      User_Name: getV('set-aw-uname') || name,
+      password: getV('set-aw-pass') || 'admin123',
+      Password: getV('set-aw-pass') || 'admin123',
+      status: getV('set-aw-status') || 'Active',
+      Status: getV('set-aw-status') || 'Active',
+      last_activity: getV('set-aw-activity') || 'অ্যাডমিন প্যানেল থেকে সংরক্ষিত',
+      sheet_name: 'Admin/Worker'
+    };
+
+    removeDeletedSysId('dcbd_deleted_admin_worker', userId);
+    let list = window.getUnifiedAdminWorkerList();
+    const targetKey = String(editId || userId).toLowerCase();
+    const idx = list.findIndex(u => String(u.user_id || u.id).toLowerCase() === targetKey);
+    if (idx >= 0) list[idx] = { ...list[idx], ...entry };
+    else list.unshift(entry);
+
+    window.saveUnifiedAdminWorkerList(list);
+    window.recordAdminAuditLog(`${editId ? 'আপডেট' : 'নতুন সংযোজন'}: ${name} (${userId}) - রোল: ${entry.role}`, 'Admin/Worker Sheet', `Mobile: ${mobile}, Role: ${entry.role}`);
+    window.renderAdminSetLogsDOM();
+    document.getElementById('modal-set-admin-worker')?.classList.add('hidden');
+
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'Admin/Worker শিটে সংরক্ষিত', message: `"${name}" (${userId}) লিস্ট এবং Google Sheet (Admin/Worker)-এ জমা হয়েছে!` });
+    }
+
+    apiClient.request(editId ? 'admin_worker/update' : 'admin_worker/add', 'POST', entry).catch(() => {});
+    apiClient.request('settings/save', 'POST', { admin_worker_json: JSON.stringify(list) }).catch(() => {});
+  };
+
+  window.toggleSetLogWorkerStatus = function(id) {
+    let targetUser = null;
+    const list = window.getUnifiedAdminWorkerList().map(u => {
+      if (String(u.user_id || u.id).toLowerCase() === String(id).toLowerCase()) {
+        const next = String(u.status || 'Active').toLowerCase() === 'inactive' ? 'Active' : 'Inactive';
+        targetUser = { ...u, status: next, Status: next };
+        return targetUser;
+      }
+      return u;
+    });
+    window.saveUnifiedAdminWorkerList(list);
+    window.renderAdminSetLogsDOM();
+    if (targetUser) {
+      window.recordAdminAuditLog(`${targetUser.name} (${targetUser.user_id})-এর স্ট্যাটাস "${targetUser.status}" করা হয়েছে`, 'Admin/Worker Sheet');
+      apiClient.request('admin_worker/update', 'POST', targetUser).catch(() => {});
+      apiClient.request('settings/save', 'POST', { admin_worker_json: JSON.stringify(list) }).catch(() => {});
+    }
+  };
+
+  window.deleteSetLogWorkerItem = function(id) {
+    if (!confirm(`আপনি কি নিশ্চিত যে "${id}" কে তালিকা ও Admin/Worker শিট থেকে মুছে ফেলতে চান?`)) return;
+    addDeletedSysId('dcbd_deleted_admin_worker', id);
+    const list = window.getUnifiedAdminWorkerList().filter(u => String(u.user_id || u.id).toLowerCase() !== String(id).toLowerCase());
+    window.saveUnifiedAdminWorkerList(list);
+    window.recordAdminAuditLog(`অ্যাডমিন/কর্মী "${id}" ডিলিট করা হয়েছে`, 'Admin/Worker Sheet');
+    window.renderAdminSetLogsDOM();
+    document.getElementById('modal-settings-quickview')?.classList.add('hidden');
+
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'ডিলিট সম্পন্ন', message: `${id} তালিকা ও Admin/Worker শিট থেকে মুছে ফেলা হয়েছে।` });
+    }
+    apiClient.request('admin_worker/delete', 'POST', { user_id: id, USER_ID: id, id }).catch(() => {});
+    apiClient.request('settings/save', 'POST', { admin_worker_json: JSON.stringify(list) }).catch(() => {});
+  };
+
+  window.openSetLogWorkerQuickView = function(id) {
+    const u = window.getUnifiedAdminWorkerList().find(x => String(x.user_id || x.id).toLowerCase() === String(id).toLowerCase());
+    if (!u) return;
+    const safeId = escapeSysJsStr(u.user_id || u.id);
+    const isAct = String(u.status || 'Active').toLowerCase() !== 'inactive';
+    const photo = u.profile_photo || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
+    window.showSettingsQuickViewModal({
+      sheetName: 'Admin/Worker',
+      title: u.name,
+      subtitle: `${u.worker_type} • ${u.role}`,
+      badgeText: isAct ? '● Active' : '○ Inactive',
+      badgeClass: isAct ? 'badge-success' : 'badge-warning',
+      avatarUrl: photo,
+      fields: [
+        { label: 'USER_ID', value: u.user_id, mono: true },
+        { label: 'Name (পূর্ণ নাম)', value: u.name },
+        { label: 'Worker_Type (ধরন)', value: u.worker_type },
+        { label: 'Role (রোল/পদবী)', value: u.role },
+        { label: 'Mobile (মোবাইল)', value: u.mobile, mono: true },
+        { label: 'Mail (ইমেইল)', value: u.mail, mono: true },
+        { label: 'User_Name (লগইন নাম)', value: u.user_name, mono: true },
+        { label: 'Password (পাসওয়ার্ড)', value: u.password, mono: true },
+        { label: 'Address (ঠিকানা)', value: u.address },
+        { label: 'সর্বশেষ অডিট নোট', value: u.last_activity || 'সক্রিয়' }
+      ],
+      copyValue: `${u.user_id} | ${u.name} | ${u.mobile} | ${u.role}`,
+      onEditJs: `document.getElementById('modal-settings-quickview')?.classList.add('hidden'); window.openSetLogWorkerModal('${safeId}');`,
+      onDeleteJs: `window.deleteSetLogWorkerItem('${safeId}');`
+    });
+  };
+
+  // Audit Log Entry manual CRUD + QuickView
+  window.openAuditLogEntryModal = function(editId = '') {
+    const logs = window.getAdminAuditLogsList();
+    const ex = editId ? logs.find(l => String(l.id) === String(editId)) : null;
+    const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+    setV('adm-audit-edit-id', ex ? ex.id : '');
+    setV('adm-audit-user', ex ? ex.user : ((authStore && authStore.getUserDisplayName && authStore.getUserDisplayName()) || 'Jainal Abedin'));
+    setV('adm-audit-role', ex ? (ex.role || 'Master Admin') : 'Master Admin');
+    setV('adm-audit-module', ex ? (ex.module || 'System Settings') : 'System Settings');
+    setV('adm-audit-event', ex ? ex.event : '');
+    setV('adm-audit-details', ex ? (ex.details || '') : '');
+    setV('adm-audit-ip', ex ? (ex.ip || '103.114.98.12') : '103.114.98.12');
+    document.getElementById('modal-manage-audit-log')?.classList.remove('hidden');
+  };
+
+  window.handleSaveAuditLogEntry = async function(e) {
+    e.preventDefault();
+    const getV = id => (document.getElementById(id)?.value || '').trim();
+    const editId = getV('adm-audit-edit-id');
+    const user = getV('adm-audit-user') || 'Admin';
+    const role = getV('adm-audit-role') || 'Master Admin';
+    const moduleName = getV('adm-audit-module') || 'System Settings';
+    const event = getV('adm-audit-event');
+    const details = getV('adm-audit-details') || event;
+    const ip = getV('adm-audit-ip') || '103.114.98.12';
+    if (!event) return;
+
+    let logs = window.getAdminAuditLogsList();
+    const payload = {
+      id: editId || ('LOG-' + Math.floor(1000 + Math.random() * 9000)),
+      time: new Date().toLocaleString('bn-BD', { hour: '2-digit', minute: '2-digit', year: 'numeric', month: 'short', day: '2-digit' }),
+      user,
+      role,
+      module: moduleName,
+      event,
+      details,
+      ip,
+      status: 'Verified'
+    };
+    const idx = logs.findIndex(l => String(l.id) === String(payload.id));
+    if (idx >= 0) logs[idx] = { ...logs[idx], ...payload };
+    else logs.unshift(payload);
+
+    localStorage.setItem('dcbd_audit_logs_list', JSON.stringify(logs));
+    if (window.__adminState) window.__adminState.auditLogs = logs;
+    window.__sysSettingsUiState.logs.tabMode = 'audit';
+    window.renderAdminSetLogsDOM();
+    document.getElementById('modal-manage-audit-log')?.classList.add('hidden');
+    apiClient.request('settings/save', 'POST', { audit_logs_json: JSON.stringify(logs) }).catch(() => {});
+    if (toast && toast.show) toast.show({ type: 'success', title: 'অডিট লগ সংরক্ষিত', message: 'অডিট লগ এন্ট্রি লিস্ট ও শিটে জমা হয়েছে!' });
+  };
+
+  window.deleteAuditLogEntry = function(id) {
+    if (!confirm('আপনি কি এই অডিট লগটি মুছে ফেলতে চান?')) return;
+    const logs = window.getAdminAuditLogsList().filter(l => String(l.id) !== String(id));
+    localStorage.setItem('dcbd_audit_logs_list', JSON.stringify(logs));
+    if (window.__adminState) window.__adminState.auditLogs = logs;
+    window.renderAdminSetLogsDOM();
+    document.getElementById('modal-settings-quickview')?.classList.add('hidden');
+    apiClient.request('settings/save', 'POST', { audit_logs_json: JSON.stringify(logs) }).catch(() => {});
+  };
+
+  window.openAuditLogQuickView = function(id) {
+    const l = window.getAdminAuditLogsList().find(x => String(x.id) === String(id));
+    if (!l) return;
+    const safeId = escapeSysJsStr(l.id);
+    window.showSettingsQuickViewModal({
+      sheetName: 'Admin/Worker (Audit Log)',
+      title: l.event,
+      subtitle: `${l.user} (${l.role || 'Admin'})`,
+      badgeText: '● Verified Log',
+      badgeClass: 'badge-success',
+      fields: [
+        { label: 'Log ID', value: l.id, mono: true },
+        { label: 'সময় (Timestamp)', value: l.time, mono: true },
+        { label: 'ইউজার (Admin/Worker)', value: l.user },
+        { label: 'রোল (Role)', value: l.role || 'Master Admin' },
+        { label: 'মডিউল (Module)', value: l.module || 'System Settings' },
+        { label: 'IP অ্যাড্রেস', value: l.ip || '103.114.98.12', mono: true },
+        { label: 'অ্যাকশন ও বিবরণ', value: l.details || l.event }
+      ],
+      copyValue: `${l.id} | ${l.time} | ${l.user} | ${l.event}`,
+      onEditJs: `document.getElementById('modal-settings-quickview')?.classList.add('hidden'); window.openAuditLogEntryModal('${safeId}');`,
+      onDeleteJs: `window.deleteAuditLogEntry('${safeId}');`
+    });
+  };
+
+  // ----------------------------------------------------------------------------
+  // 2) পেমেন্ট মেথড আপডেট (Sheet Name: Payment_Method) — State, Sync, CRUD & QuickView
+  // ----------------------------------------------------------------------------
+  window.getNormalizedPaymentMethods = function() {
+    const delSet = getDeletedSysSet('dcbd_deleted_payment_methods');
+    const rawList = typeof getGlobalPaymentMethods === 'function' ? getGlobalPaymentMethods(false) : [];
+    return (Array.isArray(rawList) ? rawList : []).filter(m => {
+      const id = String(m.id || m.payment_id || m.code || '').trim().toLowerCase();
+      return id && !delSet.has(id);
+    }).map((m, idx) => {
+      const id = String(m.id || m.payment_id || `PM-0${idx + 1}`).trim();
+      const name = String(m.name || m.method_name || 'পেমেন্ট মেথড').trim();
+      const type = String(m.type || m.account_type || (name.toLowerCase().includes('ক্যাশ') || name.toLowerCase().includes('cod') ? 'COD' : 'Mobile Banking')).trim();
+      let code = String(m.code || '').trim().toUpperCase();
+      if (!code) {
+        const nl = name.toLowerCase();
+        if (nl.includes('cod') || nl.includes('ক্যাশ')) code = 'COD';
+        else if (nl.includes('বিকাশ') || nl.includes('bkash')) code = (type.toLowerCase().includes('link') || String(m.link || '').startsWith('http')) ? 'BKASH_PAYMENT' : 'BKASH_PERSONAL';
+        else if (nl.includes('নগদ') || nl.includes('nagad')) code = 'NAGAD_PERSONAL';
+        else if (nl.includes('রকেট') || nl.includes('rocket')) code = 'ROCKET_PERSONAL';
+        else if (nl.includes('ব্যাংক') || nl.includes('bank')) code = 'BANK';
+        else code = id.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+      }
+      const inst = String(m.instructions || m.instruction || m.details || 'পণ্য অর্ডার করার সময় পেমেন্ট সম্পন্ন করুন।').trim();
+      const disc = Number(m.discount_pct !== undefined ? m.discount_pct : (m.discount !== undefined ? m.discount : (code === 'COD' ? 0 : 5))) || 0;
+      return {
+        ...m,
+        id,
+        payment_id: id,
+        code,
+        name,
+        method_name: name,
+        type,
+        account_type: type,
+        number: String(m.number || m.account_number || (code === 'COD' ? 'COD' : '')).trim(),
+        account_number: String(m.number || m.account_number || (code === 'COD' ? 'COD' : '')).trim(),
+        link: String(m.link || m.payment_link || '').trim(),
+        discount_pct: disc,
+        discount: disc,
+        instructions: inst,
+        instruction: inst,
+        details: inst,
+        status: String(m.status || 'Active').trim()
+      };
+    });
+  };
+
   window.renderAdminPaymentMethodsDOM = function() {
+    const kpiBox = document.getElementById('admin-payment-methods-kpi');
     const grid = document.getElementById('admin-payment-methods-grid');
+    const countBadge = document.getElementById('admin-payment-methods-total-badge');
+    const methods = window.getNormalizedPaymentMethods();
+    const st = window.__sysSettingsUiState.payment;
+
+    if (countBadge) countBadge.textContent = methods.length;
+
+    const totalCount = methods.length;
+    const activeCount = methods.filter(m => String(m.status || 'Active').toLowerCase() !== 'inactive').length;
+    const inactiveCount = totalCount - activeCount;
+    const onlineCount = methods.filter(m => m.code !== 'COD' && String(m.type || '').toUpperCase() !== 'COD').length;
+
+    if (kpiBox) {
+      kpiBox.innerHTML = `
+        <div onclick="window.setSysPaymentFilter('statusFilter', 'ALL')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-emerald-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">মোট পেমেন্ট মেথড</div>
+            <div class="text-2xl font-black text-slate-900 dark:text-white font-mono mt-1">${totalCount} টি</div>
+            <div class="text-[10px] text-emerald-600 font-bold mt-0.5">● Sheet: Payment_Method</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xl font-black">💳</div>
+        </div>
+        <div onclick="window.setSysPaymentFilter('statusFilter', 'Active')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-emerald-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">সক্রিয় মেথড (Active)</div>
+            <div class="text-2xl font-black text-emerald-600 font-mono mt-1">${activeCount} টি</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">চেকআউট পেজে দৃশ্যমান</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xl font-black">✅</div>
+        </div>
+        <div onclick="window.setSysPaymentFilter('statusFilter', 'Inactive')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-amber-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">নিষ্ক্রিয় মেথড (Inactive)</div>
+            <div class="text-2xl font-black text-amber-500 font-mono mt-1">${inactiveCount} টি</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">সাময়িক বন্ধ</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center text-xl font-black">⏸️</div>
+        </div>
+        <div onclick="window.setSysPaymentFilter('typeFilter', 'Mobile Banking')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-indigo-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">অনলাইন ও মোবাইল পেমেন্ট</div>
+            <div class="text-2xl font-black text-indigo-600 font-mono mt-1">${onlineCount} টি</div>
+            <div class="text-[10px] text-indigo-600 font-bold mt-0.5">অগ্রিম পেমেন্টে ছাড় সক্রিয়</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-xl font-black">📱</div>
+        </div>
+      `;
+    }
+
     if (!grid) return;
-    const methods = apiClient.getGlobalPaymentMethods ? apiClient.getGlobalPaymentMethods() : [];
-    grid.innerHTML = methods.map(m => {
-      const safeId = String(m.id || '').replace(/'/g, "\'");
+
+    const q = String(st.search || '').toLowerCase().trim();
+    const filtered = methods.filter(m => {
+      if (st.statusFilter !== 'ALL') {
+        const isAct = String(m.status || 'Active').toLowerCase() !== 'inactive';
+        if (st.statusFilter === 'Active' && !isAct) return false;
+        if (st.statusFilter === 'Inactive' && isAct) return false;
+      }
+      if (st.typeFilter !== 'ALL') {
+        const t = String(m.type || '').toLowerCase();
+        const c = String(m.code || '').toLowerCase();
+        const tf = st.typeFilter.toLowerCase();
+        if (!t.includes(tf) && !c.includes(tf)) return false;
+      }
+      if (!q) return true;
+      return (
+        String(m.name || '').toLowerCase().includes(q) ||
+        String(m.id || '').toLowerCase().includes(q) ||
+        String(m.code || '').toLowerCase().includes(q) ||
+        String(m.number || '').toLowerCase().includes(q) ||
+        String(m.type || '').toLowerCase().includes(q) ||
+        String(m.instructions || '').toLowerCase().includes(q)
+      );
+    });
+
+    if (filtered.length === 0) {
+      grid.className = 'w-full';
+      grid.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs border rounded-2xl">কোনো পেমেন্ট মেথড পাওয়া যায়নি।</div>`;
+      return;
+    }
+
+    if (st.viewMode === 'table') {
+      grid.className = 'w-full overflow-x-auto';
+      grid.innerHTML = `
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b text-slate-400 uppercase text-[10px]">
+              <th class="py-2.5 px-3">ID ও কোড</th>
+              <th class="py-2.5 px-3">পেমেন্ট মেথডের নাম</th>
+              <th class="py-2.5 px-3">টাইপ</th>
+              <th class="py-2.5 px-3">অ্যাকাউন্ট / মার্চেন্ট নম্বর</th>
+              <th class="py-2.5 px-3">ছাড় %</th>
+              <th class="py-2.5 px-3">স্ট্যাটাস</th>
+              <th class="py-2.5 px-3 text-right">অ্যাকশন (QuickView / Edit / Delete)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            ${filtered.map(m => {
+              const safeId = escapeSysJsStr(m.id);
+              const isAct = String(m.status || 'Active').toLowerCase() !== 'inactive';
+              return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <td class="py-2.5 px-3 font-mono">
+                    <div class="font-bold text-emerald-600">${escapeSysHtml(m.id)}</div>
+                    <div class="text-[10px] text-slate-400">${escapeSysHtml(m.code)}</div>
+                  </td>
+                  <td class="py-2.5 px-3">
+                    <div class="font-bold text-slate-900 dark:text-white">${escapeSysHtml(m.name)}</div>
+                    <div class="text-[10px] text-slate-400 truncate max-w-xs">${escapeSysHtml(m.instructions || '')}</div>
+                  </td>
+                  <td class="py-2.5 px-3"><span class="badge badge-info text-[10px]">${escapeSysHtml(m.type)}</span></td>
+                  <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${escapeSysHtml(m.number || 'COD')}</td>
+                  <td class="py-2.5 px-3 font-mono font-bold">${Number(m.discount_pct || 0)}%</td>
+                  <td class="py-2.5 px-3">
+                    <button type="button" onclick="window.togglePaymentMethodStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
+                      ${isAct ? '● Active' : '○ Inactive'}
+                    </button>
+                  </td>
+                  <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+                    <button type="button" onclick="window.openPaymentMethodQuickView('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-indigo-600">👁️ কুইকভিউ</button>
+                    <button type="button" onclick="window.openPaymentMethodModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
+                    <button type="button" onclick="window.deletePaymentMethodItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+      return;
+    }
+
+    grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs';
+    grid.innerHTML = filtered.map(m => {
+      const safeId = escapeSysJsStr(m.id);
       const isAct = String(m.status || 'Active').toLowerCase() !== 'inactive';
       return `
         <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
-          <div class="space-y-1.5">
-            <div class="flex items-center justify-between gap-2">
-              <div class="font-bold text-slate-900 dark:text-white text-sm">${m.name}</div>
+          <div class="space-y-2">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-mono text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">${escapeSysHtml(m.id)}</span>
+                  <span class="font-mono text-[10px] text-slate-400">${escapeSysHtml(m.code)}</span>
+                </div>
+                <div class="font-bold text-slate-900 dark:text-white text-sm mt-1">${escapeSysHtml(m.name)}</div>
+              </div>
               <button type="button" onclick="window.togglePaymentMethodStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
                 ${isAct ? '● সক্রিয় (Active)' : '○ নিষ্ক্রিয় (Inactive)'}
               </button>
             </div>
-            <div class="text-[11px] font-mono text-emerald-600 font-bold">নম্বর/অ্যাকাউন্ট: ${m.number || 'N/A'} (${m.type || 'Direct'})</div>
-            <p class="text-[11px] text-slate-500 dark:text-slate-400">${m.instructions || ''}</p>
+            <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900/70 space-y-1 text-[11px]">
+              <div class="font-mono text-emerald-600 font-bold">নম্বর/অ্যাকাউন্ট: ${escapeSysHtml(m.number || 'N/A')}</div>
+              <div class="flex items-center justify-between text-slate-500">
+                <span>টাইপ: <strong>${escapeSysHtml(m.type || 'Direct')}</strong></span>
+                <span class="font-mono font-bold text-indigo-600">ছাড়: ${Number(m.discount_pct || 0)}%</span>
+              </div>
+              ${m.link ? `<div class="text-[10px] font-mono text-pink-600 truncate">🔗 ${escapeSysHtml(m.link)}</div>` : ''}
+            </div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">${escapeSysHtml(m.instructions || '')}</p>
           </div>
-          <div class="flex items-center gap-1.5 pt-2 border-t">
+          <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t">
+            <button type="button" onclick="window.openPaymentMethodQuickView('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-indigo-600">👁️ কুইকভিউ</button>
             <button type="button" onclick="window.togglePaymentMethodStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1">${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}</button>
             <button type="button" onclick="window.openPaymentMethodModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
             <button type="button" onclick="window.deletePaymentMethodItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
@@ -7263,14 +8233,55 @@ window.openBulkSelectedProductsModal = function(mode) {
     }).join('');
   };
 
+  window.setSysPaymentFilter = function(key, val) {
+    window.__sysSettingsUiState.payment[key] = val;
+    const statusEl = document.getElementById('set-pay-status-filter');
+    const typeEl = document.getElementById('set-pay-type-filter');
+    if (statusEl && key === 'statusFilter') statusEl.value = val;
+    if (typeEl && key === 'typeFilter') typeEl.value = val;
+    window.renderAdminPaymentMethodsDOM();
+  };
+
+  window.openPaymentMethodQuickView = function(id) {
+    const m = window.getNormalizedPaymentMethods().find(x => String(x.id).toLowerCase() === String(id).toLowerCase());
+    if (!m) return;
+    const safeId = escapeSysJsStr(m.id);
+    const isAct = String(m.status || 'Active').toLowerCase() !== 'inactive';
+    window.showSettingsQuickViewModal({
+      sheetName: 'Payment_Method',
+      title: m.name,
+      subtitle: `${m.type} (${m.code})`,
+      badgeText: isAct ? '● Active' : '○ Inactive',
+      badgeClass: isAct ? 'badge-success' : 'badge-warning',
+      fields: [
+        { label: 'Payment_ID', value: m.id, mono: true },
+        { label: 'Method Code', value: m.code, mono: true },
+        { label: 'Method_Name (নাম)', value: m.name },
+        { label: 'Account_Type (টাইপ)', value: m.type },
+        { label: 'Account_Number (নম্বর)', value: m.number || 'COD', mono: true },
+        { label: 'Payment_Link (গেটওয়ে লিংক)', value: m.link || '—', mono: true },
+        { label: 'Discount_Pct (অনলাইন ছাড় %)', value: `${Number(m.discount_pct || 0)}%`, mono: true },
+        { label: 'Status (স্ট্যাটাস)', value: m.status || 'Active' },
+        { label: 'Instructions (চেকআউট নির্দেশনা)', value: m.instructions || '' }
+      ],
+      copyValue: m.number || m.link || m.name,
+      onEditJs: `document.getElementById('modal-settings-quickview')?.classList.add('hidden'); window.openPaymentMethodModal('${safeId}');`,
+      onDeleteJs: `window.deletePaymentMethodItem('${safeId}');`
+    });
+  };
+
   window.openPaymentMethodModal = function(id = '') {
-    const methods = apiClient.getGlobalPaymentMethods ? apiClient.getGlobalPaymentMethods() : [];
-    const ex = id ? methods.find(m => m.id === id) : null;
+    const methods = window.getNormalizedPaymentMethods();
+    const ex = id ? methods.find(m => String(m.id).toLowerCase() === String(id).toLowerCase()) : null;
     const setV = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val ?? ''; };
     setV('adm-pay-edit-id', ex ? ex.id : '');
+    setV('adm-pay-id-input', ex ? ex.id : ('PM-' + Math.floor(100 + Math.random() * 900)));
+    setV('adm-pay-code', ex ? ex.code : 'BKASH_PERSONAL');
     setV('adm-pay-name', ex ? ex.name : '');
     setV('adm-pay-number', ex ? ex.number : '');
-    setV('adm-pay-type', ex ? ex.type : 'মার্চেন্ট / পার্সোনাল');
+    setV('adm-pay-type', ex ? ex.type : 'Mobile Banking');
+    setV('adm-pay-link', ex ? (ex.link || '') : '');
+    setV('adm-pay-discount', ex ? (ex.discount_pct ?? 5) : 5);
     setV('adm-pay-inst', ex ? ex.instructions : '');
     setV('adm-pay-status', ex ? ex.status : 'Active');
     document.getElementById('modal-manage-payment-method')?.classList.remove('hidden');
@@ -7279,68 +8290,101 @@ window.openBulkSelectedProductsModal = function(mode) {
   window.handleSavePaymentMethod = async function(e) {
     e.preventDefault();
     const editId = document.getElementById('adm-pay-edit-id')?.value.trim();
+    const customId = document.getElementById('adm-pay-id-input')?.value.trim();
+    const code = (document.getElementById('adm-pay-code')?.value.trim() || 'CUSTOM_PAY').toUpperCase();
     const name = document.getElementById('adm-pay-name')?.value.trim();
-    const number = document.getElementById('adm-pay-number')?.value.trim() || 'COD';
-    const type = document.getElementById('adm-pay-type')?.value.trim() || 'অনলাইন পেমেন্ট';
+    const number = document.getElementById('adm-pay-number')?.value.trim() || (code === 'COD' ? 'COD' : '');
+    const type = document.getElementById('adm-pay-type')?.value.trim() || 'Mobile Banking';
+    const link = document.getElementById('adm-pay-link')?.value.trim() || '';
+    const discountPct = Number(document.getElementById('adm-pay-discount')?.value || 0);
     const instructions = document.getElementById('adm-pay-inst')?.value.trim() || 'পণ্য অর্ডার করার সময় পেমেন্ট সম্পন্ন করুন।';
     const status = document.getElementById('adm-pay-status')?.value || 'Active';
     if (!name) return;
 
-    let methods = [...(apiClient.getGlobalPaymentMethods ? apiClient.getGlobalPaymentMethods() : [])];
+    const finalId = editId || customId || ('PM-' + Math.floor(100 + Math.random() * 900));
+    removeDeletedSysId('dcbd_deleted_payment_methods', finalId);
+
+    let methods = [...window.getNormalizedPaymentMethods()];
     const payload = {
-      id: editId || ('PM-' + Math.floor(100 + Math.random() * 900)),
+      id: finalId,
+      payment_id: finalId,
+      Payment_ID: finalId,
+      code,
+      Code: code,
       name,
+      method_name: name,
+      Method_Name: name,
       number,
+      account_number: number,
+      Account_Number: number,
       type,
+      account_type: type,
+      Account_Type: type,
+      link,
+      payment_link: link,
+      Payment_Link: link,
+      discount_pct: discountPct,
+      Discount_Pct: discountPct,
+      discount: discountPct,
       instructions,
-      status
+      instruction: instructions,
+      details: instructions,
+      Instructions: instructions,
+      status,
+      Status: status,
+      sheet_name: 'Payment_Method'
     };
 
-    const idx = methods.findIndex(m => m.id === payload.id);
+    const idx = methods.findIndex(m => String(m.id).toLowerCase() === String(finalId).toLowerCase());
     if (idx >= 0) methods[idx] = payload;
     else methods.push(payload);
 
     localStorage.setItem('dcbd_payment_methods', JSON.stringify(methods));
+    window.recordAdminAuditLog(`পেমেন্ট মেথড ${editId ? 'আপডেট' : 'সংযোজন'}: ${name} (${finalId})`, 'Payment_Method Sheet', `Number: ${number}, Status: ${status}`);
     window.renderAdminPaymentMethodsDOM();
     if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
     document.getElementById('modal-manage-payment-method')?.classList.add('hidden');
 
-    await apiClient.request('payments/create', 'POST', {
-      payment_id: payload.id,
-      method_name: payload.name,
-      account_number: payload.number,
-      account_type: payload.type,
-      instructions: payload.instructions,
-      status: payload.status
-    }).catch(() => {});
-    await apiClient.request('settings/save', 'POST', { payment_methods: JSON.stringify(methods) }).catch(() => {});
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'Payment_Method শিটে সংরক্ষিত', message: `"${name}" লিস্ট, ওয়েবসাইট চেকআউট এবং Google Sheet (Payment_Method)-এ জমা হয়েছে!` });
+    }
 
-    if (toast && toast.show) toast.show({ type: 'success', title: 'পেমেন্ট মেথড আপডেট', message: `"${name}" ওয়েবসাইট, চেকআউট এবং Google Sheet-এ আপডেট হয়েছে!` });
+    apiClient.request('payment_method/add', 'POST', payload).catch(() => {});
+    apiClient.request('settings/save', 'POST', { payment_methods: JSON.stringify(methods), Payment_Method: JSON.stringify(methods) }).catch(() => {});
   };
 
   window.togglePaymentMethodStatus = async function(id) {
-    let methods = (apiClient.getGlobalPaymentMethods ? apiClient.getGlobalPaymentMethods() : []).map(m => {
-      if (m.id === id) {
+    let changedItem = null;
+    let methods = window.getNormalizedPaymentMethods().map(m => {
+      if (String(m.id).toLowerCase() === String(id).toLowerCase()) {
         const next = String(m.status || 'Active').toLowerCase() === 'inactive' ? 'Active' : 'Inactive';
-        return { ...m, status: next };
+        changedItem = { ...m, status: next, Status: next, sheet_name: 'Payment_Method' };
+        return changedItem;
       }
       return m;
     });
     localStorage.setItem('dcbd_payment_methods', JSON.stringify(methods));
     window.renderAdminPaymentMethodsDOM();
     if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
-    await apiClient.request('settings/save', 'POST', { payment_methods: JSON.stringify(methods) }).catch(() => {});
+    if (changedItem) {
+      window.recordAdminAuditLog(`পেমেন্ট মেথড "${changedItem.name}" স্ট্যাটাস "${changedItem.status}" করা হয়েছে`, 'Payment_Method Sheet');
+      apiClient.request('payment_method/update', 'POST', changedItem).catch(() => {});
+    }
+    apiClient.request('settings/save', 'POST', { payment_methods: JSON.stringify(methods), Payment_Method: JSON.stringify(methods) }).catch(() => {});
   };
 
   window.deletePaymentMethodItem = async function(id) {
-    if (!confirm('আপনি কি এই পেমেন্ট মেথডটি মুছে ফেলতে চান?')) return;
-    let methods = (apiClient.getGlobalPaymentMethods ? apiClient.getGlobalPaymentMethods() : []).filter(m => m.id !== id);
+    if (!confirm('আপনি কি এই পেমেন্ট মেথডটি তালিকা ও Payment_Method শিট থেকে মুছে ফেলতে চান?')) return;
+    addDeletedSysId('dcbd_deleted_payment_methods', id);
+    let methods = window.getNormalizedPaymentMethods().filter(m => String(m.id).toLowerCase() !== String(id).toLowerCase());
     localStorage.setItem('dcbd_payment_methods', JSON.stringify(methods));
+    window.recordAdminAuditLog(`পেমেন্ট মেথড "${id}" ডিলিট করা হয়েছে`, 'Payment_Method Sheet');
     window.renderAdminPaymentMethodsDOM();
+    document.getElementById('modal-settings-quickview')?.classList.add('hidden');
     if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
-    await apiClient.request('payments/delete', 'POST', { payment_id: id }).catch(() => {});
-    await apiClient.request('settings/save', 'POST', { payment_methods: JSON.stringify(methods) }).catch(() => {});
-    if (toast && toast.show) toast.show({ type: 'success', title: 'পেমেন্ট মেথড ডিলিট', message: 'পেমেন্ট মেথডটি লিস্ট ও শিট থেকে মুছে ফেলা হয়েছে।' });
+    if (toast && toast.show) toast.show({ type: 'success', title: 'পেমেন্ট মেথড ডিলিট', message: 'পেমেন্ট মেথডটি লিস্ট ও Payment_Method শিট থেকে মুছে ফেলা হয়েছে।' });
+    apiClient.request('payment_method/delete', 'POST', { payment_id: id, id, sheet_name: 'Payment_Method' }).catch(() => {});
+    apiClient.request('settings/save', 'POST', { payment_methods: JSON.stringify(methods), Payment_Method: JSON.stringify(methods) }).catch(() => {});
   };
 
   window.handleAdminAddOnlinePayment = function(e) {
@@ -7366,29 +8410,215 @@ window.openBulkSelectedProductsModal = function(mode) {
     if (toast && toast.show) toast.show({ type: 'success', title: 'পেমেন্ট গেটওয়ে যুক্ত', message: `${name} গেটওয়ে সংযুক্ত হয়েছে!` });
   };
 
-  // ============================================================================
-  // SYSTEM SETTINGS: 2) DELIVERY METHODS (Active/Add/Edit/Delete/List + Storefront & Sheet Sync)
-  // ============================================================================
+  // ----------------------------------------------------------------------------
+  // 3) ডেলিভারি মেথড কনফিগ (Sheet Name: Delivery_Area) — State, Sync, CRUD & QuickView
+  // ----------------------------------------------------------------------------
+  window.getNormalizedDeliveryMethods = function() {
+    const delSet = getDeletedSysSet('dcbd_deleted_delivery_areas');
+    const rawList = typeof getGlobalDeliveryMethods === 'function' ? getGlobalDeliveryMethods(false) : [];
+    return (Array.isArray(rawList) ? rawList : []).filter(d => {
+      const id = String(d.id || d.delivery_id || d.code || '').trim().toLowerCase();
+      return id && !delSet.has(id);
+    }).map((d, idx) => {
+      const id = String(d.id || d.delivery_id || `DLV-0${idx + 1}`).trim();
+      const name = String(d.name || d.zone || d.area_name || 'ডেলিভারি এরিয়া').trim();
+      let code = String(d.code || d.zone_code || '').trim().toLowerCase();
+      if (!code) {
+        const nl = name.toLowerCase();
+        if (nl.includes('cumilla') || nl.includes('কুমিল্লা')) code = 'cumilla';
+        else if (nl.includes('outside') || nl.includes('বাইরে') || nl.includes('সারা')) code = 'outside';
+        else if (nl.includes('pickup') || nl.includes('পিকআপ')) code = 'pickup';
+        else if (nl.includes('dhaka') || nl.includes('ঢাকা')) code = 'dhaka';
+        else code = id.toLowerCase();
+      }
+      const charge = Number(d.charge !== undefined ? d.charge : (d.delivery_charge !== undefined ? d.delivery_charge : 70)) || 0;
+      const eta = String(d.eta || d.time || d.delivery_time || '২৪-৪৮ ঘন্টায় ডেলিভারি').trim();
+      const freeThreshold = Number(d.free_threshold !== undefined ? d.free_threshold : (charge === 0 ? 0 : 2000));
+      return {
+        ...d,
+        id,
+        delivery_id: id,
+        code,
+        zone_code: code,
+        name,
+        zone: name,
+        area_name: name,
+        charge,
+        delivery_charge: charge,
+        eta,
+        time: eta,
+        delivery_time: eta,
+        free_threshold: isNaN(freeThreshold) ? 2000 : freeThreshold,
+        coverage: String(d.coverage || d.coverage_details || name).trim(),
+        courier: String(d.courier || d.courier_partner || 'Steadfast / Pathao / RedX').trim(),
+        status: String(d.status || 'Active').trim()
+      };
+    });
+  };
+
   window.renderAdminDeliveryMethodsDOM = function() {
+    const kpiBox = document.getElementById('admin-delivery-methods-kpi');
     const grid = document.getElementById('admin-delivery-methods-grid');
+    const countBadge = document.getElementById('admin-delivery-methods-total-badge');
+    const zones = window.getNormalizedDeliveryMethods();
+    const st = window.__sysSettingsUiState.delivery;
+
+    if (countBadge) countBadge.textContent = zones.length;
+
+    const totalZones = zones.length;
+    const activeZones = zones.filter(d => String(d.status || 'Active').toLowerCase() !== 'inactive').length;
+    const inactiveZones = totalZones - activeZones;
+    const paidZones = zones.filter(d => Number(d.charge) > 0);
+    const avgCharge = paidZones.length > 0 ? Math.round(paidZones.reduce((s, d) => s + Number(d.charge || 0), 0) / paidZones.length) : 0;
+
+    if (kpiBox) {
+      kpiBox.innerHTML = `
+        <div onclick="window.setSysDeliveryFilter('statusFilter', 'ALL')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-emerald-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">মোট ডেলিভারি এরিয়া</div>
+            <div class="text-2xl font-black text-slate-900 dark:text-white font-mono mt-1">${totalZones} টি</div>
+            <div class="text-[10px] text-emerald-600 font-bold mt-0.5">● Sheet: Delivery_Area</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xl font-black">🗺️</div>
+        </div>
+        <div onclick="window.setSysDeliveryFilter('statusFilter', 'Active')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-emerald-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">সক্রিয় জোন (Active)</div>
+            <div class="text-2xl font-black text-emerald-600 font-mono mt-1">${activeZones} টি</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">চেকআউট পেজে সচল</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xl font-black">✅</div>
+        </div>
+        <div onclick="window.setSysDeliveryFilter('statusFilter', 'Inactive')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-amber-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">নিষ্ক্রিয় জোন (Inactive)</div>
+            <div class="text-2xl font-black text-amber-500 font-mono mt-1">${inactiveZones} টি</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">সাময়িক বন্ধ</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center text-xl font-black">⏸️</div>
+        </div>
+        <div onclick="window.setSysDeliveryFilter('zoneFilter', 'ALL')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-indigo-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">গড় ডেলিভারি চার্জ</div>
+            <div class="text-2xl font-black text-indigo-600 font-mono mt-1">৳${avgCharge}</div>
+            <div class="text-[10px] text-indigo-600 font-bold mt-0.5">ফ্রি ডেলিভারি: ৳২,০০০+</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-xl font-black">🚚</div>
+        </div>
+      `;
+    }
+
     if (!grid) return;
-    const zones = apiClient.getGlobalDeliveryMethods ? apiClient.getGlobalDeliveryMethods() : [];
-    grid.innerHTML = zones.map(d => {
-      const safeId = String(d.id || '').replace(/'/g, "\'");
+
+    const q = String(st.search || '').toLowerCase().trim();
+    const filtered = zones.filter(d => {
+      if (st.statusFilter !== 'ALL') {
+        const isAct = String(d.status || 'Active').toLowerCase() !== 'inactive';
+        if (st.statusFilter === 'Active' && !isAct) return false;
+        if (st.statusFilter === 'Inactive' && isAct) return false;
+      }
+      if (st.zoneFilter !== 'ALL') {
+        if (String(d.code || '').toLowerCase() !== st.zoneFilter.toLowerCase()) return false;
+      }
+      if (!q) return true;
+      return (
+        String(d.name || '').toLowerCase().includes(q) ||
+        String(d.id || '').toLowerCase().includes(q) ||
+        String(d.code || '').toLowerCase().includes(q) ||
+        String(d.charge || '').toLowerCase().includes(q) ||
+        String(d.eta || '').toLowerCase().includes(q) ||
+        String(d.coverage || '').toLowerCase().includes(q)
+      );
+    });
+
+    if (filtered.length === 0) {
+      grid.className = 'w-full';
+      grid.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs border rounded-2xl">কোনো ডেলিভারি এরিয়া পাওয়া যায়নি।</div>`;
+      return;
+    }
+
+    if (st.viewMode === 'table') {
+      grid.className = 'w-full overflow-x-auto';
+      grid.innerHTML = `
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b text-slate-400 uppercase text-[10px]">
+              <th class="py-2.5 px-3">ID ও কোড</th>
+              <th class="py-2.5 px-3">ডেলিভারি এরিয়া / জোন</th>
+              <th class="py-2.5 px-3">ডেলিভারি চার্জ</th>
+              <th class="py-2.5 px-3">সময়সীমা (ETA)</th>
+              <th class="py-2.5 px-3">ফ্রি শিপিং লিমিট</th>
+              <th class="py-2.5 px-3">স্ট্যাটাস</th>
+              <th class="py-2.5 px-3 text-right">অ্যাকশন (QuickView / Edit / Delete)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            ${filtered.map(d => {
+              const safeId = escapeSysJsStr(d.id);
+              const isAct = String(d.status || 'Active').toLowerCase() !== 'inactive';
+              return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <td class="py-2.5 px-3 font-mono">
+                    <div class="font-bold text-emerald-600">${escapeSysHtml(d.id)}</div>
+                    <div class="text-[10px] text-slate-400">${escapeSysHtml(d.code)}</div>
+                  </td>
+                  <td class="py-2.5 px-3">
+                    <div class="font-bold text-slate-900 dark:text-white">${escapeSysHtml(d.name)}</div>
+                    <div class="text-[10px] text-slate-400">${escapeSysHtml(d.coverage || '')}</div>
+                  </td>
+                  <td class="py-2.5 px-3 font-mono font-black text-emerald-600 text-sm">${Number(d.charge) === 0 ? 'ফ্রি (৳০)' : `৳${d.charge}`}</td>
+                  <td class="py-2.5 px-3">${escapeSysHtml(d.eta)}</td>
+                  <td class="py-2.5 px-3 font-mono">৳${d.free_threshold || 2000}</td>
+                  <td class="py-2.5 px-3">
+                    <button type="button" onclick="window.toggleDeliveryMethodStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
+                      ${isAct ? '● Active' : '○ Inactive'}
+                    </button>
+                  </td>
+                  <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+                    <button type="button" onclick="window.openDeliveryMethodQuickView('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-indigo-600">👁️ কুইকভিউ</button>
+                    <button type="button" onclick="window.openDeliveryMethodModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
+                    <button type="button" onclick="window.deleteDeliveryMethodItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+      return;
+    }
+
+    grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs';
+    grid.innerHTML = filtered.map(d => {
+      const safeId = escapeSysJsStr(d.id);
       const isAct = String(d.status || 'Active').toLowerCase() !== 'inactive';
       return `
         <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
-          <div class="space-y-1">
-            <div class="flex items-center justify-between gap-2">
-              <div class="font-bold text-slate-900 dark:text-white text-sm">${d.name}</div>
+          <div class="space-y-2">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="font-mono text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">${escapeSysHtml(d.id)}</span>
+                  <span class="font-mono text-[10px] text-slate-400">Code: ${escapeSysHtml(d.code)}</span>
+                </div>
+                <div class="font-bold text-slate-900 dark:text-white text-sm mt-1">${escapeSysHtml(d.name)}</div>
+              </div>
               <button type="button" onclick="window.toggleDeliveryMethodStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
                 ${isAct ? '● সক্রিয়' : '○ নিষ্ক্রিয়'}
               </button>
             </div>
-            <div class="text-lg font-black text-emerald-600 font-mono">৳${d.charge}</div>
-            <p class="text-[11px] text-slate-400">⏱️ আনুমানিক সময়: ${d.eta || '২৪-৪৮ ঘন্টা'}</p>
+            <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900/70 space-y-1 text-[11px]">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500">ডেলিভারি চার্জ:</span>
+                <span class="text-lg font-black text-emerald-600 font-mono">${Number(d.charge) === 0 ? 'ফ্রি (৳০)' : `৳${d.charge}`}</span>
+              </div>
+              <div>⏱️ সময়সীমা: <strong>${escapeSysHtml(d.eta || '২৪-৪৮ ঘন্টা')}</strong></div>
+              <div>🎁 ফ্রি শিপিং অর্ডার লিমিট: <span class="font-mono font-bold text-indigo-600">৳${d.free_threshold || 2000}+</span></div>
+              <div class="text-[10px] text-slate-400 truncate">📍 কভারেজ: ${escapeSysHtml(d.coverage || d.name)}</div>
+            </div>
           </div>
-          <div class="flex items-center gap-1.5 pt-2 border-t">
+          <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t">
+            <button type="button" onclick="window.openDeliveryMethodQuickView('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-indigo-600">👁️ কুইকভিউ</button>
             <button type="button" onclick="window.toggleDeliveryMethodStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1">${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}</button>
             <button type="button" onclick="window.openDeliveryMethodModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
             <button type="button" onclick="window.deleteDeliveryMethodItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
@@ -7398,14 +8628,55 @@ window.openBulkSelectedProductsModal = function(mode) {
     }).join('');
   };
 
+  window.setSysDeliveryFilter = function(key, val) {
+    window.__sysSettingsUiState.delivery[key] = val;
+    const statusEl = document.getElementById('set-del-status-filter');
+    const zoneEl = document.getElementById('set-del-zone-filter');
+    if (statusEl && key === 'statusFilter') statusEl.value = val;
+    if (zoneEl && key === 'zoneFilter') zoneEl.value = val;
+    window.renderAdminDeliveryMethodsDOM();
+  };
+
+  window.openDeliveryMethodQuickView = function(id) {
+    const d = window.getNormalizedDeliveryMethods().find(x => String(x.id).toLowerCase() === String(id).toLowerCase());
+    if (!d) return;
+    const safeId = escapeSysJsStr(d.id);
+    const isAct = String(d.status || 'Active').toLowerCase() !== 'inactive';
+    window.showSettingsQuickViewModal({
+      sheetName: 'Delivery_Area',
+      title: d.name,
+      subtitle: `Zone Code: ${d.code} • চার্জ: ৳${d.charge}`,
+      badgeText: isAct ? '● Active' : '○ Inactive',
+      badgeClass: isAct ? 'badge-success' : 'badge-warning',
+      fields: [
+        { label: 'Delivery_ID', value: d.id, mono: true },
+        { label: 'Zone_Code', value: d.code, mono: true },
+        { label: 'Area_Name (ডেলিভারি জোন)', value: d.name },
+        { label: 'Delivery_Charge (চার্জ ৳)', value: `৳${d.charge}`, mono: true },
+        { label: 'Delivery_Time (সময়সীমা)', value: d.eta },
+        { label: 'Free_Threshold (ফ্রি ডেলিভারি লিমিট)', value: `৳${d.free_threshold || 2000}`, mono: true },
+        { label: 'Courier_Partner (কুরিয়ার)', value: d.courier || 'Steadfast / Pathao / RedX' },
+        { label: 'Coverage_Details (কভারেজ এরিয়া)', value: d.coverage || d.name }
+      ],
+      copyValue: `${d.id} | ${d.name} | ৳${d.charge} | ${d.eta}`,
+      onEditJs: `document.getElementById('modal-settings-quickview')?.classList.add('hidden'); window.openDeliveryMethodModal('${safeId}');`,
+      onDeleteJs: `window.deleteDeliveryMethodItem('${safeId}');`
+    });
+  };
+
   window.openDeliveryMethodModal = function(id = '') {
-    const zones = apiClient.getGlobalDeliveryMethods ? apiClient.getGlobalDeliveryMethods() : [];
-    const ex = id ? zones.find(d => d.id === id) : null;
+    const zones = window.getNormalizedDeliveryMethods();
+    const ex = id ? zones.find(d => String(d.id).toLowerCase() === String(id).toLowerCase()) : null;
     const setV = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val ?? ''; };
     setV('adm-del-edit-id', ex ? ex.id : '');
+    setV('adm-del-id-input', ex ? ex.id : ('DLV-' + Math.floor(100 + Math.random() * 900)));
+    setV('adm-del-code', ex ? ex.code : 'cumilla');
     setV('adm-del-name', ex ? ex.name : '');
     setV('adm-del-charge', ex ? ex.charge : 70);
-    setV('adm-del-eta', ex ? ex.eta : '২৪-৪৮ ঘন্টায় হোম ডেলিভারি');
+    setV('adm-del-eta', ex ? ex.eta : '১-২ দিন (২৪-৪৮ ঘন্টায় হোম ডেলিভারি)');
+    setV('adm-del-free-min', ex ? (ex.free_threshold ?? 2000) : 2000);
+    setV('adm-del-coverage', ex ? (ex.coverage || '') : '');
+    setV('adm-del-courier', ex ? (ex.courier || 'Steadfast / Pathao / RedX') : 'Steadfast / Pathao / RedX');
     setV('adm-del-status', ex ? ex.status : 'Active');
     document.getElementById('modal-manage-delivery-method')?.classList.remove('hidden');
   };
@@ -7413,81 +8684,321 @@ window.openBulkSelectedProductsModal = function(mode) {
   window.handleSaveDeliveryMethod = async function(e) {
     e.preventDefault();
     const editId = document.getElementById('adm-del-edit-id')?.value.trim();
+    const customId = document.getElementById('adm-del-id-input')?.value.trim();
+    const code = (document.getElementById('adm-del-code')?.value.trim() || 'dhaka').toLowerCase();
     const name = document.getElementById('adm-del-name')?.value.trim();
     const charge = Number(document.getElementById('adm-del-charge')?.value || 0);
     const eta = document.getElementById('adm-del-eta')?.value.trim() || '২৪-৪৮ ঘন্টায় ডেলিভারি';
+    const freeThreshold = Number(document.getElementById('adm-del-free-min')?.value || 2000);
+    const coverage = document.getElementById('adm-del-coverage')?.value.trim() || name;
+    const courier = document.getElementById('adm-del-courier')?.value.trim() || 'Steadfast / Pathao / RedX';
     const status = document.getElementById('adm-del-status')?.value || 'Active';
     if (!name) return;
 
-    let zones = [...(apiClient.getGlobalDeliveryMethods ? apiClient.getGlobalDeliveryMethods() : [])];
+    const finalId = editId || customId || ('DLV-' + Math.floor(100 + Math.random() * 900));
+    removeDeletedSysId('dcbd_deleted_delivery_areas', finalId);
+
+    let zones = [...window.getNormalizedDeliveryMethods()];
     const payload = {
-      id: editId || ('DLV-' + Math.floor(100 + Math.random() * 900)),
+      id: finalId,
+      delivery_id: finalId,
+      Delivery_ID: finalId,
+      code,
+      zone_code: code,
+      Zone_Code: code,
       name,
+      zone: name,
+      area_name: name,
+      Area_Name: name,
       charge,
+      delivery_charge: charge,
+      Delivery_Charge: charge,
       eta,
-      status
+      time: eta,
+      delivery_time: eta,
+      Delivery_Time: eta,
+      free_threshold: freeThreshold,
+      Free_Threshold: freeThreshold,
+      coverage,
+      coverage_details: coverage,
+      Coverage_Details: coverage,
+      courier,
+      courier_partner: courier,
+      Courier_Partner: courier,
+      status,
+      Status: status,
+      sheet_name: 'Delivery_Area'
     };
-    const idx = zones.findIndex(d => d.id === payload.id);
+
+    const idx = zones.findIndex(d => String(d.id).toLowerCase() === String(finalId).toLowerCase());
     if (idx >= 0) zones[idx] = payload;
     else zones.push(payload);
 
     localStorage.setItem('dcbd_delivery_methods', JSON.stringify(zones));
+    window.recordAdminAuditLog(`ডেলিভারি এরিয়া ${editId ? 'আপডেট' : 'সংযোজন'}: ${name} (৳${charge})`, 'Delivery_Area Sheet', `Zone: ${code}, ETA: ${eta}`);
     window.renderAdminDeliveryMethodsDOM();
     if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
     document.getElementById('modal-manage-delivery-method')?.classList.add('hidden');
 
-    await apiClient.request('settings/save', 'POST', { delivery_methods: JSON.stringify(zones) }).catch(() => {});
-    if (toast && toast.show) toast.show({ type: 'success', title: 'ডেলিভারি মেথড সংরক্ষিত', message: `"${name}" (৳${charge}) চেকআউট, ওয়েবসাইট ও শিটে আপডেট হয়েছে!` });
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'Delivery_Area শিটে সংরক্ষিত', message: `"${name}" (৳${charge}) চেকআউট, ওয়েবসাইট ও Google Sheet (Delivery_Area)-এ জমা হয়েছে!` });
+    }
+
+    apiClient.request('delivery_area/add', 'POST', payload).catch(() => {});
+    apiClient.request('settings/save', 'POST', { delivery_methods: JSON.stringify(zones), Delivery_Area: JSON.stringify(zones) }).catch(() => {});
   };
 
   window.toggleDeliveryMethodStatus = async function(id) {
-    let zones = (apiClient.getGlobalDeliveryMethods ? apiClient.getGlobalDeliveryMethods() : []).map(d => {
-      if (d.id === id) {
+    let changedItem = null;
+    let zones = window.getNormalizedDeliveryMethods().map(d => {
+      if (String(d.id).toLowerCase() === String(id).toLowerCase()) {
         const next = String(d.status || 'Active').toLowerCase() === 'inactive' ? 'Active' : 'Inactive';
-        return { ...d, status: next };
+        changedItem = { ...d, status: next, Status: next, sheet_name: 'Delivery_Area' };
+        return changedItem;
       }
       return d;
     });
     localStorage.setItem('dcbd_delivery_methods', JSON.stringify(zones));
     window.renderAdminDeliveryMethodsDOM();
     if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
-    await apiClient.request('settings/save', 'POST', { delivery_methods: JSON.stringify(zones) }).catch(() => {});
+    if (changedItem) {
+      window.recordAdminAuditLog(`ডেলিভারি জোন "${changedItem.name}" স্ট্যাটাস "${changedItem.status}" করা হয়েছে`, 'Delivery_Area Sheet');
+      apiClient.request('delivery_area/update', 'POST', changedItem).catch(() => {});
+    }
+    apiClient.request('settings/save', 'POST', { delivery_methods: JSON.stringify(zones), Delivery_Area: JSON.stringify(zones) }).catch(() => {});
   };
 
   window.deleteDeliveryMethodItem = async function(id) {
-    if (!confirm('আপনি কি এই ডেলিভারি মেথডটি মুছে ফেলতে চান?')) return;
-    let zones = (apiClient.getGlobalDeliveryMethods ? apiClient.getGlobalDeliveryMethods() : []).filter(d => d.id !== id);
+    if (!confirm('আপনি কি এই ডেলিভারি এরিয়াটি তালিকা ও Delivery_Area শিট থেকে মুছে ফেলতে চান?')) return;
+    addDeletedSysId('dcbd_deleted_delivery_areas', id);
+    let zones = window.getNormalizedDeliveryMethods().filter(d => String(d.id).toLowerCase() !== String(id).toLowerCase());
     localStorage.setItem('dcbd_delivery_methods', JSON.stringify(zones));
+    window.recordAdminAuditLog(`ডেলিভারি এরিয়া "${id}" ডিলিট করা হয়েছে`, 'Delivery_Area Sheet');
     window.renderAdminDeliveryMethodsDOM();
+    document.getElementById('modal-settings-quickview')?.classList.add('hidden');
     if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
-    await apiClient.request('settings/save', 'POST', { delivery_methods: JSON.stringify(zones) }).catch(() => {});
-    if (toast && toast.show) toast.show({ type: 'success', title: 'ডেলিভারি জোন ডিলিট', message: 'ডেলিভারি জোনটি মুছে ফেলা হয়েছে।' });
+    if (toast && toast.show) toast.show({ type: 'success', title: 'ডেলিভারি এরিয়া ডিলিট', message: 'ডেলিভারি জোনটি লিস্ট ও Delivery_Area শিট থেকে মুছে ফেলা হয়েছে।' });
+    apiClient.request('delivery_area/delete', 'POST', { delivery_id: id, id, sheet_name: 'Delivery_Area' }).catch(() => {});
+    apiClient.request('settings/save', 'POST', { delivery_methods: JSON.stringify(zones), Delivery_Area: JSON.stringify(zones) }).catch(() => {});
   };
 
-  // ============================================================================
-  // SYSTEM SETTINGS: 3) OFFERS & COUPONS (Active/Add/Edit/Delete/List + Storefront & Sheet Sync)
-  // ============================================================================
+  // ----------------------------------------------------------------------------
+  // 4) অফার ও কুপন ডিসকাউন্ট (Sheet Name: Offer_or_Coupon) — State, Sync, CRUD & QuickView
+  // ----------------------------------------------------------------------------
+  window.getNormalizedOffersList = function() {
+    const delSet = getDeletedSysSet('dcbd_deleted_offers');
+    const rawList = typeof getGlobalOffers === 'function' ? getGlobalOffers(false) : [];
+    return (Array.isArray(rawList) ? rawList : []).filter(o => {
+      const id = String(o.id || o.offer_id || '').trim().toLowerCase();
+      const cd = String(o.code || o.coupon_code || '').trim().toLowerCase();
+      return (id || cd) && !delSet.has(id) && !delSet.has(cd);
+    }).map((o, idx) => {
+      const id = String(o.id || o.offer_id || `OFF-0${idx + 1}`).trim();
+      const code = String(o.code || o.coupon_code || `PROMO${idx + 1}`).trim().toUpperCase();
+      const discount = String(o.discount || o.discount_text || '১০% ছাড়').trim();
+      const title = String(o.title || o.offer_name || `${code} — ${discount}`).trim();
+      let dType = String(o.discount_type || o.type || '').trim().toLowerCase();
+      if (dType === 'freeship') dType = 'free_shipping';
+      if (!dType) {
+        if (discount.includes('ফ্রি') || code.includes('FREE')) dType = 'free_shipping';
+        else if (discount.includes('%')) dType = 'percent';
+        else dType = 'flat';
+      }
+      const dVal = Number(o.discount_value !== undefined ? o.discount_value : (o.value !== undefined ? o.value : 10)) || 0;
+      const minSpend = Number(o.min_spend !== undefined ? o.min_spend : (o.min_order !== undefined ? o.min_order : 1500)) || 0;
+      return {
+        ...o,
+        id,
+        offer_id: id,
+        code,
+        coupon_code: code,
+        title,
+        discount,
+        discount_text: discount,
+        discount_type: dType,
+        type: dType,
+        discount_value: dVal,
+        value: dVal,
+        min_spend: minSpend,
+        expiry_date: String(o.expiry_date || '2026-12-31').trim(),
+        usage_limit: String(o.usage_limit || 'Unlimited').trim(),
+        status: String(o.status || 'Active').trim()
+      };
+    });
+  };
+
   window.renderAdminOffersDOM = function() {
+    const kpiBox = document.getElementById('admin-offers-kpi');
     const grid = document.getElementById('admin-offers-grid');
+    const countBadge = document.getElementById('admin-offers-total-badge');
+    const offers = window.getNormalizedOffersList();
+    const st = window.__sysSettingsUiState.offers;
+
+    if (countBadge) countBadge.textContent = offers.length;
+
+    const totalOffers = offers.length;
+    const activeOffers = offers.filter(o => String(o.status || 'Active').toLowerCase() !== 'inactive').length;
+    const inactiveOffers = totalOffers - activeOffers;
+    const freeShipOffers = offers.filter(o => o.discount_type === 'free_shipping' || String(o.discount || '').includes('ফ্রি')).length;
+
+    if (kpiBox) {
+      kpiBox.innerHTML = `
+        <div onclick="window.setSysOffersFilter('statusFilter', 'ALL')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-emerald-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">মোট অফার ও কুপন</div>
+            <div class="text-2xl font-black text-slate-900 dark:text-white font-mono mt-1">${totalOffers} টি</div>
+            <div class="text-[10px] text-emerald-600 font-bold mt-0.5">● Sheet: Offer_or_Coupon</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xl font-black">🎟️</div>
+        </div>
+        <div onclick="window.setSysOffersFilter('statusFilter', 'Active')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-emerald-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">সক্রিয় কুপন (Active)</div>
+            <div class="text-2xl font-black text-emerald-600 font-mono mt-1">${activeOffers} টি</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">চেকআউট ও অফার পেজে সচল</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xl font-black">✅</div>
+        </div>
+        <div onclick="window.setSysOffersFilter('statusFilter', 'Inactive')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-amber-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">নিষ্ক্রিয় কুপন (Inactive)</div>
+            <div class="text-2xl font-black text-amber-500 font-mono mt-1">${inactiveOffers} টি</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">স্থগিত বা মেয়াদ শেষ</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center text-xl font-black">⏸️</div>
+        </div>
+        <div onclick="window.setSysOffersFilter('typeFilter', 'ALL')" class="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs cursor-pointer hover:border-indigo-500 transition flex items-center justify-between">
+          <div>
+            <div class="text-[11px] font-bold text-slate-400 uppercase">ফ্রি ডেলিভারি ও মেগা ছাড়</div>
+            <div class="text-2xl font-black text-indigo-600 font-mono mt-1">${freeShipOffers} / ${totalOffers}</div>
+            <div class="text-[10px] text-indigo-600 font-bold mt-0.5">কুপন ভ্যালিডেশন সক্রিয়</div>
+          </div>
+          <div class="w-11 h-11 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-xl font-black">🔥</div>
+        </div>
+      `;
+    }
+
     if (!grid) return;
-    const offers = apiClient.getGlobalOffers ? apiClient.getGlobalOffers() : [];
-    grid.innerHTML = offers.map(o => {
-      const safeId = String(o.id || o.code || '').replace(/'/g, "\'");
+
+    const q = String(st.search || '').toLowerCase().trim();
+    const filtered = offers.filter(o => {
+      if (st.statusFilter !== 'ALL') {
+        const isAct = String(o.status || 'Active').toLowerCase() !== 'inactive';
+        if (st.statusFilter === 'Active' && !isAct) return false;
+        if (st.statusFilter === 'Inactive' && isAct) return false;
+      }
+      if (st.typeFilter !== 'ALL') {
+        const dt = String(o.discount_type || '').toLowerCase();
+        if (dt !== st.typeFilter.toLowerCase()) return false;
+      }
+      if (!q) return true;
+      return (
+        String(o.code || '').toLowerCase().includes(q) ||
+        String(o.id || '').toLowerCase().includes(q) ||
+        String(o.title || '').toLowerCase().includes(q) ||
+        String(o.discount || '').toLowerCase().includes(q) ||
+        String(o.min_spend || '').toLowerCase().includes(q)
+      );
+    });
+
+    if (filtered.length === 0) {
+      grid.className = 'w-full';
+      grid.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs border rounded-2xl">কোনো অফার বা কুপন পাওয়া যায়নি।</div>`;
+      return;
+    }
+
+    if (st.viewMode === 'table') {
+      grid.className = 'w-full overflow-x-auto';
+      grid.innerHTML = `
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="border-b text-slate-400 uppercase text-[10px]">
+              <th class="py-2.5 px-3">ID ও কুপন কোড</th>
+              <th class="py-2.5 px-3">অফার শিরোনাম ও ছাড়</th>
+              <th class="py-2.5 px-3">ডিসকাউন্ট ধরন ও মান</th>
+              <th class="py-2.5 px-3">সর্বনিম্ন অর্ডার</th>
+              <th class="py-2.5 px-3">মেয়াদ</th>
+              <th class="py-2.5 px-3">স্ট্যাটাস</th>
+              <th class="py-2.5 px-3 text-right">অ্যাকশন (QuickView / Edit / Delete)</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y">
+            ${filtered.map(o => {
+              const safeId = escapeSysJsStr(o.id || o.code);
+              const safeCode = escapeSysJsStr(o.code);
+              const isAct = String(o.status || 'Active').toLowerCase() !== 'inactive';
+              return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
+                  <td class="py-2.5 px-3 font-mono">
+                    <div class="font-bold text-slate-400 text-[10px]">${escapeSysHtml(o.id)}</div>
+                    <div class="font-black text-emerald-600 text-sm">🎟️ ${escapeSysHtml(o.code)}</div>
+                  </td>
+                  <td class="py-2.5 px-3">
+                    <div class="font-bold text-slate-900 dark:text-white">${escapeSysHtml(o.title)}</div>
+                    <div class="text-[11px] font-bold text-emerald-600">${escapeSysHtml(o.discount)}</div>
+                  </td>
+                  <td class="py-2.5 px-3 font-mono">
+                    <span class="badge badge-info text-[10px]">${escapeSysHtml(o.discount_type)}</span>
+                    <span class="font-bold ml-1">${o.discount_type === 'percent' ? `${o.discount_value}%` : `৳${o.discount_value}`}</span>
+                  </td>
+                  <td class="py-2.5 px-3 font-mono font-bold">৳${o.min_spend || 0}</td>
+                  <td class="py-2.5 px-3 font-mono text-[11px] text-slate-500">${escapeSysHtml(o.expiry_date || '2026-12-31')}</td>
+                  <td class="py-2.5 px-3">
+                    <button type="button" onclick="window.toggleOfferStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
+                      ${isAct ? '● Active' : '○ Inactive'}
+                    </button>
+                  </td>
+                  <td class="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+                    <button type="button" onclick="window.copyToClipboard('${safeCode}', 'কুপন কোড কপি হয়েছে!')" class="btn-secondary py-1 px-2 text-[10px] font-bold">📋 কপি</button>
+                    <button type="button" onclick="window.openOfferQuickView('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-indigo-600">👁️ কুইকভিউ</button>
+                    <button type="button" onclick="window.openOfferModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
+                    <button type="button" onclick="window.deleteOfferItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+      return;
+    }
+
+    grid.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs';
+    grid.innerHTML = filtered.map(o => {
+      const safeId = escapeSysJsStr(o.id || o.code);
+      const safeCode = escapeSysJsStr(o.code);
       const isAct = String(o.status || 'Active').toLowerCase() !== 'inactive';
       return `
         <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
-          <div class="space-y-1">
+          <div class="space-y-2">
             <div class="flex items-center justify-between font-mono font-black text-emerald-600 text-sm">
-              <span>🎟️ ${o.code}</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded">${escapeSysHtml(o.id)}</span>
+                <span>🎟️ ${escapeSysHtml(o.code)}</span>
+              </div>
               <button type="button" onclick="window.toggleOfferStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[9px] font-sans cursor-pointer">
                 ${isAct ? '● Active' : '○ Inactive'}
               </button>
             </div>
-            <div class="text-xs font-bold text-slate-900 dark:text-white">${o.discount}</div>
-            <div class="text-[11px] text-slate-400">সর্বনিম্ন অর্ডার: ৳${o.min_spend || 0}</div>
+            <div class="font-bold text-slate-900 dark:text-white text-sm">${escapeSysHtml(o.title)}</div>
+            <div class="p-2.5 rounded-xl bg-white dark:bg-slate-900/70 space-y-1 text-[11px]">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500">ছাড়ের পরিমাণ:</span>
+                <span class="font-black text-emerald-600">${escapeSysHtml(o.discount)}</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500">সর্বনিম্ন অর্ডার:</span>
+                <span class="font-mono font-bold">৳${o.min_spend || 0}</span>
+              </div>
+              <div class="flex items-center justify-between text-[10px] text-slate-400">
+                <span>ধরন: ${escapeSysHtml(o.discount_type)}</span>
+                <span>মেয়াদ: ${escapeSysHtml(o.expiry_date || '2026-12-31')}</span>
+              </div>
+            </div>
           </div>
-          <div class="flex items-center gap-1.5 pt-2 border-t">
-            <button type="button" onclick="window.toggleOfferStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1">${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}</button>
+          <div class="flex flex-wrap items-center gap-1.5 pt-2 border-t">
+            <button type="button" onclick="window.openOfferQuickView('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold text-indigo-600">👁️ কুইকভিউ</button>
+            <button type="button" onclick="window.copyToClipboard('${safeCode}', 'কুপন কোড কপি হয়েছে!')" class="btn-secondary py-1 px-2 text-[10px] font-bold">📋 কপি</button>
             <button type="button" onclick="window.openOfferModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
             <button type="button" onclick="window.deleteOfferItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
           </div>
@@ -7496,16 +9007,57 @@ window.openBulkSelectedProductsModal = function(mode) {
     }).join('');
   };
 
+  window.setSysOffersFilter = function(key, val) {
+    window.__sysSettingsUiState.offers[key] = val;
+    const statusEl = document.getElementById('set-off-status-filter');
+    const typeEl = document.getElementById('set-off-type-filter');
+    if (statusEl && key === 'statusFilter') statusEl.value = val;
+    if (typeEl && key === 'typeFilter') typeEl.value = val;
+    window.renderAdminOffersDOM();
+  };
+
+  window.openOfferQuickView = function(id) {
+    const o = window.getNormalizedOffersList().find(x => String(x.id).toLowerCase() === String(id).toLowerCase() || String(x.code).toLowerCase() === String(id).toLowerCase());
+    if (!o) return;
+    const safeId = escapeSysJsStr(o.id || o.code);
+    const isAct = String(o.status || 'Active').toLowerCase() !== 'inactive';
+    window.showSettingsQuickViewModal({
+      sheetName: 'Offer_or_Coupon',
+      title: `🎟️ ${o.code} — ${o.discount}`,
+      subtitle: o.title,
+      badgeText: isAct ? '● Active' : '○ Inactive',
+      badgeClass: isAct ? 'badge-success' : 'badge-warning',
+      fields: [
+        { label: 'Offer_ID', value: o.id, mono: true },
+        { label: 'Coupon_Code (কুপন কোড)', value: o.code, mono: true },
+        { label: 'Title (শিরোনাম)', value: o.title },
+        { label: 'Discount_Text (ছাড়ের বিবরণ)', value: o.discount },
+        { label: 'Discount_Type (ধরন)', value: o.discount_type, mono: true },
+        { label: 'Discount_Value (মান)', value: o.discount_type === 'percent' ? `${o.discount_value}%` : `৳${o.discount_value}`, mono: true },
+        { label: 'Min_Spend (সর্বনিম্ন অর্ডার)', value: `৳${o.min_spend || 0}`, mono: true },
+        { label: 'Expiry_Date (মেয়াদ)', value: o.expiry_date || '2026-12-31', mono: true },
+        { label: 'Usage_Limit / নোট', value: o.usage_limit || 'Unlimited' }
+      ],
+      copyValue: o.code,
+      onEditJs: `document.getElementById('modal-settings-quickview')?.classList.add('hidden'); window.openOfferModal('${safeId}');`,
+      onDeleteJs: `window.deleteOfferItem('${safeId}');`
+    });
+  };
+
   window.openOfferModal = function(id = '') {
-    const offers = apiClient.getGlobalOffers ? apiClient.getGlobalOffers() : [];
-    const ex = id ? offers.find(o => (o.id === id || o.code === id)) : null;
+    const offers = window.getNormalizedOffersList();
+    const ex = id ? offers.find(o => String(o.id).toLowerCase() === String(id).toLowerCase() || String(o.code).toLowerCase() === String(id).toLowerCase()) : null;
     const setV = (elId, val) => { const el = document.getElementById(elId); if (el) el.value = val ?? ''; };
     setV('adm-offer-edit-id', ex ? (ex.id || ex.code) : '');
+    setV('adm-offer-id-input', ex ? ex.id : ('OFF-' + Math.floor(100 + Math.random() * 900)));
     setV('adm-new-offer-code', ex ? ex.code : '');
+    setV('adm-new-offer-title', ex ? ex.title : '');
     setV('adm-new-offer-disc', ex ? ex.discount : '');
-    setV('adm-new-offer-type', ex ? (ex.type || 'percent') : 'percent');
-    setV('adm-new-offer-val', ex ? (ex.value ?? 10) : 10);
+    setV('adm-new-offer-type', ex ? (ex.discount_type || 'percent') : 'percent');
+    setV('adm-new-offer-val', ex ? (ex.discount_value ?? 10) : 10);
     setV('adm-new-offer-min', ex ? (ex.min_spend ?? 1500) : 1500);
+    setV('adm-new-offer-expiry', ex ? (ex.expiry_date || '2026-12-31') : '2026-12-31');
+    setV('adm-new-offer-limit', ex ? (ex.usage_limit || 'সকল গ্রাহকের জন্য প্রযোজ্য') : 'সকল গ্রাহকের জন্য প্রযোজ্য');
     setV('adm-new-offer-status', ex ? (ex.status || 'Active') : 'Active');
     document.getElementById('modal-add-offer')?.classList.remove('hidden');
   };
@@ -7513,44 +9065,79 @@ window.openBulkSelectedProductsModal = function(mode) {
   window.handleAdminAddOffer = async function(e) {
     e.preventDefault();
     const editId = document.getElementById('adm-offer-edit-id')?.value.trim();
+    const customId = document.getElementById('adm-offer-id-input')?.value.trim();
     const code = document.getElementById('adm-new-offer-code')?.value.trim().toUpperCase();
     const discount = document.getElementById('adm-new-offer-disc')?.value.trim();
-    const type = document.getElementById('adm-new-offer-type')?.value || 'percent';
+    const title = document.getElementById('adm-new-offer-title')?.value.trim() || `${code} — ${discount}`;
+    let rawType = document.getElementById('adm-new-offer-type')?.value || 'percent';
+    if (rawType === 'freeship') rawType = 'free_shipping';
     const val = Number(document.getElementById('adm-new-offer-val')?.value || 10);
     const min = Number(document.getElementById('adm-new-offer-min')?.value || 0);
+    const expiry = document.getElementById('adm-new-offer-expiry')?.value || '2026-12-31';
+    const limit = document.getElementById('adm-new-offer-limit')?.value.trim() || 'Unlimited';
     const status = document.getElementById('adm-new-offer-status')?.value || 'Active';
     if (!code || !discount) return;
 
-    let offers = [...(apiClient.getGlobalOffers ? apiClient.getGlobalOffers() : [])];
+    const finalId = (editId && editId.startsWith('OFF-')) ? editId : (customId || ('OFF-' + Math.floor(100 + Math.random() * 900)));
+    removeDeletedSysId('dcbd_deleted_offers', finalId);
+    removeDeletedSysId('dcbd_deleted_offers', code);
+
+    let offers = [...window.getNormalizedOffersList()];
     const payload = {
-      id: editId && editId.startsWith('OFF-') ? editId : ('OFF-' + Math.floor(100 + Math.random() * 900)),
+      id: finalId,
+      offer_id: finalId,
+      Offer_ID: finalId,
       code,
+      coupon_code: code,
+      Coupon_Code: code,
+      title,
+      Title: title,
       discount,
-      type,
+      discount_text: discount,
+      Discount_Text: discount,
+      discount_type: rawType,
+      Discount_Type: rawType,
+      type: rawType,
+      discount_value: val,
+      Discount_Value: val,
       value: val,
       min_spend: min,
-      status
+      Min_Spend: min,
+      expiry_date: expiry,
+      Expiry_Date: expiry,
+      usage_limit: limit,
+      Usage_Limit: limit,
+      status,
+      Status: status,
+      sheet_name: 'Offer_or_Coupon'
     };
 
-    const idx = offers.findIndex(o => o.id === editId || o.code === editId || o.code === code);
+    const idx = offers.findIndex(o => String(o.id).toLowerCase() === String(editId).toLowerCase() || String(o.code).toLowerCase() === String(editId).toLowerCase() || String(o.code).toLowerCase() === code.toLowerCase());
     if (idx >= 0) offers[idx] = payload;
     else offers.unshift(payload);
 
     localStorage.setItem('dcbd_sheet_offers', JSON.stringify(offers));
     if (window.__adminState) window.__adminState.offers = offers;
+    window.recordAdminAuditLog(`অফার/কুপন ${editId ? 'আপডেট' : 'সংযোজন'}: ${code} (${discount})`, 'Offer_or_Coupon Sheet', `Min Spend: ৳${min}, Status: ${status}`);
     window.renderAdminOffersDOM();
     if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
     document.getElementById('modal-add-offer')?.classList.add('hidden');
 
-    await apiClient.request('settings/save', 'POST', { offers_json: JSON.stringify(offers) }).catch(() => {});
-    if (toast && toast.show) toast.show({ type: 'success', title: 'অফার ও কুপন সংরক্ষিত', message: `কুপন "${code}" সম্পূর্ণ ওয়েবসাইট, অফার পেজ ও Google Sheet-এ আপডেট হয়েছে!` });
+    if (toast && toast.show) {
+      toast.show({ type: 'success', title: 'Offer_or_Coupon শিটে সংরক্ষিত', message: `কুপন "${code}" সম্পূর্ণ ওয়েবসাইট, অফার পেজ ও Google Sheet (Offer_or_Coupon)-এ জমা হয়েছে!` });
+    }
+
+    apiClient.request('offer_or_coupon/add', 'POST', payload).catch(() => {});
+    apiClient.request('settings/save', 'POST', { offers_json: JSON.stringify(offers), Offer_or_Coupon: JSON.stringify(offers) }).catch(() => {});
   };
 
   window.toggleOfferStatus = async function(id) {
-    let offers = (apiClient.getGlobalOffers ? apiClient.getGlobalOffers() : []).map(o => {
-      if (o.id === id || o.code === id) {
+    let changedItem = null;
+    let offers = window.getNormalizedOffersList().map(o => {
+      if (String(o.id).toLowerCase() === String(id).toLowerCase() || String(o.code).toLowerCase() === String(id).toLowerCase()) {
         const next = String(o.status || 'Active').toLowerCase() === 'inactive' ? 'Active' : 'Inactive';
-        return { ...o, status: next };
+        changedItem = { ...o, status: next, Status: next, sheet_name: 'Offer_or_Coupon' };
+        return changedItem;
       }
       return o;
     });
@@ -7558,18 +9145,285 @@ window.openBulkSelectedProductsModal = function(mode) {
     if (window.__adminState) window.__adminState.offers = offers;
     window.renderAdminOffersDOM();
     if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
-    await apiClient.request('settings/save', 'POST', { offers_json: JSON.stringify(offers) }).catch(() => {});
+    if (changedItem) {
+      window.recordAdminAuditLog(`কুপন "${changedItem.code}" স্ট্যাটাস "${changedItem.status}" করা হয়েছে`, 'Offer_or_Coupon Sheet');
+      apiClient.request('offer_or_coupon/update', 'POST', changedItem).catch(() => {});
+    }
+    apiClient.request('settings/save', 'POST', { offers_json: JSON.stringify(offers), Offer_or_Coupon: JSON.stringify(offers) }).catch(() => {});
   };
 
   window.deleteOfferItem = async function(id) {
-    if (!confirm(`আপনি কি কুপন "${id}" মুছে ফেলতে চান?`)) return;
-    let offers = (apiClient.getGlobalOffers ? apiClient.getGlobalOffers() : []).filter(o => o.id !== id && o.code !== id);
+    if (!confirm(`আপনি কি কুপন "${id}" তালিকা ও Offer_or_Coupon শিট থেকে মুছে ফেলতে চান?`)) return;
+    addDeletedSysId('dcbd_deleted_offers', id);
+    let offers = window.getNormalizedOffersList().filter(o => String(o.id).toLowerCase() !== String(id).toLowerCase() && String(o.code).toLowerCase() !== String(id).toLowerCase());
     localStorage.setItem('dcbd_sheet_offers', JSON.stringify(offers));
     if (window.__adminState) window.__adminState.offers = offers;
+    window.recordAdminAuditLog(`কুপন "${id}" ডিলিট করা হয়েছে`, 'Offer_or_Coupon Sheet');
     window.renderAdminOffersDOM();
+    document.getElementById('modal-settings-quickview')?.classList.add('hidden');
     if (window.refreshGlobalSiteChrome) window.refreshGlobalSiteChrome();
-    await apiClient.request('settings/save', 'POST', { offers_json: JSON.stringify(offers) }).catch(() => {});
-    if (toast && toast.show) toast.show({ type: 'success', title: 'কুপন ডিলিট', message: 'কুপনটি লিস্ট ও শিট থেকে মুছে ফেলা হয়েছে।' });
+    if (toast && toast.show) toast.show({ type: 'success', title: 'কুপন ডিলিট', message: 'কুপনটি লিস্ট ও Offer_or_Coupon শিট থেকে মুছে ফেলা হয়েছে।' });
+    apiClient.request('offer_or_coupon/delete', 'POST', { offer_id: id, code: id, id, sheet_name: 'Offer_or_Coupon' }).catch(() => {});
+    apiClient.request('settings/save', 'POST', { offers_json: JSON.stringify(offers), Offer_or_Coupon: JSON.stringify(offers) }).catch(() => {});
+  };
+
+  // ----------------------------------------------------------------------------
+  // UNIVERSAL QUICKVIEW MODAL RENDERER FOR ALL 4 SYSTEM SETTINGS MODULES
+  // ----------------------------------------------------------------------------
+  window.showSettingsQuickViewModal = function(cfg = {}) {
+    const modal = document.getElementById('modal-settings-quickview');
+    const body = document.getElementById('modal-settings-quickview-body');
+    if (!modal || !body) return;
+
+    const fieldsHtml = (cfg.fields || []).map(f => `
+      <div class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/70">
+        <div class="text-[10px] font-bold text-slate-400 uppercase">${escapeSysHtml(f.label)}</div>
+        <div class="text-xs font-bold text-slate-900 dark:text-white mt-0.5 break-words ${f.mono ? 'font-mono text-emerald-600 dark:text-emerald-400' : ''}">${escapeSysHtml(f.value || '—')}</div>
+      </div>
+    `).join('');
+
+    body.innerHTML = `
+      <div class="flex items-start justify-between gap-3 border-b pb-3">
+        <div class="flex items-center gap-3">
+          ${cfg.avatarUrl ? `<img src="${escapeSysHtml(cfg.avatarUrl)}" class="w-12 h-12 rounded-2xl object-cover border" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />` : `<div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xl font-black">⚙️</div>`}
+          <div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-bold">Sheet: ${escapeSysHtml(cfg.sheetName || 'Settings')}</span>
+              <span class="badge ${cfg.badgeClass || 'badge-success'} text-[10px]">${escapeSysHtml(cfg.badgeText || 'Active')}</span>
+            </div>
+            <h4 class="font-black text-base text-slate-900 dark:text-white mt-1">${escapeSysHtml(cfg.title || '')}</h4>
+            <p class="text-[11px] text-slate-500">${escapeSysHtml(cfg.subtitle || '')}</p>
+          </div>
+        </div>
+        <button type="button" class="text-slate-400 hover:text-rose-500 font-bold text-sm" onclick="document.getElementById('modal-settings-quickview')?.classList.add('hidden')">✕</button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 my-3 max-h-[55vh] overflow-y-auto pr-1">
+        ${fieldsHtml}
+      </div>
+
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-3 border-t">
+        <button type="button" class="btn-secondary py-1.5 px-3 text-xs font-bold" onclick="window.copyToClipboard('${escapeSysJsStr(cfg.copyValue || cfg.title || '')}', 'তথ্য কপি হয়েছে!')">📋 কপি করুন</button>
+        <div class="flex items-center gap-2">
+          ${cfg.onEditJs ? `<button type="button" class="btn-primary py-1.5 px-4 text-xs font-bold" onclick="${cfg.onEditJs}">✏️ এডিট করুন</button>` : ''}
+          ${cfg.onDeleteJs ? `<button type="button" class="btn-secondary py-1.5 px-3 text-xs font-bold text-rose-600 border-rose-200" onclick="${cfg.onDeleteJs}">🗑️ ডিলিট</button>` : ''}
+          <button type="button" class="btn-secondary py-1.5 px-4 text-xs font-bold" onclick="document.getElementById('modal-settings-quickview')?.classList.add('hidden')">বন্ধ করুন</button>
+        </div>
+      </div>
+    `;
+    modal.classList.remove('hidden');
+  };
+
+  // ----------------------------------------------------------------------------
+  // LIVE NON-BLOCKING BACKGROUND SYNC WITH THE 4 GOOGLE SHEETS:
+  //   - Admin/Worker
+  //   - Payment_Method
+  //   - Delivery_Area
+  //   - Offer_or_Coupon
+  // ----------------------------------------------------------------------------
+  window.syncSystemSettingsFromSheets = async function(force = false) {
+    const uiSt = window.__sysSettingsUiState;
+    if (uiSt.syncing) return;
+    if (!force && uiSt.lastSyncAt && (Date.now() - uiSt.lastSyncAt < 45000)) return;
+    uiSt.syncing = true;
+
+    document.querySelectorAll('.btn-sys-sheet-sync').forEach(btn => {
+      btn.disabled = true;
+      btn.innerHTML = '⏳ সিঙ্ক হচ্ছে...';
+    });
+
+    try {
+      const [
+        awRows1, awRows2,
+        pmRows,
+        daRows,
+        ocRows,
+        settingsRows
+      ] = await Promise.all([
+        fetchSysSheetRowsViaGviz('Admin/Worker', 6500).catch(() => []),
+        fetchSysSheetRowsViaGviz('AdminWorker', 6500).catch(() => []),
+        fetchSysSheetRowsViaGviz('Payment_Method', 6500).catch(() => []),
+        fetchSysSheetRowsViaGviz('Delivery_Area', 6500).catch(() => []),
+        fetchSysSheetRowsViaGviz('Offer_or_Coupon', 6500).catch(() => []),
+        fetchSysSheetRowsViaGviz('Settings', 6500).catch(() => [])
+      ]);
+
+      // Parse Settings sheet fallback JSONs if present
+      const settingsMap = {};
+      if (Array.isArray(settingsRows)) {
+        settingsRows.forEach(r => {
+          const k = String(r.name || r.Name || r.col_0 || '').trim();
+          const v = String(r.details || r.Details || r.col_1 || '').trim();
+          if (k && v) settingsMap[k] = v;
+        });
+      }
+
+      // 1. Merge Admin/Worker Sheet
+      const rawAwRows = (Array.isArray(awRows1) && awRows1.length > 0) ? awRows1 : (Array.isArray(awRows2) ? awRows2 : []);
+      const delAw = getDeletedSysSet('dcbd_deleted_admin_worker');
+      if (rawAwRows.length > 0) {
+        const sheetMembers = rawAwRows.map((r, i) => {
+          const uid = String(r.user_id || r.USER_ID || r.col_0 || `USR-${101 + i}`).trim();
+          const name = String(r.name || r.Name || r.col_2 || '').trim();
+          if (!name || name.toLowerCase() === 'name' || delAw.has(uid.toLowerCase())) return null;
+          const mob = String(r.mobile || r.Mobile || r.col_3 || '').trim();
+          const mail = String(r.mail || r.Mail || r.col_4 || '').trim();
+          return {
+            id: uid,
+            user_id: uid,
+            USER_ID: uid,
+            profile_photo: r.profile_photo || r.Profile_Photo || r.col_1 || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg',
+            name,
+            mobile: mob,
+            phone: mob,
+            mail,
+            email: mail,
+            address: String(r.address || r.Address || r.col_5 || 'কুমিল্লা').trim(),
+            worker_type: String(r.worker_type || r.Worker_Type || r.col_6 || 'Admin').trim(),
+            role: String(r.role || r.Role || r.col_7 || 'Super Admin').trim(),
+            user_name: String(r.user_name || r.User_Name || r.col_8 || name).trim(),
+            password: String(r.password || r.Password || r.col_9 || 'admin123').trim(),
+            status: String(r.status || r.Status || r.col_10 || 'Active').trim(),
+            last_activity: String(r.activity_log || r.last_activity || r.col_11 || 'Google Sheet (Admin/Worker) থেকে সিঙ্ককৃত').trim()
+          };
+        }).filter(Boolean);
+
+        if (sheetMembers.length > 0) {
+          const localMembers = window.getUnifiedAdminWorkerList();
+          const mergedMap = new Map();
+          localMembers.forEach(m => mergedMap.set(String(m.user_id).toLowerCase(), m));
+          sheetMembers.forEach(m => {
+            const k = String(m.user_id).toLowerCase();
+            if (!mergedMap.has(k)) mergedMap.set(k, m);
+            else mergedMap.set(k, { ...m, ...mergedMap.get(k) });
+          });
+          window.saveUnifiedAdminWorkerList(Array.from(mergedMap.values()));
+        }
+      }
+
+      // 2. Merge Payment_Method Sheet
+      const delPm = getDeletedSysSet('dcbd_deleted_payment_methods');
+      let parsedPm = [];
+      if (Array.isArray(pmRows) && pmRows.length > 0) {
+        parsedPm = pmRows.map((r, i) => {
+          const id = String(r.payment_id || r.Payment_ID || r.id || r.col_0 || `PM-0${i + 1}`).trim();
+          const name = String(r.method_name || r.Method_Name || r.payment_method || r.name || r.col_2 || r.col_1 || '').trim();
+          if (!name || name.toLowerCase() === 'method_name' || delPm.has(id.toLowerCase())) return null;
+          const code = String(r.code || r.Code || r.col_1 || '').trim().toUpperCase();
+          const type = String(r.account_type || r.Account_Type || r.type || r.col_3 || 'Mobile Banking').trim();
+          const number = String(r.account_number || r.Account_Number || r.number || r.col_4 || r.col_2 || '').trim();
+          const link = String(r.payment_link || r.Payment_Link || r.link || r.col_5 || '').trim();
+          const disc = Number(r.discount_pct !== undefined ? r.discount_pct : (r.col_6 !== undefined && r.col_6 !== '' ? r.col_6 : 5)) || 0;
+          const inst = String(r.instructions || r.Instructions || r.details || r.col_7 || r.col_4 || 'পণ্য অর্ডার করার সময় পেমেন্ট সম্পন্ন করুন।').trim();
+          const status = String(r.status || r.Status || r.col_8 || 'Active').trim();
+          return { id, payment_id: id, code, name, method_name: name, type, account_type: type, number, account_number: number, link, discount_pct: disc, discount: disc, instructions: inst, instruction: inst, details: inst, status };
+        }).filter(Boolean);
+      } else if (settingsMap.Payment_Method || settingsMap.payment_methods) {
+        try {
+          const arr = JSON.parse(settingsMap.Payment_Method || settingsMap.payment_methods);
+          if (Array.isArray(arr)) parsedPm = arr.filter(x => x && !delPm.has(String(x.id || '').toLowerCase()));
+        } catch (e) {}
+      }
+      if (parsedPm.length > 0) {
+        const localPm = window.getNormalizedPaymentMethods();
+        const pmMap = new Map();
+        localPm.forEach(m => pmMap.set(String(m.id).toLowerCase(), m));
+        parsedPm.forEach(m => {
+          const k = String(m.id).toLowerCase();
+          if (!pmMap.has(k)) pmMap.set(k, m);
+        });
+        localStorage.setItem('dcbd_payment_methods', JSON.stringify(Array.from(pmMap.values())));
+      }
+
+      // 3. Merge Delivery_Area Sheet
+      const delDa = getDeletedSysSet('dcbd_deleted_delivery_areas');
+      let parsedDa = [];
+      if (Array.isArray(daRows) && daRows.length > 0) {
+        parsedDa = daRows.map((r, i) => {
+          const id = String(r.delivery_id || r.Delivery_ID || r.id || r.col_0 || `DLV-0${i + 1}`).trim();
+          const name = String(r.area_name || r.Area_Name || r.zone || r.name || r.col_2 || r.col_1 || '').trim();
+          if (!name || name.toLowerCase() === 'area_name' || delDa.has(id.toLowerCase())) return null;
+          const code = String(r.zone_code || r.Zone_Code || r.code || r.col_1 || id).trim().toLowerCase();
+          const charge = Number(r.delivery_charge !== undefined ? r.delivery_charge : (r.charge !== undefined ? r.charge : (r.col_3 !== undefined ? r.col_3 : r.col_2))) || 0;
+          const eta = String(r.delivery_time || r.Delivery_Time || r.eta || r.time || r.col_4 || '২৪-৪৮ ঘন্টায় ডেলিভারি').trim();
+          const freeThreshold = Number(r.free_threshold !== undefined ? r.free_threshold : (r.col_5 !== undefined && r.col_5 !== '' ? r.col_5 : 2000)) || 2000;
+          const coverage = String(r.coverage_details || r.Coverage_Details || r.coverage || r.col_6 || name).trim();
+          const courier = String(r.courier_partner || r.Courier_Partner || r.courier || r.col_7 || 'Steadfast / Pathao / RedX').trim();
+          const status = String(r.status || r.Status || r.col_8 || 'Active').trim();
+          return { id, delivery_id: id, code, zone_code: code, name, zone: name, area_name: name, charge, delivery_charge: charge, eta, time: eta, delivery_time: eta, free_threshold: freeThreshold, coverage, courier, status };
+        }).filter(Boolean);
+      } else if (settingsMap.Delivery_Area || settingsMap.delivery_methods) {
+        try {
+          const arr = JSON.parse(settingsMap.Delivery_Area || settingsMap.delivery_methods);
+          if (Array.isArray(arr)) parsedDa = arr.filter(x => x && !delDa.has(String(x.id || '').toLowerCase()));
+        } catch (e) {}
+      }
+      if (parsedDa.length > 0) {
+        const localDa = window.getNormalizedDeliveryMethods();
+        const daMap = new Map();
+        localDa.forEach(d => daMap.set(String(d.id).toLowerCase(), d));
+        parsedDa.forEach(d => {
+          const k = String(d.id).toLowerCase();
+          if (!daMap.has(k)) daMap.set(k, d);
+        });
+        localStorage.setItem('dcbd_delivery_methods', JSON.stringify(Array.from(daMap.values())));
+      }
+
+      // 4. Merge Offer_or_Coupon Sheet
+      const delOc = getDeletedSysSet('dcbd_deleted_offers');
+      let parsedOc = [];
+      if (Array.isArray(ocRows) && ocRows.length > 0) {
+        parsedOc = ocRows.map((r, i) => {
+          const id = String(r.offer_id || r.Offer_ID || r.id || r.col_0 || `OFF-0${i + 1}`).trim();
+          const code = String(r.coupon_code || r.Coupon_Code || r.code || r.col_1 || r.col_0 || '').trim().toUpperCase();
+          if (!code || code.toLowerCase() === 'coupon_code' || delOc.has(id.toLowerCase()) || delOc.has(code.toLowerCase())) return null;
+          const title = String(r.title || r.Title || r.col_2 || code).trim();
+          const discount = String(r.discount_text || r.Discount_Text || r.discount || r.col_3 || r.col_2 || '১০% ছাড়').trim();
+          const dType = String(r.discount_type || r.Discount_Type || r.type || r.col_4 || 'percent').trim().toLowerCase();
+          const dVal = Number(r.discount_value !== undefined ? r.discount_value : (r.col_5 !== undefined && r.col_5 !== '' ? r.col_5 : 10)) || 0;
+          const minSpend = Number(r.min_spend !== undefined ? r.min_spend : (r.col_6 !== undefined && r.col_6 !== '' ? r.col_6 : 1500)) || 0;
+          const expiry = String(r.expiry_date || r.Expiry_Date || r.col_7 || '2026-12-31').trim();
+          const limit = String(r.usage_limit || r.Usage_Limit || r.col_8 || 'Unlimited').trim();
+          const status = String(r.status || r.Status || r.col_9 || 'Active').trim();
+          return { id, offer_id: id, code, coupon_code: code, title, discount, discount_text: discount, discount_type: dType, type: dType, discount_value: dVal, value: dVal, min_spend: minSpend, expiry_date: expiry, usage_limit: limit, status };
+        }).filter(Boolean);
+      } else if (settingsMap.Offer_or_Coupon || settingsMap.offers_json) {
+        try {
+          const arr = JSON.parse(settingsMap.Offer_or_Coupon || settingsMap.offers_json);
+          if (Array.isArray(arr)) parsedOc = arr.filter(x => x && !delOc.has(String(x.id || '').toLowerCase()) && !delOc.has(String(x.code || '').toLowerCase()));
+        } catch (e) {}
+      }
+      if (parsedOc.length > 0) {
+        const localOc = window.getNormalizedOffersList();
+        const ocMap = new Map();
+        localOc.forEach(o => ocMap.set(String(o.code || o.id).toLowerCase(), o));
+        parsedOc.forEach(o => {
+          const k = String(o.code || o.id).toLowerCase();
+          if (!ocMap.has(k)) ocMap.set(k, o);
+        });
+        const finalOc = Array.from(ocMap.values());
+        localStorage.setItem('dcbd_sheet_offers', JSON.stringify(finalOc));
+        if (window.__adminState) window.__adminState.offers = finalOc;
+      }
+
+      uiSt.lastSyncAt = Date.now();
+      window.renderAdminSetLogsDOM();
+      window.renderAdminPaymentMethodsDOM();
+      window.renderAdminDeliveryMethodsDOM();
+      window.renderAdminOffersDOM();
+
+      if (force && toast && toast.show) {
+        toast.show({ type: 'success', title: 'Google Sheet সিঙ্ক সম্পন্ন', message: 'Admin/Worker, Payment_Method, Delivery_Area ও Offer_or_Coupon শিট থেকে সর্বশেষ ডাটা লোড হয়েছে!' });
+      }
+    } catch (err) {
+      // Fail silently on background sync
+    } finally {
+      uiSt.syncing = false;
+      document.querySelectorAll('.btn-sys-sheet-sync').forEach(btn => {
+        btn.disabled = false;
+        btn.innerHTML = '🔄 শিট সিঙ্ক';
+      });
+    }
   };
 
   // ============================================================================
@@ -8525,10 +10379,10 @@ function renderSidebarAndTopbar({
             <span id="chevron-mob-group-settings" class="chevron">▶</span>
           </button>
           <div id="subnav-mob-group-settings" class="dc-sidebar-subnav closed">
-            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-logs', 'group-settings')">লগইন ও অডিট লগ</button>
-            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-payment', 'group-settings')">পেমেন্ট মেথড</button>
-            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-delivery', 'group-settings')">ডেলিভারি চার্জ ও জোন</button>
-            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-offers', 'group-settings')">অফার ও কুপন</button>
+            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-logs', 'group-settings')">অডিট ও কর্মী লগ</button>
+            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-payment', 'group-settings')">পেমেন্ট মেথড আপডেট</button>
+            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-delivery', 'group-settings')">ডেলিভারি মেথড কনফিগ</button>
+            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-offers', 'group-settings')">অফার ও কুপন ডিসকাউন্ট</button>
             <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-info', 'group-settings')">দোকানের তথ্য ও হটলাইন</button>
             <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-profile', 'group-settings')">প্রোফাইল আপডেট</button>
             <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-password', 'group-settings')">পাসওয়ার্ড পরিবর্তন</button>
@@ -13280,7 +15134,12 @@ function renderCouriersSettingsModule({ couriers, onlinePayments, offers, auditL
       inp.value = '01711223344';
       if (window.handleFraudPhoneCheck) window.handleFraudPhoneCheck('01711223344');
     }
-  }, 50);
+    if (window.renderAdminSetLogsDOM) window.renderAdminSetLogsDOM();
+    if (window.renderAdminPaymentMethodsDOM) window.renderAdminPaymentMethodsDOM();
+    if (window.renderAdminDeliveryMethodsDOM) window.renderAdminDeliveryMethodsDOM();
+    if (window.renderAdminOffersDOM) window.renderAdminOffersDOM();
+    if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
+  }, 30);
 
   return `
     <!-- ================================================================= -->
@@ -13512,144 +15371,204 @@ function renderCouriersSettingsModule({ couriers, onlinePayments, offers, auditL
     <!-- DEDICATED PAGES: SETTINGS (7 Distinct Standalone Views)            -->
     <!-- ================================================================= -->
 
-    <!-- 1. Audit Logs Page -->
+    <!-- 1. Audit & Worker Logs Page (অডিট ও কর্মী লগ — Sheet Name: Admin/Worker) -->
     <div id="page-set-logs" class="admin-page-view hidden space-y-4">
-      <div class="dc-admin-card space-y-3">
-        <div class="flex items-center justify-between border-b pb-2">
-          <h3 class="font-bold text-sm text-slate-900 dark:text-white">📜 অডিট ও কর্মী অ্যাক্টিভিটি লগ</h3>
-          <div class="flex items-center gap-1.5 text-xs">
-            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Audit_Logs', ['Time', 'User', 'Event', 'IP'], auditLogs.map(l=>[l.time, l.user, l.event, l.ip]))">CSV</button>
-            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+      <div class="dc-admin-card space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="font-bold text-sm text-slate-900 dark:text-white">📜 অডিট ও কর্মী লগ (<span id="admin-set-logs-total-badge">${(window.getUnifiedAdminWorkerList ? window.getUnifiedAdminWorkerList() : []).length}</span>)</h3>
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-bold">Sheet Name: Admin/Worker</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-0.5">লিষ্ট, এড, এডিট, ডিলিট, কুইকভিউ, ডিজিটাল কার্ড কাউন্টার ও ফিল্টার — নতুন এড করলেই সরাসরি Google Sheet (Admin/Worker)-এ জমা হবে</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5 text-xs">
+            <button type="button" class="btn-secondary py-1.5 px-3 font-bold btn-sys-sheet-sync" onclick="window.syncSystemSettingsFromSheets(true)">🔄 শিট সিঙ্ক</button>
+            <button type="button" class="btn-secondary py-1.5 px-3 font-bold text-indigo-600" onclick="window.openAuditLogEntryModal('')">+ অডিট লগ রেকর্ড</button>
+            <button type="button" class="btn-primary py-1.5 px-3.5 font-bold" onclick="window.openSetLogWorkerModal('')">+ নতুন অ্যাডমিন / কর্মী যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1.5 px-2.5" onclick="window.exportGenericCsv('Admin_Worker', ['USER_ID', 'Profile_Photo', 'Name', 'Mobile', 'Mail', 'Address', 'Worker_Type', 'Role', 'User_Name', 'Status'], (window.getUnifiedAdminWorkerList ? window.getUnifiedAdminWorkerList() : []).map(u=>[u.user_id, u.profile_photo, u.name, u.mobile, u.mail, u.address, u.worker_type, u.role, u.user_name, u.status]))">📥 CSV</button>
+            <button type="button" class="btn-secondary py-1.5 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
           </div>
         </div>
-        <div class="space-y-2 text-xs">
-          ${auditLogs.map(l => `
-            <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-              <div>
-                <div class="font-bold text-slate-900 dark:text-white">${l.event}</div>
-                <div class="text-[10px] text-slate-400">কর্মী: <span class="text-emerald-600 font-bold">${l.user}</span> • IP: <span class="font-mono">${l.ip}</span></div>
-              </div>
-              <span class="text-[10px] text-slate-400 font-mono">${l.time}</span>
-            </div>
-          `).join("")}
+
+        <!-- Digital KPI Counter Cards -->
+        <div id="admin-set-logs-kpi" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs"></div>
+
+        <!-- Filter, Search & View Mode Controls -->
+        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[240px]">
+            <input type="text" placeholder="🔍 নাম, USER_ID, মোবাইল, ইমেইল, রোল বা অডিট ইভেন্ট সার্চ করুন..." oninput="window.__sysSettingsUiState.logs.search = this.value; window.renderAdminSetLogsDOM();" class="form-control text-xs py-1.5 px-3 rounded-xl border flex-1 min-w-[200px]" />
+            <select id="set-logs-role-filter" onchange="window.setSysLogsFilter('roleFilter', this.value)" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold">
+              <option value="ALL">সকল রোল / ধরন (All)</option>
+              <option value="Admin">👑 Master Admin</option>
+              <option value="Staff">👷 সকল কর্মী / Staff</option>
+              <option value="Manager">Manager (ম্যানেজার)</option>
+              <option value="Order">Order Management</option>
+              <option value="Delivery">Delivery Team</option>
+              <option value="Support">Customer Support</option>
+              <option value="Accountant">Accountant</option>
+            </select>
+            <select onchange="window.setSysLogsFilter('statusFilter', this.value)" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold">
+              <option value="ALL">সকল স্ট্যাটাস (All)</option>
+              <option value="Active">● সক্রিয় (Active)</option>
+              <option value="Inactive">○ নিষ্ক্রিয় (Inactive)</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="window.setSysLogsFilter('tabMode', 'workers'); window.setSysLogsFilter('viewMode', 'cards');" class="btn-secondary py-1.5 px-2.5 text-[11px] font-bold">🗂️ কার্ড ভিউ</button>
+            <button type="button" onclick="window.setSysLogsFilter('tabMode', 'workers'); window.setSysLogsFilter('viewMode', 'table');" class="btn-secondary py-1.5 px-2.5 text-[11px] font-bold">📋 টেবিল লিস্ট</button>
+            <button type="button" onclick="window.setSysLogsFilter('tabMode', 'audit')" class="btn-secondary py-1.5 px-2.5 text-[11px] font-bold text-indigo-600">📜 অডিট লগ হিস্ট্রি</button>
+          </div>
         </div>
+
+        <!-- Dynamic List Container -->
+        <div id="admin-set-logs-list-container" class="space-y-3"></div>
       </div>
     </div>
 
-    <!-- 2. Payment Method Update Page (পেমেন্ট মেথড আপডেট - এক্টিভ/এড/এডিট/ডিলিট/লিস্ট + সম্পূর্ণ ওয়েবসাইট ও শিটে সিঙ্ক) -->
+    <!-- 2. Payment Method Update Page (পেমেন্ট মেথড আপডেট — Sheet Name: Payment_Method) -->
     <div id="page-set-payment" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
           <div>
-            <h3 class="font-bold text-sm text-slate-900 dark:text-white">💳 পেমেন্ট মেথড আপডেট ও কন্ট্রোল (${payMethods.length})</h3>
-            <p class="text-[11px] text-slate-400">এক্টিভ/ইনএক্টিভ, এড, এডিট, ডিলিট ও লিস্ট — পরিবর্তন করলে সম্পূর্ণ ওয়েবসাইট (চেকআউট ও ফুটার) এবং Google Sheet (Payments)-এ জমা হবে</p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="font-bold text-sm text-slate-900 dark:text-white">💳 পেমেন্ট মেথড আপডেট ও কন্ট্রোল (<span id="admin-payment-methods-total-badge">${payMethods.length}</span>)</h3>
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-bold">Sheet Name: Payment_Method</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-0.5">লিষ্ট, এড, এডিট, ডিলিট, কুইকভিউ, ডিজিটাল কার্ড কাউন্টার ও ফিল্টার — নতুন এড করলেই Google Sheet (Payment_Method) ও চেকআউট পেজে জমা হবে</p>
           </div>
-          <button type="button" class="btn-primary py-1.5 px-3 text-xs font-bold" onclick="window.openPaymentMethodModal('')">+ নতুন পেমেন্ট মেথড যুক্ত করুন</button>
+          <div class="flex flex-wrap items-center gap-1.5 text-xs">
+            <button type="button" class="btn-secondary py-1.5 px-3 font-bold btn-sys-sheet-sync" onclick="window.syncSystemSettingsFromSheets(true)">🔄 শিট সিঙ্ক</button>
+            <button type="button" class="btn-primary py-1.5 px-3.5 font-bold" onclick="window.openPaymentMethodModal('')">+ নতুন পেমেন্ট মেথড যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1.5 px-2.5" onclick="window.exportGenericCsv('Payment_Method', ['Payment_ID', 'Code', 'Method_Name', 'Account_Type', 'Account_Number', 'Discount_Pct', 'Instructions', 'Status'], (window.getNormalizedPaymentMethods ? window.getNormalizedPaymentMethods() : []).map(m=>[m.id, m.code, m.name, m.type, m.number, m.discount_pct, m.instructions, m.status]))">📥 CSV</button>
+            <button type="button" class="btn-secondary py-1.5 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
         </div>
 
-        <div id="admin-payment-methods-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-          ${payMethods.map(m => {
-            const safeId = String(m.id || '').replace(/'/g, "\'");
-            const isAct = String(m.status || 'Active').toLowerCase() !== 'inactive';
-            return `
-              <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
-                <div class="space-y-1.5">
-                  <div class="flex items-center justify-between gap-2">
-                    <div class="font-bold text-slate-900 dark:text-white text-sm">${m.name}</div>
-                    <button type="button" onclick="window.togglePaymentMethodStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
-                      ${isAct ? '● সক্রিয় (Active)' : '○ নিষ্ক্রিয় (Inactive)'}
-                    </button>
-                  </div>
-                  <div class="text-[11px] font-mono text-emerald-600 font-bold">নম্বর/অ্যাকাউন্ট: ${m.number || 'N/A'} (${m.type || 'Direct'})</div>
-                  <p class="text-[11px] text-slate-500 dark:text-slate-400">${m.instructions || ''}</p>
-                </div>
-                <div class="flex items-center gap-1.5 pt-2 border-t">
-                  <button type="button" onclick="window.togglePaymentMethodStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1">${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}</button>
-                  <button type="button" onclick="window.openPaymentMethodModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
-                  <button type="button" onclick="window.deletePaymentMethodItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
-                </div>
-              </div>
-            `;
-          }).join('')}
+        <!-- Digital KPI Counter Cards -->
+        <div id="admin-payment-methods-kpi" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs"></div>
+
+        <!-- Filter, Search & View Mode Controls -->
+        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[240px]">
+            <input type="text" placeholder="🔍 মেথডের নাম, কোড, অ্যাকাউন্ট নম্বর বা নির্দেশনা সার্চ করুন..." oninput="window.__sysSettingsUiState.payment.search = this.value; window.renderAdminPaymentMethodsDOM();" class="form-control text-xs py-1.5 px-3 rounded-xl border flex-1 min-w-[200px]" />
+            <select id="set-pay-type-filter" onchange="window.setSysPaymentFilter('typeFilter', this.value)" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold">
+              <option value="ALL">সকল টাইপ (All Types)</option>
+              <option value="COD">💵 COD (ক্যাশ অন ডেলিভারি)</option>
+              <option value="Mobile Banking">📱 Mobile Banking (বিকাশ/নগদ/রকেট)</option>
+              <option value="Payment Link">🔗 Payment Link (গেটওয়ে লিংক)</option>
+              <option value="Bank">🏦 Bank Account (ব্যাংক একাউন্ট)</option>
+            </select>
+            <select id="set-pay-status-filter" onchange="window.setSysPaymentFilter('statusFilter', this.value)" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold">
+              <option value="ALL">সকল স্ট্যাটাস (All)</option>
+              <option value="Active">● সক্রিয় (Active)</option>
+              <option value="Inactive">○ নিষ্ক্রিয় (Inactive)</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="window.setSysPaymentFilter('viewMode', 'cards')" class="btn-secondary py-1.5 px-2.5 text-[11px] font-bold">🗂️ কার্ড ভিউ</button>
+            <button type="button" onclick="window.setSysPaymentFilter('viewMode', 'table')" class="btn-secondary py-1.5 px-2.5 text-[11px] font-bold">📋 টেবিল লিস্ট</button>
+          </div>
         </div>
+
+        <div id="admin-payment-methods-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs"></div>
       </div>
     </div>
 
-    <!-- 3. Delivery Method Page (ডেলিভারি মেথড কনফিগ - এক্টিভ/এড/এডিট/ডিলিট/লিস্ট + সম্পূর্ণ ওয়েবসাইট ও শিটে সিঙ্ক) -->
+    <!-- 3. Delivery Method Page (ডেলিভারি মেথড কনফিগ — Sheet Name: Delivery_Area) -->
     <div id="page-set-delivery" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
           <div>
-            <h3 class="font-bold text-sm text-slate-900 dark:text-white">🚚 ডেলিভারি মেথড ও চার্জ কনফিগ (${delMethods.length})</h3>
-            <p class="text-[11px] text-slate-400">এক্টিভ/ইনএক্টিভ, এড, এডিট, ডিলিট ও লিস্ট — পরিবর্তন করলে সম্পূর্ণ ওয়েবসাইট (চেকআউট ডেলিভারি চার্জ) এবং Google Sheet-এ জমা হবে</p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="font-bold text-sm text-slate-900 dark:text-white">🚚 ডেলিভারি মেথড কনফিগ (<span id="admin-delivery-methods-total-badge">${delMethods.length}</span>)</h3>
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-bold">Sheet Name: Delivery_Area</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-0.5">লিষ্ট, এড, এডিট, ডিলিট, কুইকভিউ, ডিজিটাল কার্ড কাউন্টার ও ফিল্টার — নতুন এড করলেই Google Sheet (Delivery_Area) ও চেকআউট পেজে জমা হবে</p>
           </div>
-          <button type="button" class="btn-primary py-1.5 px-3 text-xs font-bold" onclick="window.openDeliveryMethodModal('')">+ নতুন ডেলিভারি জোন যুক্ত করুন</button>
+          <div class="flex flex-wrap items-center gap-1.5 text-xs">
+            <button type="button" class="btn-secondary py-1.5 px-3 font-bold btn-sys-sheet-sync" onclick="window.syncSystemSettingsFromSheets(true)">🔄 শিট সিঙ্ক</button>
+            <button type="button" class="btn-primary py-1.5 px-3.5 font-bold" onclick="window.openDeliveryMethodModal('')">+ নতুন ডেলিভারি এরিয়া যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1.5 px-2.5" onclick="window.exportGenericCsv('Delivery_Area', ['Delivery_ID', 'Zone_Code', 'Area_Name', 'Delivery_Charge', 'Delivery_Time', 'Free_Threshold', 'Coverage_Details', 'Status'], (window.getNormalizedDeliveryMethods ? window.getNormalizedDeliveryMethods() : []).map(d=>[d.id, d.code, d.name, d.charge, d.eta, d.free_threshold, d.coverage, d.status]))">📥 CSV</button>
+            <button type="button" class="btn-secondary py-1.5 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
         </div>
 
-        <div id="admin-delivery-methods-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          ${delMethods.map(d => {
-            const safeId = String(d.id || '').replace(/'/g, "\'");
-            const isAct = String(d.status || 'Active').toLowerCase() !== 'inactive';
-            return `
-              <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
-                <div class="space-y-1">
-                  <div class="flex items-center justify-between gap-2">
-                    <div class="font-bold text-slate-900 dark:text-white text-sm">${d.name}</div>
-                    <button type="button" onclick="window.toggleDeliveryMethodStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[10px] cursor-pointer">
-                      ${isAct ? '● সক্রিয়' : '○ নিষ্ক্রিয়'}
-                    </button>
-                  </div>
-                  <div class="text-lg font-black text-emerald-600 font-mono">৳${d.charge}</div>
-                  <p class="text-[11px] text-slate-400">⏱️ আনুমানিক সময়: ${d.eta || '২৪-৪৮ ঘন্টা'}</p>
-                </div>
-                <div class="flex items-center gap-1.5 pt-2 border-t">
-                  <button type="button" onclick="window.toggleDeliveryMethodStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1">${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}</button>
-                  <button type="button" onclick="window.openDeliveryMethodModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
-                  <button type="button" onclick="window.deleteDeliveryMethodItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
-                </div>
-              </div>
-            `;
-          }).join('')}
+        <!-- Digital KPI Counter Cards -->
+        <div id="admin-delivery-methods-kpi" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs"></div>
+
+        <!-- Filter, Search & View Mode Controls -->
+        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[240px]">
+            <input type="text" placeholder="🔍 ডেলিভারি এরিয়া, জোন কোড, চার্জ বা সময়সীমা সার্চ করুন..." oninput="window.__sysSettingsUiState.delivery.search = this.value; window.renderAdminDeliveryMethodsDOM();" class="form-control text-xs py-1.5 px-3 rounded-xl border flex-1 min-w-[200px]" />
+            <select id="set-del-zone-filter" onchange="window.setSysDeliveryFilter('zoneFilter', this.value)" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold">
+              <option value="ALL">সকল এরিয়া জোন (All Zones)</option>
+              <option value="cumilla">📍 কুমিল্লা জোন (cumilla)</option>
+              <option value="dhaka">🏙️ ঢাকা সিটি (dhaka)</option>
+              <option value="outside">🚚 ঢাকার বাইরে (outside)</option>
+              <option value="pickup">🏢 অফিস পিকআপ (pickup)</option>
+            </select>
+            <select id="set-del-status-filter" onchange="window.setSysDeliveryFilter('statusFilter', this.value)" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold">
+              <option value="ALL">সকল স্ট্যাটাস (All)</option>
+              <option value="Active">● সক্রিয় (Active)</option>
+              <option value="Inactive">○ নিষ্ক্রিয় (Inactive)</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="window.setSysDeliveryFilter('viewMode', 'cards')" class="btn-secondary py-1.5 px-2.5 text-[11px] font-bold">🗂️ কার্ড ভিউ</button>
+            <button type="button" onclick="window.setSysDeliveryFilter('viewMode', 'table')" class="btn-secondary py-1.5 px-2.5 text-[11px] font-bold">📋 টেবিল লিস্ট</button>
+          </div>
         </div>
+
+        <div id="admin-delivery-methods-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs"></div>
       </div>
     </div>
 
-    <!-- 4. Offers & Promo Page (অফার ও কুপন ডিসকাউন্ট - এক্টিভ/এড/এডিট/ডিলিট/লিস্ট + সম্পূর্ণ ওয়েবসাইট ও শিটে সিঙ্ক) -->
+    <!-- 4. Offers & Promo Page (অফার ও কুপন ডিসকাউন্ট — Sheet Name: Offer_or_Coupon) -->
     <div id="page-set-offers" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
           <div>
-            <h3 class="font-bold text-sm text-slate-900 dark:text-white">🎁 অফার ও ডিসকাউন্ট কুপন (${globalOffers.length})</h3>
-            <p class="text-[11px] text-slate-400">এক্টিভ/ইনএক্টিভ, এড, এডিট, ডিলিট ও লিস্ট — পরিবর্তন করলে সম্পূর্ণ ওয়েবসাইট (অফার পেজ ও চেকআউট কুপন) এবং Google Sheet-এ জমা হবে</p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h3 class="font-bold text-sm text-slate-900 dark:text-white">🎁 অফার ও কুপন ডিসকাউন্ট (<span id="admin-offers-total-badge">${globalOffers.length}</span>)</h3>
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-bold">Sheet Name: Offer_or_Coupon</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-0.5">লিষ্ট, এড, এডিট, ডিলিট, কুইকভিউ, ডিজিটাল কার্ড কাউন্টার ও ফিল্টার — নতুন এড করলেই Google Sheet (Offer_or_Coupon), অফার পেজ ও চেকআউট কুপনে জমা হবে</p>
           </div>
-          <button type="button" class="btn-primary py-1.5 px-3 text-xs font-bold" onclick="window.openOfferModal('')">+ নতুন কুপন যুক্ত করুন</button>
+          <div class="flex flex-wrap items-center gap-1.5 text-xs">
+            <button type="button" class="btn-secondary py-1.5 px-3 font-bold btn-sys-sheet-sync" onclick="window.syncSystemSettingsFromSheets(true)">🔄 শিট সিঙ্ক</button>
+            <button type="button" class="btn-primary py-1.5 px-3.5 font-bold" onclick="window.openOfferModal('')">+ নতুন অফার / কুপন যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1.5 px-2.5" onclick="window.exportGenericCsv('Offer_or_Coupon', ['Offer_ID', 'Coupon_Code', 'Title', 'Discount_Text', 'Discount_Type', 'Discount_Value', 'Min_Spend', 'Expiry_Date', 'Status'], (window.getNormalizedOffersList ? window.getNormalizedOffersList() : []).map(o=>[o.id, o.code, o.title, o.discount, o.discount_type, o.discount_value, o.min_spend, o.expiry_date, o.status]))">📥 CSV</button>
+            <button type="button" class="btn-secondary py-1.5 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+          </div>
         </div>
 
-        <div id="admin-offers-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-          ${globalOffers.map(o => {
-            const safeId = String(o.id || o.code || '').replace(/'/g, "\'");
-            const isAct = String(o.status || 'Active').toLowerCase() !== 'inactive';
-            return `
-              <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border space-y-2.5 flex flex-col justify-between">
-                <div class="space-y-1">
-                  <div class="flex items-center justify-between font-mono font-black text-emerald-600 text-sm">
-                    <span>🎟️ ${o.code}</span>
-                    <button type="button" onclick="window.toggleOfferStatus('${safeId}')" class="badge ${isAct ? 'badge-success' : 'badge-warning'} text-[9px] font-sans cursor-pointer">
-                      ${isAct ? '● Active' : '○ Inactive'}
-                    </button>
-                  </div>
-                  <div class="text-xs font-bold text-slate-900 dark:text-white">${o.discount}</div>
-                  <div class="text-[11px] text-slate-400">সর্বনিম্ন অর্ডার: ৳${o.min_spend || 0}</div>
-                </div>
-                <div class="flex items-center gap-1.5 pt-2 border-t">
-                  <button type="button" onclick="window.toggleOfferStatus('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1">${isAct ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}</button>
-                  <button type="button" onclick="window.openOfferModal('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-emerald-600 font-bold">✏️ এডিট</button>
-                  <button type="button" onclick="window.deleteOfferItem('${safeId}')" class="btn-secondary py-1 px-2.5 text-[10px] text-rose-600 border-rose-200 font-bold">🗑️ ডিলিট</button>
-                </div>
-              </div>
-            `;
-          }).join("")}
+        <!-- Digital KPI Counter Cards -->
+        <div id="admin-offers-kpi" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs"></div>
+
+        <!-- Filter, Search & View Mode Controls -->
+        <div class="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[240px]">
+            <input type="text" placeholder="🔍 কুপন কোড, অফার টাইটেল বা ছাড়ের বিবরণ সার্চ করুন..." oninput="window.__sysSettingsUiState.offers.search = this.value; window.renderAdminOffersDOM();" class="form-control text-xs py-1.5 px-3 rounded-xl border flex-1 min-w-[200px]" />
+            <select id="set-off-type-filter" onchange="window.setSysOffersFilter('typeFilter', this.value)" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold">
+              <option value="ALL">সকল ডিসকাউন্ট ধরন (All)</option>
+              <option value="percent">％ শতাংশ ছাড় (Percent)</option>
+              <option value="flat">৳ ফ্ল্যাট টাকা ছাড় (Flat)</option>
+              <option value="free_shipping">🚚 ফ্রি ডেলিভারি (Free Shipping)</option>
+            </select>
+            <select id="set-off-status-filter" onchange="window.setSysOffersFilter('statusFilter', this.value)" class="form-control text-xs py-1.5 px-2.5 rounded-xl border font-bold">
+              <option value="ALL">সকল স্ট্যাটাস (All)</option>
+              <option value="Active">● সক্রিয় (Active)</option>
+              <option value="Inactive">○ নিষ্ক্রিয় (Inactive)</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button type="button" onclick="window.setSysOffersFilter('viewMode', 'cards')" class="btn-secondary py-1.5 px-2.5 text-[11px] font-bold">🗂️ কার্ড ভিউ</button>
+            <button type="button" onclick="window.setSysOffersFilter('viewMode', 'table')" class="btn-secondary py-1.5 px-2.5 text-[11px] font-bold">📋 টেবিল লিস্ট</button>
+          </div>
         </div>
+
+        <div id="admin-offers-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs"></div>
       </div>
     </div>
 
@@ -13857,34 +15776,218 @@ function renderCouriersSettingsModule({ couriers, onlinePayments, offers, auditL
       </div>
     </div>
 
-    <div id="modal-manage-payment-method" class="admin-modal-backdrop hidden">
+    <!-- Universal Settings QuickView Modal -->
+    <div id="modal-settings-quickview" class="admin-modal-backdrop hidden">
+      <div id="modal-settings-quickview-body" class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-xl w-full text-xs"></div>
+    </div>
+
+    <!-- Modal: Admin/Worker Add & Edit (Sheet Name: Admin/Worker) -->
+    <div id="modal-set-admin-worker" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b pb-2">
+          <div>
+            <h4 class="font-black text-sm text-slate-900 dark:text-white">👥 অ্যাডমিন ও কর্মী এড / এডিট ফর্ম (Sheet: Admin/Worker)</h4>
+            <p class="text-[10px] text-slate-400">সেভ করলে সরাসরি Admin/Worker শিটে এবং লিস্টে আপডেট হবে</p>
+          </div>
+          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-set-admin-worker')?.classList.add('hidden')">✕</button>
+        </div>
+        <form onsubmit="window.handleSaveSetLogWorker(event)" class="space-y-3">
+          <input type="hidden" id="set-aw-edit-flag" value="" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">1. USER_ID *</label>
+              <input type="text" id="set-aw-id" required placeholder="ADM-101 / WRK-105" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold text-emerald-600" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">2. Profile_Photo (ছবি লিঙ্ক বা আপলোড)</label>
+              <div class="flex gap-1.5">
+                <input type="text" id="set-aw-photo" placeholder="https://..." class="form-control text-xs flex-1 py-1.5 px-2.5 rounded-xl border" />
+                <label class="btn-secondary py-1.5 px-2.5 text-[10px] font-bold cursor-pointer">📤<input type="file" accept="image/*" class="hidden" onchange="window.handlePartnerImageUpload && window.handlePartnerImageUpload(this, 'set-aw-photo')" /></label>
+              </div>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">3. Name (পূর্ণ নাম) *</label>
+              <input type="text" id="set-aw-name" required placeholder="মোঃ সাইফুল ইসলাম" oninput="const u=document.getElementById('set-aw-uname'); if(u && !u.value) u.value=this.value;" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">4. Mobile (মোবাইল নম্বর) *</label>
+              <input type="text" id="set-aw-mobile" required placeholder="018xxxxxxxx" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">5. Mail (ইমেইল)</label>
+              <input type="email" id="set-aw-mail" placeholder="admin@dreamcart.bd" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">6. Address (ঠিকানা) *</label>
+              <input type="text" id="set-aw-address" required placeholder="কুমিল্লা / ঢাকা" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">7. Worker_Type (কর্মীর ধরন) *</label>
+              <select id="set-aw-wtype" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                <option value="Admin">Admin (মাস্টার অ্যাডমিন)</option>
+                <option value="Manager">Manager (ম্যানেজার)</option>
+                <option value="Full-Time Staff">Full-Time Staff</option>
+                <option value="Order Desk">Order Desk</option>
+                <option value="Delivery Team">Delivery Team</option>
+                <option value="Customer Care">Customer Care</option>
+                <option value="Accountant">Accountant</option>
+                <option value="Warehouse">Warehouse</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">8. Role (রোল / পদবী) *</label>
+              <select id="set-aw-role" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                <option value="CEO & Master Admin">CEO & Master Admin</option>
+                <option value="Super Admin">Super Admin</option>
+                <option value="Lead Operations">Lead Operations</option>
+                <option value="Manager">Manager</option>
+                <option value="Order Management">Order Management</option>
+                <option value="Customer Support">Customer Support</option>
+                <option value="Delivery">Delivery</option>
+                <option value="Accountant">Accountant</option>
+                <option value="Inventory/Warehouse">Inventory/Warehouse</option>
+                <option value="Sales">Sales</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">9. User_Name (লগইন ইউজারনেম) *</label>
+              <input type="text" id="set-aw-uname" required placeholder="user_admin" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">10. Password (পাসওয়ার্ড) *</label>
+              <input type="text" id="set-aw-pass" required value="admin123" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">11. স্ট্যাটাস</label>
+              <select id="set-aw-status" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                <option value="Active">Active (সক্রিয়)</option>
+                <option value="Inactive">Inactive (নিষ্ক্রিয়)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block font-bold mb-1">12. অডিট / দায়িত্ব নোট</label>
+              <input type="text" id="set-aw-activity" placeholder="অর্ডার ও কুরিয়ার ম্যানেজমেন্ট" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-set-admin-worker')?.classList.add('hidden')">বাতিল</button>
+            <button type="submit" class="btn-primary py-2 px-5 font-bold">💾 Admin/Worker শিটে সেভ করুন →</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Audit Activity Log Entry Add/Edit -->
+    <div id="modal-manage-audit-log" class="admin-modal-backdrop hidden">
       <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
         <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">💳 পেমেন্ট মেথড এড / আপডেট ফর্ম</h4>
+          <h4 class="font-black text-sm text-slate-900 dark:text-white">📜 অডিট ও কর্মী অ্যাক্টিভিটি লগ এন্ট্রি</h4>
+          <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-manage-audit-log')?.classList.add('hidden')">✕</button>
+        </div>
+        <form onsubmit="window.handleSaveAuditLogEntry(event)" class="space-y-3">
+          <input type="hidden" id="adm-audit-edit-id" value="" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">অ্যাডমিন / কর্মীর নাম *</label>
+              <input type="text" id="adm-audit-user" required placeholder="Jainal Abedin" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">রোল / পদবী</label>
+              <input type="text" id="adm-audit-role" placeholder="Master Admin" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">মডিউল</label>
+              <input type="text" id="adm-audit-module" value="System Settings" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">IP অ্যাড্রেস</label>
+              <input type="text" id="adm-audit-ip" value="103.114.98.12" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">অ্যাক্টিভিটি / ইভেন্ট শিরোনাম *</label>
+            <input type="text" id="adm-audit-event" required placeholder="পেমেন্ট ও ডেলিভারি সেটিংস আপডেট করেছেন" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">বিস্তারিত বিবরণ</label>
+            <textarea id="adm-audit-details" rows="2" placeholder="বিস্তারিত অডিট নোট লিখুন..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
+          </div>
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-manage-audit-log')?.classList.add('hidden')">বাতিল</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">💾 অডিট লগ সেভ করুন</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal: Payment Method Add & Edit (Sheet Name: Payment_Method) -->
+    <div id="modal-manage-payment-method" class="admin-modal-backdrop hidden">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b pb-2">
+          <div>
+            <h4 class="font-black text-sm text-slate-900 dark:text-white">💳 পেমেন্ট মেথড এড / আপডেট ফর্ম (Sheet: Payment_Method)</h4>
+            <p class="text-[10px] text-slate-400">সেভ করলে চেকআউট পেজ ও Google Sheet (Payment_Method)-এ জমা হবে</p>
+          </div>
           <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-manage-payment-method')?.classList.add('hidden')">✕</button>
         </div>
         <form onsubmit="window.handleSavePaymentMethod(event)" class="space-y-3">
           <input type="hidden" id="adm-pay-edit-id" value="" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">Payment_ID *</label>
+              <input type="text" id="adm-pay-id-input" required placeholder="PM-01" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold text-emerald-600" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">মেথড কোড (Code) *</label>
+              <select id="adm-pay-code" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-mono font-bold">
+                <option value="COD">COD (Cash on Delivery)</option>
+                <option value="BKASH_PERSONAL">BKASH_PERSONAL (বিকাশ সেন্ড মানি)</option>
+                <option value="BKASH_PAYMENT">BKASH_PAYMENT (বিকাশ পেমেন্ট লিংক)</option>
+                <option value="NAGAD_PERSONAL">NAGAD_PERSONAL (নগদ সেন্ড মানি)</option>
+                <option value="ROCKET_PERSONAL">ROCKET_PERSONAL (রকেট সেন্ড মানি)</option>
+                <option value="BANK">BANK (ব্যাংক ট্রান্সফার)</option>
+                <option value="UPAY_PERSONAL">UPAY_PERSONAL (উপায়)</option>
+              </select>
+            </div>
+          </div>
           <div>
-            <label class="block font-bold mb-1">পেমেন্ট মেথডের নাম *</label>
-            <input type="text" id="adm-pay-name" required placeholder="বিকাশ (bKash) / নগদ (Nagad) / রকেট / ক্যাশ অন ডেলিভারি" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            <label class="block font-bold mb-1">পেমেন্ট মেথডের নাম (Method_Name) *</label>
+            <input type="text" id="adm-pay-name" required placeholder="বিকাশ পার্সোনাল (Send Money) / ক্যাশ অন ডেলিভারি" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
               <label class="block font-bold mb-1">অ্যাকাউন্ট / মার্চেন্ট নম্বর *</label>
-              <input type="text" id="adm-pay-number" required placeholder="01818273838 / COD" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+              <input type="text" id="adm-pay-number" required placeholder="01879653143, 01818273838 / COD" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
             </div>
             <div>
-              <label class="block font-bold mb-1">অ্যাকাউন্ট টাইপ</label>
-              <input type="text" id="adm-pay-type" placeholder="মার্চেন্ট / পার্সোনাল" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+              <label class="block font-bold mb-1">অ্যাকাউন্ট টাইপ (Account_Type)</label>
+              <select id="adm-pay-type" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
+                <option value="Mobile Banking">Mobile Banking (পার্সোনাল/এজেন্ট)</option>
+                <option value="Payment Link">Payment Link (মার্চেন্ট গেটওয়ে)</option>
+                <option value="COD">COD (ক্যাশ অন ডেলিভারি)</option>
+                <option value="Bank Account">Bank Account (ব্যাংক একাউন্ট)</option>
+                <option value="Merchant">Merchant Account</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">পেমেন্ট গেটওয়ে লিংক (ঐচ্ছিক)</label>
+              <input type="text" id="adm-pay-link" placeholder="https://shop.bkash.com/..." class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">অনলাইন পেমেন্ট ছাড় (%)</label>
+              <input type="number" id="adm-pay-discount" value="5" min="0" max="50" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold text-emerald-600" />
             </div>
           </div>
           <div>
             <label class="block font-bold mb-1">পেমেন্ট নির্দেশনা (চেকআউটে দেখাবে)</label>
-            <textarea id="adm-pay-inst" rows="2" placeholder="সেন্ড মানি বা পেমেন্ট করে TrxID দিন..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
+            <textarea id="adm-pay-inst" rows="2" placeholder="সেন্ড মানি বা পেমেন্ট করে TrxID নিচের বক্সে লিখুন..." class="form-control text-xs w-full p-2.5 rounded-xl border"></textarea>
           </div>
           <div>
-            <label class="block font-bold mb-1">স্ট্যাটাস</label>
+            <label class="block font-bold mb-1">স্ট্যাটাস (Status)</label>
             <select id="adm-pay-status" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold">
               <option value="Active">Active (সক্রিয়)</option>
               <option value="Inactive">Inactive (নিষ্ক্রিয়)</option>
@@ -13892,44 +15995,77 @@ function renderCouriersSettingsModule({ couriers, onlinePayments, offers, auditL
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-manage-payment-method')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">💾 লিস্ট, ওয়েবসাইট ও শিটে সেভ করুন</button>
+            <button type="submit" class="btn-primary py-2 px-5 font-bold">💾 Payment_Method শিটে সেভ করুন</button>
           </div>
         </form>
       </div>
     </div>
 
+    <!-- Modal: Delivery Area Add & Edit (Sheet Name: Delivery_Area) -->
     <div id="modal-manage-delivery-method" class="admin-modal-backdrop hidden">
-      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-3 text-xs">
         <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">🚚 ডেলিভারি মেথড ও চার্জ এড / এডিট</h4>
+          <div>
+            <h4 class="font-black text-sm text-slate-900 dark:text-white">🚚 ডেলিভারি মেথড ও এরিয়া কনফিগ (Sheet: Delivery_Area)</h4>
+            <p class="text-[10px] text-slate-400">সেভ করলে চেকআউট ডেলিভারি চার্জ ও Google Sheet (Delivery_Area)-এ জমা হবে</p>
+          </div>
           <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-manage-delivery-method')?.classList.add('hidden')">✕</button>
         </div>
         <form onsubmit="window.handleSaveDeliveryMethod(event)" class="space-y-3">
           <input type="hidden" id="adm-del-edit-id" value="" />
-          <div>
-            <label class="block font-bold mb-1">ডেলিভারি জোন / মেথডের নাম *</label>
-            <input type="text" id="adm-del-name" required placeholder="কুমিল্লা সিটি / ঢাকা সিটি / সারা বাংলাদেশ" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
-          </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label class="block font-bold mb-1">ডেলিভারি চার্জ (৳) *</label>
-              <input type="number" id="adm-del-charge" required value="70" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-black text-emerald-600" />
+              <label class="block font-bold mb-1">Delivery_ID *</label>
+              <input type="text" id="adm-del-id-input" required placeholder="DLV-01" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold text-emerald-600" />
             </div>
             <div>
-              <label class="block font-bold mb-1">স্ট্যাটাস</label>
-              <select id="adm-del-status" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold">
-                <option value="Active">Active (সক্রিয়)</option>
-                <option value="Inactive">Inactive (নিষ্ক্রিয়)</option>
+              <label class="block font-bold mb-1">জোন কোড (Zone_Code) *</label>
+              <select id="adm-del-code" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-mono font-bold">
+                <option value="cumilla">cumilla (কুমিল্লা সদর / ইন-সিটি)</option>
+                <option value="dhaka">dhaka (ঢাকা সিটি)</option>
+                <option value="outside">outside (ঢাকার বাইরে সারা দেশ)</option>
+                <option value="pickup">pickup (অফিস পিকআপ - ফ্রি)</option>
               </select>
             </div>
           </div>
           <div>
-            <label class="block font-bold mb-1">ডেলিভারি সময়সীমা (ETA)</label>
-            <input type="text" id="adm-del-eta" placeholder="২৪-৪৮ ঘন্টায় হোম ডেলিভারি" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            <label class="block font-bold mb-1">ডেলিভারি এরিয়া / জোনের নাম (Area_Name) *</label>
+            <input type="text" id="adm-del-name" required placeholder="কুমিল্লা সদর (In Cumilla) / ঢাকা সিটি / সারা বাংলাদেশ" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">ডেলিভারি চার্জ (৳) *</label>
+              <input type="number" id="adm-del-charge" required value="70" min="0" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-black text-emerald-600" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">ফ্রি ডেলিভারি মিনিমাম অর্ডার (৳)</label>
+              <input type="number" id="adm-del-free-min" value="2000" min="0" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">ডেলিভারি সময়সীমা (ETA) *</label>
+              <input type="text" id="adm-del-eta" required placeholder="১-২ দিন (২৪ ঘন্টায় ডেলিভারি)" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">ডিফল্ট কুরিয়ার পার্টনার</label>
+              <input type="text" id="adm-del-courier" value="Steadfast / Pathao / RedX" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+          </div>
+          <div>
+            <label class="block font-bold mb-1">কভারেজ এলাকা / বিস্তারিত নোট</label>
+            <input type="text" id="adm-del-coverage" placeholder="কুমিল্লা সদর, পদুয়ার বাজার বিশ্বরোড, কান্দিরপাড়..." class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">স্ট্যাটাস (Status)</label>
+            <select id="adm-del-status" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold">
+              <option value="Active">Active (সক্রিয়)</option>
+              <option value="Inactive">Inactive (নিষ্ক্রিয়)</option>
+            </select>
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-manage-delivery-method')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">💾 লিস্ট, ওয়েবসাইট ও শিটে সেভ করুন</button>
+            <button type="submit" class="btn-primary py-2 px-5 font-bold">💾 Delivery_Area শিটে সেভ করুন</button>
           </div>
         </form>
       </div>
@@ -13962,43 +16098,67 @@ function renderCouriersSettingsModule({ couriers, onlinePayments, offers, auditL
       </div>
     </div>
 
+    <!-- Modal: Offer & Coupon Add/Edit (Sheet Name: Offer_or_Coupon) -->
     <div id="modal-add-offer" class="admin-modal-backdrop hidden">
-      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-md w-full space-y-3 text-xs">
+      <div class="bg-white dark:bg-slate-900 p-6 rounded-3xl border shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-3 text-xs">
         <div class="flex items-center justify-between border-b pb-2">
-          <h4 class="font-black text-sm text-slate-900 dark:text-white">🎁 অফার ও ডিসকাউন্ট কুপন তৈরি / এডিট</h4>
+          <div>
+            <h4 class="font-black text-sm text-slate-900 dark:text-white">🎁 অফার ও ডিসকাউন্ট কুপন তৈরি / এডিট (Sheet: Offer_or_Coupon)</h4>
+            <p class="text-[10px] text-slate-400">সেভ করলে অফার পেজ, চেকআউট কুপন ও Google Sheet (Offer_or_Coupon)-এ জমা হবে</p>
+          </div>
           <button type="button" class="text-slate-400 hover:text-rose-500 font-bold" onclick="document.getElementById('modal-add-offer')?.classList.add('hidden')">✕</button>
         </div>
         <form onsubmit="window.handleAdminAddOffer(event)" class="space-y-3">
           <input type="hidden" id="adm-offer-edit-id" value="" />
-          <div>
-            <label class="block font-bold mb-1">কুপন কোড *</label>
-            <input type="text" id="adm-new-offer-code" required placeholder="DREAM10 / FESTIVE500" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold uppercase" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">Offer_ID *</label>
+              <input type="text" id="adm-offer-id-input" required placeholder="OFF-01" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold text-emerald-600" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">কুপন কোড (Coupon_Code) *</label>
+              <input type="text" id="adm-new-offer-code" required placeholder="DREAM10 / FESTIVE500" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-black uppercase text-emerald-600" />
+            </div>
           </div>
           <div>
-            <label class="block font-bold mb-1">ছাড়ের বিবরণ (টাইটেল) *</label>
-            <input type="text" id="adm-new-offer-disc" required placeholder="১০% ছাড় / ৳৫০০ ফ্ল্যাট ডিসকাউন্ট" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+            <label class="block font-bold mb-1">অফারের শিরোনাম (Title) *</label>
+            <input type="text" id="adm-new-offer-title" required placeholder="স্পেশাল ১০% ডিসকাউন্ট কুপন" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
+          </div>
+          <div>
+            <label class="block font-bold mb-1">ছাড়ের বিবরণ ব্যাজ (Discount_Text) *</label>
+            <input type="text" id="adm-new-offer-disc" required placeholder="১০% ছাড় / ৳৫০০ ফ্ল্যাট ছাড় / ফ্রি ডেলিভারি" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold" />
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label class="block font-bold mb-1">ডিসকাউন্ট ধরন</label>
+              <label class="block font-bold mb-1">ডিসকাউন্ট ধরন (Discount_Type)</label>
               <select id="adm-new-offer-type" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
-                <option value="percent">শতাংশ ছাড় (%)</option>
-                <option value="flat">ফ্ল্যাট টাকা ছাড় (৳)</option>
-                <option value="freeship">ফ্রি ডেলিভারি</option>
+                <option value="percent">শতাংশ ছাড় (percent - %)</option>
+                <option value="flat">ফ্ল্যাট টাকা ছাড় (flat - ৳)</option>
+                <option value="free_shipping">ফ্রি ডেলিভারি (free_shipping)</option>
               </select>
             </div>
             <div>
               <label class="block font-bold mb-1">ডিসকাউন্ট মান (% বা ৳)</label>
-              <input type="number" id="adm-new-offer-val" value="10" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+              <input type="number" id="adm-new-offer-val" value="10" min="0" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold text-emerald-600" />
             </div>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div>
-              <label class="block font-bold mb-1">সর্বনিম্ন অর্ডারের মূল্য (৳)</label>
-              <input type="number" id="adm-new-offer-min" value="1500" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold font-mono" />
+              <label class="block font-bold mb-1">সর্বনিম্ন অর্ডারের মূল্য (Min_Spend ৳)</label>
+              <input type="number" id="adm-new-offer-min" value="1500" min="0" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-bold font-mono" />
             </div>
             <div>
-              <label class="block font-bold mb-1">স্ট্যাটাস</label>
+              <label class="block font-bold mb-1">মেয়াদ শেষের তারিখ (Expiry_Date)</label>
+              <input type="date" id="adm-new-offer-expiry" value="2026-12-31" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono" />
+            </div>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div>
+              <label class="block font-bold mb-1">ব্যবহারের সীমা / নোট</label>
+              <input type="text" id="adm-new-offer-limit" value="সকল গ্রাহকের জন্য প্রযোজ্য" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border" />
+            </div>
+            <div>
+              <label class="block font-bold mb-1">স্ট্যাটাস (Status)</label>
               <select id="adm-new-offer-status" class="form-control text-xs w-full py-1.5 px-2.5 rounded-xl border font-bold">
                 <option value="Active">Active (সক্রিয়)</option>
                 <option value="Inactive">Inactive (নিষ্ক্রিয়)</option>
@@ -14007,7 +16167,7 @@ function renderCouriersSettingsModule({ couriers, onlinePayments, offers, auditL
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-offer')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">💾 লিস্ট, ওয়েবসাইট ও শিটে সেভ করুন</button>
+            <button type="submit" class="btn-primary py-2 px-5 font-bold">💾 Offer_or_Coupon শিটে সেভ করুন</button>
           </div>
         </form>
       </div>
@@ -14166,24 +16326,24 @@ async function hydrateAdminDataIfNeeded() {
     resellerRes, wholesalerRes, sellerRes, marketRes, workerRes,
     costRes, buyingRes, investRes, customerRes, reviewRes, attrRes, lpRes
   ] = await Promise.all([
-    safeFetchWithTimeout(apiClient.request('products/list'), 15000, { data: { items: cachedProducts } }),
-    safeFetchWithTimeout(apiClient.request('orders/list'), 12000, { data: { items: cachedOrders } }),
-    safeFetchWithTimeout(apiClient.request('categories/list'), 12000, { data: { items: cachedCategories } }),
-    safeFetchWithTimeout(apiClient.request('brands/list'), 12000, { data: { items: cachedBrands } }),
-    safeFetchWithTimeout(apiClient.request('banners/list'), 10000, { data: { items: cachedBanners } }),
-    safeFetchWithTimeout(apiClient.request('incomplete_orders/list'), 10000, { data: { items: cachedIncomplete } }),
-    safeFetchWithTimeout(apiClient.request('resellers/list'), 10000, null),
-    safeFetchWithTimeout(apiClient.request('wholesalers/list'), 10000, null),
-    safeFetchWithTimeout(apiClient.request('sellers/list'), 10000, null),
-    safeFetchWithTimeout(apiClient.request('markets/list'), 10000, null),
-    safeFetchWithTimeout(apiClient.request('admin_worker/list'), 10000, null),
-    safeFetchWithTimeout(apiClient.request('costs/list'), 10000, null),
-    safeFetchWithTimeout(apiClient.request('buying/list'), 10000, null),
-    safeFetchWithTimeout(apiClient.request('invest/list'), 10000, null),
-    safeFetchWithTimeout(apiClient.request('customers/list'), 10000, null),
-    safeFetchWithTimeout(apiClient.request('reviews/list'), 10000, null),
-    safeFetchWithTimeout(apiClient.request('attributes/list'), 10000, null),
-    safeFetchWithTimeout(apiClient.request('landing_pages/list'), 10000, null)
+    safeFetchWithTimeout(apiClient.request('products/list'), cachedProducts.length ? 3500 : 8000, { data: { items: cachedProducts } }),
+    safeFetchWithTimeout(apiClient.request('orders/list'), cachedOrders.length ? 3000 : 6000, { data: { items: cachedOrders } }),
+    safeFetchWithTimeout(apiClient.request('categories/list'), cachedCategories.length ? 2500 : 5000, { data: { items: cachedCategories } }),
+    safeFetchWithTimeout(apiClient.request('brands/list'), cachedBrands.length ? 2500 : 5000, { data: { items: cachedBrands } }),
+    safeFetchWithTimeout(apiClient.request('banners/list'), 3000, { data: { items: cachedBanners } }),
+    safeFetchWithTimeout(apiClient.request('incomplete_orders/list'), 3000, { data: { items: cachedIncomplete } }),
+    safeFetchWithTimeout(apiClient.request('resellers/list'), 3000, null),
+    safeFetchWithTimeout(apiClient.request('wholesalers/list'), 3000, null),
+    safeFetchWithTimeout(apiClient.request('sellers/list'), 3000, null),
+    safeFetchWithTimeout(apiClient.request('markets/list'), 3000, null),
+    safeFetchWithTimeout(apiClient.request('admin_worker/list'), 3500, null),
+    safeFetchWithTimeout(apiClient.request('costs/list'), 2500, null),
+    safeFetchWithTimeout(apiClient.request('buying/list'), 2500, null),
+    safeFetchWithTimeout(apiClient.request('invest/list'), 2500, null),
+    safeFetchWithTimeout(apiClient.request('customers/list'), 3000, null),
+    safeFetchWithTimeout(apiClient.request('reviews/list'), 2500, null),
+    safeFetchWithTimeout(apiClient.request('attributes/list'), 2500, null),
+    safeFetchWithTimeout(apiClient.request('landing_pages/list'), 3000, null)
   ]);
 
   const rawProducts = (prodRes?.data?.items?.length ? prodRes.data.items : cachedProducts) || [];
@@ -14396,6 +16556,10 @@ export async function renderAdminPortal(params = {}) {
       if (activeRoute.pageId === 'page-prod-landing' && window.renderSavedLandingPagesList) {
         window.renderSavedLandingPagesList();
       }
+      if (window.renderAdminSetLogsDOM) window.renderAdminSetLogsDOM();
+      if (window.renderAdminPaymentMethodsDOM) window.renderAdminPaymentMethodsDOM();
+      if (window.renderAdminDeliveryMethodsDOM) window.renderAdminDeliveryMethodsDOM();
+      if (window.renderAdminOffersDOM) window.renderAdminOffersDOM();
     }, 0);
   }
 
