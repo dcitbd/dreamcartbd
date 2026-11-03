@@ -1317,14 +1317,24 @@ function handleBannerAdd(ss, payload) {
     "Banner_ID", "Title", "Image_URL", "Link", "Sort_Order", "Status", "Created_At"
   ]);
   var bId = String(payload.Banner_ID || payload.banner_id || payload.id || ("BAN-" + Math.floor(100 + Math.random() * 900))).trim();
-  var title = String(payload.Title || payload.title || "ব্যানার স্লাইডার").trim();
+  var rawTitle = String(payload.Title || payload.title || "ব্যানার স্লাইডার").trim();
+  var subtitle = String(payload.Subtitle || payload.subtitle || "").trim();
+  var combinedTitle = (subtitle && rawTitle.indexOf("||") === -1) ? (rawTitle + " || " + subtitle) : rawTitle;
+
   var img = String(payload.Image_URL || payload.image_url || payload.image || "").trim();
-  var link = String(payload.Link || payload.link_url || payload.link || "/products").trim();
+  if (img.length > 48000) {
+    img = "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1600&auto=format&fit=crop&q=80";
+  }
+
+  var rawLink = String(payload.Link || payload.link_url || payload.link || "/products").trim();
+  var ctaText = String(payload.cta_text || payload.button_text || "").trim();
+  var combinedLink = (ctaText && rawLink.indexOf("||") === -1) ? (rawLink + " || " + ctaText) : rawLink;
+
   var sortOrder = Number(payload.Sort_Order !== undefined ? payload.Sort_Order : (payload.position || 1));
   var status = String(payload.Status || payload.status || "Active").trim();
   var createdAt = String(payload.Created_At || payload.created_at || nowDhaka());
 
-  var row = [bId, title, img, link, sortOrder, status, createdAt];
+  var row = [bId, combinedTitle, img, combinedLink, sortOrder, status, createdAt];
   var res = writeOrUpsertRow(sheet, row, function(r) {
     return String(r[0] || "").trim().toLowerCase() === bId.toLowerCase();
   }, 3);
@@ -1333,7 +1343,17 @@ function handleBannerAdd(ss, payload) {
     status: "success",
     success: true,
     message: res.updated ? "Banner updated in Sheet!" : "Banner added to Sheet!",
-    data: { banner_id: bId, title: title, image_url: img, link_url: link, position: sortOrder, status: status }
+    data: {
+      banner_id: bId,
+      title: rawTitle,
+      subtitle: subtitle,
+      image_url: img,
+      link_url: rawLink,
+      cta_text: ctaText || "এখনই কিনুন →",
+      position: sortOrder,
+      status: status,
+      created_at: createdAt
+    }
   };
 }
 
