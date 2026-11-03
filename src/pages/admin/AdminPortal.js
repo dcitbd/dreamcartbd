@@ -5220,67 +5220,40 @@ window.openBulkSelectedProductsModal = function(mode) {
         if (b.banner_id === editId) {
           targetPayload = {
             ...b,
-            banner_id: editId,
-            Banner_ID: editId,
             title,
-            Title: title,
             subtitle: subtitle || '',
             image_url: image,
-            Image_URL: image,
             link_url: link,
-            Link: link,
             cta_text: ctaText,
-            button_text: ctaText,
             position,
-            Sort_Order: position,
-            status,
-            Status: status
+            status
           };
           return targetPayload;
         }
         return b;
       });
+      if (targetPayload) {
+        apiClient.request('banners/update', targetPayload).catch(() => {});
+      }
+      if (toast && toast.success) toast.success(`"${title}" সফলভাবে আপডেট ও গুগল শিটে সংরক্ষিত হয়েছে!`, 'ব্যানার আপডেট সম্পন্ন');
     } else {
-      const bannerId = 'BAN-' + Math.floor(100 + Math.random() * 900);
-      targetPayload = {
-        banner_id: bannerId,
-        Banner_ID: bannerId,
-        id: bannerId,
+      const newBanner = {
+        banner_id: 'BAN-' + Math.floor(100 + Math.random() * 900),
         title,
-        Title: title,
         subtitle: subtitle || '',
         image_url: image,
-        Image_URL: image,
         link_url: link,
-        Link: link,
         cta_text: ctaText,
-        button_text: ctaText,
         position,
-        Sort_Order: position,
-        status,
-        Status: status,
-        Created_At: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dhaka' })
+        status
       };
-      banners.unshift(targetPayload);
+      banners.unshift(newBanner);
+      apiClient.request('banners/add', newBanner).catch(() => {});
+      if (toast && toast.success) toast.success(`"${title}" স্লাইডার ও গুগল শিটে সংরক্ষিত হয়েছে!`, 'নতুন ব্যানার যুক্ত');
     }
 
-    if (apiClient) apiClient.sheetBanners = banners;
-    if (apiClient && apiClient.saveLocal) {
-      apiClient.saveLocal('dcbd_sheet_banners', banners);
-    } else {
-      try { localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners)); } catch (err) {}
-    }
+    localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
     if (window.__adminState) window.__adminState.banners = banners;
-
-    if (targetPayload) {
-      apiClient.request(editId ? 'banners/update' : 'banners/add', targetPayload).catch(() => {});
-    }
-    if (toast && toast.success) {
-      toast.success(
-        editId ? `"${title}" সফলভাবে আপডেট ও গুগল শিটে সংরক্ষিত হয়েছে!` : `"${title}" স্লাইডার ও গুগল শিটে সংরক্ষিত হয়েছে!`,
-        editId ? 'ব্যানার আপডেট সম্পন্ন' : 'নতুন ব্যানার যুক্ত'
-      );
-    }
 
     document.getElementById('form-add-banner-dedicated')?.reset();
     document.getElementById('modal-add-banner')?.classList.add('hidden');
@@ -5294,17 +5267,12 @@ window.openBulkSelectedProductsModal = function(mode) {
     banners = banners.map(b => {
       if (b.banner_id === bannerId) {
         newStatus = (b.status || 'Active') === 'Active' ? 'Inactive' : 'Active';
-        changed = { ...b, status: newStatus, Status: newStatus };
+        changed = { ...b, status: newStatus };
         return changed;
       }
       return b;
     });
-    if (apiClient) apiClient.sheetBanners = banners;
-    if (apiClient && apiClient.saveLocal) {
-      apiClient.saveLocal('dcbd_sheet_banners', banners);
-    } else {
-      try { localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners)); } catch (err) {}
-    }
+    localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
     if (window.__adminState) window.__adminState.banners = banners;
     if (changed) apiClient.request('banners/update', changed).catch(() => {});
     window.renderAdminBannersList();
@@ -5322,13 +5290,8 @@ window.openBulkSelectedProductsModal = function(mode) {
     const temp = banners[idx];
     banners[idx] = banners[targetIdx];
     banners[targetIdx] = temp;
-    banners = banners.map((b, i) => ({ ...b, position: i + 1, Sort_Order: i + 1 }));
-    if (apiClient) apiClient.sheetBanners = banners;
-    if (apiClient && apiClient.saveLocal) {
-      apiClient.saveLocal('dcbd_sheet_banners', banners);
-    } else {
-      try { localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners)); } catch (err) {}
-    }
+    banners = banners.map((b, i) => ({ ...b, position: i + 1 }));
+    localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
     if (window.__adminState) window.__adminState.banners = banners;
     const moved = banners[targetIdx];
     if (moved) apiClient.request('banners/update', moved).catch(() => {});
@@ -5338,12 +5301,7 @@ window.openBulkSelectedProductsModal = function(mode) {
   window.handleDeleteAdminBanner = function(bannerId) {
     if (!confirm(`আপনি কি নিশ্চিত যে এই ব্যানার স্লাইডটি (${bannerId}) ডিলিট করতে চান?`)) return;
     let banners = window.getAdminBannersList().filter(b => b.banner_id !== bannerId);
-    if (apiClient) apiClient.sheetBanners = banners;
-    if (apiClient && apiClient.saveLocal) {
-      apiClient.saveLocal('dcbd_sheet_banners', banners);
-    } else {
-      try { localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners)); } catch (err) {}
-    }
+    localStorage.setItem('dcbd_sheet_banners', JSON.stringify(banners));
     if (window.__adminState) window.__adminState.banners = banners;
     apiClient.request('banners/delete', { banner_id: bannerId }).catch(() => {});
     window.renderAdminBannersList();
@@ -5356,80 +5314,22 @@ window.openBulkSelectedProductsModal = function(mode) {
   // REQUIREMENT 7: MULTI-LANDING PAGE BUILDER, PRODUCT SEARCH & MEDIA CMS
   // ============================================================================
   window.getDefaultLandingPages = function() {
-    const prods = (window.__adminState && window.__adminState.products) || [];
-    const defaultProdIds = prods.slice(0, 4).map(p => p.sku || p.product_id);
-    return [
-      {
-        id: 'LP-101',
-        slug: 'mega-gadget-fest',
-        title: 'সেরা মানের অথেন্টিক গ্যাজেট ও স্মার্টওয়াচ সরাসরি আপনার দোরগোড়ায়!',
-        subtitle: '১০০% অরিজিনাল গ্যারান্টি • কোনো অগ্রিম পেমেন্ট ছাড়াই সারা দেশে ক্যাশ অন ডেলিভারি',
-        badge: '🔥 সীমিত সময়ের মেগা অফার — সর্বোচ্চ ৫০% ছাড়!',
-        promo: 'আজ অর্ডার করলেই পাচ্ছেন স্পেশাল ডিসকাউন্ট ও দ্রুত হোম ডেলিভারি সুবিধা!',
-        theme: 'emerald',
-        status: 'Active',
-        hotline: '01581703822',
-        cta_text: 'এখনই ক্যাশ অন ডেলিভারিতে অর্ডার করুন →',
-        hero_banner: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200',
-        banners: [
-          { url: 'https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=800', caption: 'প্রিমিয়াম AMOLED স্মার্টওয়াচ কালেকশন' },
-          { url: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800', caption: 'স্মার্ট ও নিরাপদ কিচেন অ্যাপ্লায়েন্স' },
-          { url: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=800', caption: '১০০% খাঁটি প্রাকৃতিক ও অর্গানিক ফুড' }
-        ],
-        videos: [
-          { url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', title: 'পণ্যের লাইভ আনবক্সিং ও বিস্তারিত রিভিউ ভিডিও' }
-        ],
-        features: [
-          '১০০% অরিজিনাল ও অফিশিয়াল ওয়ারেন্টিযুক্ত প্রিমিয়াম প্রোডাক্ট',
-          'পণ্য হাতে পেয়ে দেখে ডেলিভারি ম্যানের কাছে টাকা পরিশোধের সুবিধা (COD)',
-          'কুমিল্লা ও ঢাকা হাব থেকে ২৪-৪৮ ঘন্টায় সুপার-ফাস্ট এক্সপ্রেস ডেলিভারি',
-          '৭ দিনের সহজ রিপ্লেসমেন্ট ও সার্বক্ষণিক কাস্টমার কেয়ার সাপোর্ট'
-        ],
-        selected_products: defaultProdIds.length ? defaultProdIds : ['DCBD-WT-01', 'DCBD-GS-02', 'DCBD-HN-03']
-      },
-      {
-        id: 'LP-102',
-        slug: 'organic-health-combo',
-        title: 'সুন্দরবনের ১০০% খাঁটি চাকের মধু ও অর্গানিক সুপারফুড কম্বো অফার!',
-        subtitle: 'ল্যাব টেস্টেড বিশুদ্ধ প্রাকৃতিক খাবার — আপনার পরিবারের সুস্বাস্থ্যের নিশ্চয়তা',
-        badge: '🍯 অর্গানিক হেলথ ফেস্ট — ফ্রি ডেলিভারি অফার!',
-        promo: '২ কেজি বা কম্বো অর্ডার করলেই সারা বাংলাদেশে ডেলিভারি চার্জ সম্পূর্ণ ফ্রি!',
-        theme: 'amber',
-        status: 'Active',
-        hotline: '01818273838',
-        cta_text: 'খাঁটি অর্গানিক পণ্যের অর্ডার কনফার্ম করুন →',
-        hero_banner: 'https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=1200',
-        banners: [
-          { url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=800', caption: 'অর্গানিক চিয়া সিড ও হেলথ সাপ্লিমেন্ট' }
-        ],
-        videos: [
-          { url: 'https://www.youtube.com/embed/dQw4w9WgXcQ', title: 'খাঁটি মধু চেনার উপায় ও আমাদের সংগ্রহ প্রক্রিয়া' }
-        ],
-        features: [
-          'সরাসরি বাওয়ালিদের থেকে সংগৃহীত ১০০% ভেজালমুক্ত চাকের মধু',
-          'কোনো প্রকার চিনি বা প্রিজারভেটিভ মুক্ত প্রাকৃতিক সুপারফুড',
-          'পণ্য হাতে পেয়ে গুণগত মান যাচাই করে পেমেন্ট করার সুবিধা'
-        ],
-        selected_products: ['DCBD-HN-03', 'DCBD-CH-05']
-      }
-    ];
+    return [];
   };
 
   window.getAdminLandingPages = function() {
-    if (window.__adminState && Array.isArray(window.__adminState.landingPages) && window.__adminState.landingPages.length > 0) {
+    if (window.__adminState && Array.isArray(window.__adminState.landingPages)) {
       return window.__adminState.landingPages;
     }
     try {
       const saved = JSON.parse(localStorage.getItem('dcbd_landing_pages') || 'null');
-      if (Array.isArray(saved) && saved.length > 0) {
+      if (Array.isArray(saved)) {
         if (window.__adminState) window.__adminState.landingPages = saved;
         return saved;
       }
     } catch (e) {}
-    const def = window.getDefaultLandingPages();
-    localStorage.setItem('dcbd_landing_pages', JSON.stringify(def));
-    if (window.__adminState) window.__adminState.landingPages = def;
-    return def;
+    if (window.__adminState) window.__adminState.landingPages = [];
+    return [];
   };
 
   window.__currentLandingDraft = window.__currentLandingDraft || null;
@@ -5440,23 +5340,28 @@ window.openBulkSelectedProductsModal = function(mode) {
     } else {
       window.__currentLandingDraft = {
         id: 'LP-' + Math.floor(100 + Math.random() * 900),
-        slug: 'campaign-' + Math.floor(100 + Math.random() * 900),
+        slug: '',
         title: '',
-        subtitle: 'কোনো অগ্রিম পেমেন্ট ছাড়াই সারা দেশে ক্যাশ অন ডেলিভারিতে অর্ডার করুন।',
-        badge: '🔥 সীমিত সময়ের মেগা অফার!',
-        promo: 'আজই অর্ডার করলে পাচ্ছেন বিশেষ মূল্যছাড় ও দ্রুত হোম ডেলিভারি!',
+        subtitle: '',
+        badge: '',
+        promo: '',
+        regular_price: '',
+        offer_price: '',
+        gift_note: '',
+        description: '',
+        specifications: '',
+        colors: '',
+        sizes: '',
+        countdown_hours: '',
+        free_shipping: false,
         theme: 'emerald',
         status: 'Active',
-        hotline: '01581703822',
-        cta_text: 'এখনই অর্ডার করুন →',
-        hero_banner: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200',
+        hotline: '',
+        cta_text: '',
+        hero_banner: '',
         banners: [],
         videos: [],
-        features: [
-          '১০০% অরিজিনাল ও অফিশিয়াল ওয়ারেন্টিযুক্ত প্রিমিয়াম প্রোডাক্ট',
-          'পণ্য হাতে পেয়ে দেখে ডেলিভারি ম্যানের কাছে টাকা পরিশোধের সুবিধা (COD)',
-          'দ্রুত ডেলিভারি ও ৭ দিনের সহজ রিপ্লেসমেন্ট সুবিধা'
-        ],
+        features: [],
         selected_products: []
       };
     }
@@ -5466,21 +5371,46 @@ window.openBulkSelectedProductsModal = function(mode) {
   window.populateLandingBuilderForm = function(lp) {
     const draft = window.initLandingDraft(lp);
     const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+    const slugEl = document.getElementById('adm-lp-slug');
+    if (slugEl) {
+      if (lp && draft.slug) slugEl.dataset.manual = '1';
+      else delete slugEl.dataset.manual;
+    }
+
     setV('adm-lp-id', draft.id);
-    setV('adm-lp-title', draft.title);
-    setV('adm-lp-slug', draft.slug);
-    setV('adm-lp-subtitle', draft.subtitle);
-    setV('adm-lp-badge', draft.badge);
-    setV('adm-lp-promo', draft.promo);
+    setV('adm-lp-title', draft.title || '');
+    setV('adm-lp-slug', draft.slug || '');
+    setV('adm-lp-subtitle', draft.subtitle || '');
+    setV('adm-lp-badge', draft.badge || '');
+    setV('adm-lp-promo', draft.promo || '');
+    setV('adm-lp-regular-price', draft.regular_price || '');
+    setV('adm-lp-offer-price', draft.offer_price || '');
+    setV('adm-lp-gift-note', draft.gift_note || '');
+    setV('adm-lp-description', draft.description || '');
+    setV('adm-lp-specifications', draft.specifications || '');
+    setV('adm-lp-colors', draft.colors || '');
+    setV('adm-lp-sizes', draft.sizes || '');
+    setV('adm-lp-countdown-hours', draft.countdown_hours || '');
     setV('adm-lp-theme', draft.theme || 'emerald');
     setV('adm-lp-status', draft.status || 'Active');
-    setV('adm-lp-hotline', draft.hotline || '01581703822');
-    setV('adm-lp-cta', draft.cta_text || 'এখনই অর্ডার করুন →');
+    setV('adm-lp-hotline', draft.hotline || '');
+    setV('adm-lp-cta', draft.cta_text || '');
     setV('adm-lp-hero-banner', draft.hero_banner || '');
     setV('adm-lp-features', (draft.features || []).join('\n'));
 
+    const freeShipEl = document.getElementById('adm-lp-free-shipping');
+    if (freeShipEl) freeShipEl.checked = Boolean(draft.free_shipping);
+
     const heroPrev = document.getElementById('adm-lp-hero-preview-img');
-    if (heroPrev && draft.hero_banner) heroPrev.src = draft.hero_banner;
+    if (heroPrev) {
+      if (draft.hero_banner) {
+        heroPrev.src = draft.hero_banner;
+        heroPrev.classList.remove('hidden');
+      } else {
+        heroPrev.src = '';
+        heroPrev.classList.add('hidden');
+      }
+    }
 
     const modeBadge = document.getElementById('adm-lp-editor-mode-badge');
     if (modeBadge) modeBadge.textContent = lp ? `এডিট মোড: ${draft.id} (${draft.slug})` : `নতুন ল্যান্ডিং পেজ তৈরি (${draft.id})`;
@@ -5495,7 +5425,7 @@ window.openBulkSelectedProductsModal = function(mode) {
     window.switchAdminPage('page-prod-landing-add', 'group-products');
     setTimeout(() => {
       window.populateLandingBuilderForm(null);
-      if (toast && toast.show) toast.show({ type: 'info', title: 'নতুন ল্যান্ডিং পেজ ফর্ম', message: 'স্লাগ (Slug) ও তথ্য দিয়ে নতুন ল্যান্ডিং পেজ তৈরি করুন।' });
+      if (toast && toast.show) toast.show({ type: 'info', title: 'নতুন ল্যান্ডিং পেজ ফর্ম', message: 'ফর্মের সব ঘর খালি রাখা হয়েছে—আপনার পছন্দমতো সব ডিটেইলস দিয়ে ল্যান্ডিং পেজ তৈরি করুন।' });
     }, 20);
   };
 
@@ -5523,30 +5453,12 @@ window.openBulkSelectedProductsModal = function(mode) {
     localStorage.setItem('dcbd_landing_pages', JSON.stringify(list));
     if (window.__adminState) window.__adminState.landingPages = list;
     window.renderSavedLandingPagesList();
-    apiClient.request('landing-pages/save', 'POST', {
-      page_id: copy.id,
-      slug: copy.slug,
-      title: copy.title,
-      subtitle: copy.subtitle,
-      badge: copy.badge,
-      promo: copy.promo,
-      banner: copy.hero_banner,
-      banners: (copy.banners || []).map(b => b.url || b),
-      videos: (copy.videos || []).map(v => v.url || v),
-      bullets: copy.features || [],
-      selected_skus: copy.selected_products || [],
-      cta_text: copy.cta_text,
-      status: copy.status || 'Active'
-    }).catch(() => {});
+    apiClient.request('landing-pages/save', 'POST', copy).catch(() => {});
     if (toast && toast.show) toast.show({ type: 'success', title: 'ডুপ্লিকেট সম্পন্ন', message: 'নতুন ল্যান্ডিং পেজ কপি তৈরি ও শিটে সংরক্ষিত হয়েছে!' });
   };
 
   window.deleteLandingPage = function(lpId) {
     let list = window.getAdminLandingPages();
-    if (list.length <= 1) {
-      alert('কমপক্ষে ১টি ল্যান্ডিং পেজ রাখা আবশ্যক!');
-      return;
-    }
     if (!confirm('আপনি কি নিশ্চিত যে এই ল্যান্ডিং পেজটি ডিলিট করতে চান?')) return;
     list = list.filter(item => item.id !== lpId && item.page_id !== lpId);
     localStorage.setItem('dcbd_landing_pages', JSON.stringify(list));
@@ -5556,22 +5468,28 @@ window.openBulkSelectedProductsModal = function(mode) {
     if (toast && toast.show) toast.show({ type: 'success', title: 'ল্যান্ডিং পেজ মোছা হয়েছে', message: 'ল্যান্ডিং পেজটি তালিকা ও শিট থেকে মুছে ফেলা হয়েছে।' });
   };
 
-  // Hero Banner Upload & Gallery Banners Management in Landing Page
-  window.handleLandingHeroUpload = function(fileInput) {
+  // Hero Banner Upload & Gallery Banners Management in Landing Page (with automatic compression)
+  window.handleLandingHeroUpload = async function(fileInput) {
     const file = fileInput?.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = function(evt) {
-      const dataUrl = evt.target?.result;
-      if (!dataUrl) return;
-      const inp = document.getElementById('adm-lp-hero-banner');
-      const prev = document.getElementById('adm-lp-hero-preview-img');
-      if (inp) inp.value = dataUrl;
-      if (prev) prev.src = dataUrl;
-      if (!window.__currentLandingDraft) window.initLandingDraft();
-      window.__currentLandingDraft.hero_banner = dataUrl;
-    };
-    reader.readAsDataURL(file);
+    const dataUrl = window.compressAdminUploadedImage
+      ? await window.compressAdminUploadedImage(file, 960, 0.75)
+      : await new Promise(res => {
+          const r = new FileReader();
+          r.onload = e => res(e.target?.result || '');
+          r.onerror = () => res('');
+          r.readAsDataURL(file);
+        });
+    if (!dataUrl) return;
+    const inp = document.getElementById('adm-lp-hero-banner');
+    const prev = document.getElementById('adm-lp-hero-preview-img');
+    if (inp) inp.value = dataUrl;
+    if (prev) {
+      prev.src = dataUrl;
+      prev.classList.remove('hidden');
+    }
+    if (!window.__currentLandingDraft) window.initLandingDraft();
+    window.__currentLandingDraft.hero_banner = dataUrl;
   };
 
   window.addBannerToLandingDraft = function() {
@@ -5579,7 +5497,7 @@ window.openBulkSelectedProductsModal = function(mode) {
     const urlInp = document.getElementById('adm-lp-add-banner-url');
     const capInp = document.getElementById('adm-lp-add-banner-caption');
     const url = (urlInp?.value || '').trim();
-    const caption = (capInp?.value || '').trim() || 'বিশেষ প্রমোশনাল ব্যানার';
+    const caption = (capInp?.value || '').trim();
     if (!url) {
       if (toast && toast.show) toast.show({ type: 'warning', title: 'ব্যানার লিঙ্ক দিন', message: 'অনুগ্রহ করে ব্যানার ছবির URL দিন অথবা ফাইল আপলোড করুন।' });
       return;
@@ -5590,22 +5508,26 @@ window.openBulkSelectedProductsModal = function(mode) {
     window.renderLandingDraftBanners();
   };
 
-  window.handleLandingGalleryFilesUpload = function(fileInput) {
+  window.handleLandingGalleryFilesUpload = async function(fileInput) {
     if (!window.__currentLandingDraft) window.initLandingDraft();
     const files = Array.from(fileInput?.files || []);
     const capInp = document.getElementById('adm-lp-add-banner-caption');
-    const defaultCap = (capInp?.value || '').trim() || 'ক্যাম্পেইন গ্যালারি ব্যানার';
-    files.forEach((file, idx) => {
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        const dataUrl = evt.target?.result;
-        if (dataUrl) {
-          window.__currentLandingDraft.banners.push({ url: dataUrl, caption: `${defaultCap} #${idx + 1}` });
-          window.renderLandingDraftBanners();
-        }
-      };
-      reader.readAsDataURL(file);
-    });
+    const defaultCap = (capInp?.value || '').trim();
+    for (let idx = 0; idx < files.length; idx++) {
+      const file = files[idx];
+      const dataUrl = window.compressAdminUploadedImage
+        ? await window.compressAdminUploadedImage(file, 800, 0.74)
+        : await new Promise(res => {
+            const r = new FileReader();
+            r.onload = e => res(e.target?.result || '');
+            r.onerror = () => res('');
+            r.readAsDataURL(file);
+          });
+      if (dataUrl) {
+        window.__currentLandingDraft.banners.push({ url: dataUrl, caption: defaultCap });
+      }
+    }
+    window.renderLandingDraftBanners();
   };
 
   window.removeBannerFromLandingDraft = function(idx) {
@@ -5620,19 +5542,18 @@ window.openBulkSelectedProductsModal = function(mode) {
     const draft = window.__currentLandingDraft || window.initLandingDraft();
     const banners = draft.banners || [];
     if (banners.length === 0) {
-      box.innerHTML = `<div class="col-span-full p-3 text-center text-slate-400 text-[11px] border border-dashed rounded-xl">কোনো অতিরিক্ত গ্যালারি ব্যানার যুক্ত করা হয়নি।</div>`;
+      box.innerHTML = `<div class="col-span-full p-3 text-center text-slate-400 text-[11px] border border-dashed rounded-xl">কোনো অতিরিক্ত গ্যালারি ছবি যুক্ত করা হয়নি।</div>`;
       return;
     }
     box.innerHTML = banners.map((b, i) => `
       <div class="relative rounded-2xl border bg-white dark:bg-slate-900 p-2 space-y-1.5 shadow-sm">
-        <img src="${b.url}" class="w-full h-24 object-cover rounded-xl" onerror="this.src='https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=400';" />
-        <div class="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">${b.caption || `ব্যানার #${i + 1}`}</div>
+        <img src="${b.url}" class="w-full h-24 object-cover rounded-xl" />
+        ${b.caption ? `<div class="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">${b.caption}</div>` : ''}
         <button type="button" onclick="window.removeBannerFromLandingDraft(${i})" class="absolute top-3 right-3 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center shadow">✕</button>
       </div>
     `).join('');
   };
 
-  // Video Management in Landing Page
   window.normalizeVideoEmbedUrl = function(rawUrl) {
     const url = String(rawUrl || '').trim();
     if (!url) return '';
@@ -5648,7 +5569,7 @@ window.openBulkSelectedProductsModal = function(mode) {
     const urlInp = document.getElementById('adm-lp-add-video-url');
     const titleInp = document.getElementById('adm-lp-add-video-title');
     const rawUrl = (urlInp?.value || '').trim();
-    const title = (titleInp?.value || '').trim() || 'প্রোডাক্ট রিভিউ ও ডেমো ভিডিও';
+    const title = (titleInp?.value || '').trim();
     if (!rawUrl) {
       if (toast && toast.show) toast.show({ type: 'warning', title: 'ভিডিও লিঙ্ক দিন', message: 'YouTube বা ভিডিও URL প্রদান করুন।' });
       return;
@@ -5672,7 +5593,7 @@ window.openBulkSelectedProductsModal = function(mode) {
     const draft = window.__currentLandingDraft || window.initLandingDraft();
     const videos = draft.videos || [];
     if (videos.length === 0) {
-      box.innerHTML = `<div class="col-span-full p-3 text-center text-slate-400 text-[11px] border border-dashed rounded-xl">কোনো ভিডিও যুক্ত করা হয়নি। YouTube বা MP4 লিঙ্ক যুক্ত করুন।</div>`;
+      box.innerHTML = `<div class="col-span-full p-3 text-center text-slate-400 text-[11px] border border-dashed rounded-xl">কোনো ভিডিও যুক্ত করা হয়নি।</div>`;
       return;
     }
     box.innerHTML = videos.map((v, i) => `
@@ -5680,7 +5601,7 @@ window.openBulkSelectedProductsModal = function(mode) {
         <div class="flex items-center gap-2.5 min-w-0">
           <span class="w-8 h-8 rounded-xl bg-rose-100 dark:bg-rose-950 text-rose-600 flex items-center justify-center font-bold text-sm flex-shrink-0">▶</span>
           <div class="min-w-0">
-            <div class="font-bold text-xs text-slate-900 dark:text-white truncate">${v.title}</div>
+            <div class="font-bold text-xs text-slate-900 dark:text-white truncate">${v.title || 'ভিডিও'}</div>
             <div class="text-[10px] text-slate-400 font-mono truncate">${v.url}</div>
           </div>
         </div>
@@ -5689,7 +5610,6 @@ window.openBulkSelectedProductsModal = function(mode) {
     `).join('');
   };
 
-  // Product Search & Selection for Landing Page ("লেন্ডিং পেজে কোন কোন প্রোডাক্ট দেখাবে সেটা প্রোডাক্ট সার্চ করে এড করা যাবে")
   window.searchProductsForLandingBuilder = function(query = '') {
     const resBox = document.getElementById('adm-lp-product-search-results');
     if (!resBox) return;
@@ -5765,7 +5685,7 @@ window.openBulkSelectedProductsModal = function(mode) {
     const selectedObjs = ids.map(id => prods.find(p => p.sku === id || p.product_id === id)).filter(Boolean);
 
     if (selectedObjs.length === 0) {
-      box.innerHTML = `<div class="col-span-full p-4 text-center text-slate-400 text-xs border border-dashed rounded-xl">এখনো কোনো পণ্য ল্যান্ডিং পেজে যুক্ত করা হয়নি। উপরের সার্চ বক্স থেকে পণ্য খুঁজে "+ যুক্ত করুন" বাটনে ক্লিক করুন।</div>`;
+      box.innerHTML = `<div class="col-span-full p-4 text-center text-slate-400 text-xs border border-dashed rounded-xl">এখনো কোনো পণ্য নির্বাচন করা হয়নি। উপরের সার্চ বক্স থেকে পণ্য খুঁজে "+ যুক্ত করুন" বাটনে ক্লিক করুন।</div>`;
       return;
     }
 
@@ -5796,55 +5716,50 @@ window.openBulkSelectedProductsModal = function(mode) {
 
     const getV = id => (document.getElementById(id)?.value || '').trim();
     draft.id = getV('adm-lp-id') || draft.id || ('LP-' + Math.floor(100 + Math.random() * 900));
-    draft.title = getV('adm-lp-title') || 'সেরা মানের অথেন্টিক গ্যাজেট ও লাইফস্টাইল পণ্য সরাসরি আপনার দোরগোড়ায়!';
+    draft.title = getV('adm-lp-title');
     draft.slug = getV('adm-lp-slug') || draft.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || ('lp-' + Date.now());
-    draft.subtitle = getV('adm-lp-subtitle') || 'কোনো অগ্রিম পেমেন্ট ছাড়াই সারা দেশে ক্যাশ অন ডেলিভারিতে অর্ডার করুন।';
-    draft.badge = getV('adm-lp-badge') || '🔥 সীমিত সময়ের মেগা অফার!';
-    draft.promo = getV('adm-lp-promo') || 'বিশেষ ডিসকাউন্ট ও দ্রুত ডেলিভারি!';
+    draft.subtitle = getV('adm-lp-subtitle');
+    draft.badge = getV('adm-lp-badge');
+    draft.promo = getV('adm-lp-promo');
+    draft.regular_price = Number(getV('adm-lp-regular-price') || 0);
+    draft.offer_price = Number(getV('adm-lp-offer-price') || 0);
+    draft.gift_note = getV('adm-lp-gift-note');
+    draft.description = getV('adm-lp-description');
+    draft.specifications = getV('adm-lp-specifications');
+    draft.colors = getV('adm-lp-colors');
+    draft.sizes = getV('adm-lp-sizes');
+    draft.countdown_hours = Number(getV('adm-lp-countdown-hours') || 0);
+    draft.free_shipping = Boolean(document.getElementById('adm-lp-free-shipping')?.checked);
     draft.theme = getV('adm-lp-theme') || 'emerald';
     draft.status = getV('adm-lp-status') || 'Active';
-    draft.hotline = getV('adm-lp-hotline') || '01581703822';
-    draft.cta_text = getV('adm-lp-cta') || 'এখনই অর্ডার করুন →';
-    draft.hero_banner = getV('adm-lp-hero-banner') || draft.hero_banner || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200';
+    draft.hotline = getV('adm-lp-hotline');
+    draft.cta_text = getV('adm-lp-cta');
+    draft.hero_banner = getV('adm-lp-hero-banner');
     const rawFeatures = getV('adm-lp-features');
-    draft.features = rawFeatures ? rawFeatures.split('\n').map(s => s.trim()).filter(Boolean) : draft.features;
+    draft.features = rawFeatures ? rawFeatures.split('\n').map(s => s.trim()).filter(Boolean) : [];
 
-    let list = window.getAdminLandingPages();
-    const existingIdx = list.findIndex(item => item.id === draft.id);
+    draft.page_id = draft.id;
+    draft.banner = draft.hero_banner;
+    draft.bullets = draft.features;
+    draft.selected_skus = draft.selected_products || [];
+
+    let list = [...window.getAdminLandingPages()];
+    const existingIdx = list.findIndex(item => item.id === draft.id || item.slug === draft.slug);
     if (existingIdx >= 0) {
       list[existingIdx] = JSON.parse(JSON.stringify(draft));
     } else {
       list.unshift(JSON.parse(JSON.stringify(draft)));
     }
 
-    draft.page_id = draft.id;
-    draft.banner = draft.hero_banner;
-    draft.bullets = draft.features;
-    draft.selected_skus = draft.selected_products;
-
     localStorage.setItem('dcbd_landing_pages', JSON.stringify(list));
     localStorage.setItem('dcbd_landing_config', JSON.stringify(draft));
     if (window.__adminState) window.__adminState.landingPages = list;
 
-    apiClient.request('landing-pages/save', 'POST', {
-      page_id: draft.id,
-      slug: draft.slug,
-      title: draft.title,
-      subtitle: draft.subtitle,
-      badge: draft.badge,
-      promo: draft.promo,
-      banner: draft.hero_banner,
-      banners: (draft.banners || []).map(b => typeof b === 'string' ? b : b.url).filter(Boolean),
-      videos: (draft.videos || []).map(v => typeof v === 'string' ? v : v.url).filter(Boolean),
-      bullets: draft.features || [],
-      selected_skus: draft.selected_products || [],
-      cta_text: draft.cta_text || 'এখনই অর্ডার করুন →',
-      status: draft.status || 'Active'
-    }).catch(() => {});
+    apiClient.request('landing-pages/save', 'POST', draft).catch(() => {});
 
     window.renderSavedLandingPagesList();
     if (toast && toast.show) {
-      toast.show({ type: 'success', title: 'ল্যান্ডিং পেজ সংরক্ষিত!', message: `"${draft.title}" (স্লাগ: /landing?page=${draft.slug}) লিস্ট এবং Google Sheet-এ জমা হয়েছে!` });
+      toast.show({ type: 'success', title: 'ল্যান্ডিং পেজ সংরক্ষিত!', message: `"${draft.title}" (/landing?page=${draft.slug}) সফলভাবে সংরক্ষিত ও লাইভ হয়েছে!` });
     }
     window.switchAdminPage('page-prod-landing', 'group-products');
   };
@@ -5853,6 +5768,16 @@ window.openBulkSelectedProductsModal = function(mode) {
     const grid = document.getElementById('adm-saved-landing-pages-grid');
     if (!grid) return;
     const list = window.getAdminLandingPages();
+    if (!list || list.length === 0) {
+      grid.innerHTML = `
+        <div class="col-span-full p-8 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 text-center space-y-2">
+          <div class="text-2xl">🚀</div>
+          <div class="font-bold text-slate-700 dark:text-slate-200 text-sm">এখনো কোনো ল্যান্ডিং পেজ তৈরি করা হয়নি</div>
+          <p class="text-xs text-slate-400">উপরের "+ নতুন ল্যান্ডিং পেজ তৈরি করুন" বাটনে ক্লিক করে আপনার নিজস্ব ল্যান্ডিং পেজ তৈরি করুন।</p>
+        </div>
+      `;
+      return;
+    }
     grid.innerHTML = list.map(lp => {
       const safeId = String(lp.id).replace(/'/g, "\\'");
       return `
@@ -10785,16 +10710,15 @@ function renderLandingCmsModule({ products = [] }) {
 
           </div>
 
-          <!-- 14B. Separate Standalone Add / Edit Landing Page Form View -->
+          <!-- 14B. Separate Standalone Add / Edit Landing Page Form View (Zero pre-filled default text; 100% Admin Controlled) -->
           <div id="page-prod-landing-add" class="admin-page-view hidden space-y-5">
-            <!-- Detailed Landing Page Builder & Editor Form -->
             <div id="landing-builder-form-card" class="dc-admin-card space-y-5">
               <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3">
                 <div>
                   <span id="adm-lp-editor-mode-badge" class="inline-block px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-black text-[10px] mb-1">
-                    ল্যান্ডিং পেজ কাস্টমাইজার ও এডিটর
+                    নতুন ল্যান্ডিং পেজ তৈরি
                   </span>
-                  <h4 class="font-black text-sm text-slate-900 dark:text-white">🛠️ নতুন ল্যান্ডিং পেজ যোগ ও কনফিগারেশন (স্লাগ, প্রোডাক্ট সার্চ, ব্যানার ও ভিডিও)</h4>
+                  <h4 class="font-black text-sm text-slate-900 dark:text-white">🛠️ ল্যান্ডিং পেজের সকল ডিটেইলস কনফিগারেশন (শিরোনাম, মূল্য, বিবরণ, স্পেসিফিকেশন, পণ্য, ব্যানার ও ভিডিও)</h4>
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                   <button type="button" onclick="window.switchAdminPage('page-prod-landing', 'group-products')" class="btn-secondary py-1.5 px-3.5 text-xs font-bold">
@@ -10807,50 +10731,86 @@ function renderLandingCmsModule({ products = [] }) {
               </div>
 
               <form class="space-y-5 text-xs" onsubmit="window.handleAdminSaveLandingConfig(event)">
-                <input type="hidden" id="adm-lp-id" value="LP-101" />
+                <input type="hidden" id="adm-lp-id" value="" />
 
-                <!-- 1. Campaign Headline, Slug, Promo & Hotline -->
-                <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3">
-                  <div class="font-black text-xs text-slate-800 dark:text-white uppercase border-b pb-1.5">১. ক্যাম্পেইন শিরোনাম, স্লোগান ও অফার তথ্য</div>
+                <!-- ১. ক্যাম্পেইন শিরোনাম, স্লাগ, মূল্য ও অফার তথ্য -->
+                <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-3.5">
+                  <div class="font-black text-xs text-slate-800 dark:text-white uppercase border-b pb-1.5">১. ক্যাম্পেইন শিরোনাম, স্লাগ, মূল্য ও অফার তথ্য</div>
+                  
                   <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div class="sm:col-span-2">
-                      <label class="block font-bold mb-1">ক্যাম্পেইন মূল বাংলা স্লোগান / শিরোনাম (Title) *</label>
-                      <input type="text" id="adm-lp-title" required value="সেরা মানের অথেন্টিক গ্যাজেট ও স্মার্টওয়াচ সরাসরি আপনার দোরগোড়ায়!" oninput="const s=document.getElementById('adm-lp-slug'); if(s && !s.dataset.manual){ s.value = (this.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || ('campaign-' + Math.floor(100+Math.random()*900))); }" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900" />
+                      <label class="block font-bold mb-1">ল্যান্ডিং পেজের মূল শিরোনাম / হেডলাইন (Title) *</label>
+                      <input type="text" id="adm-lp-title" required value="" placeholder="এখানে আপনার ল্যান্ডিং পেজের মূল শিরোনাম লিখুন..." oninput="const s=document.getElementById('adm-lp-slug'); if(s && !s.dataset.manual){ s.value = (this.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || ('campaign-' + Math.floor(100+Math.random()*900))); }" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900" />
                     </div>
                     <div>
                       <label class="block font-bold mb-1">ল্যান্ডিং পেজ স্লাগ (URL Slug) *</label>
-                      <input type="text" id="adm-lp-slug" required value="mega-gadget-fest" oninput="this.dataset.manual='1'" placeholder="যেমন: smart-watch-offer" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono bg-white dark:bg-slate-900" />
+                      <input type="text" id="adm-lp-slug" required value="" oninput="this.dataset.manual='1'" placeholder="যেমন: eid-special-offer" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono bg-white dark:bg-slate-900" />
                     </div>
                   </div>
 
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label class="block font-bold mb-1">সাব-হেডলাইন (Subtitle)</label>
-                      <input type="text" id="adm-lp-subtitle" value="১০০% অরিজিনাল গ্যারান্টি • কোনো অগ্রিম পেমেন্ট ছাড়াই সারা দেশে ক্যাশ অন ডেলিভারি" class="form-control text-xs w-full py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
+                      <label class="block font-bold mb-1">সাব-হেডলাইন / সংক্ষিপ্ত বিবরণ (Subtitle)</label>
+                      <input type="text" id="adm-lp-subtitle" value="" placeholder="শিরোনামের নিচে দেখানোর জন্য সাব-হেডলাইন লিখুন (ঐচ্ছিক)..." class="form-control text-xs w-full py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
                     </div>
                     <div>
                       <label class="block font-bold mb-1">অফার ব্যাজ টেক্সট (Offer Badge)</label>
-                      <input type="text" id="adm-lp-badge" value="🔥 সীমিত সময়ের মেগা অফার — সর্বোচ্চ ৫০% ছাড়!" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900" />
+                      <input type="text" id="adm-lp-badge" value="" placeholder="যেমন: 🔥 স্পেশাল ডিসকাউন্ট অফার (ঐচ্ছিক)..." class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900" />
                     </div>
                   </div>
 
+                  <!-- Pricing, Free Gift & Countdown -->
                   <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                    <div class="sm:col-span-2">
-                      <label class="block font-bold mb-1">বিশেষ প্রমোশনাল নোটিশ বার (Top Promo Notice)</label>
-                      <input type="text" id="adm-lp-promo" value="আজ অর্ডার করলেই পাচ্ছেন স্পেশাল ডিসকাউন্ট ও দ্রুত হোম ডেলিভারি সুবিধা!" class="form-control text-xs w-full py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
+                    <div>
+                      <label class="block font-bold mb-1">রেগুলার মূল্য (Regular Price ৳)</label>
+                      <input type="number" id="adm-lp-regular-price" value="" placeholder="যেমন: 3200 (ঐচ্ছিক)" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono bg-white dark:bg-slate-900" />
                     </div>
                     <div>
-                      <label class="block font-bold mb-1">ডিরেক্ট অর্ডার হটলাইন</label>
-                      <input type="text" id="adm-lp-hotline" value="01581703822" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold bg-white dark:bg-slate-900" />
+                      <label class="block font-bold mb-1">অফার মূল্য (Offer Price ৳)</label>
+                      <input type="number" id="adm-lp-offer-price" value="" placeholder="যেমন: 2599 (ঐচ্ছিক)" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold text-emerald-600 bg-white dark:bg-slate-900" />
                     </div>
                     <div>
-                      <label class="block font-bold mb-1">স্ট্যাটাস ও থিম</label>
+                      <label class="block font-bold mb-1">কাউন্টডাউন টাইমার (ঘণ্টা)</label>
+                      <input type="number" id="adm-lp-countdown-hours" value="" placeholder="যেমন: 24 (০ বা খালি রাখলে হাইড থাকবে)" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono bg-white dark:bg-slate-900" />
+                    </div>
+                    <div>
+                      <label class="block font-bold mb-1">অর্ডার বাটন টেক্সট (CTA Button)</label>
+                      <input type="text" id="adm-lp-cta" value="" placeholder="যেমন: এখনই অর্ডার করুন" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-bold bg-white dark:bg-slate-900" />
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label class="block font-bold mb-1">উপরের প্রমো নোটিশ বার (Top Promo Bar Text)</label>
+                      <input type="text" id="adm-lp-promo" value="" placeholder="পেজের একদম উপরে নোটিশ দেখাতে চাইলে লিখুন (খালি রাখলে দেখাবে না)..." class="form-control text-xs w-full py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
+                    </div>
+                    <div>
+                      <label class="block font-bold mb-1">ফ্রি গিফট বা বিশেষ অফার নোট (Gift / Special Note)</label>
+                      <input type="text" id="adm-lp-gift-note" value="" placeholder="বিশেষ উপহার বা অফার নোট থাকলে লিখুন (খালি রাখলে দেখাবে না)..." class="form-control text-xs w-full py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-center pt-1">
+                    <div>
+                      <label class="block font-bold mb-1">কাস্টম কালার অপশন (কমা দিয়ে)</label>
+                      <input type="text" id="adm-lp-colors" value="" placeholder="যেমন: Black, Maroon, Navy" class="form-control text-xs w-full py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
+                    </div>
+                    <div>
+                      <label class="block font-bold mb-1">কাস্টম সাইজ অপশন (কমা দিয়ে)</label>
+                      <input type="text" id="adm-lp-sizes" value="" placeholder="যেমন: M, L, XL বা 50, 52, 54" class="form-control text-xs w-full py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
+                    </div>
+                    <div>
+                      <label class="block font-bold mb-1">ডিরেক্ট হটলাইন নম্বর</label>
+                      <input type="text" id="adm-lp-hotline" value="" placeholder="যেমন: 01581703822" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono font-bold bg-white dark:bg-slate-900" />
+                    </div>
+                    <div>
+                      <label class="block font-bold mb-1">কালার থিম ও স্ট্যাটাস</label>
                       <div class="flex gap-1.5">
                         <select id="adm-lp-theme" class="form-control text-xs py-2 px-2 rounded-xl border font-bold bg-white dark:bg-slate-900 flex-1">
-                          <option value="emerald">Emerald</option>
+                          <option value="emerald">Emerald Green</option>
                           <option value="amber">Amber Gold</option>
-                          <option value="indigo">Royal Blue</option>
-                          <option value="rose">Crimson</option>
+                          <option value="indigo">Royal Indigo</option>
+                          <option value="rose">Crimson Rose</option>
                         </select>
                         <select id="adm-lp-status" class="form-control text-xs py-2 px-2 rounded-xl border font-bold bg-white dark:bg-slate-900">
                           <option value="Active">Active</option>
@@ -10859,20 +10819,25 @@ function renderLandingCmsModule({ products = [] }) {
                       </div>
                     </div>
                   </div>
-                  <input type="hidden" id="adm-lp-cta" value="এখনই ক্যাশ অন ডেলিভারিতে অর্ডার করুন →" />
+
+                  <div class="pt-1">
+                    <label class="inline-flex items-center gap-2 cursor-pointer font-bold text-emerald-700 dark:text-emerald-300">
+                      <input type="checkbox" id="adm-lp-free-shipping" class="w-4 h-4 accent-emerald-600 rounded" />
+                      <span>🚚 এই ল্যান্ডিং পেজের অর্ডারে সম্পূর্ণ ফ্রি ডেলিভারি (৳০ ডেলিভারি চার্জ) প্রযোজ্য</span>
+                    </label>
+                  </div>
                 </div>
 
-                <!-- 2. Product Search & Add to Landing Page (লেন্ডিং পেজে কোন কোন প্রোডাক্ট দেখাবে সেটা প্রোডাক্ট সার্চ করে এড করা যাবে) -->
+                <!-- ২. ল্যান্ডিং পেজের জন্য প্রোডাক্ট সার্চ ও নির্বাচন -->
                 <div class="p-4 rounded-2xl bg-emerald-50/50 dark:bg-slate-800/50 border border-emerald-200 dark:border-slate-700 space-y-3">
                   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/70 dark:border-slate-700 pb-2">
                     <div>
                       <div class="font-black text-xs text-slate-900 dark:text-white uppercase">২. ল্যান্ডিং পেজের জন্য প্রোডাক্ট সার্চ ও নির্বাচন করুন</div>
-                      <p class="text-[10px] text-slate-500">পণ্য সার্চ করে এই ল্যান্ডিং পেজে কোন কোন প্রোডাক্ট দেখাবে তা যুক্ত বা পরিবর্তন করুন</p>
+                      <p class="text-[10px] text-slate-500">পণ্য সার্চ করে এই ল্যান্ডিং পেজে কোন কোন প্রোডাক্ট দেখাবে তা যুক্ত করুন</p>
                     </div>
-                    <span id="adm-lp-selected-prod-count" class="badge badge-success text-xs font-bold">৩ টি পণ্য নির্বাচিত</span>
+                    <span id="adm-lp-selected-prod-count" class="badge badge-success text-xs font-bold">০ টি পণ্য নির্বাচিত</span>
                   </div>
 
-                  <!-- Search Input -->
                   <div class="flex gap-2">
                     <input
                       type="text"
@@ -10885,88 +10850,48 @@ function renderLandingCmsModule({ products = [] }) {
                     <button type="button" onclick="window.searchProductsForLandingBuilder('')" class="btn-secondary py-2 px-3 text-xs font-bold bg-white dark:bg-slate-900">সকল পণ্য দেখুন</button>
                   </div>
 
-                  <!-- Search Results Box -->
                   <div class="space-y-1.5">
                     <div class="text-[10px] font-bold text-slate-500">সার্চ ফলাফল (ক্লিক করে ল্যান্ডিং পেজে যুক্ত করুন):</div>
-                    <div id="adm-lp-product-search-results" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-56 overflow-y-auto p-1">
-                      ${products.slice(0, 6).map(p => {
-                        const id = String(p.sku || p.product_id || '');
-                        const safeId = id.replace(/'/g, "\\'");
-                        const thumb = p.thumbnail || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';
-                        return `
-                          <div class="p-2 rounded-xl border bg-white dark:bg-slate-900 flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-2 min-w-0">
-                              <img src="${thumb}" class="w-9 h-9 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
-                              <div class="min-w-0">
-                                <div class="font-bold text-[11px] truncate">${p.name}</div>
-                                <div class="text-[10px] text-emerald-600 font-mono font-bold">${id} • ৳${p.selling_price}</div>
-                              </div>
-                            </div>
-                            <button type="button" onclick="window.addProductToLandingDraft('${safeId}')" class="btn-primary py-1 px-2.5 text-[10px] font-bold">+ যুক্ত করুন</button>
-                          </div>
-                        `;
-                      }).join("")}
-                    </div>
+                    <div id="adm-lp-product-search-results" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-56 overflow-y-auto p-1"></div>
                   </div>
 
-                  <!-- Currently Selected Products for this Landing Page -->
                   <div class="space-y-1.5 pt-2 border-t border-emerald-200/60 dark:border-slate-700">
                     <div class="text-[11px] font-black text-emerald-800 dark:text-emerald-300">✅ এই ল্যান্ডিং পেজে প্রদর্শিত নির্বাচিত পণ্যসমূহ:</div>
-                    <div id="adm-lp-selected-products-box" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                      ${products.slice(0, 3).map((p, idx) => {
-                        const id = String(p.sku || p.product_id || '');
-                        const safeId = id.replace(/'/g, "\\'");
-                        return `
-                          <div class="p-2.5 rounded-2xl border border-emerald-200 dark:border-emerald-900 bg-white dark:bg-slate-900 flex items-center justify-between gap-2">
-                            <div class="flex items-center gap-2 min-w-0">
-                              <span class="w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">${idx + 1}</span>
-                              <img src="${p.thumbnail || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" class="w-9 h-9 rounded-lg object-cover border flex-shrink-0" />
-                              <div class="min-w-0">
-                                <div class="font-bold text-xs truncate">${p.name}</div>
-                                <div class="text-[10px] text-emerald-600 font-mono font-bold">৳${p.selling_price}</div>
-                              </div>
-                            </div>
-                            <button type="button" onclick="window.removeProductFromLandingDraft('${safeId}')" class="text-rose-600 text-[10px] font-bold px-2 py-1">✕ সরান</button>
-                          </div>
-                        `;
-                      }).join("")}
-                    </div>
+                    <div id="adm-lp-selected-products-box" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"></div>
                   </div>
                 </div>
 
-                <!-- 3. Attractive Hero Banner, Multiple Promotional Images/Banners & Videos -->
+                <!-- ৩. হিরো ব্যানার, ফটো গ্যালারি ও ভিডিও -->
                 <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-4">
                   <div class="font-black text-xs text-slate-800 dark:text-white uppercase border-b pb-1.5">
-                    ৩. আকর্ষণীয় হিরো ব্যানার, একাধিক প্রমোশনাল ছবি/ব্যানার গ্যালারি ও ভিডিও আপডেট
+                    ৩. মেইন হিরো ছবি/ব্যানার, অতিরিক্ত ফটো গ্যালারি ও ভিডিও
                   </div>
 
-                  <!-- Main Hero Banner -->
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
                     <div class="md:col-span-2 space-y-2">
-                      <label class="block font-bold">মেইন হিরো ব্যানার ছবি (Hero Banner URL অথবা ফাইল আপলোড)</label>
+                      <label class="block font-bold">মেইন হিরো ব্যানার ছবি (Image URL অথবা ফাইল আপলোড)</label>
                       <div class="flex flex-col sm:flex-row gap-2">
-                        <input type="text" id="adm-lp-hero-banner" value="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200" oninput="const p=document.getElementById('adm-lp-hero-preview-img'); if(p) p.src=this.value;" class="form-control text-xs py-2 px-3 rounded-xl border flex-1 bg-white dark:bg-slate-900 font-mono" />
+                        <input type="text" id="adm-lp-hero-banner" value="" placeholder="ছবির ডিরেক্ট লিংক দিন অথবা পাশের বাটনে আপলোড করুন..." oninput="const p=document.getElementById('adm-lp-hero-preview-img'); if(p){ if(this.value){p.src=this.value; p.classList.remove('hidden');} else {p.classList.add('hidden');} }" class="form-control text-xs py-2 px-3 rounded-xl border flex-1 bg-white dark:bg-slate-900 font-mono" />
                         <label class="btn-secondary py-2 px-3.5 text-xs font-bold cursor-pointer inline-flex items-center justify-center whitespace-nowrap bg-white dark:bg-slate-900">
-                          <span>📤 হিরো ব্যানার আপলোড</span>
+                          <span>📤 হিরো ছবি আপলোড</span>
                           <input type="file" accept="image/*" class="hidden" onchange="window.handleLandingHeroUpload(this)" />
                         </label>
                       </div>
                     </div>
                     <div>
-                      <img id="adm-lp-hero-preview-img" src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800" class="w-full h-24 object-cover rounded-2xl border shadow-sm" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800';" />
+                      <img id="adm-lp-hero-preview-img" src="" class="hidden w-full h-24 object-cover rounded-2xl border shadow-sm" onerror="this.classList.add('hidden')" />
                     </div>
                   </div>
 
-                  <!-- Multiple Gallery Banners / Promotional Images -->
                   <div class="space-y-2.5 pt-2 border-t">
-                    <label class="block font-bold">🖼️ অতিরিক্ত প্রমোশনাল ব্যানার ও ফটো গ্যালারি (একাধিক ছবি/ব্যানার যুক্ত করুন)</label>
+                    <label class="block font-bold">🖼️ অতিরিক্ত ফটো গ্যালারি / ব্যানার সমূহ (একাধিক ছবি যুক্ত করতে পারেন)</label>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <input type="text" id="adm-lp-add-banner-url" placeholder="ব্যানার বা প্রোডাক্ট ছবির লিঙ্ক (Image URL)..." class="form-control text-xs py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
-                      <input type="text" id="adm-lp-add-banner-caption" placeholder="ছবির ক্যাপশন / অফার টেক্সট..." class="form-control text-xs py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
+                      <input type="text" id="adm-lp-add-banner-url" placeholder="ছবির লিঙ্ক (Image URL)..." class="form-control text-xs py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
+                      <input type="text" id="adm-lp-add-banner-caption" placeholder="ছবির ক্যাপশন (ঐচ্ছিক)..." class="form-control text-xs py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
                       <div class="flex gap-1.5">
-                        <button type="button" onclick="window.addBannerToLandingDraft()" class="btn-primary py-2 px-3 text-xs font-bold flex-1">+ ব্যানার যোগ</button>
+                        <button type="button" onclick="window.addBannerToLandingDraft()" class="btn-primary py-2 px-3 text-xs font-bold flex-1">+ ছবি যোগ</button>
                         <label class="btn-secondary py-2 px-3 text-xs font-bold cursor-pointer inline-flex items-center justify-center bg-white dark:bg-slate-900">
-                          <span>📤 ছবি আপলোড</span>
+                          <span>📤 ফাইল আপলোড</span>
                           <input type="file" multiple accept="image/*" class="hidden" onchange="window.handleLandingGalleryFilesUpload(this)" />
                         </label>
                       </div>
@@ -10974,29 +10899,42 @@ function renderLandingCmsModule({ products = [] }) {
                     <div id="adm-lp-banners-list" class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1"></div>
                   </div>
 
-                  <!-- Videos Section -->
                   <div class="space-y-2.5 pt-2 border-t">
-                    <label class="block font-bold">🎬 প্রমোশনাল ও প্রোডাক্ট রিভিউ ভিডিও (YouTube / Facebook / MP4 ভিডিও লিঙ্ক)</label>
+                    <label class="block font-bold">🎬 প্রোডাক্ট ভিডিও / রিভিউ ভিডিও (YouTube বা ভিডিও লিঙ্ক)</label>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <input type="text" id="adm-lp-add-video-url" placeholder="YouTube ভিডিও লিঙ্ক (যেমন: https://youtu.be/...)..." class="form-control text-xs py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
-                      <input type="text" id="adm-lp-add-video-title" placeholder="ভিডিও শিরোনাম (যেমন: পণ্যের লাইভ রিভিউ)..." class="form-control text-xs py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
+                      <input type="text" id="adm-lp-add-video-title" placeholder="ভিডিও শিরোনাম (ঐচ্ছিক)..." class="form-control text-xs py-2 px-3 rounded-xl border bg-white dark:bg-slate-900" />
                       <button type="button" onclick="window.addVideoToLandingDraft()" class="btn-primary py-2 px-4 text-xs font-bold">+ ভিডিও যুক্ত করুন</button>
                     </div>
                     <div id="adm-lp-videos-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1"></div>
                   </div>
                 </div>
 
-                <!-- 4. Detailed Bullet Features / Why Buy From Us -->
-                <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-2">
-                  <label class="block font-black text-xs text-slate-800 dark:text-white uppercase">৪. পণ্যের বিশেষ বৈশিষ্ট্য ও কেন আমাদের থেকে কিনবেন (প্রতি লাইনে একটি করে সুবিধা লিখুন)</label>
-                  <textarea id="adm-lp-features" rows="4" class="form-control text-xs w-full p-3 rounded-xl border bg-white dark:bg-slate-900">১০০% অরিজিনাল ও অফিশিয়াল ওয়ারেন্টিযুক্ত প্রিমিয়াম প্রোডাক্ট
-পণ্য হাতে পেয়ে দেখে ডেলিভারি ম্যানের কাছে টাকা পরিশোধের সুবিধা (COD)
-কুমিল্লা ও ঢাকা হাব থেকে ২৪-৪৮ ঘন্টায় সুপার-ফাস্ট এক্সপ্রেস ডেলিভারি
-৭ দিনের সহজ রিপ্লেসমেন্ট ও সার্বক্ষণিক কাস্টমার কেয়ার সাপোর্ট</textarea>
+                <!-- ৪. বিস্তারিত বিবরণ, স্পেসিফিকেশন ও বিশেষ সুবিধাসমূহ -->
+                <div class="p-4 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border space-y-4">
+                  <div class="font-black text-xs text-slate-800 dark:text-white uppercase border-b pb-1.5">
+                    ৪. বিস্তারিত বিবরণ, পণ্যের স্পেসিফিকেশন ও বিশেষ সুবিধাসমূহ (যা লিখবেন শুধুমাত্র তাই পেজে দেখাবে)
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label class="block font-bold mb-1">বিস্তারিত বিবরণ (Detailed Description)</label>
+                      <textarea id="adm-lp-description" rows="4" placeholder="পণ্য বা অফার সম্পর্কে বিস্তারিত বিবরণ লিখুন (খালি রাখলে এই সেকশন হাইড থাকবে)..." class="form-control text-xs w-full p-3 rounded-xl border bg-white dark:bg-slate-900"></textarea>
+                    </div>
+                    <div>
+                      <label class="block font-bold mb-1">পণ্যের স্পেসিফিকেশন (প্রতি লাইনে বৈশিষ্ট্য: বিবরণ লিখুন)</label>
+                      <textarea id="adm-lp-specifications" rows="4" placeholder="যেমন:&#10;মডেল: প্রিমিয়াম এডিশন&#10;মেটেরিয়াল: ১০০% অরিজিনাল&#10;ওয়ারেন্টি: ১ বছর" class="form-control text-xs w-full p-3 rounded-xl border bg-white dark:bg-slate-900"></textarea>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block font-bold mb-1">বিশেষ সুবিধাসমূহ / কেন আমাদের থেকে কিনবেন (প্রতি লাইনে একটি করে পয়েন্ট লিখুন)</label>
+                    <textarea id="adm-lp-features" rows="3" placeholder="প্রতি লাইনে একটি করে সুবিধা লিখুন (খালি রাখলে কোনো ডিফল্ট লেখা দেখাবে না)..." class="form-control text-xs w-full p-3 rounded-xl border bg-white dark:bg-slate-900"></textarea>
+                  </div>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3 pt-1">
-                  <button type="submit" class="btn-primary py-3 px-8 font-black text-xs shadow-lg">💾 ল্যান্ডিং পেজ সংরক্ষণ ও আপডেট করুন →</button>
+                  <button type="submit" class="btn-primary py-3 px-8 font-black text-xs shadow-lg">💾 ল্যান্ডিং পেজ সংরক্ষণ ও পাবলিশ করুন →</button>
                   <button type="button" onclick="window.openLandingPageLivePreview(document.getElementById('adm-lp-id')?.value)" class="btn-secondary py-3 px-5 font-bold text-xs">👁️ লাইভ প্রিভিউ দেখুন</button>
                 </div>
               </form>
