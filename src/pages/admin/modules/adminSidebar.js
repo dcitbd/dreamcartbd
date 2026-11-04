@@ -6,6 +6,19 @@
  * - Topbar with Dynamic Title, Subtitle, Global Search, Theme Switcher, and Sheet Sync
  */
 
+import { formatCurrency } from '../../../utils/format.js';
+import { toast } from '../../../components/Toast.js';
+
+// MODULE: adminSidebar.js
+// ============================================================================
+/**
+ * DREAM CART BD — Admin Sidebar & Topbar Module (adminSidebar.js)
+ * Implements:
+ * - Desktop Left Sticky Sidebar with Collapsible Accordion Navigation
+ * - Mobile Off-Canvas Drawer with Responsive Touch Triggers
+ * - Topbar with Dynamic Title, Subtitle, Global Search, Theme Switcher, and Sheet Sync
+ */
+
 export function renderSidebarAndTopbar({
   products = [],
   orders = [],
@@ -30,7 +43,7 @@ export function renderSidebarAndTopbar({
   costs = [],
   buying = [],
   invest = [],
-  activeRoute = { pageId: 'page-dashboard', groupId: 'group-dashboard', slug: 'dashboard', title: '📊 ড্যাশবোর্ড ওভারভিউ (Dashboard)', subtitle: '১৮-পয়েন্ট লাইভ বিজনেস কাউন্টার, রাজস্ব ও সেলস গ্রাফ' }
+  activeRoute = { pageId: 'page-dashboard', groupId: 'group-dashboard', slug: 'dashboard', title: '📊 ড্যাশবোর্ড ওভারভিউ', subtitle: '১৮-পয়েন্ট লাইভ বিজনেস কাউন্টার, রাজস্ব ও সেলস গ্রাফ' }
 } = {}) {
   // Deduplicate categories for counter badge
   const uniqueCatMap = new Map();
@@ -42,9 +55,9 @@ export function renderSidebarAndTopbar({
 
   return `
     <!-- Mobile Off-Canvas Sidebar Overlay Backdrop -->
-    <div 
-      id="admin-sidebar-overlay" 
-      class="dc-admin-overlay" 
+    <div
+      id="admin-sidebar-overlay"
+      class="dc-admin-overlay"
       onclick="window.closeAdminSidebar && window.closeAdminSidebar()"
     ></div>
 
@@ -171,9 +184,9 @@ export function renderSidebarAndTopbar({
             <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-courier-payments', 'group-courier')">💳 অনলাইন পেমেন্টস</button>
           </div>
 
-          <!-- Others Hub (/admin/others) -->
+          <!-- Others Hub -->
           <button class="admin-sidebar-main-btn" onclick="switchAdminPage('page-others-hub', 'group-others')">
-            <span>🧩 অন্যান্য মডিউল (/admin/others)</span>
+            <span>🧩 অন্যান্য মডিউল</span>
           </button>
 
           <!-- Settings -->
@@ -182,10 +195,10 @@ export function renderSidebarAndTopbar({
             <span id="chevron-mob-group-settings" class="chevron">▶</span>
           </button>
           <div id="subnav-mob-group-settings" class="dc-sidebar-subnav closed">
-            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-logs', 'group-settings')">লগইন ও অডিট লগ</button>
-            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-payment', 'group-settings')">পেমেন্ট মেথড</button>
-            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-delivery', 'group-settings')">ডেলিভারি চার্জ ও জোন</button>
-            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-offers', 'group-settings')">অফার ও কুপন</button>
+            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-logs', 'group-settings')">অডিট ও কর্মী লগ</button>
+            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-payment', 'group-settings')">পেমেন্ট মেথড আপডেট</button>
+            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-delivery', 'group-settings')">ডেলিভারি মেথড কনফিগ</button>
+            <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-offers', 'group-settings')">অফার ও কুপন ডিসকাউন্ট</button>
             <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-info', 'group-settings')">দোকানের তথ্য ও হটলাইন</button>
             <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-profile', 'group-settings')">প্রোফাইল আপডেট</button>
             <button class="dc-sidebar-sub-item" onclick="switchAdminPage('page-set-password', 'group-settings')">পাসওয়ার্ড পরিবর্তন</button>
@@ -205,7 +218,7 @@ export function renderSidebarAndTopbar({
 
       <!-- Desktop Left Sticky Sidebar (সাইড বার) -->
       <aside class="dc-admin-sidebar">
-        
+
         <!-- Brand Badge Header -->
         <div class="dc-sidebar-brand">
           <div class="dc-sidebar-logo">DC</div>
@@ -473,10 +486,10 @@ export function renderSidebarAndTopbar({
             </div>
           </div>
 
-          <!-- 10. OTHERS HUB (/admin/others) -->
+          <!-- 10. OTHERS HUB -->
           <div class="dc-sidebar-nav-group">
             <button class="admin-sidebar-main-btn" data-group="group-others" onclick="switchAdminPage('page-others-hub', 'group-others')">
-              <span class="flex items-center gap-2"><span>🧩</span> <b>অন্যান্য (/admin/others)</b></span>
+              <span class="flex items-center gap-2"><span>🧩</span> <b>অন্যান্য</b></span>
             </button>
           </div>
 
@@ -521,7 +534,7 @@ export function renderSidebarAndTopbar({
             </span>
             <span class="font-mono text-[9px] text-slate-400">v3.5 Live</span>
           </div>
-          
+
           <div class="flex items-center gap-1.5 pt-0.5">
             <a href="/products" target="_blank" class="btn-secondary py-1 px-2.5 text-[10px] font-bold flex-1 text-center bg-slate-100 dark:bg-slate-800">
               শপ ভিউ ↗
@@ -536,11 +549,11 @@ export function renderSidebarAndTopbar({
 
       <!-- Right Main Panel Header -->
       <main id="admin-main-panel" class="dc-admin-main">
-        
+
         <!-- Top Bar -->
         <div class="dc-admin-topbar">
           <div class="flex items-center gap-2.5">
-            <button 
+            <button
               class="lg:hidden p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold hover:bg-emerald-50 transition"
               onclick="window.toggleAdminSidebar && window.toggleAdminSidebar()"
               aria-label="Toggle Menu"
@@ -558,16 +571,16 @@ export function renderSidebarAndTopbar({
           <!-- Global Search & Actions -->
           <div class="flex items-center gap-1.5">
             <div class="relative hidden sm:block">
-              <input 
-                type="text" 
-                placeholder="বর্তমান পেজে সার্চ..." 
+              <input
+                type="text"
+                placeholder="বর্তমান পেজে সার্চ..."
                 class="form-control text-xs py-1.5 pl-7 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 w-36 md:w-52"
                 oninput="window.handleAdminGlobalSearch(this.value)"
               />
               <span class="absolute left-2.5 top-2 text-slate-400 text-xs">🔍</span>
             </div>
 
-            <button 
+            <button
               id="admin-theme-toggle"
               class="btn-secondary text-xs py-1.5 px-2 bg-slate-50 dark:bg-slate-800 font-bold"
               onclick="window.toggleAdminTheme && window.toggleAdminTheme()"
@@ -580,7 +593,7 @@ export function renderSidebarAndTopbar({
               🏠 হোম পেজ ↗
             </a>
 
-            <button 
+            <button
               class="btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1 font-bold"
               onclick="const ic = this.querySelector('.spin-icon'); if(ic) ic.classList.add('animate-spin'); setTimeout(() => { if(ic) ic.classList.remove('animate-spin'); if(toast && toast.show) toast.show({type: 'success', title: 'ডাটা আপডেট', message: 'গুগল শিট থেকে ডাটা রিফ্রেশ হয়েছে!'}); }, 600);"
               title="রিফ্রেশ ডাটা"
@@ -601,8 +614,8 @@ export function renderSidebarAndTopbar({
               <a href="/admin/landing" onclick="event.preventDefault(); switchAdminPage('page-prod-landing', 'group-products')" data-page="page-prod-landing" class="admin-route-tab ${activeRoute.pageId === 'page-prod-landing' ? 'active' : ''}">🚀 ল্যান্ডিং পেজ</a>
               <a href="/admin/others" onclick="event.preventDefault(); switchAdminPage('page-others-hub', 'group-others')" data-page="page-others-hub" class="admin-route-tab ${activeRoute.pageId === 'page-others-hub' ? 'active' : ''}">🧩 অন্যান্য</a>
             </div>
-            <span 
-              id="admin-current-route-badge" 
+            <span
+              id="admin-current-route-badge"
               onclick="window.copyToClipboard(window.location.origin + '/admin/${activeRoute.slug}', 'পেজ লিঙ্ক কপি হয়েছে!')"
               class="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-mono text-[11px] font-bold cursor-pointer"
               title="ক্লিক করে পেজ URL কপি করুন"
@@ -613,3 +626,5 @@ export function renderSidebarAndTopbar({
         </div>
   `;
 }
+
+// ============================================================================

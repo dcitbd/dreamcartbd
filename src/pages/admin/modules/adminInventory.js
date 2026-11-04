@@ -1,26 +1,25 @@
 /**
- * DREAM CART BD — Inventory & Finance Module (adminInventory.js)
+ * DREAM CART BD — Finance, Payouts & Inventory Ledger (adminInventory.js)
  * Implements:
- * - Reseller Payout Requests with automatic -3% fee deduction
- * - Business Costs & Expense Ledger
- * - Wholesale Stock Buying Invoices
- * - Equity Capital Investment Tracker
+ * - Reseller Payout Requests with automatic -3% gateway fee deduction
+ * - Operating Expenses (Costs) voucher ledger
+ * - Supplier Wholesale Stock Purchases (Buying) invoices
+ * - Capital Investment Tracker & equity records
  */
 
 import { formatCurrency } from '../../../utils/format.js';
 
+// MODULE: adminInventory.js (Finance & Inventory with Live Table IDs)
+// ============================================================================
+
 export function renderInventoryModule({ costs, buying, invest }) {
   return `
-    <!-- ================================================================= -->
-    <!-- DEDICATED PAGES: INVENTORY & FINANCE (4 Distinct Standalone Views)-->
-    <!-- ================================================================= -->
-
     <!-- 1. Reseller Payment Request Page -->
     <div id="page-inv-payout" class="admin-page-view hidden space-y-4">
       <div class="dc-admin-card space-y-3">
         <div class="border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white">💳 রিসেলার কমিশন পে-আউট রিকোয়েস্ট (স্বয়ংক্রিয় -৩% ফি কর্তন)</h3>
-          <p class="text-[11px] text-slate-400">রিসেলার ড্যাশবোর্ড থেকে পাঠানো উত্তোলনের আবেদনসমূহ</p>
+          <p class="text-[11px] text-slate-400">রিসেলার ড্যাশবোর্ড থেকে পাঠানো উত্তোলনের আবেদনসমূহ (অনুমোদন করলে লিস্ট ও Payments শিটে জমা হয়)</p>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left text-xs border-collapse">
@@ -47,7 +46,7 @@ export function renderInventoryModule({ costs, buying, invest }) {
                 <td class="py-3 px-3 font-black text-emerald-600 font-mono">৳১,১৬৪</td>
                 <td class="py-3 px-3"><span class="badge badge-warning text-[9px]">Pending</span></td>
                 <td class="py-3 px-3 text-right">
-                  <button class="btn-primary py-1 px-3 text-[10px] font-bold" onclick="window.handleApprovePayout('REQ-8472', '১,১৬৪', this)">
+                  <button type="button" class="btn-primary py-1 px-3 text-[10px] font-bold" onclick="window.handleApprovePayout('REQ-8472', '1164', this)">
                     অনুমোদন ও পে করুন ✓
                   </button>
                 </td>
@@ -78,9 +77,9 @@ export function renderInventoryModule({ costs, buying, invest }) {
         <div class="flex items-center justify-between border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white">💸 ব্যবসায়িক খরচ ও ব্যয় লেজার (${costs.length})</h3>
           <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-cost')?.classList.remove('hidden')">+ নতুন খরচ</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Costs', ['ID', 'Title', 'Amount', 'Date'], costs.map(c=>[c.id, c.title, c.amount, c.date]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+            <button type="button" class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-cost')?.classList.remove('hidden')">+ নতুন খরচ যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Costs', ['ID', 'Title', 'Amount', 'Date'], costs.map(c=>[c.id, c.title, c.amount, c.date]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
           </div>
         </div>
         <div class="overflow-x-auto">
@@ -94,7 +93,7 @@ export function renderInventoryModule({ costs, buying, invest }) {
                 <th class="py-2 px-3">তারিখ</th>
               </tr>
             </thead>
-            <tbody class="divide-y">
+            <tbody id="admin-costs-tbody" class="divide-y">
               ${costs.map(c => `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                   <td class="py-2.5 px-3 font-mono text-slate-400">${c.id}</td>
@@ -116,9 +115,9 @@ export function renderInventoryModule({ costs, buying, invest }) {
         <div class="flex items-center justify-between border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white">🛒 পাইকারি স্টক ক্রয় হিসাব (${buying.length})</h3>
           <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-buying')?.classList.remove('hidden')">+ স্টক ক্রয় ভাউচার</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Buying', ['ID', 'Supplier', 'Product', 'Qty', 'Amount'], buying.map(b=>[b.id, b.supplier, b.product, b.quantity, b.total_amount]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+            <button type="button" class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-buying')?.classList.remove('hidden')">+ স্টক ক্রয় ভাউচার</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Buying', ['ID', 'Supplier', 'Product', 'Qty', 'Amount'], buying.map(b=>[b.id, b.supplier, b.product, b.quantity, b.total_amount]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
           </div>
         </div>
         <div class="overflow-x-auto">
@@ -133,7 +132,7 @@ export function renderInventoryModule({ costs, buying, invest }) {
                 <th class="py-2 px-3">তারিখ</th>
               </tr>
             </thead>
-            <tbody class="divide-y">
+            <tbody id="admin-buying-tbody" class="divide-y">
               ${buying.map(b => `
                 <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                   <td class="py-2.5 px-3 font-mono text-slate-400">${b.id}</td>
@@ -156,12 +155,12 @@ export function renderInventoryModule({ costs, buying, invest }) {
         <div class="flex items-center justify-between border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white">💼 মূলধন ও বিনিয়োগ ট্র্যাকার (${invest.length})</h3>
           <div class="flex items-center gap-1.5 text-xs">
-            <button class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-invest')?.classList.remove('hidden')">+ নতুন বিনিয়োগ</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Invest', ['ID', 'Investor', 'Amount', 'Date'], invest.map(i=>[i.id, i.investor, i.amount, i.date]))">CSV</button>
-            <button class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
+            <button type="button" class="btn-primary py-1 px-3 font-bold" onclick="document.getElementById('modal-add-invest')?.classList.remove('hidden')">+ নতুন বিনিয়োগ যুক্ত করুন</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.exportGenericCsv('Invest', ['ID', 'Investor', 'Amount', 'Date'], invest.map(i=>[i.id, i.investor, i.amount, i.date]))">CSV</button>
+            <button type="button" class="btn-secondary py-1 px-2.5" onclick="window.printActiveSection()">🖨️ প্রিন্ট</button>
           </div>
         </div>
-        <div class="space-y-2.5 text-xs">
+        <div id="admin-invest-list-box" class="space-y-2.5 text-xs">
           ${invest.map(i => `
             <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex items-center justify-between">
               <div>
@@ -203,7 +202,7 @@ export function renderInventoryModule({ costs, buying, invest }) {
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-cost')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংরক্ষণ করুন</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">লিস্ট ও শিটে সেভ করুন</button>
           </div>
         </form>
       </div>
@@ -236,7 +235,7 @@ export function renderInventoryModule({ costs, buying, invest }) {
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-buying')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংরক্ষণ করুন</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">লিস্ট ও শিটে সেভ করুন</button>
           </div>
         </form>
       </div>
@@ -263,10 +262,12 @@ export function renderInventoryModule({ costs, buying, invest }) {
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
             <button type="button" class="btn-secondary py-1.5 px-4" onclick="document.getElementById('modal-add-invest')?.classList.add('hidden')">বাতিল</button>
-            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">সংরক্ষণ করুন</button>
+            <button type="submit" class="btn-primary py-1.5 px-5 font-bold">লিস্ট ও শিটে সেভ করুন</button>
           </div>
         </form>
       </div>
     </div>
   `;
 }
+
+// ============================================================================

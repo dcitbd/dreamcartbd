@@ -9,22 +9,33 @@
 
 import { formatCurrency } from '../../../utils/format.js';
 
+// MODULE: adminDashboard.js
+// ============================================================================
+/**
+ * DREAM CART BD — Admin Dashboard Overview Module (adminDashboard.js)
+ * Implements:
+ * - 18-Point Live Business Metrics Matrix
+ * - Interactive SVG Sales Curve Graph with 7D/30D/1Y timeframes
+ * - Quick Action Navigation Shortcuts
+ * - Recent Orders Live Preview Table
+ */
+
 export function renderDashboardModule({ kpi, categories, orders }) {
   return `
     <!-- ================================================================= -->
     <!-- DEDICATED PAGE: DASHBOARD OVERVIEW                                -->
     <!-- ================================================================= -->
     <div id="page-dashboard" class="admin-page-view space-y-5">
-      
+
       <!-- 18-Point Full KPI Matrix Grid -->
       <div class="space-y-2">
         <div class="flex items-center justify-between px-1">
-          <h3 class="text-xs font-black uppercase tracking-wider text-slate-500">১৮-পয়েন্ট সামগ্রিক বিজনেস মেট্রিক্স (18 Live Metrics)</h3>
+          <h3 class="text-xs font-black uppercase tracking-wider text-slate-500">সামগ্রিক বিজনেস মেট্রিক্স</h3>
           <span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 dark:bg-emerald-950 px-2 py-0.5 rounded-full">● রিয়েলটাইম শিট সিঙ্ক</span>
         </div>
 
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 text-xs">
-          
+
           <!-- 1. Total Products -->
           <div class="admin-kpi-card p-3 cursor-pointer" onclick="switchAdminPage('page-prod-all', 'group-products')">
             <div class="flex items-center justify-between text-slate-400">
@@ -213,7 +224,7 @@ export function renderDashboardModule({ kpi, categories, orders }) {
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-2.5">
           <div>
             <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-              <span>📈</span> সেলস গ্রাফ ও পারফরম্যান্স (Interactive Sales Analytics)
+              <span>📈</span> সেলস গ্রাফ ও পারফরম্যান্স
             </h3>
             <p class="text-[11px] text-slate-400">সময়কাল অনুসারে লাইভ রাজস্ব ও অর্ডার ট্রেন্ড অ্যানালাইসিস</p>
           </div>
@@ -244,7 +255,7 @@ export function renderDashboardModule({ kpi, categories, orders }) {
                 <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
               </linearGradient>
             </defs>
-            
+
             <line x1="20" y1="40" x2="580" y2="40" stroke="rgba(148, 163, 184, 0.15)" stroke-dasharray="4"/>
             <line x1="20" y1="90" x2="580" y2="90" stroke="rgba(148, 163, 184, 0.15)" stroke-dasharray="4"/>
             <line x1="20" y1="140" x2="580" y2="140" stroke="rgba(148, 163, 184, 0.15)" stroke-dasharray="4"/>
@@ -272,7 +283,7 @@ export function renderDashboardModule({ kpi, categories, orders }) {
 
       <!-- Quick Action Shortcuts -->
       <div class="dc-admin-card space-y-3">
-        <h3 class="text-sm font-bold text-slate-900 dark:text-white">দ্রুত অ্যাকশন শর্টকাট (Quick Navigation)</h3>
+        <h3 class="text-sm font-bold text-slate-900 dark:text-white">দ্রুত অ্যাকশন শর্টকাট</h3>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-bold">
           <button class="p-3 rounded-xl bg-slate-50 hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 text-left transition flex items-center gap-2" onclick="switchAdminPage('page-orders-all', 'group-orders')">
             <span class="text-lg">📋</span>
@@ -309,7 +320,7 @@ export function renderDashboardModule({ kpi, categories, orders }) {
       <div class="dc-admin-card space-y-3.5">
         <div class="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h3 class="text-sm font-bold text-slate-900 dark:text-white">সাম্প্রতিক অর্ডারসমূহ (Recent Orders)</h3>
+            <h3 class="text-sm font-bold text-slate-900 dark:text-white">সাম্প্রতিক অর্ডারসমূহ</h3>
             <p class="text-[11px] text-slate-400">সর্বশেষ প্রেরিত কাস্টমার অর্ডার তালিকা</p>
           </div>
           <button class="text-xs text-emerald-600 font-bold hover:underline" onclick="switchAdminPage('page-orders-all', 'group-orders')">
@@ -355,3 +366,5 @@ export function renderDashboardModule({ kpi, categories, orders }) {
     </div>
   `;
 }
+
+// ============================================================================
