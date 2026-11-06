@@ -1,4 +1,5 @@
 import { formatCurrency } from '../utils/format.js';
+import { hashPasswordSync, verifyPasswordSync, MASTER_ADMIN_HASHES } from '../utils/security.js';
 export { formatCurrency };
 /**
  * DREAM CART BD — UNIFIED API CLIENT & LIVE SHEET SYNC ENGINE
@@ -312,7 +313,9 @@ export function fetchSheetViaGviz(sheetName, timeoutMs = 15000, customTq = '') {
 
     window[cbName] = function(resp) {
       if (!resp || !resp.table || !resp.table.rows) {
-        return finish([]);
+        const emptyValid = [];
+        if (resp && resp.table) emptyValid._gvizOk = true;
+        return finish(emptyValid);
       }
 
       const rawCols = resp.table.cols || [];
@@ -376,6 +379,7 @@ export function fetchSheetViaGviz(sheetName, timeoutMs = 15000, customTq = '') {
         if (hasPrimaryData) rows.push(rowObj);
       }
 
+      rows._gvizOk = true;
       finish(rows);
     };
 
@@ -443,46 +447,31 @@ function fetchAppsScriptViaJsonp(action, params = {}, timeoutMs = 10000) {
  *   downloading all 1,336 products in ~590 KB (< 0.6s) instead of timing out at 15.2 MB!
  * - Resolves as soon as either GViz or Apps Script JSONP returns non-empty rows.
  */
-async function fetchLiveSheetRows(sheetName, action, timeoutMs = 15000) {
+async function fetchLiveSheetRows(sheetName, action, timeoutMs = 6000) {
   if (typeof window === 'undefined') return [];
 
   const isProductsSheet = String(sheetName).trim().toLowerCase() === 'products';
   const gvizTq = isProductsSheet ? 'SELECT A,B,C,D,E,F,G,H,I,J,K,L,M,N,R,S,T,U,V,W' : '';
+  const gvizTimeout = Math.min(timeoutMs, isProductsSheet ? 5500 : 3500);
 
-  return new Promise((resolve) => {
-    let resolved = false;
-    let pending = 2;
-
-    function checkDone(rows) {
-      if (resolved) return;
-      if (Array.isArray(rows) && rows.length > 0) {
-        resolved = true;
-        resolve(rows);
-        return;
-      }
-      pending--;
-      if (pending <= 0 && !resolved) {
-        resolved = true;
-        resolve([]);
-      }
+  // Channel 1: Direct Google Sheets GViz CDN (Fastest: ~250-500ms, never throttled by Apps Script quotas)
+  try {
+    const rows = await fetchSheetViaGviz(sheetName, gvizTimeout, gvizTq);
+    if (Array.isArray(rows) && (rows._gvizOk || rows.length > 0)) {
+      return rows;
     }
+  } catch (e) {}
 
-    // Channel 1: Direct Google Sheets GViz API (Fastest: < 0.6s)
-    fetchSheetViaGviz(sheetName, timeoutMs, gvizTq)
-      .then(rows => checkDone(rows))
-      .catch(() => checkDone(null));
+  // Channel 2: Google Apps Script JSONP Fallback (ONLY if GViz failed or timed out)
+  try {
+    const resp = await fetchAppsScriptViaJsonp(action, {}, Math.min(timeoutMs, 4500));
+    if (resp && (resp.status === 'success' || resp.success) && resp.data) {
+      if (Array.isArray(resp.data.items)) return resp.data.items;
+      if (Array.isArray(resp.data)) return resp.data;
+    }
+  } catch (e) {}
 
-    // Channel 2: Google Apps Script JSONP Fallback
-    fetchAppsScriptViaJsonp(action, {}, timeoutMs)
-      .then(resp => {
-        if (resp && (resp.status === 'success' || resp.success) && resp.data) {
-          if (Array.isArray(resp.data.items) && resp.data.items.length > 0) return checkDone(resp.data.items);
-          if (Array.isArray(resp.data) && resp.data.length > 0) return checkDone(resp.data);
-        }
-        checkDone(null);
-      })
-      .catch(() => checkDone(null));
-  });
+  return [];
 }
 
 function sanitizePayloadForSheet(payload) {
@@ -995,6 +984,9 @@ class ApiClient {
   }
 
   saveLocal(key, data) {
+    if (key === 'dcbd_sheet_products' || key === 'dcbd_local_product_overrides' || key === 'dcbd_deleted_product_ids') {
+      this._mergedProductsMemo = null;
+    }
     try {
       // For dcbd_sheet_products (1,336+ rows), store compact catalog fields in localStorage so it never exceeds 5MB quota
       if (key === 'dcbd_sheet_products' && Array.isArray(data) && data.length > 50) {
@@ -1034,19 +1026,24 @@ class ApiClient {
   }
 
   /**
-   * Always returns the latest synchronized product list across memory, localStorage, and Admin state.
+   * Always returns the latest synchronized product list across memory, localStorage, and Admin state in O(1) via memoization.
    */
   getMergedLocalProducts() {
+    if (Array.isArray(this._mergedProductsMemo) && this._mergedProductsMemo.length > 5) {
+      return this._mergedProductsMemo;
+    }
+
     const memProds = (Array.isArray(this.sheetProducts) && this.sheetProducts.length > 0) ? this.sheetProducts : null;
-    const localStored = this.loadLocal('dcbd_sheet_products', null);
     const adminProds = (typeof window !== 'undefined' && window.__adminState && Array.isArray(window.__adminState.products) && window.__adminState.products.length > 0)
       ? window.__adminState.products
       : null;
 
-    // Prefer whichever list has real sheet products (> 5 items)
     let base = memProds;
-    if ((!base || base.length <= 5) && Array.isArray(localStored) && localStored.length > (base ? base.length : 0)) {
-      base = localStored;
+    if (!base || base.length <= 5) {
+      const localStored = this.loadLocal('dcbd_sheet_products', null);
+      if (Array.isArray(localStored) && localStored.length > (base ? base.length : 0)) {
+        base = localStored;
+      }
     }
     if ((!base || base.length <= 5) && Array.isArray(adminProds) && adminProds.length > (base ? base.length : 0)) {
       base = adminProds;
@@ -1054,7 +1051,7 @@ class ApiClient {
 
     if (Array.isArray(base) && base.length > 0) {
       const normalized = base.map((p, idx) => {
-        const norm = normalizeSheetProductRow(p, idx);
+        const norm = (p && p.sku && p.selling_price !== undefined && Array.isArray(p.images)) ? p : normalizeSheetProductRow(p, idx);
         if (norm && this._productDetailsCache.has(norm.sku.toLowerCase())) {
           Object.assign(norm, this._productDetailsCache.get(norm.sku.toLowerCase()));
         }
@@ -1062,6 +1059,7 @@ class ApiClient {
       }).filter(Boolean);
       if (normalized.length > 0) {
         this.sheetProducts = normalized;
+        this._mergedProductsMemo = normalized;
         return normalized;
       }
     }
@@ -1186,36 +1184,9 @@ class ApiClient {
   }
 
   hydrateProductDescriptionsInBackground() {
-    if (this._hydratingDescriptions || typeof window === 'undefined') return;
+    // Rich product descriptions (Columns O, P, Q) are fetched on-demand per product via fetchSingleProductRichDetails()
+    // in ~150ms, avoiding a 14.5 MB bulk background download that would freeze the main UI thread.
     this._hydratingDescriptions = true;
-    setTimeout(async () => {
-      try {
-        const rows = await fetchSheetViaGviz('Products', 25000, 'SELECT A,O,P,Q');
-        if (Array.isArray(rows) && rows.length > 0) {
-          rows.forEach(r => {
-            const skuKey = safeStr(r.sku || r.SKU || r.col_0).toLowerCase();
-            if (!skuKey) return;
-            const details = {
-              description: safeStr(r.description || r.Description || r.col_14 || ''),
-              specification: safeStr(r.specification || r.Specification || r.col_15 || ''),
-              others: safeStr(r.others || r.Others || r.col_16 || '')
-            };
-            this._productDetailsCache.set(skuKey, details);
-          });
-          if (Array.isArray(this.sheetProducts)) {
-            this.sheetProducts.forEach(p => {
-              const k = String(p.sku || '').toLowerCase();
-              if (this._productDetailsCache.has(k)) {
-                const d = this._productDetailsCache.get(k);
-                if (!p.description || p.description.length <= 240) p.description = d.description || p.description;
-                if (!p.specification || p.specification.length <= 240) p.specification = d.specification || p.specification;
-                if (!p.others || p.others.length <= 180) p.others = d.others || p.others;
-              }
-            });
-          }
-        }
-      } catch (e) {}
-    }, 1500);
   }
 
   async loadCategoriesFromSheet(forceRefresh = false) {
@@ -2201,7 +2172,7 @@ class ApiClient {
         }
 
         const storedPass = String(matched.password || matched.Password || matched.col_7 || '').trim();
-        if (storedPass !== queryPass) {
+        if (!verifyPasswordSync(queryPass, storedPass)) {
           return {
             success: false,
             status: 'error',
@@ -2262,7 +2233,7 @@ class ApiClient {
               mail: safeStr(r.mail || r.Mail || r.email || r.col_4 || ''),
               email: safeStr(r.mail || r.Mail || r.email || r.col_4 || ''),
               address: safeStr(r.address || r.Address || r.col_5 || ''),
-              password: safeStr(r.password || r.Password || r.col_7 || ''),
+              password: hashPasswordSync(safeStr(r.password || r.Password || r.col_7 || '')),
               status: safeStr(r.status || r.Status || r.col_8 || 'Active'),
               success_order: safeNumber(r.success_order !== undefined ? r.success_order : r.col_9, 0),
               cancel_order: safeNumber(r.cancel_order !== undefined ? r.cancel_order : r.col_10, 0),
@@ -2355,7 +2326,7 @@ class ApiClient {
               date_of_birth: safeStr(r.date_of_birth || r.Date_of_birth || r.col_8 || ''),
               trade_licence_no: safeStr(r.trade_licence_no || r.Trade_Licence_No || r.col_9 || ''),
               user_id: safeStr(r.user_id || r.User_ID || r.col_10 || r.col_3 || ''),
-              password: safeStr(r.password || r.Password || r.col_11 || ''),
+              password: hashPasswordSync(safeStr(r.password || r.Password || r.col_11 || '')),
               status: safeStr(r.status || r.Status || r.col_12 || 'Active'),
               commission: safeStr(r.commission || '15%'),
               balance: safeNumber(r.balance, 0)
@@ -2449,7 +2420,7 @@ class ApiClient {
               shop_name: safeStr(r.shop_name || r.Shop_Name || r.col_6 || 'পাইকারি প্রতিষ্ঠান'),
               company: safeStr(r.shop_name || r.Shop_Name || r.col_6 || 'পাইকারি প্রতিষ্ঠান'),
               user_id: safeStr(r.user_id || r.User_ID || r.col_7 || r.col_3 || ''),
-              password: safeStr(r.password || r.Password || r.col_8 || ''),
+              password: hashPasswordSync(safeStr(r.password || r.Password || r.col_8 || '')),
               status: safeStr(r.status || r.Status || r.col_9 || 'Approved'),
               moq: safeNumber(r.moq, 5),
               discount_pct: safeStr(r.discount_pct || '15%'),
@@ -2754,7 +2725,7 @@ class ApiClient {
               worker_type: safeStr(r.worker_type || r.Worker_Type || r.col_6 || 'Admin'),
               role: safeStr(r.role || r.Role || r.col_7 || 'Full Access'),
               user_name: safeStr(r.user_name || r.User_Name || r.col_8 || ''),
-              password: safeStr(r.password || r.Password || r.col_9 || ''),
+              password: hashPasswordSync(safeStr(r.password || r.Password || r.col_9 || '')),
               status: 'Active'
             })).filter(u => u.name && u.name.toLowerCase() !== 'name');
 
