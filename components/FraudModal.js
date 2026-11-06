@@ -2,7 +2,7 @@
  * DREAM CART BD — FRAUD DETECTION & COURIER PERFORMANCE MODAL
  */
 
-import { apiClient } from '../api/client.js';
+import { apiClient } from '../src/api/client.js';
 import { toast } from './Toast.js';
 
 export function renderFraudModal() {

@@ -10,7 +10,7 @@
  * - Clean bottom legal & developer bar with balanced mobile nav clearance
  */
 
-import { getGlobalSiteSettings } from "../api/client.js";
+import { getGlobalSiteSettings } from "../src/api/client.js";
 
 export function renderFooter() {
   const currentYear = new Date().getFullYear();

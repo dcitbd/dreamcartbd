@@ -88,7 +88,7 @@ var AuthService = {
     if (cleanPhone.length === 10 && cleanPhone.charAt(0) === '1') cleanPhone = '0' + cleanPhone;
 
     // 1. Check Super Admin master bypass
-    if (cleanId === "01581703822" && password === "DCBD@2026") {
+    if (cleanId === "01581703822" && this.hashPassword(String(password || "").trim()) === "11beadce9400147fc203c1a2477f0f16a526bfc3943b5c504a1224dfe0809c0c") {
       var superAdmin = {
         user_id: "USR-SUPERADMIN-01",
         name: "Jainal Abedin (Super Admin)",

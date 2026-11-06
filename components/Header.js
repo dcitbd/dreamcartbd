@@ -14,7 +14,7 @@
 import { cartStore } from '../store/cartStore.js';
 import { favouriteStore } from '../store/favouriteStore.js';
 import { authStore } from '../store/authStore.js';
-import { apiClient, getGlobalSiteSettings } from '../api/client.js';
+import { apiClient, getGlobalSiteSettings } from '../src/api/client.js';
 import { formatCurrency } from '../utils/format.js';
 import { SearchService } from '../services/SearchService.js';
 

@@ -9,7 +9,7 @@
  */
 
 import { cartStore } from '../store/cartStore.js';
-import { getGlobalSiteSettings } from '../api/client.js';
+import { getGlobalSiteSettings } from '../src/api/client.js';
 
 export function renderFloatingActions() {
   const cartCount = cartStore.getCount();

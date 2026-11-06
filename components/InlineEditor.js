@@ -5,7 +5,7 @@
  * ============================================================================
  */
 
-import { ProductAPI } from "../api/products.js";
+import { ProductAPI } from "../src/api/products.js";
 import { store } from "../js/store.js";
 
 export const InlineEditor = {
