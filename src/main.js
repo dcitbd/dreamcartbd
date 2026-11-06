@@ -25,6 +25,13 @@ import { authStore } from './store/authStore.js';
 import { router } from './router.js';
 import { apiClient } from './api/client.js';
 import { formatCurrency } from './utils/format.js';
+import {
+  checkLoginRateLimit,
+  recordFailedLoginAttempt,
+  clearLoginAttempts,
+  verifyAdminLoginCredentials,
+  createSignedSessionToken
+} from './utils/security.js';
 
 // Global Safe Storage Patch: Intercepts localStorage.setItem to prevent QuotaExceededError from breaking UI buttons
 (function installSafeLocalStorageGlobal() {
@@ -1063,37 +1070,70 @@ function attachEventListeners() {
       return;
     }
 
-    // E. Admin / Worker Login Form Submission
+    // E. Admin / Worker Login Form Submission (With SHA-256 Password Verification, Rate Limiting & Signed Session)
     if (e.target.id === 'admin-login-form' || e.target.id === 'admin-auth-form') {
       e.preventDefault();
+      const errBox = document.getElementById('admin-login-error-box');
+      const showLoginErr = (msg) => {
+        if (errBox) {
+          errBox.textContent = '⚠️ ' + msg;
+          errBox.classList.remove('hidden');
+        }
+        toast.show({ type: 'error', title: 'লগইন ব্যর্থ', message: msg });
+      };
+      if (errBox) errBox.classList.add('hidden');
+
+      // 1. Check Brute-Force Rate Limit
+      const rateStatus = checkLoginRateLimit('admin');
+      if (!rateStatus.allowed) {
+        showLoginErr(`নিরাপত্তাজনিত কারণে লগইন সাময়িকভাবে লক করা হয়েছে। অনুগ্রহ করে ${rateStatus.waitSeconds} সেকেন্ড পর আবার চেষ্টা করুন।`);
+        return;
+      }
+
+      // 2. Verify Math Captcha
       const captchaInp = document.getElementById('adm-captcha-input');
       const captchaExp = document.getElementById('adm-captcha-expected');
       if (captchaInp && captchaExp) {
         const inpVal = parseInt(captchaInp.value, 10);
         const expVal = parseInt(captchaExp.value, 10);
-        if (inpVal !== expVal) {
-          toast.show({ type: "error", title: "ভুল ক্যাপচা উত্তর", message: "ক্যাপচা সমাধান সঠিকভাবে করুন।" });
+        if (isNaN(inpVal) || inpVal !== expVal) {
+          if (window.regenerateAdminCaptcha) window.regenerateAdminCaptcha();
+          showLoginErr('ক্যাপচা যোগফল সঠিক নয়! নতুন ক্যাপচা সমাধান করুন।');
           return;
         }
       }
 
       const workerType = document.getElementById('adm-worker-type')?.value || 'Admin';
-      const userName = document.getElementById('adm-username')?.value || 'Administrator';
+      const userName = document.getElementById('adm-username')?.value || 'Jainal Abedin';
+      const passInp = document.getElementById('adm-password');
+      const rawPassword = passInp ? passInp.value : '';
 
-      const payload = {
-        name: userName,
-        user_name: userName,
-        worker_type: workerType,
-        role: 'Full Access',
-        account_type: 'ADMIN'
-      };
+      // 3. Verify Password Cryptographically (SHA-256)
+      const authCheck = verifyAdminLoginCredentials(userName, workerType, rawPassword);
+      if (!authCheck.valid) {
+        const failInfo = recordFailedLoginAttempt('admin');
+        if (passInp) passInp.value = '';
+        if (window.regenerateAdminCaptcha) window.regenerateAdminCaptcha();
+        const lockMsg = failInfo.locked
+          ? `পরপর ৫ বার ভুল পাসওয়ার্ড দেওয়ায় ৩ মিনিটের জন্য লগইন লক করা হয়েছে!`
+          : `${authCheck.message} (অবশিষ্ট চেষ্টা: ${failInfo.remainingAttempts} বার)`;
+        showLoginErr(lockMsg);
+        return;
+      }
 
-      authStore.setUser(payload, 'TOKEN-ADMIN-MASTER', 'ADMIN');
+      clearLoginAttempts('admin');
+      const sessionUser = authCheck.user;
+      const signedToken = createSignedSessionToken(sessionUser, 'ADMIN');
+
+      authStore.setUser(sessionUser, signedToken, 'ADMIN');
+      if (window.recordAdminAuditLog) {
+        window.recordAdminAuditLog(`${sessionUser.name} (${sessionUser.worker_type}) সফলভাবে লগইন করেছেন`, 'Auth Security', `Role: ${sessionUser.role}`);
+      }
       toast.show({
-        type: "success",
-        title: "অ্যাডমিন প্যানেলে স্বাগতম!",
-        message: `${userName} (${workerType}) হিসেবে লগইন হয়েছে।`,
-        duration: 4000
+        type: 'success',
+        title: 'অ্যাডমিন প্যানেলে স্বাগতম!',
+        message: `${sessionUser.name} (${sessionUser.worker_type}) হিসেবে সুরক্ষিত সেশনে লগইন হয়েছে।`,
+        duration: 3500
       });
 
       router.navigate('/admin/dashboard');

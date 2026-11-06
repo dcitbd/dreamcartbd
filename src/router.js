@@ -797,7 +797,7 @@ export function installAdminOrdersVisitorsCustomersReviewsUpgrade() {
             onclick="window.selectProductForAdminReview('${safeSku}')"
             class="p-2 rounded-xl border ${isSelected ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900'} flex items-center justify-between gap-2 hover:border-emerald-500 cursor-pointer transition">
             <div class="flex items-center gap-2.5 min-w-0">
-              <img src="${thumb}" class="w-9 h-9 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+              <img loading="lazy" decoding="async" src="${thumb}" class="w-9 h-9 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
               <div class="min-w-0">
                 <div class="font-bold text-[11px] text-slate-900 dark:text-white truncate">${name}</div>
                 <div class="text-[10px] text-slate-400 font-mono">SKU: <strong class="text-emerald-600">${sku}</strong> • ৳${price}</div>
@@ -843,7 +843,7 @@ export function installAdminOrdersVisitorsCustomersReviewsUpgrade() {
       cardBox.innerHTML = `
         <div class="p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 flex items-center justify-between gap-2">
           <div class="flex items-center gap-2.5 min-w-0">
-            <img src="${thumb}" class="w-10 h-10 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+            <img loading="lazy" decoding="async" src="${thumb}" class="w-10 h-10 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
             <div class="min-w-0">
               <div class="text-[10px] font-black text-emerald-700 dark:text-emerald-300">✓ নির্বাচিত ওয়েবসাইট পণ্য:</div>
               <div class="font-bold text-xs text-slate-900 dark:text-white truncate">${name}</div>
@@ -904,7 +904,7 @@ export function installAdminOrdersVisitorsCustomersReviewsUpgrade() {
       return `
         <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div class="flex items-start gap-3 min-w-0">
-            ${prodThumb ? `<img src="${prodThumb}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0 bg-white" onerror="this.style.display='none'" />` : ''}
+            ${prodThumb ? `<img loading="lazy" decoding="async" src="${prodThumb}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0 bg-white" onerror="this.style.display='none'" />` : ''}
             <div class="min-w-0">
               <div class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
                 <span>${r.customer || r.customer_name || 'গ্রাহক'}</span>
@@ -1014,12 +1014,16 @@ export function installAdminOrdersVisitorsCustomersReviewsUpgrade() {
   // ============================================================================
   // DOM UPGRADER FOR ADMIN PORTAL VIEWS (#page-orders-visitors, #page-orders-customers, #page-orders-reviews, #modal-add-review)
   // ============================================================================
-  window.upgradeAdminPortalOrdersAndCrmDOM = function() {
+  window.upgradeAdminPortalOrdersAndCrmDOM = function(targetSection = '') {
     if (typeof document === 'undefined') return;
+    const activePage = (window.__adminState && window.__adminState.activePage) || '';
+    const needVisitors = !targetSection ? (activePage === 'page-orders-visitors') : (targetSection === 'visitors' || targetSection === 'all');
+    const needCustomers = !targetSection ? (activePage === 'page-orders-customers') : (targetSection === 'customers' || targetSection === 'all');
+    const needReviews = !targetSection ? (activePage === 'page-orders-reviews') : (targetSection === 'reviews' || targetSection === 'all');
 
     // 1. Upgrade #page-orders-visitors
     const visPage = document.getElementById('page-orders-visitors');
-    if (visPage && !visPage.getAttribute('data-crm-upgraded')) {
+    if (visPage && needVisitors && !visPage.getAttribute('data-crm-upgraded')) {
       visPage.setAttribute('data-crm-upgraded', 'true');
       const visitors = window.getAdminLiveVisitors();
       visPage.innerHTML = `
@@ -1124,7 +1128,7 @@ export function installAdminOrdersVisitorsCustomersReviewsUpgrade() {
 
     // 2. Upgrade #page-orders-customers
     const custPage = document.getElementById('page-orders-customers');
-    if (custPage && !custPage.getAttribute('data-crm-upgraded')) {
+    if (custPage && needCustomers && !custPage.getAttribute('data-crm-upgraded')) {
       custPage.setAttribute('data-crm-upgraded', 'true');
       const customers = (window.__adminState && window.__adminState.customers) || JSON.parse(localStorage.getItem('dcbd_sheet_customers') || '[]');
       custPage.innerHTML = `
@@ -1250,7 +1254,7 @@ export function installAdminOrdersVisitorsCustomersReviewsUpgrade() {
 
     // 3. Upgrade #page-orders-reviews & #modal-add-review (Mandatory Website Product Search)
     const revPage = document.getElementById('page-orders-reviews');
-    if (revPage && !revPage.getAttribute('data-crm-upgraded')) {
+    if (revPage && needReviews && !revPage.getAttribute('data-crm-upgraded')) {
       revPage.setAttribute('data-crm-upgraded', 'true');
       const addRevBtn = revPage.querySelector('button.btn-primary');
       if (addRevBtn) {
@@ -1561,7 +1565,14 @@ export const router = {
     }
 
     const hasWarmCache = Array.isArray(apiClient.sheetProducts) && apiClient.sheetProducts.length > 0;
-    const isIntraAdmin = path.startsWith('/admin') && !!appContainer.querySelector('.dc-admin-wrapper');
+    const isIntraAdmin = path.startsWith('/admin') && !!appContainer.querySelector('#admin-main-panel');
+
+    // 0ms Intra-Admin Navigation: If Admin Portal is already mounted and user is navigating between /admin/* views, switch in-place without rebuilding DOM!
+    if (isIntraAdmin && path !== '/admin/login' && typeof window.switchAdminPage === 'function' && window.authStore && window.authStore.isAdmin()) {
+      const subview = path.replace(/^\/admin\/?/, '') || 'dashboard';
+      window.switchAdminPage(subview);
+      return;
+    }
 
     if (!isIntraAdmin && !hasWarmCache) {
       appContainer.innerHTML = `
