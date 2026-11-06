@@ -1,15 +1,44 @@
 /**
- * DREAM CART BD — AUTH STORE
+ * DREAM CART BD — SECURE AUTH STORE (src/store/authStore.js)
  * Manages authenticated user session across Customer, Reseller, Wholesaler, and Admin/Worker accounts.
+ * Features:
+ * - Signed session tokens with tamper detection & automatic expiration (12h TTL)
+ * - Automatic stripping of sensitive password fields before localStorage persistence
+ * - Idle session timeout protection for Admin Portal (2 hours inactivity auto-logout)
  */
+
+import {
+  createSignedSessionToken,
+  verifySignedSessionToken,
+  stripSensitiveUserFields
+} from '../utils/security.js';
+
+const ADMIN_IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 class AuthStore {
   constructor() {
     this.user = null;
     this.token = null;
     this.accountType = "GUEST"; // 'GUEST', 'CUSTOMER', 'RESELLER', 'WHOLESALER', 'ADMIN'
+    this.lastActiveAt = Date.now();
     this.listeners = [];
     this.load();
+    this._bindActivityTracker();
+  }
+
+  _bindActivityTracker() {
+    if (typeof window === 'undefined') return;
+    const touch = () => {
+      this.lastActiveAt = Date.now();
+      if (this.accountType === 'ADMIN') {
+        try {
+          sessionStorage.setItem('dcbd_admin_last_active', String(this.lastActiveAt));
+        } catch (e) {}
+      }
+    };
+    ['mousedown', 'keydown', 'touchstart'].forEach(evt => {
+      window.addEventListener(evt, touch, { passive: true });
+    });
   }
 
   load() {
@@ -17,26 +46,53 @@ class AuthStore {
       const stored = localStorage.getItem("dcbd_auth");
       if (stored) {
         const parsed = JSON.parse(stored);
-        this.user = parsed.user || null;
-        this.token = parsed.token || null;
-        this.accountType = parsed.accountType || (this.user ? this.user.account_type || "CUSTOMER" : "GUEST");
+        const cleanUser = stripSensitiveUserFields(parsed.user || null);
+        const accType = parsed.accountType || (cleanUser ? cleanUser.account_type || "CUSTOMER" : "GUEST");
+        const tok = parsed.token || null;
+
+        // For ADMIN sessions, enforce cryptographic signature & expiration check
+        if (accType === "ADMIN") {
+          if (!verifySignedSessionToken(tok, cleanUser, "ADMIN")) {
+            this._resetState();
+            localStorage.removeItem("dcbd_auth");
+            return;
+          }
+          const lastAct = Number(sessionStorage.getItem('dcbd_admin_last_active') || parsed.lastActiveAt || Date.now());
+          if (Date.now() - lastAct > ADMIN_IDLE_TIMEOUT_MS) {
+            this._resetState();
+            localStorage.removeItem("dcbd_auth");
+            return;
+          }
+        }
+
+        this.user = cleanUser;
+        this.token = tok;
+        this.accountType = accType;
+        this.lastActiveAt = Date.now();
       }
     } catch (e) {
-      this.user = null;
-      this.token = null;
-      this.accountType = "GUEST";
+      this._resetState();
     }
+  }
+
+  _resetState() {
+    this.user = null;
+    this.token = null;
+    this.accountType = "GUEST";
   }
 
   save(silent = false) {
     try {
       if (this.user && this.token) {
+        const cleanUser = stripSensitiveUserFields(this.user);
+        this.user = cleanUser;
         localStorage.setItem(
           "dcbd_auth",
           JSON.stringify({
-            user: this.user,
+            user: cleanUser,
             token: this.token,
-            accountType: this.accountType
+            accountType: this.accountType,
+            lastActiveAt: Date.now()
           })
         );
       } else {
@@ -60,21 +116,52 @@ class AuthStore {
   }
 
   setUser(user, token, accountType, silent = false) {
-    this.user = user;
-    this.token = token || "TOKEN-" + Math.floor(Math.random() * 1000000);
-    this.accountType = accountType || (user ? user.account_type || "CUSTOMER" : "GUEST");
+    const cleanUser = stripSensitiveUserFields(user);
+    const accType = accountType || (cleanUser ? cleanUser.account_type || "CUSTOMER" : "GUEST");
+    this.user = cleanUser;
+    this.accountType = accType;
+    // Always generate a cryptographically signed session token if none or legacy unsigned token is passed
+    if (!token || !String(token).startsWith('DCBD_SESS.')) {
+      this.token = createSignedSessionToken(cleanUser, accType);
+    } else {
+      this.token = token;
+    }
+    this.lastActiveAt = Date.now();
+    if (typeof window !== 'undefined' && accType === 'ADMIN') {
+      try {
+        sessionStorage.setItem('dcbd_admin_last_active', String(this.lastActiveAt));
+      } catch (e) {}
+    }
     this.save(silent);
   }
 
   logout(silent = false) {
-    this.user = null;
-    this.token = null;
-    this.accountType = "GUEST";
+    this._resetState();
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('dcbd_admin_last_active');
+      } catch (e) {}
+    }
     this.save(silent);
   }
 
+  clearUser(silent = false) {
+    this.logout(silent);
+  }
+
   isAuthenticated() {
-    return !!this.token && !!this.user;
+    if (!this.token || !this.user) return false;
+    if (this.accountType === "ADMIN") {
+      if (!verifySignedSessionToken(this.token, this.user, "ADMIN")) {
+        this.logout(true);
+        return false;
+      }
+      if (Date.now() - (this.lastActiveAt || Date.now()) > ADMIN_IDLE_TIMEOUT_MS) {
+        this.logout(true);
+        return false;
+      }
+    }
+    return true;
   }
 
   isCustomer() {
@@ -90,13 +177,9 @@ class AuthStore {
   }
 
   isAdmin() {
-    return this.isAuthenticated() && (
-      this.accountType === "ADMIN" ||
-      this.user?.account_type === "ADMIN" ||
-      this.user?.role === "Full Access" ||
-      this.user?.role === "SUPER_ADMIN" ||
-      this.user?.worker_type === "Admin"
-    );
+    if (!this.isAuthenticated()) return false;
+    if (this.accountType !== "ADMIN") return false;
+    return verifySignedSessionToken(this.token, this.user, "ADMIN");
   }
 
   getAccountType() {

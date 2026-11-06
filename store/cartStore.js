@@ -12,7 +12,7 @@ import {
   getGlobalPaymentMethods,
   getGlobalSiteSettings,
   getGlobalOffers
-} from '../api/client.js';
+} from '../src/api/client.js';
 
 class CartStore {
   constructor() {
