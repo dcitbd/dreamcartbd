@@ -150,8 +150,9 @@ export async function renderAdminPortal(params = {}) {
     combinedModulesHtml = combinedModulesHtml.replace(targetMarker, `id="${activeRoute.pageId}" class="admin-page-view`);
   }
 
-  // Sync sidebar active item & accordion group after mount
+  // Reset lazy-rendered page tracker on full portal mount & hydrate only the active page in 0ms
   if (typeof window !== 'undefined') {
+    window.__renderedAdminPages = new Set();
     setTimeout(() => {
       document.querySelectorAll('.dc-sidebar-sub-item').forEach(btn => {
         if (btn.getAttribute('data-page') === activeRoute.pageId) btn.classList.add('active');
@@ -168,30 +169,11 @@ export async function renderAdminPortal(params = {}) {
         subnav.style.display = 'block';
       }
       if (chevron) chevron.style.transform = 'rotate(90deg)';
-      
-      // Run view lifecycle hooks
-      if (activeRoute.pageId === 'page-prod-all' && window.renderAdminProductsTable) {
-        window.renderAdminProductsTable();
+
+      // Hydrate only the currently active page view (0ms instant load!)
+      if (window.ensureAdminPageViewRendered) {
+        window.ensureAdminPageViewRendered(activeRoute.pageId, true);
       }
-      if (activeRoute.pageId === 'page-prod-add' && window.updateAddProductLiveSummary) {
-        window.updateAddProductLiveSummary();
-      }
-      if (activeRoute.pageId === 'page-prod-categories' && window.renderInteractiveCategoryTree) {
-        window.renderInteractiveCategoryTree();
-      }
-      if (activeRoute.pageId === 'page-prod-banners' && window.renderAdminBannersList) {
-        window.renderAdminBannersList();
-      }
-      if (activeRoute.pageId === 'page-prod-variants' && window.renderAdminVariantsList) {
-        window.renderAdminVariantsList();
-      }
-      if (activeRoute.pageId === 'page-prod-landing' && window.renderSavedLandingPagesList) {
-        window.renderSavedLandingPagesList();
-      }
-      if (window.renderAdminSetLogsDOM) window.renderAdminSetLogsDOM();
-      if (window.renderAdminPaymentMethodsDOM) window.renderAdminPaymentMethodsDOM();
-      if (window.renderAdminDeliveryMethodsDOM) window.renderAdminDeliveryMethodsDOM();
-      if (window.renderAdminOffersDOM) window.renderAdminOffersDOM();
     }, 0);
   }
 

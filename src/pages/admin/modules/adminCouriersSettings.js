@@ -613,19 +613,29 @@ export function renderCouriersSettingsModule({ couriers, onlinePayments, offers,
       <div class="dc-admin-card space-y-4 max-w-md">
         <div class="border-b pb-2">
           <h3 class="font-bold text-sm text-slate-900 dark:text-white">🔒 সিকিউরিটি পাসওয়ার্ড পরিবর্তন</h3>
+          <p class="text-[11px] text-slate-400 mt-0.5">SHA-256 ক্রিপ্টোগ্রাফিক হ্যাশিংসহ আপনার অ্যাকাউন্টের পাসওয়ার্ড সুরক্ষিতভাবে আপডেট করুন</p>
         </div>
-        <form onsubmit="event.preventDefault(); const p1=document.getElementById('adm-new-pass')?.value; const p2=document.getElementById('adm-new-pass-conf')?.value; if(p1!==p2) { alert('পাসওয়ার্ড মিলছে না!'); return; } if(toast&&toast.show) toast.show({type:'success', title:'পাসওয়ার্ড পরিবর্তন', message:'পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে!'}); else alert('পাসওয়ার্ড পরিবর্তিত হয়েছে');" class="space-y-3.5 text-xs">
+        <form onsubmit="window.handleAdminChangePassword ? window.handleAdminChangePassword(event) : event.preventDefault()" class="space-y-3.5 text-xs" autocomplete="off">
           <div>
-            <label class="block font-bold mb-1">বর্তমান পাসওয়ার্ড</label>
-            <input type="password" required placeholder="••••••••" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
+            <label class="block font-bold mb-1">বর্তমান পাসওয়ার্ড *</label>
+            <div class="relative flex items-center">
+              <input type="password" id="adm-cur-pass" required placeholder="বর্তমান পাসওয়ার্ড লিখুন" autocomplete="current-password" class="form-control text-xs w-full py-2 pl-3 pr-9 rounded-xl border font-mono" />
+              <button type="button" onclick="window.toggleAdminPasswordVisibility && window.toggleAdminPasswordVisibility('adm-cur-pass', this)" class="absolute right-2.5 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs" title="পাসওয়ার্ড দেখুন/লুকান">👁️</button>
+            </div>
           </div>
           <div>
-            <label class="block font-bold mb-1">নতুন পাসওয়ার্ড</label>
-            <input type="password" id="adm-new-pass" required placeholder="••••••••" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
+            <label class="block font-bold mb-1">নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর) *</label>
+            <div class="relative flex items-center">
+              <input type="password" id="adm-new-pass" required minlength="6" placeholder="নতুন শক্তিশালী পাসওয়ার্ড" autocomplete="new-password" class="form-control text-xs w-full py-2 pl-3 pr-9 rounded-xl border font-mono" />
+              <button type="button" onclick="window.toggleAdminPasswordVisibility && window.toggleAdminPasswordVisibility('adm-new-pass', this)" class="absolute right-2.5 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs" title="পাসওয়ার্ড দেখুন/লুকান">👁️</button>
+            </div>
           </div>
           <div>
-            <label class="block font-bold mb-1">নতুন পাসওয়ার্ড নিশ্চিত করুন</label>
-            <input type="password" id="adm-new-pass-conf" required placeholder="••••••••" class="form-control text-xs w-full py-2 px-3 rounded-xl border font-mono" />
+            <label class="block font-bold mb-1">নতুন পাসওয়ার্ড নিশ্চিত করুন *</label>
+            <div class="relative flex items-center">
+              <input type="password" id="adm-new-pass-conf" required minlength="6" placeholder="পুনরায় নতুন পাসওয়ার্ড লিখুন" autocomplete="new-password" class="form-control text-xs w-full py-2 pl-3 pr-9 rounded-xl border font-mono" />
+              <button type="button" onclick="window.toggleAdminPasswordVisibility && window.toggleAdminPasswordVisibility('adm-new-pass-conf', this)" class="absolute right-2.5 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs" title="পাসওয়ার্ড দেখুন/লুকান">👁️</button>
+            </div>
           </div>
           <button type="submit" class="btn-primary py-2.5 px-6 font-bold">পাসওয়ার্ড পরিবর্তন করুন</button>
         </form>
@@ -763,7 +773,10 @@ export function renderCouriersSettingsModule({ couriers, onlinePayments, offers,
             </div>
             <div>
               <label class="block font-bold mb-1">10. Password (পাসওয়ার্ড) *</label>
-              <input type="text" id="set-aw-pass" required value="admin123" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+              <div class="relative flex items-center">
+                <input type="password" id="set-aw-pass" placeholder="নতুন পাসওয়ার্ড দিন" autocomplete="new-password" class="form-control text-xs w-full py-1.5 pl-3 pr-8 rounded-xl border font-mono font-bold" />
+                <button type="button" onclick="window.toggleAdminPasswordVisibility && window.toggleAdminPasswordVisibility('set-aw-pass', this)" class="absolute right-2 text-slate-400 hover:text-slate-700 text-xs" title="পাসওয়ার্ড দেখুন/লুকান">👁️</button>
+              </div>
             </div>
             <div>
               <label class="block font-bold mb-1">11. স্ট্যাটাস</label>
@@ -1164,13 +1177,22 @@ export function renderAdminLoginView() {
               <option value="MD. Saiful Islam">MD. Saiful Islam (Admin)</option>
               <option value="Admin Staff">Admin Staff (Operations)</option>
               <option value="Accounts Officer">Accounts Officer</option>
+              ${(typeof window !== 'undefined' && typeof window.getUnifiedAdminWorkerList === 'function' ? window.getUnifiedAdminWorkerList() : [])
+                .filter(u => u && u.name && !['jainal abedin', 'md. saiful islam', 'saiful islam', 'admin staff', 'accounts officer'].includes(String(u.name).trim().toLowerCase()))
+                .map(u => `<option value="${u.name}">${u.name} (${u.role || u.worker_type || 'Staff'})</option>`)
+                .join('')}
             </select>
           </div>
 
           <div>
-            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Password *</label>
-            <input type="password" id="adm-password" required placeholder="••••••••" value="admin123" class="form-control text-xs w-full py-2.5 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 font-mono" />
+            <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Password (গোপন পাসওয়ার্ড) *</label>
+            <div class="relative flex items-center">
+              <input type="password" id="adm-password" required placeholder="আপনার গোপন পাসওয়ার্ড লিখুন" autocomplete="current-password" class="form-control text-xs w-full py-2.5 pl-3.5 pr-9 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800 font-mono" />
+              <button type="button" onclick="window.toggleAdminPasswordVisibility && window.toggleAdminPasswordVisibility('adm-password', this)" class="absolute right-3 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs" title="পাসওয়ার্ড দেখুন/লুকান">👁️</button>
+            </div>
           </div>
+
+          <div id="admin-login-error-box" class="hidden p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-300 font-bold text-xs"></div>
 
           <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 space-y-2">
             <div class="flex items-center justify-between">
@@ -1199,8 +1221,9 @@ export function renderAdminLoginView() {
           </button>
         </form>
 
-        <div class="pt-3 border-t border-slate-100 dark:border-slate-800 text-center text-xs text-slate-400">
-          ডেমো পাসওয়ার্ড: <span class="font-mono font-bold text-slate-700 dark:text-slate-300">admin123</span>
+        <div class="pt-3 border-t border-slate-100 dark:border-slate-800 text-center text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
+          <span class="text-emerald-600">🔒</span>
+          <span>SHA-256 এনক্রিপ্টেড সেশন ও ব্রুট-ফোর্স সুরক্ষা সক্রিয়</span>
         </div>
 
       </div>

@@ -149,7 +149,7 @@ export function renderProductCatalogModule({ products = [], categories = [], bra
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-100 dark:divide-slate-800" id="admin-products-tbody">
-                    ${products.slice(0, 120).map(p => window.renderAdminProductRowHtml ? window.renderAdminProductRowHtml(p) : '').join("")}
+                    ${(typeof window !== 'undefined' && window.__adminState && window.__adminState.activePage === 'page-prod-all') ? products.slice(0, 120).map(p => window.renderAdminProductRowHtml ? window.renderAdminProductRowHtml(p) : '').join("") : ''}
                   </tbody>
                 </table>
               </div>
@@ -196,19 +196,7 @@ export function renderProductCatalogModule({ products = [], categories = [], bra
                 </h3>
                 <span class="badge badge-warning text-xs font-bold">মোট ${kpi.low_stock_count} টি পণ্য</span>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-                ${products.filter(p => Number(p.stock) > 0 && Number(p.stock) <= 5).map(p => `
-                  <div class="p-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-900 flex items-center justify-between gap-3">
-                    <img src="${p.thumbnail || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" class="w-12 h-12 rounded-xl object-cover border border-amber-200 flex-shrink-0" />
-                    <div class="min-w-0 flex-1">
-                      <div class="font-bold text-slate-900 dark:text-white truncate">${p.name}</div>
-                      <div class="text-[10px] text-slate-400 font-mono">${p.sku} | ৳${p.selling_price}</div>
-                      <div class="text-[11px] font-bold text-amber-600 mt-0.5">মজুদ: ${p.stock} পিস মাত্র</div>
-                    </div>
-                    <button class="btn-primary py-1 px-2.5 text-[10px] font-bold bg-amber-500 hover:bg-amber-600 text-slate-950" onclick="window.inlineEditProduct('${p.product_id || p.sku}', 'stock', ${p.stock}, this)">+ স্টক যোগ</button>
-                  </div>
-                `).join("")}
-              </div>
+              <div id="admin-low-stock-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs"></div>
             </div>
           </div>
 
@@ -221,19 +209,7 @@ export function renderProductCatalogModule({ products = [], categories = [], bra
                 </h3>
                 <span class="badge badge-danger text-xs font-bold">মোট ${kpi.out_of_stock_count} টি পণ্য</span>
               </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-                ${products.filter(p => Number(p.stock) === 0).map(p => `
-                  <div class="p-3 bg-rose-50/50 dark:bg-rose-950/20 rounded-2xl border border-rose-200 dark:border-rose-900 flex items-center justify-between gap-3">
-                    <img src="${p.thumbnail || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" class="w-12 h-12 rounded-xl object-cover border border-rose-200 flex-shrink-0" />
-                    <div class="min-w-0 flex-1">
-                      <div class="font-bold text-slate-900 dark:text-white truncate">${p.name}</div>
-                      <div class="text-[10px] text-slate-400 font-mono">${p.sku}</div>
-                      <div class="text-[11px] font-bold text-rose-600 mt-0.5">স্টক শেষ (০ পিস)</div>
-                    </div>
-                    <button class="btn-primary py-1 px-2.5 text-[10px] font-bold bg-rose-600 hover:bg-rose-700 text-white" onclick="window.inlineEditProduct('${p.product_id || p.sku}', 'stock', 0, this)">স্টক দিন</button>
-                  </div>
-                `).join("")}
-              </div>
+              <div id="admin-out-stock-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs"></div>
             </div>
           </div>
 
@@ -245,17 +221,7 @@ export function renderProductCatalogModule({ products = [], categories = [], bra
                   <span class="text-indigo-500">⚙️</span> ত্রুটিযুক্ত পণ্য যাচাই
                 </h3>
               </div>
-              <div class="space-y-2 text-xs">
-                ${products.filter(p => !p.sku || !p.thumbnail || !p.selling_price).map(p => `
-                  <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border flex items-center justify-between gap-3">
-                    <div>
-                      <div class="font-bold text-slate-900 dark:text-white">${p.name}</div>
-                      <div class="text-[10px] text-rose-500 font-mono">ত্রুটি: ${!p.sku ? 'SKU অনুপস্থিত • ' : ''}${!p.thumbnail ? 'ছবি অনুপস্থিত • ' : ''}${!p.selling_price ? 'মূল্য অনুপস্থিত' : ''}</div>
-                    </div>
-                    <button class="btn-secondary py-1 px-3 text-[10px]" onclick="window.openSingleProductEditModal('${p.product_id || p.sku}')">সংশোধন করুন</button>
-                  </div>
-                `).join("")}
-              </div>
+              <div id="admin-error-prod-list" class="space-y-2 text-xs"></div>
             </div>
           </div>
 
@@ -848,7 +814,7 @@ export function renderCategoryBrandModule({ products = [], categories = [], bran
                       <div class="flex items-start justify-between gap-3">
                         <div class="flex items-center gap-3.5">
                           <div class="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 p-2 border border-slate-200 dark:border-slate-700 flex items-center justify-center flex-shrink-0 shadow-inner">
-                            <img src="${b.brand_image || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" alt="${b.brand_name}" class="w-full h-full object-contain rounded-xl" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                            <img loading="lazy" decoding="async" src="${b.brand_image || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" alt="${b.brand_name}" class="w-full h-full object-contain rounded-xl" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
                           </div>
                           <div>
                             <div class="flex items-center gap-1.5">
@@ -1374,7 +1340,7 @@ export function renderLandingCmsModule({ products = [] }) {
                       <div class="p-4 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:border-emerald-500/60 transition flex flex-col justify-between space-y-3">
                         <div class="space-y-2.5">
                           <div class="relative h-32 rounded-2xl overflow-hidden border">
-                            <img src="${lp.hero_banner || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800';" />
+                            <img loading="lazy" decoding="async" src="${lp.hero_banner || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800';" />
                             <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent flex flex-col justify-end p-3">
                               <div class="flex items-center justify-between">
                                 <span class="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-[9px]">${lp.id} • /landing?page=${lp.slug}</span>

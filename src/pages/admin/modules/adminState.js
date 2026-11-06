@@ -14,6 +14,14 @@ import { apiClient, parseImageUrlsList, getGlobalSiteSettings, getGlobalPaymentM
 import { authStore } from '../../../store/authStore.js';
 import { formatCurrency } from '../../../utils/format.js';
 import { toast } from '../../../components/Toast.js';
+import { renderDashboardModule } from './adminDashboard.js';
+import {
+  hashPasswordSync,
+  verifyPasswordSync,
+  MASTER_ADMIN_HASHES,
+  saveAdminPasswordHash,
+  verifyAdminLoginCredentials
+} from '../../../utils/security.js';
 
 // MODULE: adminState.js
 // ============================================================================
@@ -287,42 +295,8 @@ function initAdminGlobalState() {
       target.classList.remove('hidden');
       target.style.display = 'block';
     }
-    if (pageId === 'page-prod-all' && window.renderAdminProductsTable) {
-      window.renderAdminProductsTable();
-    }
-    if (pageId === 'page-prod-add' && window.updateAddProductLiveSummary) {
-      window.updateAddProductLiveSummary();
-    }
-    if (pageId === 'page-prod-categories' && window.renderInteractiveCategoryTree) {
-      window.renderInteractiveCategoryTree();
-    }
-    if (pageId === 'page-prod-banners' && window.renderAdminBannersList) {
-      window.renderAdminBannersList();
-    }
-    if (pageId === 'page-prod-variants' && window.renderAdminVariantsList) {
-      window.renderAdminVariantsList();
-    }
-    if (pageId === 'page-prod-landing' && window.renderSavedLandingPagesList) {
-      window.renderSavedLandingPagesList();
-    }
-    if (pageId === 'page-prod-landing-add' && window.renderLandingDraftMedia) {
-      window.renderLandingDraftMedia();
-    }
-    if (pageId === 'page-set-logs' && window.renderAdminSetLogsDOM) {
-      window.renderAdminSetLogsDOM();
-      if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
-    }
-    if (pageId === 'page-set-payment' && window.renderAdminPaymentMethodsDOM) {
-      window.renderAdminPaymentMethodsDOM();
-      if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
-    }
-    if (pageId === 'page-set-delivery' && window.renderAdminDeliveryMethodsDOM) {
-      window.renderAdminDeliveryMethodsDOM();
-      if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
-    }
-    if (pageId === 'page-set-offers' && window.renderAdminOffersDOM) {
-      window.renderAdminOffersDOM();
-      if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
+    if (window.ensureAdminPageViewRendered) {
+      window.ensureAdminPageViewRendered(pageId, false);
     }
 
     // Update top route tabs & URL badge
@@ -412,13 +386,17 @@ function initAdminGlobalState() {
     if (icon) icon.textContent = isDark ? '☀️' : '🌙';
   };
 
-  // Search across active page
+  // Debounced search across active page (prevents UI lag while typing)
+  let _admGlobalSearchTimer = null;
   window.handleAdminGlobalSearch = function(query) {
-    const q = (query || '').toLowerCase().trim();
-    const activePage = window.__adminState.activePage;
-    document.querySelectorAll(`#${activePage} tbody tr, #${activePage} .admin-searchable-card`).forEach(el => {
-      el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
-    });
+    clearTimeout(_admGlobalSearchTimer);
+    _admGlobalSearchTimer = setTimeout(() => {
+      const q = (query || '').toLowerCase().trim();
+      const activePage = window.__adminState.activePage;
+      document.querySelectorAll(`#${activePage} tbody tr, #${activePage} .admin-searchable-card`).forEach(el => {
+        el.style.display = el.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+    }, 120);
   };
 
   // Copy to clipboard
@@ -826,12 +804,13 @@ function initAdminGlobalState() {
     const kpiBox = document.getElementById('admin-orders-kpi-cards');
     const totalBadge = document.getElementById('admin-orders-total-badge');
     const orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
+    const viewMode = (window.__ordersListUiState && window.__ordersListUiState.viewMode) || 'table';
     if (totalBadge) totalBadge.textContent = orders.length;
     if (kpiBox) kpiBox.innerHTML = window.renderOrdersKpiCountersHtml(orders);
     if (tbody) {
       tbody.innerHTML = orders.map(o => window.renderOrderRowHtml(o)).join('');
     }
-    if (cardsGrid) {
+    if (cardsGrid && viewMode === 'cards') {
       cardsGrid.innerHTML = orders.map(o => window.renderOrderCardHtml(o)).join('');
     }
     if (window.applyOrdersListCombinedFilters) {
@@ -847,6 +826,11 @@ function initAdminGlobalState() {
     const btnTable = document.getElementById('btn-orders-view-table');
     const btnCards = document.getElementById('btn-orders-view-cards');
     if (mode === 'cards') {
+      if (cardsGrid && !cardsGrid.children.length) {
+        const orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
+        cardsGrid.innerHTML = orders.map(o => window.renderOrderCardHtml(o)).join('');
+        if (window.applyOrdersListCombinedFilters) window.applyOrdersListCombinedFilters();
+      }
       tableWrap?.classList.add('hidden');
       cardsGrid?.classList.remove('hidden');
       btnCards?.classList.add('active');
@@ -1091,7 +1075,7 @@ function initAdminGlobalState() {
     return `
       <div class="p-2 rounded-xl border bg-white dark:bg-slate-900 flex items-center justify-between gap-2 hover:border-emerald-500 cursor-pointer transition" onclick="window.addProductToManualOrder('${id}')">
         <div class="flex items-center gap-2.5 min-w-0">
-          <img src="${thumb}" class="w-9 h-9 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+          <img loading="lazy" decoding="async" src="${thumb}" class="w-9 h-9 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
           <div class="min-w-0">
             <div class="font-bold text-xs text-slate-900 dark:text-white truncate">${p.name || p.p_name}</div>
             <div class="text-[10px] text-slate-400 font-mono">আর্টিকেল/SKU: <strong class="text-emerald-600">${p.sku || p.product_id}</strong> • ৳${p.selling_price || 0} • কালার: ${colors} • সাইজ: ${sizes}</div>
@@ -1169,7 +1153,7 @@ function initAdminGlobalState() {
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2.5 min-w-0">
             <span class="w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">${idx + 1}</span>
-            <img src="${it.thumbnail}" class="w-10 h-10 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+            <img loading="lazy" decoding="async" src="${it.thumbnail}" class="w-10 h-10 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
             <div class="min-w-0">
               <div class="font-bold text-xs text-slate-900 dark:text-white truncate">${it.name}</div>
               <div class="text-[10px] font-mono text-emerald-600 font-bold">SKU: ${it.sku} • সাবটোটাল: ৳${it.price * it.quantity}</div>
@@ -2202,7 +2186,7 @@ function initAdminGlobalState() {
       const safeSrc = String(u).replace(/"/g, '&quot;');
       return `
         <div class="relative group rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-1.5 shadow-sm">
-          <img src="${safeSrc}" alt="Preview ${idx + 1}" class="w-full h-24 object-contain bg-slate-50 dark:bg-slate-800 rounded-xl" onerror="this.onerror=null; this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+          <img loading="lazy" decoding="async" src="${safeSrc}" alt="Preview ${idx + 1}" class="w-full h-24 object-contain bg-slate-50 dark:bg-slate-800 rounded-xl" onerror="this.onerror=null; this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
           <span class="absolute top-2.5 left-2.5 px-1.5 py-0.5 rounded bg-slate-900/80 text-white text-[9px] font-bold">
             ${idx === 0 ? '★ মূল ছবি' : `#${idx + 1}`}
           </span>
@@ -2407,7 +2391,7 @@ function initAdminGlobalState() {
           <input type="checkbox" class="prod-select-cb w-4 h-4 rounded accent-emerald-600 cursor-pointer" value="${id}" ${isChecked ? 'checked' : ''} onchange="window.toggleSingleProductCheckbox('${safeId}', this.checked)" />
         </td>
         <td class="py-2.5 px-2.5">
-          <img src="${thumb}" class="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+          <img loading="lazy" decoding="async" src="${thumb}" class="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
         </td>
         <td class="py-2.5 px-3 font-bold text-slate-900 dark:text-white max-w-xs">
           <div class="line-clamp-1" title="${p.name || p.p_name || ''}">${p.name || p.p_name || 'পণ্য'}</div>
@@ -2513,10 +2497,14 @@ function initAdminGlobalState() {
     window.renderAdminProductsTable();
   };
 
+  let _admProdSearchTimer = null;
   window.filterAdminProducts = function(searchVal) {
     window.__adminProductFilterState.search = searchVal || '';
     window.__adminProductFilterState.page = 1;
-    window.renderAdminProductsTable();
+    clearTimeout(_admProdSearchTimer);
+    _admProdSearchTimer = setTimeout(() => {
+      window.renderAdminProductsTable();
+    }, 120);
   };
 
   window.filterAdminProductCategory = function(catVal) {
@@ -2877,6 +2865,15 @@ window.openBulkSelectedProductsModal = function(mode) {
       window.renderAdminProductImagePreviews('adm');
       window.renderColorSizeChips('adm');
       window.updateAddProductLiveSummary && window.updateAddProductLiveSummary();
+      if (apiClient && typeof apiClient.fetchSingleProductRichDetails === 'function') {
+        apiClient.fetchSingleProductRichDetails(p).then(rich => {
+          if (rich) {
+            if (rich.description) setV('adm-desc', rich.description);
+            if (rich.specification) setV('adm-spec', rich.specification);
+            if (rich.others) setV('adm-others', rich.others);
+          }
+        }).catch(() => {});
+      }
       if (toast && toast.show) toast.show({ type: 'info', title: 'পণ্য এডিট মোড', message: `"${p.name}" ফর্মে লোড হয়েছে। পরিবর্তন করে সংরক্ষণ করুন।` });
     }, 50);
   };
@@ -3257,7 +3254,7 @@ window.openBulkSelectedProductsModal = function(mode) {
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
               ${parsed.slice(0, 16).map(item => `
                 <div class="p-2 rounded-xl bg-white dark:bg-slate-900 border flex items-center gap-2">
-                  <img src="${item.thumbnail}" class="w-10 h-10 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                  <img loading="lazy" decoding="async" src="${item.thumbnail}" class="w-10 h-10 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
                   <div class="min-w-0 text-[10px]">
                     <div class="font-mono font-bold truncate">${item.sku || item.name}</div>
                     <div class="text-slate-400 truncate">${item.images.length} টি ছবি</div>
@@ -3615,7 +3612,7 @@ window.openBulkSelectedProductsModal = function(mode) {
           <div class="flex items-start justify-between gap-3">
             <div class="flex items-center gap-3.5">
               <div class="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 p-2 border border-slate-200 dark:border-slate-700 flex items-center justify-center flex-shrink-0 shadow-inner">
-                <img src="${b.brand_image || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" alt="${b.brand_name}" class="w-full h-full object-contain rounded-xl" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                <img loading="lazy" decoding="async" src="${b.brand_image || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" alt="${b.brand_name}" class="w-full h-full object-contain rounded-xl" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
               </div>
               <div>
                 <div class="flex items-center gap-1.5">
@@ -4020,7 +4017,7 @@ window.openBulkSelectedProductsModal = function(mode) {
         <div class="admin-searchable-card bg-white dark:bg-slate-900 rounded-3xl p-4 shadow-sm flex flex-col justify-between space-y-3.5">
           <div class="space-y-3">
             <div class="relative h-44 rounded-2xl overflow-hidden bg-slate-900">
-              <img src="${bn.image_url}" alt="${bn.title || ''}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600';" />
+              <img loading="lazy" decoding="async" src="${bn.image_url}" alt="${bn.title || ''}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600';" />
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/30 to-transparent flex flex-col justify-between p-3.5">
                 <div class="flex items-center justify-between gap-2">
                   <span class="px-2.5 py-0.5 rounded-full bg-slate-900/80 text-white font-mono text-[10px] font-bold">
@@ -4510,7 +4507,7 @@ window.openBulkSelectedProductsModal = function(mode) {
     }
     box.innerHTML = banners.map((b, i) => `
       <div class="relative rounded-2xl border bg-white dark:bg-slate-900 p-2 space-y-1.5 shadow-sm">
-        <img src="${b.url}" class="w-full h-24 object-cover rounded-xl" />
+        <img loading="lazy" decoding="async" src="${b.url}" class="w-full h-24 object-cover rounded-xl" />
         ${b.caption ? `<div class="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate">${b.caption}</div>` : ''}
         <button type="button" onclick="window.removeBannerFromLandingDraft(${i})" class="absolute top-3 right-3 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center shadow">✕</button>
       </div>
@@ -4602,7 +4599,7 @@ window.openBulkSelectedProductsModal = function(mode) {
       return `
         <div class="p-2 rounded-xl border bg-white dark:bg-slate-900 flex items-center justify-between gap-2 hover:border-emerald-400 transition">
           <div class="flex items-center gap-2.5 min-w-0">
-            <img src="${thumb}" class="w-9 h-9 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+            <img loading="lazy" decoding="async" src="${thumb}" class="w-9 h-9 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
             <div class="min-w-0">
               <div class="font-bold text-[11px] text-slate-900 dark:text-white truncate">${p.name || p.p_name}</div>
               <div class="text-[10px] text-slate-400 font-mono">${id} • <span class="text-emerald-600 font-bold">৳${p.selling_price || 0}</span> • স্টক: ${p.stock || 0}</div>
@@ -4660,7 +4657,7 @@ window.openBulkSelectedProductsModal = function(mode) {
         <div class="p-2.5 rounded-2xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/40 dark:bg-emerald-950/20 flex items-center justify-between gap-2">
           <div class="flex items-center gap-2.5 min-w-0">
             <span class="w-5 h-5 rounded-full bg-emerald-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">${idx + 1}</span>
-            <img src="${thumb}" class="w-10 h-10 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+            <img loading="lazy" decoding="async" src="${thumb}" class="w-10 h-10 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
             <div class="min-w-0">
               <div class="font-bold text-xs text-slate-900 dark:text-white truncate">${p.name || p.p_name}</div>
               <div class="text-[10px] text-emerald-600 font-mono font-bold">${id} • ৳${p.selling_price || 0}</div>
@@ -4747,7 +4744,7 @@ window.openBulkSelectedProductsModal = function(mode) {
         <div class="p-4 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm hover:border-emerald-500/60 transition flex flex-col justify-between space-y-3">
           <div class="space-y-2.5">
             <div class="relative h-32 rounded-2xl overflow-hidden border">
-              <img src="${lp.hero_banner || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800';" />
+              <img loading="lazy" decoding="async" src="${lp.hero_banner || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'}" class="w-full h-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800';" />
               <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/30 to-transparent flex flex-col justify-end p-3">
                 <div class="flex items-center justify-between">
                   <span class="px-2 py-0.5 rounded bg-amber-400 text-slate-950 font-black text-[9px]">${lp.id} • /landing?page=${lp.slug}</span>
@@ -4801,7 +4798,7 @@ window.openBulkSelectedProductsModal = function(mode) {
 
         <!-- Hero Section -->
         <div class="relative rounded-3xl overflow-hidden bg-slate-950 text-white border border-emerald-800/40 shadow-2xl">
-          <img src="${lp.hero_banner}" class="w-full h-64 sm:h-80 object-cover opacity-35" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200';" />
+          <img loading="lazy" decoding="async" src="${lp.hero_banner}" class="w-full h-64 sm:h-80 object-cover opacity-35" onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200';" />
           <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 sm:p-12 space-y-3">
             <span class="inline-block bg-amber-400 text-slate-950 font-black text-xs px-3.5 py-1 rounded-full uppercase shadow">
               ${lp.badge || '🔥 মেগা ক্যাম্পেইন অফার'}
@@ -4824,7 +4821,7 @@ window.openBulkSelectedProductsModal = function(mode) {
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               ${lp.banners.map(b => `
                 <div class="rounded-2xl overflow-hidden border bg-white dark:bg-slate-900 shadow-sm">
-                  <img src="${b.url}" class="w-full h-44 object-cover" onerror="this.src='https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600';" />
+                  <img loading="lazy" decoding="async" src="${b.url}" class="w-full h-44 object-cover" onerror="this.src='https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=600';" />
                   <div class="p-2.5 text-center font-bold text-xs text-slate-800 dark:text-slate-200">${b.caption || ''}</div>
                 </div>
               `).join('')}
@@ -4877,7 +4874,7 @@ window.openBulkSelectedProductsModal = function(mode) {
               return `
                 <div class="rounded-2xl border bg-white dark:bg-slate-900 p-3.5 space-y-2.5 shadow-sm flex flex-col justify-between">
                   <div class="space-y-2">
-                    <img src="${thumb}" class="w-full h-36 object-cover rounded-xl border" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                    <img loading="lazy" decoding="async" src="${thumb}" class="w-full h-36 object-cover rounded-xl border" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
                     <div class="font-bold text-xs text-slate-900 dark:text-white line-clamp-2">${p.name || p.p_name}</div>
                     <div class="flex items-center gap-2">
                       <span class="text-sm font-black text-emerald-600 font-mono">৳${p.selling_price || 0}</span>
@@ -4936,7 +4933,7 @@ window.openBulkSelectedProductsModal = function(mode) {
           <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${id}</td>
           <td class="py-2.5 px-3">
             <div class="flex items-center gap-2">
-              <img src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+              <img loading="lazy" decoding="async" src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
               <div>
                 <div class="font-bold text-slate-900 dark:text-white">${r.name || ''}</div>
                 <div class="text-[10px] text-slate-400">শপ: ${r.shop_name || r.shop || ''} • User: ${r.user_id || phone}</div>
@@ -4981,7 +4978,12 @@ window.openBulkSelectedProductsModal = function(mode) {
     setV('adm-res-dob', found?.date_of_birth || '');
     setV('adm-res-tl', found?.trade_licence_no || '');
     setV('adm-res-userid', found?.user_id || found?.mobile || '');
-    setV('adm-res-password', found?.password || '123456');
+    setV('adm-res-password', '');
+    const resPassEl = document.getElementById('adm-res-password');
+    if (resPassEl) {
+      resPassEl.required = !found;
+      resPassEl.placeholder = found ? 'পরিবর্তন করতে নতুন পাসওয়ার্ড দিন (ঐচ্ছিক)' : 'নতুন পাসওয়ার্ড দিন *';
+    }
     setV('adm-res-comm', found?.commission || '15%');
     document.getElementById('modal-add-reseller')?.classList.remove('hidden');
   };
@@ -4994,6 +4996,11 @@ window.openBulkSelectedProductsModal = function(mode) {
     const mobile = getV('adm-res-mobile');
     const name = getV('adm-res-name');
     if (!name || !mobile) return;
+
+    let list = (window.__adminState && window.__adminState.resellers) || JSON.parse(localStorage.getItem('dcbd_resellers') || '[]');
+    const existingRes = editId ? list.find(r => (r.shop_id || r.id) === editId) : null;
+    const rawNewPass = getV('adm-res-password');
+    const finalPassHash = rawNewPass ? hashPasswordSync(rawNewPass) : (existingRes?.password || MASTER_ADMIN_HASHES.PARTNER_DEFAULT);
 
     const entry = {
       id: shopId,
@@ -5011,14 +5018,13 @@ window.openBulkSelectedProductsModal = function(mode) {
       date_of_birth: getV('adm-res-dob'),
       trade_licence_no: getV('adm-res-tl'),
       user_id: getV('adm-res-userid') || mobile,
-      password: getV('adm-res-password') || '123456',
+      password: finalPassHash,
       commission: getV('adm-res-comm') || '15%',
       balance: 0,
       total_earned: 0,
       status: 'Active'
     };
 
-    let list = (window.__adminState && window.__adminState.resellers) || JSON.parse(localStorage.getItem('dcbd_resellers') || '[]');
     if (editId) {
       list = list.map(r => (r.shop_id || r.id) === editId ? { ...r, ...entry } : r);
     } else {
@@ -5063,7 +5069,7 @@ window.openBulkSelectedProductsModal = function(mode) {
           <td class="py-2.5 px-3 font-mono font-bold text-amber-600">${id}</td>
           <td class="py-2.5 px-3">
             <div class="flex items-center gap-2">
-              <img src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+              <img loading="lazy" decoding="async" src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
               <div>
                 <div class="font-bold text-slate-900 dark:text-white">${w.shop_name || w.company || ''}</div>
                 <div class="text-[10px] text-slate-400">মালিক: ${w.name || ''} • User: ${w.user_id || phone}</div>
@@ -5101,7 +5107,12 @@ window.openBulkSelectedProductsModal = function(mode) {
     setV('adm-whs-address', found?.address || '');
     setV('adm-whs-shop-name', found?.shop_name || found?.company || '');
     setV('adm-whs-userid', found?.user_id || found?.mobile || '');
-    setV('adm-whs-password', found?.password || '123456');
+    setV('adm-whs-password', '');
+    const whsPassEl = document.getElementById('adm-whs-password');
+    if (whsPassEl) {
+      whsPassEl.required = !found;
+      whsPassEl.placeholder = found ? 'পরিবর্তন করতে নতুন পাসওয়ার্ড দিন (ঐচ্ছিক)' : 'নতুন পাসওয়ার্ড দিন *';
+    }
     setV('adm-whs-moq', found?.moq || 5);
     setV('adm-whs-disc', found?.discount_pct || '15%');
     document.getElementById('modal-add-wholesaler')?.classList.remove('hidden');
@@ -5116,6 +5127,11 @@ window.openBulkSelectedProductsModal = function(mode) {
     const mobile = getV('adm-whs-mobile');
     if (!name || !mobile) return;
 
+    let list = (window.__adminState && window.__adminState.wholesalers) || JSON.parse(localStorage.getItem('dcbd_wholesalers') || '[]');
+    const existingWhs = editId ? list.find(w => (w.shop_id || w.id) === editId) : null;
+    const rawNewPass = getV('adm-whs-password');
+    const finalPassHash = rawNewPass ? hashPasswordSync(rawNewPass) : (existingWhs?.password || MASTER_ADMIN_HASHES.PARTNER_DEFAULT);
+
     const entry = {
       id: shopId,
       shop_id: shopId,
@@ -5128,7 +5144,7 @@ window.openBulkSelectedProductsModal = function(mode) {
       shop_name: getV('adm-whs-shop-name') || 'ট্রেডার্স',
       company: getV('adm-whs-shop-name') || 'ট্রেডার্স',
       user_id: getV('adm-whs-userid') || mobile,
-      password: getV('adm-whs-password') || '123456',
+      password: finalPassHash,
       moq: Number(getV('adm-whs-moq') || 5),
       discount_pct: getV('adm-whs-disc') || '15%',
       tier: `MOQ ${getV('adm-whs-moq') || 5} • ${getV('adm-whs-disc') || '15%'} Off`,
@@ -5136,7 +5152,6 @@ window.openBulkSelectedProductsModal = function(mode) {
       status: 'Approved'
     };
 
-    let list = (window.__adminState && window.__adminState.wholesalers) || JSON.parse(localStorage.getItem('dcbd_wholesalers') || '[]');
     if (editId) {
       list = list.map(w => (w.shop_id || w.id) === editId ? { ...w, ...entry } : w);
     } else {
@@ -5278,7 +5293,7 @@ window.openBulkSelectedProductsModal = function(mode) {
           <div class="flex items-start justify-between gap-2.5">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-xl bg-white p-1.5 border flex items-center justify-center flex-shrink-0">
-                <img src="${logo}" class="max-w-full max-h-full object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png';" />
+                <img loading="lazy" decoding="async" src="${logo}" class="max-w-full max-h-full object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png';" />
               </div>
               <div>
                 <span class="text-[10px] font-mono font-bold bg-slate-200/70 dark:bg-slate-700 px-2 py-0.5 rounded">${id}</span>
@@ -5371,7 +5386,7 @@ window.openBulkSelectedProductsModal = function(mode) {
         return `
           <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div class="flex items-center gap-3">
-              <img src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+              <img loading="lazy" decoding="async" src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
               <div>
                 <div class="flex items-center gap-2">
                   <span class="font-mono text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">${id}</span>
@@ -5403,7 +5418,7 @@ window.openBulkSelectedProductsModal = function(mode) {
           <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col justify-between gap-3">
             <div class="flex items-start justify-between gap-2.5">
               <div class="flex items-center gap-3">
-                <img src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                <img loading="lazy" decoding="async" src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
                 <div>
                   <span class="font-mono text-[10px] font-bold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">${id}</span>
                   <div class="font-bold text-slate-900 dark:text-white mt-0.5">${w.name || ''}</div>
@@ -5470,7 +5485,12 @@ window.openBulkSelectedProductsModal = function(mode) {
     setV(`${prefix}-wtype`, found?.worker_type || (isAdm ? 'Admin' : 'Order Management'));
     setV(`${prefix}-role`, found?.role || (isAdm ? 'CEO & Master Admin' : 'Order Management'));
     setV(`${prefix}-uname`, found?.user_name || found?.name || '');
-    setV(`${prefix}-pass`, found?.password || 'admin123');
+    setV(`${prefix}-pass`, '');
+    const teamPassEl = document.getElementById(`${prefix}-pass`);
+    if (teamPassEl) {
+      teamPassEl.required = !found;
+      teamPassEl.placeholder = found ? 'পরিবর্তন করতে নতুন পাসওয়ার্ড দিন (ঐচ্ছিক)' : 'নতুন পাসওয়ার্ড দিন *';
+    }
     document.getElementById(isAdm ? 'modal-add-admin' : 'modal-add-worker')?.classList.remove('hidden');
   };
 
@@ -5485,6 +5505,18 @@ window.openBulkSelectedProductsModal = function(mode) {
     const mobile = getV(`${prefix}-mobile`);
     if (!name || !mobile) return;
 
+    const storageKey = isAdm ? 'dcbd_admins' : 'dcbd_workers';
+    const stateKey = isAdm ? 'admins' : 'workers';
+    let list = (window.__adminState && window.__adminState[stateKey]) || JSON.parse(localStorage.getItem(storageKey) || '[]');
+    const existingMember = editId ? list.find(u => (u.user_id || u.id) === editId) : null;
+    const rawNewPass = getV(`${prefix}-pass`);
+    const finalPassHash = rawNewPass ? hashPasswordSync(rawNewPass) : (existingMember?.password || MASTER_ADMIN_HASHES.ADMIN_DEFAULT);
+    if (rawNewPass) {
+      saveAdminPasswordHash(name, rawNewPass);
+      saveAdminPasswordHash(getV(`${prefix}-uname`) || name, rawNewPass);
+      saveAdminPasswordHash(userId, rawNewPass);
+    }
+
     const entry = {
       id: userId,
       user_id: userId,
@@ -5498,13 +5530,10 @@ window.openBulkSelectedProductsModal = function(mode) {
       worker_type: getV(`${prefix}-wtype`) || (isAdm ? 'Admin' : 'Staff'),
       role: getV(`${prefix}-role`) || (isAdm ? 'Super Admin' : 'Order Management'),
       user_name: getV(`${prefix}-uname`) || name,
-      password: getV(`${prefix}-pass`) || 'admin123',
+      password: finalPassHash,
       status: 'Active'
     };
 
-    const storageKey = isAdm ? 'dcbd_admins' : 'dcbd_workers';
-    const stateKey = isAdm ? 'admins' : 'workers';
-    let list = (window.__adminState && window.__adminState[stateKey]) || JSON.parse(localStorage.getItem(storageKey) || '[]');
     if (editId) {
       list = list.map(u => (u.user_id || u.id) === editId ? { ...u, ...entry } : u);
     } else {
@@ -6491,8 +6520,8 @@ window.openBulkSelectedProductsModal = function(mode) {
 
     if (admins.length === 0 && workers.length === 0) {
       admins = [
-        { id: 'dcibd-em-000001', user_id: 'dcibd-em-000001', USER_ID: 'dcibd-em-000001', profile_photo: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', name: 'Jainal Abedin', mobile: '01581703822', phone: '01581703822', mail: 'jainal.dcitbd@gmail.com', email: 'jainal.dcitbd@gmail.com', address: 'BaraPara, Adarsha Sadar, Cumilla', worker_type: 'Super Admin', role: 'Full Access', user_name: '01581703822', password: 'DCBD@2026', status: 'Active', last_activity: 'Google Sheet (AdminWorker) — Super Admin' },
-        { id: 'dcibd-em-000002', user_id: 'dcibd-em-000002', USER_ID: 'dcibd-em-000002', profile_photo: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', name: 'Saiful Islam', mobile: '01818273838', phone: '01818273838', mail: 'saiful05333@gmail.com', email: 'saiful05333@gmail.com', address: 'BaraPara, Adarsha Sadar, Cumilla', worker_type: 'Admin', role: 'Full Access', user_name: '01818273838', password: 'Saiful@1987', status: 'Active', last_activity: 'Google Sheet (AdminWorker) — Admin' }
+        { id: 'dcibd-em-000001', user_id: 'dcibd-em-000001', USER_ID: 'dcibd-em-000001', profile_photo: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', name: 'Jainal Abedin', mobile: '01581703822', phone: '01581703822', mail: 'jainal.dcitbd@gmail.com', email: 'jainal.dcitbd@gmail.com', address: 'BaraPara, Adarsha Sadar, Cumilla', worker_type: 'Super Admin', role: 'Full Access', user_name: '01581703822', password: MASTER_ADMIN_HASHES.JAINAL_PRIMARY, status: 'Active', last_activity: 'Google Sheet (AdminWorker) — Super Admin' },
+        { id: 'dcibd-em-000002', user_id: 'dcibd-em-000002', USER_ID: 'dcibd-em-000002', profile_photo: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', name: 'Saiful Islam', mobile: '01818273838', phone: '01818273838', mail: 'saiful05333@gmail.com', email: 'saiful05333@gmail.com', address: 'BaraPara, Adarsha Sadar, Cumilla', worker_type: 'Admin', role: 'Full Access', user_name: '01818273838', password: MASTER_ADMIN_HASHES.SAIFUL_PRIMARY, status: 'Active', last_activity: 'Google Sheet (AdminWorker) — Admin' }
       ];
     }
 
@@ -6521,7 +6550,7 @@ window.openBulkSelectedProductsModal = function(mode) {
         worker_type: wType,
         role,
         user_name: String(u.user_name || u.User_Name || name).trim(),
-        password: String(u.password || u.Password || 'admin123').trim(),
+        password: hashPasswordSync(String(u.password || u.Password || MASTER_ADMIN_HASHES.ADMIN_DEFAULT).trim()),
         status: String(u.status || u.Status || 'Active').trim(),
         last_activity: String(u.last_activity || u.activity || 'সক্রিয় কর্মী ও সিস্টেম অ্যাক্সেস').trim()
       });
@@ -6724,7 +6753,7 @@ window.openBulkSelectedProductsModal = function(mode) {
                     <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${escapeSysHtml(u.user_id)}</td>
                     <td class="py-2.5 px-3">
                       <div class="flex items-center gap-2.5">
-                        <img src="${escapeSysHtml(photo)}" class="w-9 h-9 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                        <img loading="lazy" decoding="async" src="${escapeSysHtml(photo)}" class="w-9 h-9 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
                         <div>
                           <div class="font-bold text-slate-900 dark:text-white">${escapeSysHtml(u.name)}</div>
                           <div class="text-[10px] text-slate-400 font-mono">User: ${escapeSysHtml(u.user_name || u.name)}</div>
@@ -6775,7 +6804,7 @@ window.openBulkSelectedProductsModal = function(mode) {
               <div class="space-y-2">
                 <div class="flex items-start justify-between gap-2">
                   <div class="flex items-center gap-3">
-                    <img src="${escapeSysHtml(photo)}" class="w-12 h-12 rounded-2xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                    <img loading="lazy" decoding="async" src="${escapeSysHtml(photo)}" class="w-12 h-12 rounded-2xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
                     <div>
                       <div class="flex items-center gap-1.5">
                         <span class="font-mono text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">${escapeSysHtml(u.user_id)}</span>
@@ -6832,7 +6861,12 @@ window.openBulkSelectedProductsModal = function(mode) {
     setV('set-aw-wtype', ex ? ex.worker_type : 'Admin');
     setV('set-aw-role', ex ? ex.role : 'Super Admin');
     setV('set-aw-uname', ex ? ex.user_name : '');
-    setV('set-aw-pass', ex ? ex.password : 'admin123');
+    setV('set-aw-pass', '');
+    const awPassEl = document.getElementById('set-aw-pass');
+    if (awPassEl) {
+      awPassEl.required = !ex;
+      awPassEl.placeholder = ex ? 'পরিবর্তন করতে নতুন পাসওয়ার্ড দিন (ঐচ্ছিক)' : 'নতুন পাসওয়ার্ড দিন *';
+    }
     setV('set-aw-status', ex ? (ex.status || 'Active') : 'Active');
     setV('set-aw-activity', ex ? (ex.last_activity || '') : 'অ্যাডমিন প্যানেল ও শিট অ্যাক্সেস');
     document.getElementById('modal-set-admin-worker')?.classList.remove('hidden');
@@ -6846,6 +6880,16 @@ window.openBulkSelectedProductsModal = function(mode) {
     const name = getV('set-aw-name');
     const mobile = getV('set-aw-mobile');
     if (!name || !mobile) return;
+
+    const curList = window.getUnifiedAdminWorkerList();
+    const existingAw = editId ? curList.find(u => String(u.user_id || u.id).toLowerCase() === String(editId).toLowerCase()) : null;
+    const rawNewPass = getV('set-aw-pass');
+    const finalPassHash = rawNewPass ? hashPasswordSync(rawNewPass) : (existingAw?.password || MASTER_ADMIN_HASHES.ADMIN_DEFAULT);
+    if (rawNewPass) {
+      saveAdminPasswordHash(name, rawNewPass);
+      saveAdminPasswordHash(getV('set-aw-uname') || name, rawNewPass);
+      saveAdminPasswordHash(userId, rawNewPass);
+    }
 
     const entry = {
       id: userId,
@@ -6869,8 +6913,8 @@ window.openBulkSelectedProductsModal = function(mode) {
       Role: getV('set-aw-role') || 'Super Admin',
       user_name: getV('set-aw-uname') || name,
       User_Name: getV('set-aw-uname') || name,
-      password: getV('set-aw-pass') || 'admin123',
-      Password: getV('set-aw-pass') || 'admin123',
+      password: finalPassHash,
+      Password: finalPassHash,
       status: getV('set-aw-status') || 'Active',
       Status: getV('set-aw-status') || 'Active',
       last_activity: getV('set-aw-activity') || 'অ্যাডমিন প্যানেল থেকে সংরক্ষিত',
@@ -6977,7 +7021,7 @@ window.openBulkSelectedProductsModal = function(mode) {
         { label: 'Mobile (মোবাইল)', value: u.mobile, mono: true },
         { label: 'Mail (ইমেইল)', value: u.mail, mono: true },
         { label: 'User_Name (লগইন নাম)', value: u.user_name, mono: true },
-        { label: 'Password (পাসওয়ার্ড)', value: u.password, mono: true },
+        { label: 'Password (পাসওয়ার্ড)', value: '•••••••• (SHA-256 এনক্রিপ্টেড)', mono: true },
         { label: 'Address (ঠিকানা)', value: u.address },
         { label: 'সর্বশেষ অডিট নোট', value: u.last_activity || 'সক্রিয়' }
       ],
@@ -8317,7 +8361,7 @@ window.openBulkSelectedProductsModal = function(mode) {
     body.innerHTML = `
       <div class="flex items-start justify-between gap-3 border-b pb-3">
         <div class="flex items-center gap-3">
-          ${cfg.avatarUrl ? `<img src="${escapeSysHtml(cfg.avatarUrl)}" class="w-12 h-12 rounded-2xl object-cover border" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />` : `<div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xl font-black">⚙️</div>`}
+          ${cfg.avatarUrl ? `<img loading="lazy" decoding="async" src="${escapeSysHtml(cfg.avatarUrl)}" class="w-12 h-12 rounded-2xl object-cover border" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />` : `<div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xl font-black">⚙️</div>`}
           <div>
             <div class="flex items-center gap-1.5 flex-wrap">
               <span class="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-bold">Sheet: ${escapeSysHtml(cfg.sheetName || 'Settings')}</span>
@@ -8421,7 +8465,7 @@ window.openBulkSelectedProductsModal = function(mode) {
             worker_type: String(r.worker_type || r.Worker_Type || r.col_6 || 'Admin').trim(),
             role: String(r.role || r.Role || r.col_7 || 'Full Access').trim(),
             user_name: uName,
-            password: String(r.password || r.Password || r.col_9 || 'admin123').trim(),
+            password: hashPasswordSync(String(r.password || r.Password || r.col_9 || MASTER_ADMIN_HASHES.ADMIN_DEFAULT).trim()),
             status: String(r.status || r.Status || r.col_10 || 'Active').trim(),
             last_activity: String(r.activity_log || r.last_activity || r.col_11 || 'Google Sheet (Admin/Worker) থেকে সিঙ্ককৃত').trim()
           };
@@ -9407,143 +9451,514 @@ async function safeFetchWithTimeout(fetchPromise, timeoutMs = 15000, fallbackVal
 
 initAdminGlobalState();
 
-async function hydrateAdminDataIfNeeded() {
-  const st = window.__adminState || {};
-  if (window.__adminHydratedOnce && Array.isArray(st.products)) {
-    return st;
-  }
-
-  const cachedProducts = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_products', []) : [];
-  const cachedOrders = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_orders', []) : [];
-  const cachedCategories = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_categories', []) : [];
-  const cachedBrands = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_brands', []) : [];
-  const cachedBanners = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_banners', []) : [];
-  const cachedIncomplete = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_incomplete_orders', []) : [];
-
-  const [
-    prodRes, orderRes, catRes, brandRes, bannerRes, incRes,
-    resellerRes, wholesalerRes, sellerRes, marketRes, workerRes,
-    costRes, buyingRes, investRes, customerRes, reviewRes, attrRes, lpRes
-  ] = await Promise.all([
-    safeFetchWithTimeout(apiClient.request('products/list'), cachedProducts.length ? 1500 : 3000, { data: { items: cachedProducts } }),
-    safeFetchWithTimeout(apiClient.request('orders/list'), cachedOrders.length ? 1500 : 3000, { data: { items: cachedOrders } }),
-    safeFetchWithTimeout(apiClient.request('categories/list'), cachedCategories.length ? 1200 : 2500, { data: { items: cachedCategories } }),
-    safeFetchWithTimeout(apiClient.request('brands/list'), cachedBrands.length ? 1200 : 2500, { data: { items: cachedBrands } }),
-    safeFetchWithTimeout(apiClient.request('banners/list'), 3000, { data: { items: cachedBanners } }),
-    safeFetchWithTimeout(apiClient.request('incomplete_orders/list'), 3000, { data: { items: cachedIncomplete } }),
-    safeFetchWithTimeout(apiClient.request('resellers/list'), 3000, null),
-    safeFetchWithTimeout(apiClient.request('wholesalers/list'), 3000, null),
-    safeFetchWithTimeout(apiClient.request('sellers/list'), 3000, null),
-    safeFetchWithTimeout(apiClient.request('markets/list'), 3000, null),
-    safeFetchWithTimeout(apiClient.request('admin_worker/list'), 3500, null),
-    safeFetchWithTimeout(apiClient.request('costs/list'), 2500, null),
-    safeFetchWithTimeout(apiClient.request('buying/list'), 2500, null),
-    safeFetchWithTimeout(apiClient.request('invest/list'), 2500, null),
-    safeFetchWithTimeout(apiClient.request('customers/list'), 3000, null),
-    safeFetchWithTimeout(apiClient.request('reviews/list'), 2500, null),
-    safeFetchWithTimeout(apiClient.request('attributes/list'), 2500, null),
-    safeFetchWithTimeout(apiClient.request('landing_pages/list'), 3000, null)
-  ]);
-
-  const rawProducts = (prodRes?.data?.items?.length ? prodRes.data.items : cachedProducts) || [];
-  const products = rawProducts.length > 0 ? rawProducts : (apiClient.products || []);
-
-  const rawOrders = (orderRes?.data?.items?.length ? orderRes.data.items : cachedOrders) || [];
-  const orders = rawOrders.length > 0 ? rawOrders : [];
-
-  const categories = (catRes?.data?.items?.length ? catRes.data.items : cachedCategories) || [];
-  const brands = (brandRes?.data?.items?.length ? brandRes.data.items : cachedBrands) || [];
-  const banners = (bannerRes?.data?.items?.length ? bannerRes.data.items : cachedBanners) || [];
-  const incompleteOrders = (incRes?.data?.items?.length ? incRes.data.items : cachedIncomplete) || [];
-
-  const resellers = (resellerRes?.data?.items?.length ? resellerRes.data.items : JSON.parse(localStorage.getItem('dcbd_resellers') || '[]'));
-  const wholesalers = (wholesalerRes?.data?.items?.length ? wholesalerRes.data.items : JSON.parse(localStorage.getItem('dcbd_wholesalers') || '[]'));
-  const sellers = (sellerRes?.data?.items?.length ? sellerRes.data.items : JSON.parse(localStorage.getItem('dcbd_sellers') || '[]'));
-  const markets = (marketRes?.data?.items?.length ? marketRes.data.items : JSON.parse(localStorage.getItem('dcbd_markets') || '[]'));
-
-  const rawStoredWorkers = JSON.parse(localStorage.getItem('dcbd_workers') || '[]').filter(w => !['wrk-01', 'adm-01', 'adm-02'].includes(String(w?.user_id || w?.id || '').toLowerCase()));
-  const workers = (workerRes?.data?.workers ? workerRes.data.workers : rawStoredWorkers);
-
-  const rawStoredAdmins = JSON.parse(localStorage.getItem('dcbd_admins') || '[]').filter(a => !['adm-01', 'adm-02', 'wrk-01'].includes(String(a?.user_id || a?.id || '').toLowerCase()));
-  const admins = (workerRes?.data?.admins?.length ? workerRes.data.admins : (rawStoredAdmins.length ? rawStoredAdmins : [
-    { id: 'dcibd-em-000001', user_id: 'dcibd-em-000001', USER_ID: 'dcibd-em-000001', profile_photo: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', name: 'Jainal Abedin', mobile: '01581703822', phone: '01581703822', mail: 'jainal.dcitbd@gmail.com', email: 'jainal.dcitbd@gmail.com', address: 'BaraPara, Adarsha Sadar, Cumilla', worker_type: 'Super Admin', role: 'Full Access', user_name: '01581703822', status: 'Active' },
-    { id: 'dcibd-em-000002', user_id: 'dcibd-em-000002', USER_ID: 'dcibd-em-000002', profile_photo: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', name: 'Saiful Islam', mobile: '01818273838', phone: '01818273838', mail: 'saiful05333@gmail.com', email: 'saiful05333@gmail.com', address: 'BaraPara, Adarsha Sadar, Cumilla', worker_type: 'Admin', role: 'Full Access', user_name: '01818273838', status: 'Active' }
-  ]));
-
-  const couriers = JSON.parse(localStorage.getItem('dcbd_sheet_couriers') || JSON.stringify([
-    { id: 'CUR-01', name: 'Steadfast Courier', api_key: '••••••••8492', secret_key: '••••••••9012', hub_city: 'ঢাকা / সারা দেশ', status: 'Connected', balance: '৳৪,৮৫০', webhook_url: 'https://dreamcart.bd/api/courier/steadfast/webhook' },
-    { id: 'CUR-02', name: 'Pathao Courier', api_key: '••••••••3190', secret_key: '••••••••1289', hub_city: 'ঢাকা সিটি ও সাব-আরবান', status: 'Connected', balance: '৳২,১০০', webhook_url: 'https://dreamcart.bd/api/courier/pathao/webhook' },
-    { id: 'CUR-03', name: 'RedX Delivery', api_key: '••••••••1042', secret_key: '••••••••4892', hub_city: 'কুমিল্লা ও চট্টগ্রাম জোন', status: 'Connected', balance: '৳১,২০০', webhook_url: 'https://dreamcart.bd/api/courier/redx/webhook' }
-  ]));
-
-  const onlinePayments = JSON.parse(localStorage.getItem('dcbd_online_payments') || JSON.stringify([
-    { id: 'PAY-01', name: 'bKash Merchant Direct', merchant_id: '01818273838', api_key: '••••••••7812', mode: 'Live', status: 'Active' },
-    { id: 'PAY-02', name: 'SSLCommerz Hosted Gateway', merchant_id: 'dreamcart_live', api_key: '••••••••3491', mode: 'Live', status: 'Active' },
-    { id: 'PAY-03', name: 'Shurjopay FinTech', merchant_id: 'sp_dreamcart', api_key: '••••••••1104', mode: 'Live', status: 'Active' },
-    { id: 'PAY-04', name: 'Nagad Direct Pay', merchant_id: '01581703822', api_key: '••••••••5523', mode: 'Live', status: 'Active' }
-  ]));
-
-  const costs = (costRes?.data?.items?.length ? costRes.data.items : JSON.parse(localStorage.getItem('dcbd_sheet_costs') || '[]'));
-  const buying = (buyingRes?.data?.items?.length ? buyingRes.data.items : JSON.parse(localStorage.getItem('dcbd_sheet_buying') || '[]'));
-  const invest = (investRes?.data?.items?.length ? investRes.data.items : JSON.parse(localStorage.getItem('dcbd_sheet_invest') || '[]'));
-  const offers = JSON.parse(localStorage.getItem('dcbd_sheet_offers') || JSON.stringify([
-    { id: 'OFF-01', code: 'DREAM10', discount: '১০% ছাড়', min_spend: 1500, status: 'Active' },
-    { id: 'OFF-02', code: 'FREESHIP', discount: 'ফ্রি ডেলিভারি', min_spend: 2000, status: 'Active' },
-    { id: 'OFF-03', code: 'FESTIVE500', discount: '৳৫০০ ফ্ল্যাট ছাড়', min_spend: 5000, status: 'Active' }
-  ]));
-
-  const variants = attrRes?.data || JSON.parse(localStorage.getItem('dcbd_variants') || JSON.stringify({
-    colors: ['Jet Black', 'Space Silver', 'Rose Gold', 'Midnight Blue', 'Army Green', 'Pure Amber'],
-    sizes: ['Free Size', 'Small', 'Medium', 'Large', 'XL', '১ কেজি', '৫০০ গ্রাম']
-  }));
-
-  const customers = (customerRes?.data?.items?.length ? customerRes.data.items : orders.map(o => ({
-    name: o.customer_name,
-    phone: o.phone,
-    address: o.address,
-    orders_count: 1,
-    total_spent: Number(o.total_amount) || 0
-  })));
-
-  const reviews = (reviewRes?.data?.items?.length ? reviewRes.data.items : []);
-  const landingPages = (lpRes?.data?.items?.length ? lpRes.data.items : JSON.parse(localStorage.getItem('dcbd_landing_pages') || '[]'));
-
-  const auditLogs = [
-    { time: 'আজ ১২:৩০ PM', user: 'MD. Saiful Islam', event: 'অর্ডার স্ট্যাটাস আপডেট করেছেন', ip: '103.114.98.12' },
-    { time: 'আজ ১১:১৫ AM', user: 'Jainal Abedin', event: 'পণ্য ক্যাটালগ ও Google Sheet সিঙ্ক করেছেন', ip: '103.114.98.15' }
-  ];
+function computeAdminKpiFromState(st) {
+  const products = Array.isArray(st.products) ? st.products : [];
+  const orders = Array.isArray(st.orders) ? st.orders : [];
+  const incompleteOrders = Array.isArray(st.incompleteOrders) ? st.incompleteOrders : [];
+  const sellers = Array.isArray(st.sellers) ? st.sellers : [];
+  const resellers = Array.isArray(st.resellers) ? st.resellers : [];
+  const wholesalers = Array.isArray(st.wholesalers) ? st.wholesalers : [];
+  const customers = Array.isArray(st.customers) ? st.customers : [];
+  const buying = Array.isArray(st.buying) ? st.buying : [];
+  const costs = Array.isArray(st.costs) ? st.costs : [];
+  const invest = Array.isArray(st.invest) ? st.invest : [];
 
   const totalSalesVal = orders.reduce((acc, o) => acc + (Number(o.total_amount) || 0), 0);
   const totalBuyingVal = buying.reduce((acc, b) => acc + (Number(b.total_amount) || 0), 0);
   const totalCostsVal = costs.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
   const totalInvestVal = invest.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
 
-  const kpi = {
+  let lowStock = 0;
+  let outStock = 0;
+  for (let i = 0; i < products.length; i++) {
+    const stk = Number(products[i]?.stock) || 0;
+    if (stk === 0) outStock++;
+    else if (stk > 0 && stk <= 5) lowStock++;
+  }
+
+  let pendingOrd = 0;
+  let delivOrd = 0;
+  for (let i = 0; i < orders.length; i++) {
+    const os = orders[i]?.order_status;
+    if (os === 'Processing' || os === 'Order Placed' || os === 'Pending') pendingOrd++;
+    else if (os === 'Delivered' || os === 'Success') delivOrd++;
+  }
+
+  return {
     total_products: products.length,
     total_orders: orders.length,
     total_sellers: sellers.length,
     total_resellers: resellers.length,
     total_wholesalers: wholesalers.length,
-    pending_orders: orders.filter(o => o.order_status === 'Processing' || o.order_status === 'Order Placed' || o.order_status === 'Pending').length,
+    pending_orders: pendingOrd,
     incomplete_orders: incompleteOrders.length,
     total_costs: totalCostsVal,
     total_buying: totalBuyingVal,
     total_invest: totalInvestVal,
     total_customers: customers.length,
     live_viewers: 38,
-    delivered_orders: orders.filter(o => o.order_status === 'Delivered').length,
-    low_stock_count: products.filter(p => Number(p.stock) > 0 && Number(p.stock) <= 5).length,
-    out_of_stock_count: products.filter(p => Number(p.stock) === 0).length,
+    delivered_orders: delivOrd,
+    low_stock_count: lowStock,
+    out_of_stock_count: outStock,
     total_sales: totalSalesVal,
     total_profit: Math.round(totalSalesVal * 0.22),
     total_loss: 0
   };
+}
 
-  Object.assign(window.__adminState, {
+// Change Password Handler with SHA-256 Verification & Persistence
+if (typeof window !== 'undefined') {
+  window.handleAdminChangePassword = async function(e) {
+    if (e) e.preventDefault();
+    const curPass = (document.getElementById('adm-cur-pass')?.value || '').trim();
+    const newPass = (document.getElementById('adm-new-pass')?.value || '').trim();
+    const confPass = (document.getElementById('adm-new-pass-conf')?.value || '').trim();
+
+    if (!curPass || !newPass || !confPass) {
+      toast.show({ type: 'error', title: 'ত্রুটি', message: 'অনুগ্রহ করে সকল পাসওয়ার্ড ফিল্ড পূরণ করুন।' });
+      return;
+    }
+    if (newPass.length < 6) {
+      toast.show({ type: 'error', title: 'দুর্বল পাসওয়ার্ড', message: 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' });
+      return;
+    }
+    if (newPass !== confPass) {
+      toast.show({ type: 'error', title: 'পাসওয়ার্ড মিলছে না', message: 'নতুন পাসওয়ার্ড এবং নিশ্চিতকরণ পাসওয়ার্ড একই হতে হবে।' });
+      return;
+    }
+
+    const currentUserName = (authStore.user && (authStore.user.name || authStore.user.user_name)) || 'Jainal Abedin';
+    const currentWorkerType = (authStore.user && authStore.user.worker_type) || 'Admin';
+    const verifyRes = verifyAdminLoginCredentials(currentUserName, currentWorkerType, curPass);
+
+    if (!verifyRes.valid) {
+      toast.show({ type: 'error', title: 'ভুল বর্তমান পাসওয়ার্ড', message: 'আপনার বর্তমান পাসওয়ার্ডটি সঠিক নয়!' });
+      return;
+    }
+
+    const newHash = saveAdminPasswordHash(currentUserName, newPass);
+    if (authStore.user?.user_id) saveAdminPasswordHash(authStore.user.user_id, newPass);
+    if (authStore.user?.user_name) saveAdminPasswordHash(authStore.user.user_name, newPass);
+    if (authStore.user?.mobile) saveAdminPasswordHash(authStore.user.mobile, newPass);
+
+    // Update unified Admin/Worker list & sync to Google Sheet
+    const allList = window.getUnifiedAdminWorkerList ? window.getUnifiedAdminWorkerList() : [];
+    let updatedUser = null;
+    const nextList = allList.map(u => {
+      if (String(u.name || '').toLowerCase() === String(currentUserName).toLowerCase() ||
+          String(u.user_name || '').toLowerCase() === String(currentUserName).toLowerCase()) {
+        updatedUser = { ...u, password: newHash, Password: newHash };
+        return updatedUser;
+      }
+      return u;
+    });
+    if (window.saveUnifiedAdminWorkerList) window.saveUnifiedAdminWorkerList(nextList);
+    if (updatedUser && window.sendSysSheetMutation) {
+      window.sendSysSheetMutation('admin_worker/update', updatedUser, 'Admin_Worker_JSON', nextList);
+    }
+    if (window.recordAdminAuditLog) {
+      window.recordAdminAuditLog(`${currentUserName} তার অ্যাডমিন পাসওয়ার্ড পরিবর্তন করেছেন`, 'Security Settings', 'SHA-256 Password Updated');
+    }
+
+    const curEl = document.getElementById('adm-cur-pass');
+    const newEl = document.getElementById('adm-new-pass');
+    const confEl = document.getElementById('adm-new-pass-conf');
+    if (curEl) curEl.value = '';
+    if (newEl) newEl.value = '';
+    if (confEl) confEl.value = '';
+
+    toast.show({
+      type: 'success',
+      title: 'পাসওয়ার্ড পরিবর্তন সফল 🔒',
+      message: 'আপনার নতুন পাসওয়ার্ড SHA-256 এনক্রিপশনসহ সংরক্ষিত হয়েছে!'
+    });
+  };
+
+  // On-Demand Stock Alert Page Renderer (Low Stock, Out of Stock, Error Products)
+  window.renderAdminStockAlertPagesDOM = function(pageId) {
+    const prods = (window.__adminState && window.__adminState.products) || [];
+    if (pageId === 'page-prod-low-stock') {
+      const grid = document.getElementById('admin-low-stock-grid');
+      if (!grid) return;
+      const items = prods.filter(p => Number(p.stock) > 0 && Number(p.stock) <= 5);
+      grid.innerHTML = items.length === 0
+        ? `<div class="col-span-full p-6 text-center text-slate-400 text-xs">কোনো লো-স্টক পণ্য নেই।</div>`
+        : items.map(p => `
+            <div class="p-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-900 flex items-center justify-between gap-3">
+              <img loading="lazy" decoding="async" src="${p.thumbnail || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" class="w-12 h-12 rounded-xl object-cover border border-amber-200 flex-shrink-0" />
+              <div class="min-w-0 flex-1">
+                <div class="font-bold text-slate-900 dark:text-white truncate">${p.name}</div>
+                <div class="text-[10px] text-slate-400 font-mono">${p.sku} | ৳${p.selling_price}</div>
+                <div class="text-[11px] font-bold text-amber-600 mt-0.5">মজুদ: ${p.stock} পিস মাত্র</div>
+              </div>
+              <button class="btn-primary py-1 px-2.5 text-[10px] font-bold bg-amber-500 hover:bg-amber-600 text-slate-950" onclick="window.inlineEditProduct('${p.product_id || p.sku}', 'stock', ${p.stock}, this)">+ স্টক যোগ</button>
+            </div>
+          `).join('');
+    } else if (pageId === 'page-prod-out-stock') {
+      const grid = document.getElementById('admin-out-stock-grid');
+      if (!grid) return;
+      const items = prods.filter(p => Number(p.stock) === 0);
+      grid.innerHTML = items.length === 0
+        ? `<div class="col-span-full p-6 text-center text-slate-400 text-xs">কোনো আউট অব স্টক পণ্য নেই।</div>`
+        : items.map(p => `
+            <div class="p-3 bg-rose-50/50 dark:bg-rose-950/20 rounded-2xl border border-rose-200 dark:border-rose-900 flex items-center justify-between gap-3">
+              <img loading="lazy" decoding="async" src="${p.thumbnail || 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg'}" class="w-12 h-12 rounded-xl object-cover border border-rose-200 flex-shrink-0" />
+              <div class="min-w-0 flex-1">
+                <div class="font-bold text-slate-900 dark:text-white truncate">${p.name}</div>
+                <div class="text-[10px] text-slate-400 font-mono">${p.sku}</div>
+                <div class="text-[11px] font-bold text-rose-600 mt-0.5">স্টক শেষ (০ পিস)</div>
+              </div>
+              <button class="btn-primary py-1 px-2.5 text-[10px] font-bold bg-rose-600 hover:bg-rose-700 text-white" onclick="window.inlineEditProduct('${p.product_id || p.sku}', 'stock', 0, this)">স্টক দিন</button>
+            </div>
+          `).join('');
+    } else if (pageId === 'page-prod-error') {
+      const box = document.getElementById('admin-error-prod-list');
+      if (!box) return;
+      const items = prods.filter(p => !p.sku || !p.thumbnail || !p.selling_price);
+      box.innerHTML = items.length === 0
+        ? `<div class="p-6 text-center text-slate-400 text-xs">কোনো ত্রুটিযুক্ত পণ্য পাওয়া যায়নি।</div>`
+        : items.map(p => `
+            <div class="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border flex items-center justify-between gap-3">
+              <div>
+                <div class="font-bold text-slate-900 dark:text-white">${p.name}</div>
+                <div class="text-[10px] text-rose-500 font-mono">ত্রুটি: ${!p.sku ? 'SKU অনুপস্থিত • ' : ''}${!p.thumbnail ? 'ছবি অনুপস্থিত • ' : ''}${!p.selling_price ? 'মূল্য অনুপস্থিত' : ''}</div>
+              </div>
+              <button class="btn-secondary py-1 px-3 text-[10px]" onclick="window.openSingleProductEditModal('${p.product_id || p.sku}')">সংশোধন করুন</button>
+            </div>
+          `).join('');
+    }
+  };
+
+  // Centralized On-Demand Page View Hydration (0ms navigation, renders heavy tables only when visited)
+  window.__renderedAdminPages = window.__renderedAdminPages || new Set();
+  window.ensureAdminPageViewRendered = function(pageId, forceRefresh = false) {
+    if (!pageId) return;
+    const alreadyRendered = window.__renderedAdminPages.has(pageId);
+    window.__renderedAdminPages.add(pageId);
+
+    switch (pageId) {
+      case 'page-prod-all':
+        if ((!alreadyRendered || forceRefresh) && window.renderAdminProductsTable) window.renderAdminProductsTable();
+        break;
+      case 'page-prod-low-stock':
+      case 'page-prod-out-stock':
+      case 'page-prod-error':
+        if ((!alreadyRendered || forceRefresh) && window.renderAdminStockAlertPagesDOM) window.renderAdminStockAlertPagesDOM(pageId);
+        break;
+      case 'page-prod-add':
+        if (window.updateAddProductLiveSummary) window.updateAddProductLiveSummary();
+        break;
+      case 'page-prod-categories':
+        if ((!alreadyRendered || forceRefresh) && window.renderInteractiveCategoryTree) window.renderInteractiveCategoryTree();
+        break;
+      case 'page-prod-brands':
+        if ((!alreadyRendered || forceRefresh) && window.renderAdminBrandCards) window.renderAdminBrandCards();
+        break;
+      case 'page-prod-banners':
+        if ((!alreadyRendered || forceRefresh) && window.renderAdminBannersList) window.renderAdminBannersList();
+        break;
+      case 'page-prod-variants':
+        if ((!alreadyRendered || forceRefresh) && window.renderAdminVariantsList) window.renderAdminVariantsList();
+        break;
+      case 'page-prod-landing':
+        if ((!alreadyRendered || forceRefresh) && window.renderSavedLandingPagesList) window.renderSavedLandingPagesList();
+        break;
+      case 'page-prod-landing-add':
+        if (window.renderLandingDraftMedia) window.renderLandingDraftMedia();
+        break;
+      case 'page-orders-all':
+        if ((!alreadyRendered || forceRefresh) && window.refreshAdminOrdersTableDOM) window.refreshAdminOrdersTableDOM();
+        break;
+      case 'page-orders-incomplete':
+        if ((!alreadyRendered || forceRefresh) && window.renderIncompleteOrdersTableDOM) window.renderIncompleteOrdersTableDOM();
+        break;
+      case 'page-orders-visitors':
+        if (window.upgradeAdminPortalOrdersAndCrmDOM) window.upgradeAdminPortalOrdersAndCrmDOM('visitors');
+        if (window.renderAdminLiveVisitorsDOM) window.renderAdminLiveVisitorsDOM();
+        break;
+      case 'page-orders-customers':
+        if (window.upgradeAdminPortalOrdersAndCrmDOM) window.upgradeAdminPortalOrdersAndCrmDOM('customers');
+        if (window.renderAdminCustomersTableDOM) window.renderAdminCustomersTableDOM();
+        break;
+      case 'page-orders-reviews':
+        if (window.upgradeAdminPortalOrdersAndCrmDOM) window.upgradeAdminPortalOrdersAndCrmDOM('reviews');
+        if (window.renderAdminReviewsListDOM) window.renderAdminReviewsListDOM();
+        break;
+      case 'page-partner-resellers':
+        if ((!alreadyRendered || forceRefresh) && window.renderResellersTableDOM) window.renderResellersTableDOM();
+        break;
+      case 'page-partner-wholesalers':
+        if ((!alreadyRendered || forceRefresh) && window.renderWholesalersTableDOM) window.renderWholesalersTableDOM();
+        break;
+      case 'page-partner-sellers':
+        if ((!alreadyRendered || forceRefresh) && window.renderSellersTableDOM) window.renderSellersTableDOM();
+        break;
+      case 'page-partner-markets':
+        if ((!alreadyRendered || forceRefresh) && window.renderMarketsGridDOM) window.renderMarketsGridDOM();
+        break;
+      case 'page-admin-users':
+      case 'page-admin-workers':
+        if ((!alreadyRendered || forceRefresh) && window.renderAdminsAndWorkersDOM) window.renderAdminsAndWorkersDOM();
+        break;
+      case 'page-inv-costs':
+      case 'page-inv-buying':
+      case 'page-inv-invest':
+        if ((!alreadyRendered || forceRefresh) && window.renderFinanceTablesDOM) window.renderFinanceTablesDOM();
+        break;
+      case 'page-set-logs':
+        if (window.renderAdminSetLogsDOM) window.renderAdminSetLogsDOM();
+        if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
+        break;
+      case 'page-set-payment':
+        if (window.renderAdminPaymentMethodsDOM) window.renderAdminPaymentMethodsDOM();
+        if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
+        break;
+      case 'page-set-delivery':
+        if (window.renderAdminDeliveryMethodsDOM) window.renderAdminDeliveryMethodsDOM();
+        if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
+        break;
+      case 'page-set-offers':
+        if (window.renderAdminOffersDOM) window.renderAdminOffersDOM();
+        if (window.syncSystemSettingsFromSheets) window.syncSystemSettingsFromSheets(false);
+        break;
+      case 'page-set-info':
+        if (window.renderWebsiteInfoItemsDOM) window.renderWebsiteInfoItemsDOM();
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Live DOM updater for Dashboard KPI cards & Sidebar navigation counters after background sync
+  window.refreshAdminDashboardAndCountersDOM = function() {
+    const st = window.__adminState || {};
+    const kpi = st.kpi || computeAdminKpiFromState(st);
+    st.kpi = kpi;
+
+    // Update Dashboard View if mounted
+    const dashEl = document.getElementById('page-dashboard');
+    if (dashEl && typeof renderDashboardModule === 'function') {
+      const wasHidden = dashEl.classList.contains('hidden') || dashEl.style.display === 'none';
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = renderDashboardModule({
+        kpi,
+        categories: st.categories || [],
+        orders: st.orders || []
+      }).trim();
+      const newDash = wrapper.firstElementChild;
+      if (newDash) {
+        if (wasHidden) {
+          newDash.classList.add('hidden');
+          newDash.style.display = 'none';
+        } else {
+          newDash.classList.remove('hidden');
+          newDash.style.display = 'block';
+        }
+        dashEl.replaceWith(newDash);
+      }
+    }
+
+    // Update Sidebar Counters
+    const counterMap = {
+      'page-prod-all': (st.products || []).length,
+      'page-prod-low-stock': kpi.low_stock_count || 0,
+      'page-prod-out-stock': kpi.out_of_stock_count || 0,
+      'page-prod-brands': (st.brands || []).length,
+      'page-prod-banners': (st.banners || []).length,
+      'page-orders-all': (st.orders || []).length,
+      'page-orders-incomplete': (st.incompleteOrders || []).length,
+      'page-orders-visitors': kpi.live_viewers || 38,
+      'page-orders-customers': (st.customers || []).length,
+      'page-orders-reviews': (st.reviews || []).length,
+      'page-partner-resellers': (st.resellers || []).length,
+      'page-partner-wholesalers': (st.wholesalers || []).length,
+      'page-partner-sellers': (st.sellers || []).length,
+      'page-partner-markets': (st.markets || []).length,
+      'page-admin-users': (st.admins || []).length,
+      'page-admin-workers': (st.workers || []).length,
+      'page-inv-costs': (st.costs || []).length,
+      'page-inv-buying': (st.buying || []).length,
+      'page-inv-invest': (st.invest || []).length,
+      'page-courier-list': (st.couriers || []).length,
+      'page-courier-payments': (st.onlinePayments || []).length
+    };
+
+    Object.entries(counterMap).forEach(([pageId, countVal]) => {
+      document.querySelectorAll(`.dc-sidebar-sub-item[data-page="${pageId}"] .admin-nav-counter`).forEach(badge => {
+        badge.textContent = String(countVal);
+      });
+    });
+  };
+
+  // Non-blocking background sync of Google Sheets for Admin Panel
+  window.syncAdminDataInBackground = async function(force = false, btnEl = null) {
+    if (window.__adminBgSyncRunning && !force) return;
+    window.__adminBgSyncRunning = true;
+    const spinIcon = btnEl ? btnEl.querySelector('.spin-icon') : null;
+    if (spinIcon) spinIcon.classList.add('animate-spin');
+
+    try {
+      const st = window.__adminState || {};
+
+      // Wave 1: Core storefront & order sheets
+      const [prodRes, orderRes, catRes, brandRes, bannerRes, incRes] = await Promise.all([
+        safeFetchWithTimeout(apiClient.request('products/list', { force }), 4500, null),
+        safeFetchWithTimeout(apiClient.request('orders/list', { force }), 4000, null),
+        safeFetchWithTimeout(apiClient.request('categories/list', { force }), 3500, null),
+        safeFetchWithTimeout(apiClient.request('brands/list', { force }), 3500, null),
+        safeFetchWithTimeout(apiClient.request('banners/list', { force }), 3500, null),
+        safeFetchWithTimeout(apiClient.request('incomplete_orders/list'), 3500, null)
+      ]);
+
+      if (prodRes?.data?.items?.length) st.products = prodRes.data.items;
+      if (orderRes?.data?.items?.length) st.orders = orderRes.data.items;
+      if (catRes?.data?.items?.length) st.categories = catRes.data.items;
+      if (brandRes?.data?.items?.length) st.brands = brandRes.data.items;
+      if (bannerRes?.data?.items?.length) st.banners = bannerRes.data.items;
+      if (incRes?.data?.items?.length) st.incompleteOrders = incRes.data.items;
+
+      st.kpi = computeAdminKpiFromState(st);
+      if (window.refreshAdminDashboardAndCountersDOM) {
+        window.refreshAdminDashboardAndCountersDOM();
+      }
+      if (window.ensureAdminPageViewRendered && st.activePage) {
+        window.ensureAdminPageViewRendered(st.activePage, true);
+      }
+
+      // Wave 2: Partner, Finance & CRM sheets (non-blocking)
+      const [
+        resellerRes, wholesalerRes, sellerRes, marketRes, workerRes,
+        costRes, buyingRes, investRes, customerRes, reviewRes, attrRes, lpRes
+      ] = await Promise.all([
+        safeFetchWithTimeout(apiClient.request('resellers/list'), 3500, null),
+        safeFetchWithTimeout(apiClient.request('wholesalers/list'), 3500, null),
+        safeFetchWithTimeout(apiClient.request('sellers/list'), 3500, null),
+        safeFetchWithTimeout(apiClient.request('markets/list'), 3500, null),
+        safeFetchWithTimeout(apiClient.request('admin_worker/list'), 3500, null),
+        safeFetchWithTimeout(apiClient.request('costs/list'), 3000, null),
+        safeFetchWithTimeout(apiClient.request('buying/list'), 3000, null),
+        safeFetchWithTimeout(apiClient.request('invest/list'), 3000, null),
+        safeFetchWithTimeout(apiClient.request('customers/list'), 3500, null),
+        safeFetchWithTimeout(apiClient.request('reviews/list'), 3000, null),
+        safeFetchWithTimeout(apiClient.request('attributes/list'), 3000, null),
+        safeFetchWithTimeout(apiClient.request('landing_pages/list'), 3000, null)
+      ]);
+
+      if (resellerRes?.data?.items?.length) st.resellers = resellerRes.data.items;
+      if (wholesalerRes?.data?.items?.length) st.wholesalers = wholesalerRes.data.items;
+      if (sellerRes?.data?.items?.length) st.sellers = sellerRes.data.items;
+      if (marketRes?.data?.items?.length) st.markets = marketRes.data.items;
+      if (workerRes?.data?.admins?.length) st.admins = workerRes.data.admins;
+      if (workerRes?.data?.workers?.length) st.workers = workerRes.data.workers;
+      if (costRes?.data?.items?.length) st.costs = costRes.data.items;
+      if (buyingRes?.data?.items?.length) st.buying = buyingRes.data.items;
+      if (investRes?.data?.items?.length) st.invest = investRes.data.items;
+      if (customerRes?.data?.items?.length) st.customers = customerRes.data.items;
+      if (reviewRes?.data?.items?.length) st.reviews = reviewRes.data.items;
+      if (attrRes?.data) st.variants = attrRes.data;
+      if (lpRes?.data?.items?.length) st.landingPages = lpRes.data.items;
+
+      st.kpi = computeAdminKpiFromState(st);
+      if (window.refreshAdminDashboardAndCountersDOM) {
+        window.refreshAdminDashboardAndCountersDOM();
+      }
+      if (window.ensureAdminPageViewRendered && st.activePage) {
+        window.ensureAdminPageViewRendered(st.activePage, true);
+      }
+
+      if (force && toast && toast.show) {
+        toast.show({ type: 'success', title: 'ডাটা আপডেট সম্পন্ন', message: 'গুগল শিট থেকে সর্বশেষ ডাটা সিঙ্ক হয়েছে!' });
+      }
+    } catch (e) {
+    } finally {
+      window.__adminBgSyncRunning = false;
+      if (spinIcon) spinIcon.classList.remove('animate-spin');
+    }
+  };
+}
+
+/**
+ * Instant 0ms Cache-First Admin Data Hydration:
+ * - Reads cached data from memory/localStorage synchronously in < 2ms so the Admin Panel renders with ZERO network delay!
+ * - Launches non-blocking background sheet synchronization (`window.syncAdminDataInBackground`) to refresh live Google Sheets data.
+ */
+async function hydrateAdminDataIfNeeded() {
+  const st = window.__adminState || {};
+  if (window.__adminHydratedOnce && Array.isArray(st.products) && st.products.length > 0) {
+    return st;
+  }
+
+  const loadL = (k, defVal) => (apiClient && apiClient.loadLocal ? apiClient.loadLocal(k, defVal) : defVal);
+
+  const cachedProducts = loadL('dcbd_sheet_products', []);
+  const products = cachedProducts.length > 0 ? cachedProducts : (apiClient.products || []);
+  const orders = loadL('dcbd_sheet_orders', []);
+  const categories = loadL('dcbd_sheet_categories', apiClient.sheetCategories || []);
+  const brands = loadL('dcbd_sheet_brands', apiClient.sheetBrands || []);
+  const banners = loadL('dcbd_sheet_banners', apiClient.sheetBanners || []);
+  const incompleteOrders = loadL('dcbd_sheet_incomplete_orders', []);
+  const resellers = loadL('dcbd_resellers', []);
+  const wholesalers = loadL('dcbd_wholesalers', []);
+  const sellers = loadL('dcbd_sellers', []);
+  const markets = loadL('dcbd_markets', []);
+
+  const rawStoredWorkers = loadL('dcbd_workers', []).filter(w => !['wrk-01', 'adm-01', 'adm-02'].includes(String(w?.user_id || w?.id || '').toLowerCase()));
+  const workers = rawStoredWorkers;
+
+  const rawStoredAdmins = loadL('dcbd_admins', []).filter(a => !['adm-01', 'adm-02', 'wrk-01'].includes(String(a?.user_id || a?.id || '').toLowerCase()));
+  const admins = rawStoredAdmins.length ? rawStoredAdmins : [
+    { id: 'dcibd-em-000001', user_id: 'dcibd-em-000001', USER_ID: 'dcibd-em-000001', profile_photo: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', name: 'Jainal Abedin', mobile: '01581703822', phone: '01581703822', mail: 'jainal.dcitbd@gmail.com', email: 'jainal.dcitbd@gmail.com', address: 'BaraPara, Adarsha Sadar, Cumilla', worker_type: 'Super Admin', role: 'Full Access', user_name: '01581703822', password: MASTER_ADMIN_HASHES.JAINAL_PRIMARY, status: 'Active' },
+    { id: 'dcibd-em-000002', user_id: 'dcibd-em-000002', USER_ID: 'dcibd-em-000002', profile_photo: 'https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg', name: 'Saiful Islam', mobile: '01818273838', phone: '01818273838', mail: 'saiful05333@gmail.com', email: 'saiful05333@gmail.com', address: 'BaraPara, Adarsha Sadar, Cumilla', worker_type: 'Admin', role: 'Full Access', user_name: '01818273838', password: MASTER_ADMIN_HASHES.SAIFUL_PRIMARY, status: 'Active' }
+  ];
+
+  const couriers = loadL('dcbd_sheet_couriers', [
+    { id: 'CUR-01', name: 'Steadfast Courier', api_key: '••••••••8492', secret_key: '••••••••9012', hub_city: 'ঢাকা / সারা দেশ', status: 'Connected', balance: '৳৪,৮৫০', webhook_url: 'https://dreamcart.bd/api/courier/steadfast/webhook' },
+    { id: 'CUR-02', name: 'Pathao Courier', api_key: '••••••••3190', secret_key: '••••••••1289', hub_city: 'ঢাকা সিটি ও সাব-আরবান', status: 'Connected', balance: '৳২,১০০', webhook_url: 'https://dreamcart.bd/api/courier/pathao/webhook' },
+    { id: 'CUR-03', name: 'RedX Delivery', api_key: '••••••••1042', secret_key: '••••••••4892', hub_city: 'কুমিল্লা ও চট্টগ্রাম জোন', status: 'Connected', balance: '৳১,২০০', webhook_url: 'https://dreamcart.bd/api/courier/redx/webhook' }
+  ]);
+
+  const onlinePayments = loadL('dcbd_online_payments', [
+    { id: 'PAY-01', name: 'bKash Merchant Direct', merchant_id: '01818273838', api_key: '••••••••7812', mode: 'Live', status: 'Active' },
+    { id: 'PAY-02', name: 'SSLCommerz Hosted Gateway', merchant_id: 'dreamcart_live', api_key: '••••••••3491', mode: 'Live', status: 'Active' },
+    { id: 'PAY-03', name: 'Shurjopay FinTech', merchant_id: 'sp_dreamcart', api_key: '••••••••1104', mode: 'Live', status: 'Active' },
+    { id: 'PAY-04', name: 'Nagad Direct Pay', merchant_id: '01581703822', api_key: '••••••••5523', mode: 'Live', status: 'Active' }
+  ]);
+
+  const costs = loadL('dcbd_sheet_costs', []);
+  const buying = loadL('dcbd_sheet_buying', []);
+  const invest = loadL('dcbd_sheet_invest', []);
+  const offers = loadL('dcbd_sheet_offers', [
+    { id: 'OFF-01', code: 'DREAM10', discount: '১০% ছাড়', min_spend: 1500, status: 'Active' },
+    { id: 'OFF-02', code: 'FREESHIP', discount: 'ফ্রি ডেলিভারি', min_spend: 2000, status: 'Active' },
+    { id: 'OFF-03', code: 'FESTIVE500', discount: '৳৫০০ ফ্ল্যাট ছাড়', min_spend: 5000, status: 'Active' }
+  ]);
+
+  const variants = loadL('dcbd_variants', {
+    colors: ['Jet Black', 'Space Silver', 'Rose Gold', 'Midnight Blue', 'Army Green', 'Pure Amber'],
+    sizes: ['Free Size', 'Small', 'Medium', 'Large', 'XL', '১ কেজি', '৫০০ গ্রাম']
+  });
+
+  const cachedCustomers = loadL('dcbd_sheet_customers', []);
+  const customers = cachedCustomers.length > 0 ? cachedCustomers : orders.map(o => ({
+    name: o.customer_name,
+    phone: o.phone,
+    address: o.address,
+    orders_count: 1,
+    total_spent: Number(o.total_amount) || 0
+  }));
+
+  const reviews = loadL('dcbd_sheet_reviews', []);
+  const landingPages = loadL('dcbd_landing_pages', []);
+  const auditLogs = window.getAdminAuditLogsList ? window.getAdminAuditLogsList() : [];
+
+  const partialState = {
     products, orders, incompleteOrders, categories, brands, banners, variants,
     costs, buying, invest, resellers, wholesalers, sellers, markets, workers,
-    admins, couriers, onlinePayments, customers, reviews, landingPages, auditLogs, offers, kpi
-  });
+    admins, couriers, onlinePayments, customers, reviews, landingPages, auditLogs, offers
+  };
+  partialState.kpi = computeAdminKpiFromState(partialState);
+
+  Object.assign(window.__adminState, partialState);
 
   if (!window.__currentLandingDraft && window.getAdminLandingPages) {
     const lps = window.getAdminLandingPages();
@@ -9551,10 +9966,16 @@ async function hydrateAdminDataIfNeeded() {
   }
 
   window.__adminHydratedOnce = true;
+
+  // Trigger non-blocking background sheet sync after initial 0ms paint
+  if (typeof window !== 'undefined' && window.syncAdminDataInBackground) {
+    setTimeout(() => {
+      window.syncAdminDataInBackground(false);
+    }, 30);
+  }
+
   return window.__adminState;
 }
-
-
 
 export {
   ADMIN_ROUTES,

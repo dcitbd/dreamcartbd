@@ -128,15 +128,13 @@ export function renderOrdersModule({ orders, incompleteOrders, customers, review
               </tr>
             </thead>
             <tbody id="admin-orders-full-tbody">
-              ${orders.map(o => window.renderOrderRowHtml ? window.renderOrderRowHtml(o) : '').join("")}
+              ${(typeof window !== 'undefined' && window.__adminState && window.__adminState.activePage === 'page-orders-all') ? orders.map(o => window.renderOrderRowHtml ? window.renderOrderRowHtml(o) : '').join("") : ''}
             </tbody>
           </table>
         </div>
 
-        <!-- Responsive Order Cards Grid View (Toggled via Card View button) -->
-        <div id="admin-orders-cards-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-          ${orders.map(o => window.renderOrderCardHtml ? window.renderOrderCardHtml(o) : '').join("")}
-        </div>
+        <!-- Responsive Order Cards Grid View (Populated on-demand when toggled via Card View button) -->
+        <div id="admin-orders-cards-grid" class="hidden grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs"></div>
       </div>
     </div>
 

@@ -595,7 +595,7 @@ export function renderSidebarAndTopbar({
 
             <button
               class="btn-secondary text-xs py-1.5 px-2.5 flex items-center gap-1 font-bold"
-              onclick="const ic = this.querySelector('.spin-icon'); if(ic) ic.classList.add('animate-spin'); setTimeout(() => { if(ic) ic.classList.remove('animate-spin'); if(toast && toast.show) toast.show({type: 'success', title: 'ডাটা আপডেট', message: 'গুগল শিট থেকে ডাটা রিফ্রেশ হয়েছে!'}); }, 600);"
+              onclick="if(window.syncAdminDataInBackground) window.syncAdminDataInBackground(true, this);"
               title="রিফ্রেশ ডাটা"
             >
               <span class="spin-icon">🔄</span> <span class="hidden md:inline">সিঙ্ক</span>

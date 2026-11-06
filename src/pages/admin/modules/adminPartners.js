@@ -106,7 +106,7 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
                     <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${id}</td>
                     <td class="py-2.5 px-3">
                       <div class="flex items-center gap-2">
-                        <img src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                        <img loading="lazy" decoding="async" src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
                         <div>
                           <div class="font-bold text-slate-900 dark:text-white">${r.name}</div>
                           <div class="text-[10px] text-slate-400">শপ: ${r.shop_name || r.shop} • User: ${r.user_id || phone}</div>
@@ -210,7 +210,7 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
                     <td class="py-2.5 px-3 font-mono font-bold text-amber-600">${id}</td>
                     <td class="py-2.5 px-3">
                       <div class="flex items-center gap-2">
-                        <img src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                        <img loading="lazy" decoding="async" src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
                         <div>
                           <div class="font-bold text-slate-900 dark:text-white">${w.shop_name || w.company}</div>
                           <div class="text-[10px] text-slate-400">মালিক: ${w.name} • User: ${w.user_id || phone}</div>
@@ -350,7 +350,7 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
                 <div class="flex items-start justify-between gap-2.5">
                   <div class="flex items-center gap-3">
                     <div class="w-12 h-12 rounded-xl bg-white p-1.5 border flex items-center justify-center flex-shrink-0">
-                      <img src="${logo}" class="max-w-full max-h-full object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png';" />
+                      <img loading="lazy" decoding="async" src="${logo}" class="max-w-full max-h-full object-contain" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/4/4a/Daraz_Logo.png';" />
                     </div>
                     <div>
                       <span class="text-[10px] font-mono font-bold bg-slate-200/70 dark:bg-slate-700 px-2 py-0.5 rounded">${id}</span>
@@ -397,7 +397,7 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
             return `
               <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                  <img src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                  <img loading="lazy" decoding="async" src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
                   <div>
                     <div class="flex items-center gap-2">
                       <span class="font-mono text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">${id}</span>
@@ -448,7 +448,7 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
               <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col justify-between gap-3">
                 <div class="flex items-start justify-between gap-2.5">
                   <div class="flex items-center gap-3">
-                    <img src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
+                    <img loading="lazy" decoding="async" src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='https://pictures-bangladesh.jijistatic.com/2033199_MjAwLTIwMC03Nzk0Y2Y2Yzkx.jpg';" />
                     <div>
                       <span class="font-mono text-[10px] font-bold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">${id}</span>
                       <div class="font-bold text-slate-900 dark:text-white mt-0.5">${w.name}</div>
@@ -532,7 +532,7 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
             </div>
             <div>
               <label class="block font-bold mb-1">12. Password *</label>
-              <input type="text" id="adm-res-password" required value="123456" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+              <div class="relative flex items-center"><input type="password" id="adm-res-password" placeholder="নতুন পাসওয়ার্ড দিন" autocomplete="new-password" class="form-control text-xs w-full py-1.5 pl-3 pr-8 rounded-xl border font-mono font-bold" /><button type="button" onclick="window.toggleAdminPasswordVisibility && window.toggleAdminPasswordVisibility('adm-res-password', this)" class="absolute right-2 text-slate-400 hover:text-slate-700 text-xs" title="পাসওয়ার্ড দেখুন/লুকান">👁️</button></div>
             </div>
           </div>
           <div>
@@ -594,7 +594,7 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
             </div>
             <div>
               <label class="block font-bold mb-1">9. Password *</label>
-              <input type="text" id="adm-whs-password" required value="123456" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+              <div class="relative flex items-center"><input type="password" id="adm-whs-password" placeholder="নতুন পাসওয়ার্ড দিন" autocomplete="new-password" class="form-control text-xs w-full py-1.5 pl-3 pr-8 rounded-xl border font-mono font-bold" /><button type="button" onclick="window.toggleAdminPasswordVisibility && window.toggleAdminPasswordVisibility('adm-whs-password', this)" class="absolute right-2 text-slate-400 hover:text-slate-700 text-xs" title="পাসওয়ার্ড দেখুন/লুকান">👁️</button></div>
             </div>
             <div class="grid grid-cols-2 gap-2">
               <div>
@@ -763,7 +763,7 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
             </div>
             <div>
               <label class="block font-bold mb-1">10. Password (পাসওয়ার্ড) *</label>
-              <input type="text" id="adm-wrk-pass" required value="admin123" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+              <div class="relative flex items-center"><input type="password" id="adm-wrk-pass" placeholder="নতুন পাসওয়ার্ড দিন" autocomplete="new-password" class="form-control text-xs w-full py-1.5 pl-3 pr-8 rounded-xl border font-mono font-bold" /><button type="button" onclick="window.toggleAdminPasswordVisibility && window.toggleAdminPasswordVisibility('adm-wrk-pass', this)" class="absolute right-2 text-slate-400 hover:text-slate-700 text-xs" title="পাসওয়ার্ড দেখুন/লুকান">👁️</button></div>
             </div>
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">
@@ -831,7 +831,7 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
             </div>
             <div>
               <label class="block font-bold mb-1">10. Password (পাসওয়ার্ড) *</label>
-              <input type="text" id="adm-user-pass" required value="admin123" class="form-control text-xs w-full py-1.5 px-3 rounded-xl border font-mono font-bold" />
+              <div class="relative flex items-center"><input type="password" id="adm-user-pass" placeholder="নতুন পাসওয়ার্ড দিন" autocomplete="new-password" class="form-control text-xs w-full py-1.5 pl-3 pr-8 rounded-xl border font-mono font-bold" /><button type="button" onclick="window.toggleAdminPasswordVisibility && window.toggleAdminPasswordVisibility('adm-user-pass', this)" class="absolute right-2 text-slate-400 hover:text-slate-700 text-xs" title="পাসওয়ার্ড দেখুন/লুকান">👁️</button></div>
             </div>
           </div>
           <div class="flex items-center justify-end gap-2 pt-2">

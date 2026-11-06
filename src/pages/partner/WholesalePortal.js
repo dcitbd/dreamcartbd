@@ -2946,7 +2946,7 @@ export async function renderWholesalePortal(params = {}) {
 
                   <div>
                     <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">পাসওয়ার্ড (Password)</label>
-                    <input type="password" id="set-w-pass" value="${user.password || ''}" placeholder="নতুন পাসওয়ার্ড (ঐচ্ছিক)" class="form-control text-xs w-full py-2.5 px-3 rounded-xl" />
+                    <input type="password" id="set-w-pass" value="" placeholder="পরিবর্তন করতে নতুন পাসওয়ার্ড লিখুন (ঐচ্ছিক)" autocomplete="new-password" class="form-control text-xs w-full py-2.5 px-3 rounded-xl" />
                   </div>
                 </div>
 
