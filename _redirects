@@ -1,0 +1,7 @@
+/icon/*          /public/icon/:splat   200
+/icons/*         /public/icon/:splat   200
+/public/icons/*  /public/icon/:splat   200
+/catalog-feed.xml /public/catalog-feed.xml 200
+/*/src/*         /src/:splat           200
+/*/*/src/*       /src/:splat           200
+/*               /index.html           200

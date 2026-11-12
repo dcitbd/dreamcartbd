@@ -1,0 +1,105 @@
+dreamcartbd-main/
+├── .github/
+│   └── workflows/
+│       └── deploy.yml                  # CI/CD Deployment Pipeline
+├── apps-script/                        # Google Sheets & Apps Script Backend Engine
+│   ├── Code.js                         # Master API Gateway (doGet / doPost / Sheet Sync)
+│   ├── Config.js                       # Backend Configuration & Sheet Schema
+│   ├── AuthService.js                  # Session, Authentication & RBAC Service
+│   ├── OrderService.js                 # Order Processing, Voucher & Email Dispatch
+│   ├── ProductService.js               # Product CRUD & Duplicate Prevention
+│   ├── InventoryService.js             # Stock & Inventory Management
+│   ├── SheetRepository.js              # High-Speed Batch Sheet Read/Write
+│   ├── DriveRepository.js              # Google Drive Asset & Backup Storage
+│   ├── SheetTriggers.js                # Installable Sheet Triggers & Queue Worker
+│   ├── Router.js                       # Action Dispatcher
+│   ├── Validator.js                    # Input & Phone/Email Sanitization
+│   └── appsscript.json                 # Apps Script Runtime Manifest
+├── public/
+│   ├── icon/                           # Official Brand Logo, Favicons & OG Banner
+│   ├── catalog-feed.xml                # Facebook / Google Merchant Catalog Feed
+│   └── manifest.webmanifest            # PWA Web App Manifest
+├── src/
+│   ├── api/
+│   │   └── client.js                   # Unified Google Sheets GViz & Apps Script Client
+│   ├── components/                     # Reusable UI Components (Write Once, Reuse Everywhere)
+│   │   ├── Header.js                   # Topbar, Predictive Search & Reusable Visual AI Search
+│   │   ├── Footer.js                   # Storefront Footer & Trust Strip
+│   │   ├── MobileNav.js                # Bottom Responsive Navigation Bar
+│   │   ├── CartDrawer.js               # Sliding Shopping Cart Drawer
+│   │   ├── ProductCard.js              # Luxury Responsive Product Card
+│   │   ├── Voucher.js                  # Official Printable A4 Invoice Voucher Component
+│   │   ├── FraudModal.js               # Courier Fraud Ratio Checker Modal
+│   │   ├── FloatingActions.js          # Floating Cart, WhatsApp, Call & Live Chat Dock
+│   │   ├── LoadingSkeleton.js          # Orbital Particle Vortex & Center Logo Loader
+│   │   └── Toast.js                    # Non-Blocking Notification Toast
+│   ├── pages/
+│   │   ├── admin/                      # Modular Route-Based Master Admin Portal
+│   │   │   ├── AdminPortal.js
+│   │   │   └── modules/
+│   │   │       ├── adminState.js       # Global Admin State, Routes & CRM Handlers
+│   │   │       ├── adminSidebar.js     # Unified Schema Mobile & Desktop Sidebar + Topbar
+│   │   │       ├── adminDashboard.js   # 18-Point KPI Matrix & Interactive Sales Graph
+│   │   │       ├── adminProducts.js    # Catalog, Add Product, Category Tree, Brands, Bulk & Landing CMS
+│   │   │       ├── adminOrders.js      # Orders, Reusable Status Views, Visitors, Customers & Reviews
+│   │   │       ├── adminPartners.js    # Resellers, Wholesalers, Sellers & Staff Management
+│   │   │       ├── adminReports.js     # Reusable 8-Sector Business & Financial Reports
+│   │   │       ├── adminInventory.js   # Payouts, Costs, Buying & Capital Investment Ledger
+│   │   │       └── adminCouriersSettings.js # Couriers, Fraud Check, Payments & System Settings
+│   │   ├── customer/
+│   │   │   └── CustomerPortal.js       # Customer Auth, Dashboard, Orders, Tracking & Settings
+│   │   ├── partner/
+│   │   │   ├── ResellerPortal.js       # Reseller Hub, Margin Catalog, Withdrawals & Tracking
+│   │   │   └── WholesalePortal.js      # Wholesaler B2B Portal, MOQ Calculator & Bulk Orders
+│   │   └── storefront/
+│   │       ├── HomePage.js
+│   │       ├── ShopPage.js
+│   │       ├── ProductDetailPage.js
+│   │       ├── CategoryPage.js
+│   │       ├── BrandPage.js
+│   │       ├── CartPage.js
+│   │       ├── CheckoutPage.js
+│   │       ├── OrderSuccessPage.js     # Reuses src/components/Voucher.js
+│   │       ├── TrackOrderPage.js       # Reuses src/components/Voucher.js
+│   │       ├── WishlistPage.js
+│   │       ├── OffersPage.js
+│   │       ├── OthersMarketPage.js
+│   │       ├── ContactPage.js
+│   │       ├── LiveChatPage.js
+│   │       ├── LandingPage.js
+│   │       ├── TermsPage.js
+│   │       └── PrivacyPage.js
+│   ├── services/
+│   │   └── SearchService.js            # Predictive & Fuzzy Product Search Service
+│   ├── store/
+│   │   ├── authStore.js
+│   │   ├── cartStore.js
+│   │   └── favouriteStore.js
+│   ├── styles/
+│   │   ├── main.css
+│   │   ├── admin.css
+│   │   └── responsive.css
+│   ├── utils/
+│   │   ├── format.js                   # Currency, Date & Phone Formatters
+│   │   ├── portalHelpers.js            # Shared Customer/Reseller/Wholesaler Portal Helpers
+│   │   ├── interactiveHub.js           # Shared 3D Hub Controller (/dcitbd & /education)
+│   │   ├── marketingPixels.js          # Dynamic SEO, JSON-LD Schema & Ad Pixels
+│   │   └── security.js                 # SHA-256 Hashing, SafeStorage, Escaping & Anti-Bot Shield
+│   ├── boot.js                         # Unified Pre-Boot Security Shield, Base Path & Orbital Loader
+│   ├── router.js                       # Clean-Path SPA Router
+│   └── main.js                         # Master Frontend Bootstrapper
+├── .htaccess
+├── _redirects
+├── _routes.json
+├── 404.html
+├── CNAME
+├── favicon.ico
+├── index.html
+├── INSTALL.md
+├── package.json
+├── postcss.config.js
+├── README.md
+├── robots.txt
+├── sitemap.xml
+├── tailwind.config.js
+└── vite.config.js

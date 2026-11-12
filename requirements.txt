@@ -1,0 +1,4 @@
+# Dream Cart BD — Python Turbo Engine Requirements
+# Uses Python 3.8+ standard library (sqlite3, wsgiref, urllib, json, threading, gzip) for zero-dependency deployment!
+# Optional WSGI servers for high-concurrency VPS / Cloud deployment:
+gunicorn>=21.2.0

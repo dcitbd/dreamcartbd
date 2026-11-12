@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <!-- ১. মূল সাইটলিংকসমূহ (Google Search Sitelinks for Dream Cart BD / ড্রিম কার্ট বিডি) -->
+  <url>
+    <loc>https://dreamcartbd.com/</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://dreamcartbd.com/public/icon/logo.png</image:loc>
+      <image:title>Dream Cart BD (ড্রিম কার্ট বিডি) — অফিসিয়াল লোগো</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://dreamcartbd.com/public/icon/og-banner.jpg</image:loc>
+      <image:title>Dream Cart BD — Smart Digital Commerce Bangladesh</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/products</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.95</priority>
+    <image:image>
+      <image:loc>https://dreamcartbd.com/public/icon/logo.png</image:loc>
+      <image:title>প্রোডাক্ট’স পেজ (All Products) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/customer/login</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://dreamcartbd.com/public/icon/logo.png</image:loc>
+      <image:title>কাস্টমার লগইন (Customer Login) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/reseller/login</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://dreamcartbd.com/public/icon/logo.png</image:loc>
+      <image:title>রিসেলার লগইন (Reseller Login) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/wholesaler/login</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://dreamcartbd.com/public/icon/logo.png</image:loc>
+      <image:title>হোলসেলার লগইন (Wholesaler Login) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/track</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://dreamcartbd.com/public/icon/logo.png</image:loc>
+      <image:title>পার্সেল ট্র্যাক করুন (Track Parcel) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/contact</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.88</priority>
+    <image:image>
+      <image:loc>https://dreamcartbd.com/public/icon/logo.png</image:loc>
+      <image:title>কন্টাক্ট করুন (Contact Us) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/dcitbd</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.88</priority>
+    <image:image>
+      <image:loc>https://dreamcartbd.com/public/icon/logo.png</image:loc>
+      <image:title>আইটি সার্ভিসেস (IT Services) — Dream Career IT BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/education</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.88</priority>
+    <image:image>
+      <image:loc>https://dreamcartbd.com/public/icon/logo.png</image:loc>
+      <image:title>শিখুন ও ক্যারিয়ার গড়ুন (Learn &amp; Build Career) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/categories</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://dreamcartbd.com/public/icon/logo.png</image:loc>
+      <image:title>সকল ক্যাটাগরি সমূহ (All Categories) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/brands</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/offers</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+
+  <!-- ২. ক্যাটাগরি ওয়াইজ লিংক ও ছবি (Category-wise Links & Images) -->
+  <url>
+    <loc>https://dreamcartbd.com/products?cat=Smartwatches</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.88</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=800</image:loc>
+      <image:title>Smartwatches (স্মার্টওয়াচ কালেকশন) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/products?cat=Kitchen</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.88</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800</image:loc>
+      <image:title>Kitchen &amp; Safety Gadgets (কিচেন ও গ্যাস সেফটি) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/products?cat=Organic%20%26%20Health</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.88</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=800</image:loc>
+      <image:title>Organic &amp; Health (অর্গানিক ফুড ও হেলথ) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/products?cat=Home%20Appliances</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.88</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=800</image:loc>
+      <image:title>Home Appliances (হোম অ্যাপ্লায়েন্স) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/products?cat=Medicine%20%26%20Healthcare</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.86</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=800</image:loc>
+      <image:title>Medicine &amp; Healthcare (মেডিকেয়ার ডিভাইস) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/products?cat=Stationery</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.86</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1456735190827-d1262f71b8a3?w=800</image:loc>
+      <image:title>Stationery &amp; Smart Office (স্টেশনারি ও অফিস ডেস্ক) — Dream Cart BD</image:title>
+    </image:image>
+  </url>
+
+  <!-- ৩. জনপ্রিয় প্রোডাক্টসমূহ (Product Detail Pages & Images) -->
+  <url>
+    <loc>https://dreamcartbd.com/product/amazfit-gts-4-smartwatch</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.92</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1579586337278-3befd40fd17a?w=800</image:loc>
+      <image:title>Amazfit GTS 4 Smartwatch — Ultra AMOLED Display &amp; Dual GPS</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/product/auto-gas-safety-device-heavy-duty</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.92</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800</image:loc>
+      <image:title>অটো গ্যাস সেফটি ডিভাইস ও লিকেজ প্রোটেক্টর (Heavy Duty)</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/product/sundarban-natural-raw-honey-1kg</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.92</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1587049352847-4a222e784d38?w=800</image:loc>
+      <image:title>সুন্দরবনের প্রাকৃতিক খাঁটি চাকের মধু (১ কেজি জার)</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/product/military-rechargeable-flashlight-3000lm</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.92</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1550009158-9ebf69173e03?w=800</image:loc>
+      <image:title>মিলিটারি রিচার্জেবল জুম ফ্ল্যাশলাইট ৩০০০ লুমেন</image:title>
+    </image:image>
+  </url>
+
+  <url>
+    <loc>https://dreamcartbd.com/product/premium-organic-chia-seed-500g</loc>
+    <lastmod>2026-11-10</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.92</priority>
+    <image:image>
+      <image:loc>https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?w=800</image:loc>
+      <image:title>প্রিমিয়াম অর্গানিক চিয়া সিড (৫০০ গ্রাম এয়ারটাইট জার)</image:title>
+    </image:image>
+  </url>
+
+</urlset>

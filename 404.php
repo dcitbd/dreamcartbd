@@ -1,0 +1,67 @@
+<?php
+/**
+ * DREAM CART BD — HIGH-SPEED PHP ENTRY POINT (404.php)
+ * Preserves 100% of original 3D / interactive layout with Gzip & Ad Pixel Tracking.
+ */
+require_once __DIR__ . '/./includes/config.php';
+require_once __DIR__ . '/./includes/cache_engine.php';
+require_once __DIR__ . '/./includes/pixel_tracker.php';
+
+if (!headers_sent()) {
+    if (extension_loaded('zlib') && !ini_get('zlib.output_compression')) {
+        @ob_start('ob_gzhandler');
+    }
+    header('Content-Type: text/html; charset=UTF-8');
+    header('X-Powered-By: DreamCartBD-Turbo-PHP-Python/' . DCBD_VERSION);
+}
+$_dcbd_settings = DcbdCacheEngine::getSiteSettings();
+$_dcbd_pixel_head = DcbdPixelTracker::renderHeadScripts($_dcbd_settings);
+$_dcbd_pixel_body = DcbdPixelTracker::renderBodyNoscript($_dcbd_settings);
+?>
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dream Cart BD (ড্রিম কার্ট বিডি) — Smart Digital Commerce</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="48x48" href="/public/icon/favicon-48x48.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/public/icon/favicon-32x32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/public/icon/apple-touch-icon.png" />
+  <meta property="og:site_name" content="Dream Cart BD (ড্রিম কার্ট বিডি)" />
+  <meta property="og:title" content="Dream Cart BD — Smart Digital Commerce & Multi-Vendor Platform" />
+  <meta property="og:description" content="Dream Cart BD (ড্রিম কার্ট বিডি) বাংলাদেশের বিশ্বস্ত স্মার্ট ই-কমার্স ও মাল্টি-ভেন্ডর প্ল্যাটফর্ম।" />
+  <meta property="og:image" content="https://dreamcartbd.com/public/icon/og-banner.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://dreamcartbd.com/public/icon/og-banner.jpg" />
+  <script>
+    (function() {
+      var path = window.location.pathname;
+      var search = window.location.search || '';
+      var hash = window.location.hash || '';
+      sessionStorage.setItem('dcbd_spa_redirect', path + search + hash);
+
+      var segments = path.split('/').filter(Boolean);
+      var root = '/';
+      if (window.location.hostname.includes('github.io') && segments.length > 0) {
+        var known = ['products', 'shop', 'product', 'cart', 'favourite', 'wishlist', 'checkout', 'order', 'order-success', 'track', 'tracking', 'contact', 'offers', 'categories', 'brands', 'others-market', 'chat', 'live-chat', 'landing', 'terms', 'privacy', 'customer', 'reseller', 'wholesaler', 'admin', 'login', 'register', 'dcitbd', 'education'];
+        if (!known.includes(segments[0].toLowerCase())) {
+          root = '/' + segments[0] + '/';
+        }
+      }
+      window.location.replace(root);
+    })();
+  </script>
+<?= $_dcbd_pixel_head ?>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #020617; color: #f8fafc;">
+  <?= $_dcbd_pixel_body ?>
+  <div style="width: 68px; height: 68px; border-radius: 18px; background: #ffffff; padding: 5px; border: 2px solid #10b981; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; overflow: hidden;">
+    <img src="/public/icon/logo.png" alt="Dream Cart BD Logo" style="width: 100%; height: 100%; object-fit: contain; border-radius: 12px;" onerror="if(!this.__r){this.__r=1;this.src='/icon/logo.png';}else if(this.__r===1){this.__r=2;this.src='public/icon/logo.png';}else{this.onerror=null;this.src='/favicon.ico';}" />
+  </div>
+  <h3 style="font-size: 18px; margin: 0 0 6px 0; font-weight: 800;">Dream Cart <span style="color: #10b981;">BD</span></h3>
+  <p style="font-size: 13px; color: #94a3b8; margin: 0;">পৃষ্ঠাটি লোড হচ্ছে, অনুগ্রহ করে অপেক্ষা করুন...</p>
+</body>
+</html>
