@@ -1,6 +1,7 @@
 /**
  * DREAM CART BD — COMPACT MODERN FOOTER COMPONENT (src/components/Footer.js)
  * Refined per user requirements:
+ * - Bulletproof verified logo rendering with reliable fallback
  * - Compact height with optimized padding & margins (zero bulkiness)
  * - Beautiful animated social media icons with smooth bounce, hover glow & scale effects
  * - Extraordinary Action Buttons: 'শিখুন ও ক্যারিয়ার গড়ুন' & 'আইটি সাপোর্ট'
@@ -18,7 +19,11 @@ export function renderFooter() {
   const siteInfo = getGlobalSiteSettings();
   const shopName = siteInfo.shop_name || "Dream Cart BD";
   const shopTagline = siteInfo.tagline || "Smart Digital Commerce";
-  const shopLogo = (siteInfo.shopLogo && !siteInfo.shopLogo.includes("encrypted-tbn") && !siteInfo.shopLogo.includes("jijistatic")) ? siteInfo.shopLogo : (siteInfo.logo_url || "/public/icon/logo.png");
+  
+  // Bulletproof Logo Resolution
+  const rawLogo = siteInfo.shopLogo || siteInfo.logo_url || "/public/icon/logo.png";
+  const shopLogo = (rawLogo && !rawLogo.includes("encrypted-tbn") && !rawLogo.includes("jijistatic")) ? rawLogo : "/public/icon/logo.png";
+
   const shopDesc = siteInfo.description || "আমদানিকারকদের থেকে সরাসরি সংগৃহীত প্রিমিয়াম গ্যাজেট ও ডিজিটাল লাইফস্টাইল পণ্য।";
   const address = siteInfo.address || "চৌধুরী প্লাজা, নিচতলা, পদুয়ার বাজার বিশ্বরোড, কুমিল্লা-৩৫০০।";
   const hotline1 = siteInfo.hotline1 || "01581703822";
@@ -164,7 +169,7 @@ export function renderFooter() {
         font-size: 11px;
       }
 
-      /* Brand Column */
+      /* Brand Column & Verified Logo Box */
       .ft-logo-wrap {
         display: inline-flex;
         align-items: center;
@@ -173,9 +178,9 @@ export function renderFooter() {
         margin-bottom: 8px;
       }
       .ft-logo-box {
-        width: 38px;
-        height: 38px;
-        border-radius: 10px;
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
         background: #ffffff;
         padding: 3px;
         border: 1px solid rgba(255, 255, 255, 0.2);
@@ -183,6 +188,13 @@ export function renderFooter() {
         align-items: center;
         justify-content: center;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+        flex-shrink: 0;
+      }
+      .ft-logo-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
       }
       .ft-brand-title {
         font-size: 18px;
@@ -598,7 +610,7 @@ export function renderFooter() {
                 <img 
                   src="${shopLogo}" 
                   alt="${shopName} Logo" 
-                  class="w-full h-full object-contain rounded-md"
+                  class="ft-logo-img"
                   onerror="this.onerror=null; this.src='/public/icon/logo.png';"
                 />
               </div>
