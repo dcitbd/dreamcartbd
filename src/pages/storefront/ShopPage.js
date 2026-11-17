@@ -1,0 +1,659 @@
+/**
+ * DREAM CART BD — PRODUCTS CATALOG PAGE (ShopPage.js / ProductsPage.js)
+ * Implements user requirements:
+ * - 60 pcs show per page (with pagination)
+ * - Mobile 2-grid product layout: balanced typography, compact padding, uniform card heights
+ * - Strict 2-line title clamping and character limit so cards never break across rows
+ * - Filter by Category > Sub Category > Child Category tree (derived directly from products in Products sheet)
+ * - Brand filter as dropdown
+ * - Stock status filter: (In-Stock (selected by default), Out of Stock, All)
+ * - Fully responsive on mobile with toggleable filter drawer
+ * - Filter by price / sort
+ * - Search keyword support
+ * - Role-based pricing in cards
+ * - 10-Minute Cyclic Product Rotation: Automatically shifts/rotates products so every item gets featured on the 1st page
+ */
+
+import { apiClient } from '../../api/client.js';
+import { renderProductCard } from '../../components/ProductCard.js';
+import { SearchService } from '../../services/SearchService.js';
+
+/**
+ * 10-Minute Cyclic Rotation Engine:
+ * Deterministically rotates products every 10 minutes so that all products
+ * take turns appearing on the first page and rotate positions seamlessly.
+ */
+export function rotateProductsByTime(products = [], intervalMinutes = 10, pageSize = 60, customTimestamp = null) {
+  if (!Array.isArray(products) || products.length <= 1) return products;
+
+  const N = products.length;
+  const now = customTimestamp !== null ? customTimestamp : Date.now();
+  const intervalMs = intervalMinutes * 60 * 1000;
+  const timeBlock = Math.floor(now / intervalMs);
+
+  // If there are more products than pageSize, shift by a chunk so later pages rotate to page 1
+  // If <= pageSize, shift by 1 each interval so every product takes turns at the top
+  const shiftStep = N > pageSize ? Math.max(1, Math.floor(pageSize / 3)) : 1;
+  const offset = (timeBlock * shiftStep) % N;
+
+  if (offset === 0) return [...products];
+  return [...products.slice(offset), ...products.slice(0, offset)];
+}
+
+export async function renderShopPage(params = {}) {
+  const cat = (params.cat || "").trim();
+  const subCat = (params.sub || "").trim();
+  const childCat = (params.child || "").trim();
+  const brand = (params.brand || "").trim();
+  
+  // Stock filter: In-Stock (selected by default), Out of Stock, All
+  const stockFilter = params.stock || (params.in_stock === '0' || params.in_stock === false ? 'all' : (params.in_stock === '1' || params.in_stock === true ? 'in_stock' : 'in_stock'));
+  
+  const sort = params.sort || "featured";
+  const search = (params.search || "").trim();
+  const page = parseInt(params.page || "1", 10);
+  const pageSize = 60; // 60 pcs per page
+
+  // Fetch all products from Products sheet
+  const [prodRes, brandRes] = await Promise.all([
+    apiClient.request("products/list"),
+    apiClient.request("brands/list")
+  ]);
+
+  const allProducts = (prodRes.data && prodRes.data.items) || [];
+
+  // 1. Build Category Tree (Category > Sub Category > Child Category)
+  // Derived ONLY from products present in Products sheet, deduplicating names
+  const categoryTree = {};
+  allProducts.forEach(p => {
+    const rawCat = (p.category || 'General').trim();
+    if (!rawCat || rawCat.toLowerCase() === 'test id') return;
+
+    if (!categoryTree[rawCat]) {
+      categoryTree[rawCat] = {
+        name: rawCat,
+        count: 0,
+        subCategories: {}
+      };
+    }
+    categoryTree[rawCat].count += 1;
+
+    const rawSub = (p.sub_category || '').trim();
+    if (rawSub) {
+      if (!categoryTree[rawCat].subCategories[rawSub]) {
+        categoryTree[rawCat].subCategories[rawSub] = {
+          name: rawSub,
+          count: 0,
+          childCategories: {}
+        };
+      }
+      categoryTree[rawCat].subCategories[rawSub].count += 1;
+
+      const rawChild = (p.child_category || '').trim();
+      if (rawChild) {
+        if (!categoryTree[rawCat].subCategories[rawSub].childCategories[rawChild]) {
+          categoryTree[rawCat].subCategories[rawSub].childCategories[rawChild] = {
+            name: rawChild,
+            count: 0
+          };
+        }
+        categoryTree[rawCat].subCategories[rawSub].childCategories[rawChild].count += 1;
+      }
+    }
+  });
+
+  const categoriesList = Object.values(categoryTree).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+  // 2. Extract Unique Brands from Products sheet
+  const uniqueBrands = Array.from(new Set(
+    allProducts.map(p => (p.brand || '').trim()).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b));
+
+  // 3. Filter Products & Intelligent Search Ranking
+  let filteredProducts = [...allProducts];
+  let directMatches = [];
+  let relatedProducts = [];
+
+  if (search) {
+    // Intelligent Search: Exact & most matching products first, related products right after
+    const searchRes = SearchService.search(allProducts, search);
+    directMatches = [...searchRes.directMatches];
+    relatedProducts = [...searchRes.relatedProducts];
+
+    // Category hierarchy filter (if selected in sidebar)
+    if (cat) {
+      const cLower = cat.toLowerCase();
+      directMatches = directMatches.filter(p => p.category && p.category.trim().toLowerCase() === cLower);
+      relatedProducts = relatedProducts.filter(p => p.category && p.category.trim().toLowerCase() === cLower);
+    }
+    if (subCat) {
+      const subLower = subCat.toLowerCase();
+      directMatches = directMatches.filter(p => p.sub_category && p.sub_category.trim().toLowerCase() === subLower);
+      relatedProducts = relatedProducts.filter(p => p.sub_category && p.sub_category.trim().toLowerCase() === subLower);
+    }
+    if (childCat) {
+      const childLower = childCat.toLowerCase();
+      directMatches = directMatches.filter(p => p.child_category && p.child_category.trim().toLowerCase() === childLower);
+      relatedProducts = relatedProducts.filter(p => p.child_category && p.child_category.trim().toLowerCase() === childLower);
+    }
+
+    // Brand dropdown filter (if selected in sidebar)
+    if (brand) {
+      const bLower = brand.toLowerCase();
+      directMatches = directMatches.filter(p => p.brand && p.brand.trim().toLowerCase() === bLower);
+      relatedProducts = relatedProducts.filter(p => p.brand && p.brand.trim().toLowerCase() === bLower);
+    }
+
+    // Stock status filter: (In-Stock (selected by default), Out of Stock, All)
+    if (stockFilter === 'in_stock') {
+      directMatches = directMatches.filter(p => Number(p.stock !== undefined ? p.stock : 25) > 0);
+      relatedProducts = relatedProducts.filter(p => Number(p.stock !== undefined ? p.stock : 25) > 0);
+    } else if (stockFilter === 'out_of_stock') {
+      directMatches = directMatches.filter(p => Number(p.stock !== undefined ? p.stock : 25) <= 0);
+      relatedProducts = relatedProducts.filter(p => Number(p.stock !== undefined ? p.stock : 25) <= 0);
+    }
+
+    // Sorting:
+    // When sort === "featured" (default): strictly preserve relevance ranking!
+    // Direct matches are ranked by match score descending.
+    // Related products rotate every 10 minutes so all related options take turns appearing!
+    if (sort === "low_high") {
+      directMatches.sort((a, b) => Number(a.selling_price) - Number(b.selling_price));
+      relatedProducts.sort((a, b) => Number(a.selling_price) - Number(b.selling_price));
+    } else if (sort === "high_low") {
+      directMatches.sort((a, b) => Number(b.selling_price) - Number(a.selling_price));
+      relatedProducts.sort((a, b) => Number(b.selling_price) - Number(a.selling_price));
+    } else if (sort === "name_asc") {
+      directMatches.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      relatedProducts.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } else {
+      // Default featured: related products rotate cyclically every 10 minutes
+      relatedProducts = rotateProductsByTime(relatedProducts, 10, pageSize);
+    }
+
+    filteredProducts = [...directMatches, ...relatedProducts];
+  } else {
+    // Normal catalog browsing (no search query)
+    if (cat) {
+      const cLower = cat.toLowerCase();
+      filteredProducts = filteredProducts.filter(p => p.category && p.category.trim().toLowerCase() === cLower);
+    }
+    if (subCat) {
+      const subLower = subCat.toLowerCase();
+      filteredProducts = filteredProducts.filter(p => p.sub_category && p.sub_category.trim().toLowerCase() === subLower);
+    }
+    if (childCat) {
+      const childLower = childCat.toLowerCase();
+      filteredProducts = filteredProducts.filter(p => p.child_category && p.child_category.trim().toLowerCase() === childLower);
+    }
+    if (brand) {
+      const bLower = brand.toLowerCase();
+      filteredProducts = filteredProducts.filter(p => p.brand && p.brand.trim().toLowerCase() === bLower);
+    }
+    if (stockFilter === 'in_stock') {
+      filteredProducts = filteredProducts.filter(p => Number(p.stock !== undefined ? p.stock : 25) > 0);
+    } else if (stockFilter === 'out_of_stock') {
+      filteredProducts = filteredProducts.filter(p => Number(p.stock !== undefined ? p.stock : 25) <= 0);
+    }
+    if (sort === "low_high") {
+      filteredProducts.sort((a, b) => Number(a.selling_price) - Number(b.selling_price));
+    } else if (sort === "high_low") {
+      filteredProducts.sort((a, b) => Number(b.selling_price) - Number(a.selling_price));
+    } else if (sort === "name_asc") {
+      filteredProducts.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    } else {
+      // Default (Featured): 10-Minute Periodic Rotation so all products cycle to the 1st page!
+      filteredProducts = rotateProductsByTime(filteredProducts, 10, pageSize);
+    }
+  }
+
+  // Pagination (60 pcs per page)
+  const totalProducts = filteredProducts.length;
+  const totalPages = Math.ceil(totalProducts / pageSize) || 1;
+  const startIndex = (page - 1) * pageSize;
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + pageSize);
+
+  const pageDirectMatches = paginatedProducts.filter(p => p._isDirectMatch !== false);
+  const pageRelatedProducts = paginatedProducts.filter(p => p._isDirectMatch === false);
+
+  // Sync header search bar with active search query
+  if (typeof document !== 'undefined' && search) {
+    setTimeout(() => {
+      const dInp = document.getElementById('global-search-input');
+      const mInp = document.getElementById('mobile-search-input');
+      const dClear = document.getElementById('global-search-clear-btn');
+      const mClear = document.getElementById('mobile-search-clear-btn');
+      if (dInp && dInp.value !== search) dInp.value = search;
+      if (mInp && mInp.value !== search) mInp.value = search;
+      if (dClear) dClear.classList.remove('hidden');
+      if (mClear) mClear.classList.remove('hidden');
+    }, 10);
+  }
+
+  // Automatic 10-Minute Real-Time Periodic Rotation Listener in Browser
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    if (window.__dcbdProductRotationTimer) {
+      clearTimeout(window.__dcbdProductRotationTimer);
+    }
+    const ROTATION_INTERVAL_MS = 10 * 60 * 1000;
+    const nowMs = Date.now();
+    const timeUntilNextRotate = ROTATION_INTERVAL_MS - (nowMs % ROTATION_INTERVAL_MS) + 500;
+
+    window.__dcbdProductRotationTimer = setTimeout(() => {
+      const currentPath = window.router ? window.router.getCleanPath() : window.location.pathname;
+      if (currentPath === '/products' || currentPath === '/shop' || currentPath === '/search') {
+        const activeEl = document.activeElement;
+        const isUserTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+        if (!isUserTyping && window.router && typeof window.router.resolve === 'function') {
+          window.router.resolve();
+        }
+      }
+    }, timeUntilNextRotate);
+  }
+
+  const hasActiveFilters = Boolean(cat || subCat || childCat || brand || stockFilter !== 'in_stock' || search);
+
+  // Helper function to build URL with query params
+  function buildFilterUrl(newParams) {
+    const combined = {
+      cat,
+      sub: subCat,
+      child: childCat,
+      brand,
+      stock: stockFilter,
+      sort,
+      search,
+      ...newParams
+    };
+    const searchParams = new URLSearchParams();
+    if (combined.cat) searchParams.set('cat', combined.cat);
+    if (combined.sub) searchParams.set('sub', combined.sub);
+    if (combined.child) searchParams.set('child', combined.child);
+    if (combined.brand) searchParams.set('brand', combined.brand);
+    if (combined.stock && combined.stock !== 'in_stock') searchParams.set('stock', combined.stock);
+    if (combined.sort && combined.sort !== 'featured') searchParams.set('sort', combined.sort);
+    if (combined.search) searchParams.set('search', combined.search);
+    if (combined.page && combined.page > 1) searchParams.set('page', combined.page);
+    const qs = searchParams.toString();
+    return '/products' + (qs ? '?' + qs : '');
+  }
+
+  return `
+    <style id="dc-shop-products-styles">
+      /* Responsive Products Catalog Layout */
+      .product-grid {
+        display: grid !important;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important;
+        gap: 1.25rem !important;
+        width: 100% !important;
+      }
+
+      @media (max-width: 1023px) {
+        .product-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          gap: 0.875rem !important;
+        }
+      }
+
+      /* 2-Column Mobile Grid for Products Page */
+      @media (max-width: 640px) {
+        .product-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          gap: 0.5rem !important;
+        }
+
+        .product-card {
+          border-radius: 0.875rem !important;
+        }
+
+        .product-card-title {
+          font-size: 11.5px !important;
+          line-height: 1.25 !important;
+          min-height: 2.3em !important;
+          max-height: 2.3em !important;
+          display: -webkit-box !important;
+          -webkit-line-clamp: 2 !important;
+          -webkit-box-orient: vertical !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+      }
+
+      /* Universal Title Line Clamp with fixed height */
+      .product-card-title {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-height: 2.4em;
+        max-height: 2.4em;
+        line-height: 1.3;
+      }
+
+      /* Smooth elevation */
+      .product-card {
+        transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      }
+      .product-card:hover {
+        transform: translateY(-3px);
+      }
+    </style>
+
+    <div class="space-y-6 pb-20">
+      
+      <!-- Breadcrumb & Page Header -->
+      <div class="border-b border-slate-200/80 dark:border-slate-800 pb-4">
+        <div class="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-400 mb-2 flex-wrap">
+          <a href="/" class="hover:text-emerald-600 transition">হোম</a>
+          <span>/</span>
+          <a href="/products" class="${!cat ? 'text-emerald-600 font-bold' : 'hover:text-emerald-600 transition'}">সকল পণ্য</a>
+          ${cat ? `<span>/</span> <span class="text-slate-700 dark:text-slate-200 font-bold">${cat}</span>` : ""}
+          ${subCat ? `<span>/</span> <span class="text-emerald-600 font-semibold">${subCat}</span>` : ""}
+          ${childCat ? `<span>/</span> <span class="text-emerald-600 font-semibold">${childCat}</span>` : ""}
+        </div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
+              ${search ? `সার্চ রেজাল্ট: "${search}"` : (cat ? `${cat}` : "আমাদের সকল পণ্যসমূহ")}
+            </h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              ${search 
+                ? `মোট ${totalProducts} টি পণ্য পাওয়া গেছে (${directMatches.length} টি সরাসরি ম্যাচ${relatedProducts.length > 0 ? `, ${relatedProducts.length} টি সম্পর্কিত পণ্য` : ''})` 
+                : `মোট ${totalProducts} টি পণ্য পাওয়া গেছে • পেজ প্রতি ৬০ টি পণ্য প্রদর্শন`}
+            </p>
+          </div>
+
+          <!-- Quick Filters Reset -->
+          ${hasActiveFilters ? `
+            <a href="/products" class="btn-secondary text-xs py-1.5 px-3 bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border-rose-200 self-start sm:self-auto flex items-center gap-1">
+              <span>✕</span> ফিল্টার মুছুন
+            </a>
+          ` : ""}
+        </div>
+      </div>
+
+      <!-- Mobile Filter Toggle Bar (Visible on mobile/tablet screens) -->
+      <div class="lg:hidden flex items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <button 
+          id="btn-mobile-filter-toggle"
+          class="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-4 py-2 rounded-xl text-xs font-bold transition hover:bg-emerald-100"
+          onclick="const panel = document.getElementById('catalog-sidebar-filter'); if(panel) panel.classList.toggle('hidden');"
+        >
+          <span>⚙️ ফিল্টার ও ক্যাটাগরি</span>
+          ${hasActiveFilters ? '<span class="w-2 h-2 rounded-full bg-emerald-500"></span>' : ''}
+        </button>
+
+        <div class="text-xs text-slate-500 dark:text-slate-400">
+          <strong>${totalProducts}</strong> টি পণ্য
+        </div>
+      </div>
+
+      <!-- Main Layout: Sidebar Filter + Product Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+        
+        <!-- Filter Panel (Collapsible on mobile, sticky sidebar on desktop) -->
+        <aside id="catalog-sidebar-filter" class="hidden lg:block bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 space-y-6 shadow-xs sticky top-20">
+          
+          <div class="flex items-center justify-between lg:hidden pb-3 border-b border-slate-100 dark:border-slate-800">
+            <span class="text-sm font-bold text-slate-900 dark:text-white">ফিল্টার অপশনসমূহ</span>
+            <button 
+              class="text-xs text-slate-400 hover:text-slate-600 p-1"
+              onclick="document.getElementById('catalog-sidebar-filter').classList.add('hidden')"
+            >
+              বন্ধ করুন ✕
+            </button>
+          </div>
+
+          <!-- Stock Status Filter: (In-Stock (selected), Out of Stock, All) -->
+          <div>
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-2 flex items-center justify-between">
+              <span>📦 স্টক স্ট্যাটাস</span>
+            </h3>
+            <select 
+              id="filter-stock-select"
+              class="form-control w-full py-2 px-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-white outline-none"
+              onchange="(window.router ? window.router.navigate : function(u){ window.location.href=u; })('${buildFilterUrl({ stock: '__VAL__' })}'.replace('__VAL__', encodeURIComponent(this.value)))"
+            >
+              <option value="in_stock" ${stockFilter === 'in_stock' ? 'selected' : ''}>ইন-স্টক পণ্য (In-Stock)</option>
+              <option value="out_of_stock" ${stockFilter === 'out_of_stock' ? 'selected' : ''}>স্টক শেষ পণ্য (Out of Stock)</option>
+              <option value="all" ${stockFilter === 'all' ? 'selected' : ''}>সকল পণ্য (All)</option>
+            </select>
+          </div>
+
+          <!-- Brand Dropdown Filter -->
+          <div class="border-t border-slate-100 dark:border-slate-800 pt-4">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-2 flex items-center justify-between">
+              <span>🏷️ ব্র্যান্ড ফিল্টার</span>
+              ${brand ? `<a href="${buildFilterUrl({ brand: '' })}" class="text-[10px] text-emerald-600 lowercase font-normal">ক্লিয়ার</a>` : ""}
+            </h3>
+            <select 
+              id="filter-brand-select"
+              class="form-control w-full py-2 px-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-medium text-slate-800 dark:text-white outline-none"
+              onchange="(window.router ? window.router.navigate : function(u){ window.location.href=u; })('${buildFilterUrl({ brand: '__VAL__' })}'.replace('__VAL__', encodeURIComponent(this.value)))"
+            >
+              <option value="">সকল ব্র্যান্ড (All Brands)</option>
+              ${uniqueBrands.map(b => `
+                <option value="${b}" ${brand.toLowerCase() === b.toLowerCase() ? 'selected' : ''}>
+                  ${b} (${allProducts.filter(p => (p.brand || '').trim().toLowerCase() === b.toLowerCase()).length})
+                </option>
+              `).join("")}
+            </select>
+          </div>
+
+          <!-- Category Tree Filter (Category > Sub > Child from Products sheet) -->
+          <div class="border-t border-slate-100 dark:border-slate-800 pt-4">
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white mb-3 flex items-center justify-between">
+              <span>📂 ক্যাটাগরি ফিল্টার</span>
+              ${cat ? `<a href="${buildFilterUrl({ cat: '', sub: '', child: '' })}" class="text-[10px] text-emerald-600 lowercase font-normal">ক্লিয়ার</a>` : ""}
+            </h3>
+            
+            <div class="space-y-1 text-xs max-h-[420px] overflow-y-auto pr-1">
+              <a 
+                href="${buildFilterUrl({ cat: '', sub: '', child: '' })}" 
+                class="block px-3 py-2 rounded-xl transition ${!cat ? 'bg-emerald-600 text-white font-bold' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}"
+              >
+                সকল ক্যাটাগরি (${allProducts.length})
+              </a>
+
+              ${categoriesList.map(c => {
+                const isActiveCat = cat.toLowerCase() === c.name.toLowerCase();
+                const subCats = Object.values(c.subCategories).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+                return `
+                  <div>
+                    <a 
+                      href="${buildFilterUrl({ cat: c.name, sub: '', child: '' })}" 
+                      class="flex items-center justify-between px-3 py-2 rounded-xl transition ${isActiveCat ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800' : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}"
+                    >
+                      <span class="truncate">${c.name}</span>
+                      <span class="text-[10px] px-1.5 py-0.5 rounded-full ${isActiveCat ? 'bg-emerald-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}">
+                        ${c.count}
+                      </span>
+                    </a>
+
+                    <!-- Sub Categories Tree -->
+                    ${isActiveCat && subCats.length > 0 ? `
+                      <div class="pl-3 pr-1 py-1.5 space-y-1 my-1 border-l-2 border-emerald-500/40 ml-3">
+                        <div class="text-[10px] uppercase font-bold text-slate-400">সাব-ক্যাটাগরি:</div>
+                        ${subCats.map(sc => {
+                          const isActiveSub = subCat.toLowerCase() === sc.name.toLowerCase();
+                          const childCats = Object.values(sc.childCategories).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+                          return `
+                            <div>
+                              <a 
+                                href="${buildFilterUrl({ cat: c.name, sub: sc.name, child: '' })}" 
+                                class="flex items-center justify-between px-2.5 py-1 rounded-lg text-[11px] ${isActiveSub ? 'bg-emerald-600 text-white font-bold' : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600'}"
+                              >
+                                <span class="truncate">• ${sc.name}</span>
+                                <span class="text-[9px] opacity-75">(${sc.count})</span>
+                              </a>
+
+                              <!-- Child Categories Tree -->
+                              ${isActiveSub && childCats.length > 0 ? `
+                                <div class="pl-2.5 py-1 space-y-1 my-0.5 border-l border-emerald-400/30 ml-2">
+                                  <div class="text-[9px] uppercase font-bold text-slate-400">চাইল্ড ক্যাটাগরি:</div>
+                                  ${childCats.map(cc => {
+                                    const isActiveChild = childCat.toLowerCase() === cc.name.toLowerCase();
+                                    return `
+                                      <a 
+                                        href="${buildFilterUrl({ cat: c.name, sub: sc.name, child: cc.name })}" 
+                                        class="flex items-center justify-between px-2 py-0.5 rounded text-[10px] ${isActiveChild ? 'bg-emerald-700 text-white font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-emerald-600'}"
+                                      >
+                                        <span class="truncate">↳ ${cc.name}</span>
+                                        <span class="text-[8px] opacity-75">(${cc.count})</span>
+                                      </a>
+                                    `;
+                                  }).join("")}
+                                </div>
+                              ` : ""}
+                            </div>
+                          `;
+                        }).join("")}
+                      </div>
+                    ` : ""}
+                  </div>
+                `;
+              }).join("")}
+            </div>
+          </div>
+
+        </aside>
+
+        <!-- Right Products Column -->
+        <div class="lg:col-span-3 space-y-6">
+          
+          <!-- Controls Toolbar: Sort by price & Layout info -->
+          <div class="bg-white dark:bg-slate-900 p-3.5 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div class="text-slate-500 dark:text-slate-400">
+              দেখাচ্ছে <strong class="text-slate-900 dark:text-white">${totalProducts === 0 ? 0 : startIndex + 1} - ${Math.min(startIndex + pageSize, totalProducts)}</strong> (সর্বমোট ${totalProducts} টির মধ্যে)
+            </div>
+
+            <!-- Sort By Dropdown -->
+            <div class="flex items-center gap-2">
+              <span class="text-slate-500 dark:text-slate-400 font-medium">সর্ট করুন:</span>
+              <select 
+                id="catalog-sort-select"
+                class="form-control py-1.5 px-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 font-bold text-slate-800 dark:text-white outline-none"
+                onchange="(window.router ? window.router.navigate : function(u){ window.location.href=u; })('${buildFilterUrl({ sort: '__VAL__' })}'.replace('__VAL__', encodeURIComponent(this.value)))"
+              >
+                <option value="featured" ${sort === 'featured' ? 'selected' : ''}>জনপ্রিয় পণ্য (১০ মি. ঘূর্ণায়মান)</option>
+                <option value="low_high" ${sort === 'low_high' ? 'selected' : ''}>দাম: কম থেকে বেশি (Low to High)</option>
+                <option value="high_low" ${sort === 'high_low' ? 'selected' : ''}>দাম: বেশি থেকে কম (High to Low)</option>
+                <option value="name_asc" ${sort === 'name_asc' ? 'selected' : ''}>নাম: A থেকে Z</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Product Grid -->
+          ${paginatedProducts.length === 0 ? `
+            <div class="bg-white dark:bg-slate-900 rounded-3xl p-16 text-center border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+              <div class="text-5xl">🔍</div>
+              <h3 class="text-base font-bold text-slate-800 dark:text-white">${search ? `"${search}" এর সাথে কোনো পণ্য মেলেনি` : 'কোনো পণ্য পাওয়া যায়নি'}</h3>
+              <p class="text-xs text-slate-500 max-w-sm mx-auto">
+                ${search ? 'অন্য কোনো কি-ওয়ার্ড দিয়ে সার্চ করুন অথবা আমাদের সকল পণ্য ব্রাউজ করুন।' : 'আপনার দেওয়া ফিল্টারের সাথে মিলে এমন কোনো পণ্য মেলেনি। অনুগ্রহ করে ফিল্টার পরিবর্তন করুন।'}
+              </p>
+              <a href="/products" class="btn-primary mt-2 text-xs py-2 px-5 inline-flex">
+                সকল পণ্য দেখুন
+              </a>
+            </div>
+          ` : (search ? `
+            <div class="space-y-8">
+              ${pageDirectMatches.length > 0 ? `
+                <!-- Direct Matches Section (Highest Relevance First) -->
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 text-xs font-bold shadow-xs">🎯</span>
+                      <h2 class="text-sm font-black text-slate-900 dark:text-white tracking-wide">
+                        সরাসরি মিলে যাওয়া পণ্য (${directMatches.length} টি)
+                      </h2>
+                    </div>
+                    <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">সেরা ফলাফল</span>
+                  </div>
+                  <div class="product-grid">
+                    ${pageDirectMatches.map(p => renderProductCard(p)).join("")}
+                  </div>
+                </div>
+              ` : `
+                <div class="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs flex items-center gap-2.5">
+                  <span class="text-lg flex-shrink-0">💡</span>
+                  <div>
+                    <strong>"${search}"</strong> এর সাথে সরাসরি কোনো পণ্য মেলেনি। তবে সম্পর্কিত এই পণ্যগুলো দেখতে পারেন:
+                  </div>
+                </div>
+              `}
+
+              ${pageRelatedProducts.length > 0 ? `
+                <!-- Related Products Section (Category / Brand Match) -->
+                <div class="space-y-3 pt-2">
+                  <div class="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                    <div class="flex items-center gap-2">
+                      <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 text-xs font-bold shadow-xs">✨</span>
+                      <h2 class="text-sm font-black text-slate-900 dark:text-white tracking-wide">
+                        সম্পর্কিত অন্যান্য পণ্যসমূহ (${relatedProducts.length} টি)
+                      </h2>
+                    </div>
+                    <span class="text-[11px] text-slate-500 dark:text-slate-400">একই ক্যাটাগরি ও ব্র্যান্ডের অন্যান্য পছন্দ</span>
+                  </div>
+                  <div class="product-grid">
+                    ${pageRelatedProducts.map(p => renderProductCard(p)).join("")}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          ` : `
+            <div class="product-grid">
+              ${paginatedProducts.map(p => renderProductCard(p)).join("")}
+            </div>
+          `)}
+
+          <!-- Pagination Controls (60 pcs per page) -->
+          ${totalPages > 1 ? `
+            <div class="flex items-center justify-center gap-2 pt-6 flex-wrap">
+              <a 
+                href="${buildFilterUrl({ page: Math.max(1, page - 1) })}" 
+                class="btn-secondary py-2 px-4 text-xs font-bold ${page <= 1 ? 'pointer-events-none opacity-40' : ''}"
+              >
+                ← পূর্ববর্তী
+              </a>
+
+              <div class="flex items-center gap-1 text-xs font-bold flex-wrap">
+                ${Array.from({ length: totalPages }).map((_, i) => {
+                  const pNum = i + 1;
+                  // Only display relevant pagination range
+                  if (totalPages > 10 && Math.abs(pNum - page) > 3 && pNum !== 1 && pNum !== totalPages) {
+                    if (Math.abs(pNum - page) === 4) return '<span class="px-1 text-slate-400">...</span>';
+                    return '';
+                  }
+                  return `
+                    <a 
+                      href="${buildFilterUrl({ page: pNum })}" 
+                      class="w-8 h-8 rounded-xl flex items-center justify-center transition ${pNum === page ? 'bg-emerald-600 text-white' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100'}"
+                    >
+                      ${pNum}
+                    </a>
+                  `;
+                }).join("")}
+              </div>
+
+              <a 
+                href="${buildFilterUrl({ page: Math.min(totalPages, page + 1) })}" 
+                class="btn-secondary py-2 px-4 text-xs font-bold ${page >= totalPages ? 'pointer-events-none opacity-40' : ''}"
+              >
+                পরবর্তী →
+              </a>
+            </div>
+          ` : ""}
+
+        </div>
+
+      </div>
+
+    </div>
+  `;
+}
+
+export const renderProductsPage = renderShopPage;
+export const renderProductListPage = renderShopPage;
+export default renderShopPage;
