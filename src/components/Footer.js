@@ -1,10 +1,8 @@
 /**
- * DREAM CART BD — COMPACT MODERN FOOTER COMPONENT (src/components/Footer.js)
+ * DREAM CART BD — COMPACT MODERN FOOTER COMPONENT (Footer.js)
  * Refined per user requirements:
- * - Bulletproof verified logo rendering with reliable fallback
  * - Compact height with optimized padding & margins (zero bulkiness)
  * - Beautiful animated social media icons with smooth bounce, hover glow & scale effects
- * - Extraordinary Action Buttons: 'শিখুন ও ক্যারিয়ার গড়ুন' & 'আইটি সাপোর্ট'
  * - Perfect color contrast: Deep obsidian slate background (#0a0f1d), pure white headings (#ffffff), soft slate text (#94a3b8 / #cbd5e1), emerald accents (#10b981 / #34d399)
  * - Compact 4-feature Trust Strip (Home delivery, Authentic products, Secure payments, 24/7 support)
  * - Structured 4-column layout with tidy typography and compact link spacing
@@ -19,11 +17,7 @@ export function renderFooter() {
   const siteInfo = getGlobalSiteSettings();
   const shopName = siteInfo.shop_name || "Dream Cart BD";
   const shopTagline = siteInfo.tagline || "Smart Digital Commerce";
-  
-  // Bulletproof Logo Resolution
-  const rawLogo = siteInfo.shopLogo || siteInfo.logo_url || "/public/icon/logo.png";
-  const shopLogo = (rawLogo && !rawLogo.includes("encrypted-tbn") && !rawLogo.includes("jijistatic")) ? rawLogo : "/public/icon/logo.png";
-
+  const shopLogo = (siteInfo.shopLogo && !siteInfo.shopLogo.includes("encrypted-tbn") && !siteInfo.shopLogo.includes("jijistatic")) ? siteInfo.shopLogo : (siteInfo.logo_url || "/public/icon/logo.png");
   const shopDesc = siteInfo.description || "আমদানিকারকদের থেকে সরাসরি সংগৃহীত প্রিমিয়াম গ্যাজেট ও ডিজিটাল লাইফস্টাইল পণ্য।";
   const address = siteInfo.address || "চৌধুরী প্লাজা, নিচতলা, পদুয়ার বাজার বিশ্বরোড, কুমিল্লা-৩৫০০।";
   const hotline1 = siteInfo.hotline1 || "01581703822";
@@ -36,7 +30,7 @@ export function renderFooter() {
   const wa1Full = wa1.startsWith("88") ? wa1 : "88" + wa1;
 
   return `
-    <!-- Scoped 3D Professional Styles for Footer Component -->
+    <!-- Scoped Styles for Compact High-Contrast Footer -->
     <style id="footer-compact-styles">
       .site-footer {
         background: linear-gradient(180deg, #0b1120 0%, #030712 100%) !important;
@@ -84,54 +78,53 @@ export function renderFooter() {
       .ft-trust-card {
         background: rgba(15, 23, 42, 0.55);
         border: 1px solid rgba(255, 255, 255, 0.06);
-        border-radius: 12px;
-        padding: 10px 14px;
+        border-radius: 10px;
+        padding: 9px 12px;
         display: flex;
         align-items: center;
         gap: 10px;
-        box-shadow: 0 3px 0 -1px rgba(2, 6, 23, 0.5);
         transition: all 0.2s ease;
       }
       .ft-trust-card:hover {
-        background: rgba(30, 41, 59, 0.7);
+        background: rgba(30, 41, 59, 0.6);
         border-color: rgba(16, 185, 129, 0.4);
-        transform: translateY(-2px);
+        transform: translateY(-1px);
       }
       .ft-trust-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 9px;
-        background: rgba(16, 185, 129, 0.14);
-        border: 1px solid rgba(16, 185, 129, 0.28);
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.25);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        font-size: 15px;
         flex-shrink: 0;
       }
       .ft-trust-title {
         color: #ffffff;
-        font-size: 12.5px;
+        font-size: 12px;
         font-weight: 700;
         line-height: 1.25;
         margin-bottom: 1px;
       }
       .ft-trust-sub {
         color: #94a3b8;
-        font-size: 10.5px;
+        font-size: 10px;
         line-height: 1.25;
       }
 
       /* Column Headings */
       .ft-col-title {
         color: #ffffff;
-        font-size: 13.5px;
+        font-size: 13px;
         font-weight: 800;
         letter-spacing: 0.02em;
-        margin-bottom: 14px;
+        margin-bottom: 12px;
         display: flex;
         align-items: center;
-        gap: 7px;
+        gap: 6px;
         position: relative;
       }
       .ft-col-title::after {
@@ -139,7 +132,7 @@ export function renderFooter() {
         position: absolute;
         bottom: -4px;
         left: 0;
-        width: 24px;
+        width: 22px;
         height: 2px;
         background: #10b981;
         border-radius: 2px;
@@ -149,15 +142,15 @@ export function renderFooter() {
       .ft-links {
         display: flex;
         flex-direction: column;
-        gap: 7px;
+        gap: 6px;
       }
       .ft-link {
         color: #94a3b8;
-        font-size: 12.5px;
+        font-size: 12px;
         text-decoration: none;
         display: inline-flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
         transition: all 0.18s ease;
         line-height: 1.35;
       }
@@ -169,7 +162,7 @@ export function renderFooter() {
         font-size: 11px;
       }
 
-      /* Brand Column & Verified Logo Box */
+      /* Brand Column */
       .ft-logo-wrap {
         display: inline-flex;
         align-items: center;
@@ -178,9 +171,9 @@ export function renderFooter() {
         margin-bottom: 8px;
       }
       .ft-logo-box {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
         background: #ffffff;
         padding: 3px;
         border: 1px solid rgba(255, 255, 255, 0.2);
@@ -188,13 +181,6 @@ export function renderFooter() {
         align-items: center;
         justify-content: center;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
-        flex-shrink: 0;
-      }
-      .ft-logo-img {
-        width: 100%;
-        height: 100%;
-        object-fit: contain;
-        display: block;
       }
       .ft-brand-title {
         font-size: 18px;
@@ -215,8 +201,8 @@ export function renderFooter() {
       }
       .ft-brand-desc {
         color: #94a3b8;
-        font-size: 12px;
-        line-height: 1.6;
+        font-size: 11.5px;
+        line-height: 1.5;
         margin-bottom: 10px;
       }
       .ft-brand-slogan {
@@ -224,11 +210,11 @@ export function renderFooter() {
         background: rgba(16, 185, 129, 0.1);
         border: 1px solid rgba(16, 185, 129, 0.25);
         color: #6ee7b7;
-        font-size: 10.5px;
+        font-size: 10px;
         font-weight: 700;
-        padding: 3px 10px;
+        padding: 3px 9px;
         border-radius: 9999px;
-        margin-bottom: 14px;
+        margin-bottom: 12px;
       }
 
       /* Animated Social Icons */
@@ -239,14 +225,14 @@ export function renderFooter() {
       .ft-social-row {
         display: flex;
         align-items: center;
-        gap: 9px;
+        gap: 8px;
       }
       .ft-social-btn {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        background: rgba(15, 23, 42, 0.85);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         color: #94a3b8;
         display: flex;
         align-items: center;
@@ -254,7 +240,6 @@ export function renderFooter() {
         text-decoration: none;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 3px 0 -1px rgba(2, 6, 23, 0.6);
         transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
         animation: ftSocialFloat 4s ease-in-out infinite;
       }
@@ -264,8 +249,8 @@ export function renderFooter() {
       .ft-social-btn:nth-child(4) { animation-delay: 1.8s; }
 
       .ft-social-svg {
-        width: 16px;
-        height: 16px;
+        width: 15px;
+        height: 15px;
         transition: transform 0.25s ease;
       }
 
@@ -275,48 +260,43 @@ export function renderFooter() {
         border-color: #3b82f6 !important;
         color: #ffffff !important;
         transform: translateY(-3px) scale(1.14) rotate(-3deg) !important;
-        box-shadow: 0 6px 18px rgba(24, 119, 242, 0.55) !important;
+        box-shadow: 0 5px 16px rgba(24, 119, 242, 0.5) !important;
       }
       .ft-social-btn.wa:hover {
         background: #25d366 !important;
         border-color: #4ade80 !important;
         color: #ffffff !important;
         transform: translateY(-3px) scale(1.14) rotate(3deg) !important;
-        box-shadow: 0 6px 18px rgba(37, 211, 102, 0.55) !important;
+        box-shadow: 0 5px 16px rgba(37, 211, 102, 0.5) !important;
       }
       .ft-social-btn.yt:hover {
         background: #ff0000 !important;
         border-color: #f87171 !important;
         color: #ffffff !important;
         transform: translateY(-3px) scale(1.14) rotate(-3deg) !important;
-        box-shadow: 0 6px 18px rgba(255, 0, 0, 0.55) !important;
+        box-shadow: 0 5px 16px rgba(255, 0, 0, 0.5) !important;
       }
       .ft-social-btn.dc:hover {
         background: #059669 !important;
         border-color: #34d399 !important;
         color: #ffffff !important;
         transform: translateY(-3px) scale(1.14) rotate(3deg) !important;
-        box-shadow: 0 6px 18px rgba(16, 185, 129, 0.55) !important;
+        box-shadow: 0 5px 16px rgba(16, 185, 129, 0.5) !important;
       }
-      .ft-social-btn:hover .ft-social-svg {
-        transform: scale(1.12);
-      }
-
       /* Extraordinary Footer Action Buttons */
       .ft-action-buttons-wrap {
         display: flex;
         flex-direction: column;
-        gap: 9px;
+        gap: 8px;
         margin-top: 14px;
       }
       .ft-action-btn {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 9px 13px;
-        border-radius: 13px;
+        padding: 8px 12px;
+        border-radius: 12px;
         text-decoration: none;
-        box-shadow: 0 4px 0 -1px rgba(2, 6, 23, 0.6);
         transition: all 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
         position: relative;
         overflow: hidden;
@@ -325,7 +305,7 @@ export function renderFooter() {
         content: "";
         position: absolute;
         top: 0; left: -100%; width: 100%; height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
         transition: left 0.6s ease;
       }
       .ft-action-btn:hover::before {
@@ -336,32 +316,32 @@ export function renderFooter() {
       }
       .ft-btn-career {
         background: linear-gradient(135deg, #059669 0%, #047857 50%, #065f46 100%);
-        border: 1px solid rgba(52, 211, 153, 0.45);
-        box-shadow: 0 4px 16px rgba(5, 150, 105, 0.35);
+        border: 1px solid rgba(52, 211, 153, 0.4);
+        box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
       }
       .ft-btn-career:hover {
-        box-shadow: 0 8px 26px rgba(5, 150, 105, 0.6);
+        box-shadow: 0 8px 24px rgba(5, 150, 105, 0.55);
         border-color: #34d399;
       }
       .ft-btn-support {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 50%, #1e40af 100%);
-        border: 1px solid rgba(56, 189, 248, 0.45);
-        box-shadow: 0 4px 16px rgba(2, 132, 199, 0.35);
+        border: 1px solid rgba(56, 189, 248, 0.4);
+        box-shadow: 0 4px 15px rgba(2, 132, 199, 0.3);
       }
       .ft-btn-support:hover {
-        box-shadow: 0 8px 26px rgba(2, 132, 199, 0.6);
+        box-shadow: 0 8px 24px rgba(2, 132, 199, 0.55);
         border-color: #38bdf8;
       }
       .ft-btn-icon-box {
-        width: 32px;
-        height: 32px;
-        border-radius: 9px;
-        background: rgba(255, 255, 255, 0.2);
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.25);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 15px;
+        font-size: 14px;
         flex-shrink: 0;
       }
       .ft-btn-content {
@@ -372,13 +352,13 @@ export function renderFooter() {
       }
       .ft-btn-text {
         color: #ffffff;
-        font-size: 12.5px;
+        font-size: 12px;
         font-weight: 800;
         line-height: 1.2;
       }
       .ft-btn-sub {
-        color: rgba(255, 255, 255, 0.8);
-        font-size: 10px;
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 9.5px;
         font-weight: 500;
         line-height: 1.2;
         margin-top: 1px;
@@ -393,28 +373,32 @@ export function renderFooter() {
         transform: translateX(4px);
       }
 
+      .ft-social-btn:hover .ft-social-svg {
+        transform: scale(1.1);
+      }
+
       /* Compact Office & Contact Info */
       .ft-contact-item {
         display: flex;
         align-items: flex-start;
-        gap: 9px;
-        margin-bottom: 10px;
-        font-size: 12px;
+        gap: 8px;
+        margin-bottom: 9px;
+        font-size: 11.5px;
         color: #cbd5e1;
-        line-height: 1.45;
+        line-height: 1.4;
       }
       .ft-contact-icon {
-        width: 26px;
-        height: 26px;
-        border-radius: 7px;
-        background: rgba(16, 185, 129, 0.14);
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        background: rgba(16, 185, 129, 0.12);
         color: #34d399;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 13px;
+        font-size: 12px;
         flex-shrink: 0;
-        border: 1px solid rgba(16, 185, 129, 0.28);
+        border: 1px solid rgba(16, 185, 129, 0.25);
         margin-top: 1px;
       }
       .ft-contact-link {
@@ -429,10 +413,10 @@ export function renderFooter() {
 
       /* Payment Methods Strip */
       .ft-payment-strip {
-        padding: 14px 0;
+        padding: 12px 0;
         border-top: 1px solid rgba(255, 255, 255, 0.07);
         border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-        margin-top: 22px;
+        margin-top: 20px;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -445,74 +429,73 @@ export function renderFooter() {
         }
       }
       .ft-payment-title {
-        font-size: 12px;
+        font-size: 11.5px;
         font-weight: 700;
         color: #e2e8f0;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 5px;
       }
       .ft-pay-badges {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 7px;
+        gap: 6px;
       }
       .ft-pay-badge {
-        padding: 4px 10px;
-        border-radius: 7px;
-        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-size: 10.5px;
         font-weight: 700;
         display: inline-flex;
         align-items: center;
-        gap: 5px;
+        gap: 4px;
         border: 1px solid;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         transition: transform 0.15s ease;
       }
       .ft-pay-badge:hover {
         transform: translateY(-1px);
       }
       .ft-pay-cod {
-        background: rgba(16, 185, 129, 0.14);
+        background: rgba(16, 185, 129, 0.12);
         color: #34d399;
-        border-color: rgba(16, 185, 129, 0.38);
+        border-color: rgba(16, 185, 129, 0.35);
       }
       .ft-pay-bkash {
-        background: rgba(226, 19, 110, 0.14);
+        background: rgba(226, 19, 110, 0.12);
         color: #f472b6;
-        border-color: rgba(226, 19, 110, 0.38);
+        border-color: rgba(226, 19, 110, 0.35);
       }
       .ft-pay-nagad {
-        background: rgba(247, 148, 29, 0.14);
+        background: rgba(247, 148, 29, 0.12);
         color: #fb923c;
-        border-color: rgba(247, 148, 29, 0.38);
+        border-color: rgba(247, 148, 29, 0.35);
       }
       .ft-pay-rocket {
-        background: rgba(140, 52, 148, 0.16);
+        background: rgba(140, 52, 148, 0.15);
         color: #c084fc;
-        border-color: rgba(140, 52, 148, 0.38);
+        border-color: rgba(140, 52, 148, 0.35);
       }
       .ft-pay-bank {
-        background: rgba(2, 132, 199, 0.14);
+        background: rgba(2, 132, 199, 0.12);
         color: #38bdf8;
-        border-color: rgba(2, 132, 199, 0.38);
+        border-color: rgba(2, 132, 199, 0.35);
       }
       .ft-pay-card {
-        background: rgba(245, 158, 11, 0.14);
+        background: rgba(245, 158, 11, 0.12);
         color: #fbbf24;
-        border-color: rgba(245, 158, 11, 0.38);
+        border-color: rgba(245, 158, 11, 0.35);
       }
 
       /* Compact Bottom Bar */
       .ft-bottom-bar {
-        padding-top: 16px;
+        padding-top: 14px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: space-between;
         gap: 10px;
-        font-size: 11.5px;
+        font-size: 11px;
         color: #94a3b8;
       }
       @media (min-width: 768px) {
@@ -523,7 +506,7 @@ export function renderFooter() {
       .ft-bottom-legal {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
       }
       .ft-bottom-legal a {
         color: #94a3b8;
@@ -536,13 +519,12 @@ export function renderFooter() {
       .ft-dev-credit {
         display: flex;
         align-items: center;
-        gap: 6px;
-        background: rgba(15, 23, 42, 0.75);
-        border: 1px solid rgba(255, 255, 255, 0.09);
-        padding: 4px 12px;
+        gap: 5px;
+        background: rgba(15, 23, 42, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 3px 10px;
         border-radius: 9999px;
-        font-size: 11px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        font-size: 10.5px;
       }
       .ft-dev-credit a {
         color: #34d399;
@@ -610,7 +592,7 @@ export function renderFooter() {
                 <img 
                   src="${shopLogo}" 
                   alt="${shopName} Logo" 
-                  class="ft-logo-img"
+                  class="w-full h-full object-contain rounded-md"
                   onerror="this.onerror=null; this.src='/public/icon/logo.png';"
                 />
               </div>
