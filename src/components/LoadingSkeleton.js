@@ -177,7 +177,7 @@ export function renderLoadingSkeleton(props = {}) {
         <!-- Official Dream Cart BD Logo inside the Particle Ring -->
         <div style="position: absolute; top: 50%; left: 50%; width: 76px; height: 76px; border-radius: 22px; background: #ffffff; padding: 6px; border: 2px solid rgba(16, 185, 129, 0.65); display: flex; align-items: center; justify-content: center; overflow: hidden; animation: dcbdCenterLogoFloat 2.4s ease-in-out infinite; z-index: 5;">
           <img
-            src="/public/icon/logo.png"
+            src="/icon/logo.png"
             alt="Dream Cart BD Logo"
             style="width: 100%; height: 100%; object-fit: contain; border-radius: 16px;"
             onerror="this.onerror=null; this.src='/favicon.ico';"

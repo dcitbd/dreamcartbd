@@ -17,7 +17,8 @@ export function renderFooter() {
   const siteInfo = getGlobalSiteSettings();
   const shopName = siteInfo.shop_name || "Dream Cart BD";
   const shopTagline = siteInfo.tagline || "Smart Digital Commerce";
-  const shopLogo = (siteInfo.shopLogo && !siteInfo.shopLogo.includes("encrypted-tbn") && !siteInfo.shopLogo.includes("jijistatic")) ? siteInfo.shopLogo : (siteInfo.logo_url || "/public/icon/logo.png");
+  const rawShopLogo = (siteInfo.shopLogo && !siteInfo.shopLogo.includes("encrypted-tbn") && !siteInfo.shopLogo.includes("jijistatic")) ? siteInfo.shopLogo : (siteInfo.logo_url || "/icon/logo.png");
+  const shopLogo = (typeof window !== "undefined" && window.getDcbdLogoUrl) ? window.getDcbdLogoUrl(rawShopLogo) : rawShopLogo;
   const shopDesc = siteInfo.description || "আমদানিকারকদের থেকে সরাসরি সংগৃহীত প্রিমিয়াম গ্যাজেট ও ডিজিটাল লাইফস্টাইল পণ্য।";
   const address = siteInfo.address || "চৌধুরী প্লাজা, নিচতলা, পদুয়ার বাজার বিশ্বরোড, কুমিল্লা-৩৫০০।";
   const hotline1 = siteInfo.hotline1 || "01581703822";
@@ -593,7 +594,7 @@ export function renderFooter() {
                   src="${shopLogo}" 
                   alt="${shopName} Logo" 
                   class="w-full h-full object-contain rounded-md"
-                  onerror="this.onerror=null; this.src='/public/icon/logo.png';"
+                  onerror="window.handleDcbdLogoError ? window.handleDcbdLogoError(this) : (this.onerror=null, this.src='/icon/logo.png');"
                 />
               </div>
               <div>

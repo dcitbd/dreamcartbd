@@ -67,7 +67,7 @@ const CORE_VISUAL_PRODUCTS = [
     category: "Smartwatches",
     sub_category: "Calling Watch",
     selling_price: 7200,
-    thumbnail: "/public/icon/logo.png",
+    thumbnail: "/icon/logo.png",
     slug: "kieslect-ks-pro-calling-smartwatch"
   }
 ];
@@ -1297,7 +1297,8 @@ export function renderHeader() {
   const siteInfo = getGlobalSiteSettings();
   const shopName = siteInfo.shop_name || "Dream Cart BD";
   const shopTagline = siteInfo.tagline || "Smart Digital Commerce";
-  const shopLogo = (siteInfo.shopLogo && !siteInfo.shopLogo.includes("encrypted-tbn") && !siteInfo.shopLogo.includes("jijistatic")) ? siteInfo.shopLogo : (siteInfo.logo_url || "/public/icon/logo.png");
+  const rawShopLogo = (siteInfo.shopLogo && !siteInfo.shopLogo.includes("encrypted-tbn") && !siteInfo.shopLogo.includes("jijistatic")) ? siteInfo.shopLogo : (siteInfo.logo_url || "/icon/logo.png");
+  const shopLogo = (typeof window !== "undefined" && window.getDcbdLogoUrl) ? window.getDcbdLogoUrl(rawShopLogo) : rawShopLogo;
   const hotline1 = siteInfo.hotline1 || "01581703822";
   const hotline2 = siteInfo.hotline2 || "01818273838";
   const wa1 = (siteInfo.whatsapp || hotline1).replace(/[^0-9]/g, "");
@@ -1617,7 +1618,7 @@ export function renderHeader() {
               src="${shopLogo}" 
               alt="${shopName} Logo" 
               class="header-logo-img"
-              onerror="this.onerror=null; this.src='/public/icon/logo.png';"
+              onerror="window.handleDcbdLogoError ? window.handleDcbdLogoError(this) : (this.onerror=null, this.src='/icon/logo.png');"
             />
           </div>
           <div class="header-brand-text">
