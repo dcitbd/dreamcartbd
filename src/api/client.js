@@ -12,7 +12,7 @@ const _gwCfg = getProtectedGatewayConfig();
 export const APPS_SCRIPT_URL = _gwCfg.endpoint;
 export const SPREADSHEET_ID = _gwCfg.spreadsheetId;
 
-export const DEFAULT_PRODUCT_THUMB = "/public/icon/logo.png";
+export const DEFAULT_PRODUCT_THUMB = "/icon/logo.png";
 
 const DEMO_SKUS = new Set(["dcbd-wt-01", "dcbd-gs-02", "dcbd-hn-03", "dcbd-fl-04", "dcbd-ch-05"]);
 
@@ -187,10 +187,10 @@ export const INITIAL_CATEGORIES = [
 ];
 
 export const INITIAL_BRANDS = [
-  { brand_id: "BRD-001", brand_name: "Amazfit", brand_slug: "amazfit", brand_image: "/public/icon/logo.png", brand_description: "Global smart wearable innovator" },
-  { brand_id: "BRD-002", brand_name: "Dream Organic", brand_slug: "dream-organic", brand_image: "/public/icon/logo.png", brand_description: "১০০% বিশুদ্ধ অর্গানিক ও প্রাকৃতিক পণ্য" },
-  { brand_id: "BRD-003", brand_name: "HK", brand_slug: "hk", brand_image: "/public/icon/logo.png", brand_description: "প্রিমিয়াম স্মার্ট গ্যাজেট ও অ্যাপ্লায়েন্স পার্টনার" },
-  { brand_id: "BRD-004", brand_name: "Kieslect", brand_slug: "kieslect", brand_image: "/public/icon/logo.png", brand_description: "Premium calling smartwatch maker" }
+  { brand_id: "BRD-001", brand_name: "Amazfit", brand_slug: "amazfit", brand_image: "/icon/logo.png", brand_description: "Global smart wearable innovator" },
+  { brand_id: "BRD-002", brand_name: "Dream Organic", brand_slug: "dream-organic", brand_image: "/icon/logo.png", brand_description: "১০০% বিশুদ্ধ অর্গানিক ও প্রাকৃতিক পণ্য" },
+  { brand_id: "BRD-003", brand_name: "HK", brand_slug: "hk", brand_image: "/icon/logo.png", brand_description: "প্রিমিয়াম স্মার্ট গ্যাজেট ও অ্যাপ্লায়েন্স পার্টনার" },
+  { brand_id: "BRD-004", brand_name: "Kieslect", brand_slug: "kieslect", brand_image: "/icon/logo.png", brand_description: "Premium calling smartwatch maker" }
 ];
 
 /**
@@ -229,8 +229,8 @@ export function normalizeSingleImageUrl(rawUrl) {
   if (!u || u === 'null' || u === 'undefined') return '';
   if (u.startsWith('data:image/') || u.startsWith('blob:')) return u;
   if (u.startsWith('//')) u = 'https:' + u;
-  if (u === '/public/icon/logo.png' || u === 'public/icon/logo.png' || u === './public/icon/logo.png' || u === '/icon/logo.png' || u === 'icon/logo.png' || u === 'logo.png') {
-    return (typeof window !== 'undefined' && window.getDcbdLogoUrl) ? window.getDcbdLogoUrl() : '/public/icon/logo.png';
+  if (u === '/icon/logo.png' || u === 'public/icon/logo.png' || u === './public/icon/logo.png' || u === '/icon/logo.png' || u === 'icon/logo.png' || u === 'logo.png') {
+    return (typeof window !== 'undefined' && window.getDcbdLogoUrl) ? window.getDcbdLogoUrl() : '/icon/logo.png';
   }
   const driveMatch =
     u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=view&)?id=|thumbnail\?id=)([a-zA-Z0-9_-]{15,})/) ||
@@ -242,7 +242,7 @@ export function normalizeSingleImageUrl(rawUrl) {
 }
 
 export function resolveOfficialLogoUrl(rawLogo) {
-  const fallback = (typeof window !== 'undefined' && window.getDcbdLogoUrl) ? window.getDcbdLogoUrl() : '/public/icon/logo.png';
+  const fallback = (typeof window !== 'undefined' && window.getDcbdLogoUrl) ? window.getDcbdLogoUrl() : '/icon/logo.png';
   if (!rawLogo || typeof rawLogo !== 'string') return fallback;
   const cleaned = normalizeSingleImageUrl(rawLogo);
   if (!cleaned || cleaned.includes('encrypted-tbn') || cleaned.includes('jijistatic')) return fallback;
@@ -1180,7 +1180,7 @@ export function aggregateCategoryRows(rawRows = [], existingCats = []) {
 export const DEFAULT_SITE_SETTINGS = {
   shopName: "Dream Cart BD",
   tagline: "Smart Digital Commerce",
-  shopLogo: "/public/icon/logo.png",
+  shopLogo: "/icon/logo.png",
   address: "চৌধুরী প্লাজা, নিচতলা, রুম #০৩, পদুয়ার বাজার বিশ্বরোড, সদর দক্ষিণ, কুমিল্লা-৩৫০০।",
   hotline1: "01581703822",
   hotline2: "01818273838",
