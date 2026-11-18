@@ -557,18 +557,34 @@ function attachEventListeners() {
       }
     }
 
+    const findProductFast = async (pId) => {
+      if (!pId) return null;
+      const target = String(pId).trim().toLowerCase();
+      const list = (Array.isArray(apiClient.sheetProducts) && apiClient.sheetProducts.length > 0)
+        ? apiClient.sheetProducts
+        : (Array.isArray(apiClient.products) ? apiClient.products : []);
+      const hit = list.find(p =>
+        String(p.product_id || '').trim().toLowerCase() === target ||
+        String(p.sku || '').trim().toLowerCase() === target ||
+        String(p.slug || '').trim().toLowerCase() === target
+      );
+      if (hit) return hit;
+      const res = await apiClient.request("products/details", { id: pId });
+      return res && res.data ? res.data : null;
+    };
+
     const favBtn = e.target.closest('.btn-toggle-favourite');
     if (favBtn) {
       e.preventDefault();
       e.stopPropagation();
       const pId = favBtn.getAttribute('data-product-id');
-      const res = await apiClient.request("products/details", { id: pId });
-      if (res.data) {
-        const added = favouriteStore.toggle(res.data);
+      const prod = await findProductFast(pId);
+      if (prod) {
+        const added = favouriteStore.toggle(prod);
         toast.show({
           type: added ? "success" : "info",
           title: added ? "পছন্দের তালিকায় যুক্ত হয়েছে" : "পছন্দের তালিকা থেকে সরানো হয়েছে",
-          message: res.data.name,
+          message: prod.name,
           duration: 3000
         });
       }
@@ -625,13 +641,13 @@ function attachEventListeners() {
       e.preventDefault();
       e.stopPropagation();
       const pId = quickAddBtn.getAttribute('data-product-id');
-      const res = await apiClient.request("products/details", { id: pId });
-      if (res.data) {
-        cartStore.addItem(res.data, 1);
+      const prod = await findProductFast(pId);
+      if (prod) {
+        cartStore.addItem(prod, 1);
         toast.show({
           type: "success",
           title: "কার্টে যুক্ত হয়েছে",
-          message: `${res.data.name} কার্টে যোগ করা হয়েছে।`,
+          message: `${prod.name} কার্টে যোগ করা হয়েছে।`,
           duration: 3500
         });
         openCartDrawer();
@@ -647,14 +663,14 @@ function attachEventListeners() {
       const color = document.getElementById('selected-color')?.value || '';
       const size = document.getElementById('selected-size')?.value || '';
 
-      const res = await apiClient.request("products/details", { id: pId });
-      if (res.data) {
-        cartStore.addItem(res.data, qty, { color, size });
+      const prod = await findProductFast(pId);
+      if (prod) {
+        cartStore.addItem(prod, qty, { color, size });
         const variantDesc = [color ? `কালার: ${color}` : '', size ? `সাইজ: ${size}` : ''].filter(Boolean).join(', ');
         toast.show({
           type: "success",
           title: "কার্টে যুক্ত হয়েছে",
-          message: `${res.data.name} (${qty} টি)${variantDesc ? ` [${variantDesc}]` : ''} কার্টে যোগ করা হয়েছে।`,
+          message: `${prod.name} (${qty} টি)${variantDesc ? ` [${variantDesc}]` : ''} কার্টে যোগ করা হয়েছে।`,
           duration: 3500
         });
         openCartDrawer();
@@ -672,9 +688,9 @@ function attachEventListeners() {
       const color = document.getElementById('selected-color')?.value || '';
       const size = document.getElementById('selected-size')?.value || '';
 
-      const res = await apiClient.request("products/details", { id: pId });
-      if (res.data) {
-        cartStore.addItem(res.data, qty, { color, size });
+      const prod = await findProductFast(pId);
+      if (prod) {
+        cartStore.addItem(prod, qty, { color, size });
         router.navigate('/checkout');
       }
       return;
@@ -688,13 +704,13 @@ function attachEventListeners() {
       const color = document.getElementById('selected-color')?.value || '';
       const size = document.getElementById('selected-size')?.value || '';
 
-      const res = await apiClient.request("products/details", { id: pId });
-      if (res.data) {
-        cartStore.addItem(res.data, 1, { color, size });
+      const prod = await findProductFast(pId);
+      if (prod) {
+        cartStore.addItem(prod, 1, { color, size });
         toast.show({
           type: "info",
           title: "প্রি-অর্ডার বুকিং",
-          message: `${res.data.name} প্রি-অর্ডার কার্টে যুক্ত হয়েছে। চেকআউটে কনফার্ম করুন।`,
+          message: `${prod.name} প্রি-অর্ডার কার্টে যুক্ত হয়েছে। চেকআউটে কনফার্ম করুন।`,
           duration: 4000
         });
         router.navigate('/checkout');

@@ -1574,8 +1574,15 @@ export const router = {
       const stuckLoader = document.getElementById('dcbd-unified-loader');
       if (stuckLoader && appContainer) {
         try {
-          if (path === '/' || path === '/home') appContainer.innerHTML = renderHomePage();
-          else if (path === '/products' || path === '/shop') appContainer.innerHTML = renderShopPage(params);
+          if (path === '/' || path === '/home') {
+            Promise.resolve(renderHomePage()).then(html => {
+              if (document.getElementById('dcbd-unified-loader') && typeof html === 'string') appContainer.innerHTML = html;
+            }).catch(() => {});
+          } else if (path === '/products' || path === '/shop') {
+            Promise.resolve(renderShopPage(params)).then(html => {
+              if (document.getElementById('dcbd-unified-loader') && typeof html === 'string') appContainer.innerHTML = html;
+            }).catch(() => {});
+          }
         } catch (e) {}
       }
     }, 2800);
