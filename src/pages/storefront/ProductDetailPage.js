@@ -1570,22 +1570,18 @@ export async function renderProductDetailPage(slugOrId) {
           <span>📋</span> পণ্যের পূর্ণ বিবরণ ও স্পেসিফিকেশন
         </h2>
 
-        <div class="pd-desc-text">
+        <div id="pd-live-desc" class="pd-desc-text">
           ${product.description || 'পণ্যটির বিস্তারিত বিবরণ শীঘ্রই যুক্ত করা হচ্ছে। পণ্য সংক্রান্ত যেকোনো তথ্যের জন্য আমাদের হেল্পলাইনে কল করুন।'}
         </div>
 
-        ${product.specification ? `
-          <div class="pd-spec-box">
-            <div class="pd-spec-header">স্পেসিফিকেশন হাইলাইটস:</div>
-            <div class="pd-spec-content">${product.specification}</div>
-          </div>
-        ` : ""}
+        <div id="pd-live-spec-box" class="pd-spec-box" style="${product.specification ? '' : 'display:none;'}">
+          <div class="pd-spec-header">স্পেসিফিকেশন হাইলাইটস:</div>
+          <div id="pd-live-spec-content" class="pd-spec-content">${product.specification || ''}</div>
+        </div>
 
-        ${product.others ? `
-          <div style="font-size: 12.5px; color: #64748b; margin-top: 14px;" class="dark:text-slate-400">
-            <strong>অন্যান্য তথ্য:</strong> ${product.others}
-          </div>
-        ` : ""}
+        <div id="pd-live-others-box" style="font-size: 12.5px; color: #64748b; margin-top: 14px; ${product.others ? '' : 'display:none;'}" class="dark:text-slate-400">
+          <strong>অন্যান্য তথ্য:</strong> <span id="pd-live-others-content">${product.others || ''}</span>
+        </div>
       </div>
 
       <!-- Customer Reviews & Rating Section -->

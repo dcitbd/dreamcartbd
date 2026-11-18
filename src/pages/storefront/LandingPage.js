@@ -1730,6 +1730,8 @@ if (typeof window !== 'undefined') {
       date: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dhaka' }),
       Date: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dhaka' }),
       created_at: new Date().toISOString(),
+      _local_created_ts: Date.now(),
+      _updated_ts: Date.now(),
       _sort_ts: Date.now(),
       items: [
         {
@@ -1753,34 +1755,25 @@ if (typeof window !== 'undefined') {
       submitBtn.innerHTML = `<span style="display:inline-block;animation:lpSpin 0.8s linear infinite;margin-right:8px;">⏳</span> অর্ডার কনফার্ম হচ্ছে...`;
     }
 
-    // 1. Instant 0ms Local Save so OrderSuccessPage & Admin Orders show it immediately
+    // 1. Instant 0ms Local Save & API dispatch so OrderSuccessPage & Admin Orders show it immediately at Index 0
     try {
       localStorage.setItem('dcbd_last_order', JSON.stringify(orderPayload));
-      const existingOrders = JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
-      existingOrders.unshift(orderPayload);
-      localStorage.setItem('dcbd_sheet_orders', JSON.stringify(existingOrders.slice(0, 200)));
     } catch (e) {}
 
-    // 2. Non-blocking API dispatch (waits at most 180ms so slow internet never freezes the user!)
-    const requestPromise = apiClient
-      .request('orders/create', orderPayload)
-      .then(res => {
-        if (res && res.data) {
-          const updated = { ...orderPayload, ...res.data };
-          try {
-            localStorage.setItem('dcbd_last_order', JSON.stringify(updated));
-          } catch (e) {}
-        }
-        return res;
-      })
-      .catch(err => {
-        console.warn('Background order sync queued:', err);
-        return null;
-      });
-
     await Promise.race([
-      requestPromise,
-      new Promise(resolve => setTimeout(resolve, 2500))
+      apiClient
+        .request('orders/create', orderPayload)
+        .then(res => {
+          if (res && res.data) {
+            const updated = { ...orderPayload, ...res.data };
+            try {
+              localStorage.setItem('dcbd_last_order', JSON.stringify(updated));
+            } catch (e) {}
+          }
+          return res;
+        })
+        .catch(() => null),
+      new Promise(resolve => setTimeout(resolve, 60))
     ]);
 
     try {

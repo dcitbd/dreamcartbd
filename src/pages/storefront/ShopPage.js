@@ -654,6 +654,16 @@ export async function renderShopPage(params = {}) {
   `;
 }
 
+if (typeof window !== 'undefined' && !window.__dcbdShopSyncListenerBound) {
+  window.__dcbdShopSyncListenerBound = true;
+  window.addEventListener('dcbd:products-synced', () => {
+    const p = (window.location.pathname || '').toLowerCase();
+    if ((p === '/products' || p === '/shop') && window.router && typeof window.router.resolve === 'function') {
+      window.router.resolve();
+    }
+  });
+}
+
 export const renderProductsPage = renderShopPage;
 export const renderProductListPage = renderShopPage;
 export default renderShopPage;

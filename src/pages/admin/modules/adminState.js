@@ -1008,14 +1008,18 @@ function initAdminGlobalState() {
       order_status: getV('edit-ord-status') || 'Processing'
     };
 
+    const updNow = Date.now();
+    updatedFields._updated_ts = updNow;
     let orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
-    orders = orders.map(o => String(o.order_id) === String(orderId) ? { ...o, ...updatedFields } : o);
+    orders = deduplicateAndSortOrdersNewestFirst(
+      orders.map(o => String(o.order_id) === String(orderId) ? { ...o, ...updatedFields, _updated_ts: updNow } : o)
+    );
     if (window.__adminState) window.__adminState.orders = orders;
     localStorage.setItem('dcbd_sheet_orders', JSON.stringify(orders));
 
     window.refreshAdminOrdersTableDOM();
     document.getElementById('modal-edit-order')?.classList.add('hidden');
-    await apiClient.request('orders/update', 'POST', updatedFields).catch(() => {});
+    apiClient.request('orders/update', 'POST', updatedFields).catch(() => {});
     if (toast && toast.show) {
       toast.show({ type: 'success', title: 'অর্ডার আপডেট সম্পন্ন', message: `অর্ডার #${orderId} লিস্ট এবং Google Sheet-এ আপডেট হয়েছে!` });
     }
@@ -1038,14 +1042,18 @@ function initAdminGlobalState() {
 
   window.updateOrderStatus = async function(orderId, newStatus) {
     try {
+      const updNow = Date.now();
       let orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
-      orders = orders.map(o => {
-        if (String(o.order_id) === String(orderId)) {
-          o.order_status = newStatus;
-          if (newStatus === 'Delivered') o.payment_status = 'Paid';
-        }
-        return o;
-      });
+      orders = deduplicateAndSortOrdersNewestFirst(
+        orders.map(o => {
+          if (String(o.order_id) === String(orderId)) {
+            o.order_status = newStatus;
+            o._updated_ts = updNow;
+            if (newStatus === 'Delivered') o.payment_status = 'Paid';
+          }
+          return o;
+        })
+      );
       if (window.__adminState) window.__adminState.orders = orders;
       localStorage.setItem('dcbd_sheet_orders', JSON.stringify(orders));
 
@@ -1057,7 +1065,7 @@ function initAdminGlobalState() {
       }
       window.refreshAdminOrdersTableDOM();
 
-      await apiClient.request('orders/update_status', 'POST', { order_id: orderId, status: newStatus });
+      apiClient.request('orders/update_status', 'POST', { order_id: orderId, status: newStatus }).catch(() => {});
       if (toast && toast.show) {
         toast.show({ type: 'success', title: 'স্ট্যাটাস আপডেট', message: `অর্ডার #${orderId} সফলভাবে "${newStatus}" করা হয়েছে এবং শিটে জমা হয়েছে।` });
       }
@@ -1365,6 +1373,8 @@ function initAdminGlobalState() {
       fraud_status: 'Safe (98%)',
       customer_rating: '5/5 ★',
       date: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dhaka' }),
+      _local_created_ts: Date.now(),
+      _updated_ts: Date.now(),
       _sort_ts: Date.now()
     };
 
@@ -1374,7 +1384,7 @@ function initAdminGlobalState() {
     localStorage.setItem('dcbd_sheet_orders', JSON.stringify(orders));
 
     window.refreshAdminOrdersTableDOM();
-    await apiClient.request('orders/create', 'POST', newOrder).catch(() => {});
+    apiClient.request('orders/create', 'POST', newOrder).catch(() => {});
 
     if (toast && toast.show) {
       toast.show({ type: 'success', title: 'অর্ডার লিস্ট ও শিটে জমা হয়েছে', message: `অর্ডার #${newOrder.order_id} (${items.length} টি পণ্য) সফলভাবে সংরক্ষিত হয়েছে!` });
@@ -1463,6 +1473,7 @@ function initAdminGlobalState() {
     const found = list.find(i => String(i.order_id) === String(incId));
     if (!found) return;
 
+    const nowTs = Date.now();
     const newOrder = {
       order_id: 'ORD-' + Math.floor(1000 + Math.random() * 9000) + '-' + Math.floor(100 + Math.random() * 900),
       customer_name: found.customer_name || 'গ্রাহক',
@@ -1477,11 +1488,14 @@ function initAdminGlobalState() {
       payment_method: 'Cash on Delivery',
       payment_status: 'Pending',
       order_status: 'Order Placed',
-      date: new Date().toISOString().slice(0, 10)
+      date: new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Dhaka' }),
+      _local_created_ts: nowTs,
+      _updated_ts: nowTs,
+      _sort_ts: nowTs
     };
 
     let orders = (window.__adminState && window.__adminState.orders) || JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
-    orders.unshift(newOrder);
+    orders = deduplicateAndSortOrdersNewestFirst([newOrder, ...(Array.isArray(orders) ? orders : [])]);
     if (window.__adminState) window.__adminState.orders = orders;
     localStorage.setItem('dcbd_sheet_orders', JSON.stringify(orders));
 
@@ -1491,7 +1505,7 @@ function initAdminGlobalState() {
 
     window.renderIncompleteOrdersTableDOM();
     window.refreshAdminOrdersTableDOM();
-    await apiClient.request('orders/create', 'POST', newOrder).catch(() => {});
+    apiClient.request('orders/create', 'POST', newOrder).catch(() => {});
     if (toast && toast.show) {
       toast.show({ type: 'success', title: 'অর্ডার কনফার্ম হয়েছে!', message: `অসম্পূর্ণ অর্ডারটি মূল অর্ডার লিস্ট এবং Orders শিটে জমা হয়েছে (#${newOrder.order_id})!` });
     }
