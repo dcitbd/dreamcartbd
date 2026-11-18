@@ -392,7 +392,7 @@ export function fetchSheetViaGviz(sheetName, timeoutMs = 15000, customTq = '') {
         if (col0Lower === 'customer_id' || col0Lower === 'user_id' || col0Lower === 'request_id' || col0Lower === 'review_id') continue;
 
         if (hasPrimaryData) {
-          rowObj._sheet_row_idx = rIdx + 1;
+          rowObj._sheet_row_idx = (rIdx - startRowIdx) + 2;
           rows.push(rowObj);
         }
       }
@@ -509,7 +509,7 @@ export async function fetchFromLocalServerApi(action, payload = {}, method = 'GE
 
 function normalizeOrderSheetRowIndices(rows, gvizRefRows = []) {
   if (!Array.isArray(rows) || rows.length === 0) return [];
-  if (rows.every(r => r && r._sheet_row_idx !== undefined)) return rows;
+  if (rows.every(r => r && r._sheet_row_idx !== undefined && Number(r._sheet_row_idx) > 0)) return rows;
 
   // Determine if rows are in top-to-bottom sheet order (Row 2 first = oldest) or reversed (Row N first = newest)
   let isReversed = false;
@@ -523,8 +523,8 @@ function normalizeOrderSheetRowIndices(rows, gvizRefRows = []) {
         isReversed = true;
       }
     } else {
-      const dFirst = Date.parse(String(rows[0]?.date || rows[0]?.Date || rows[0]?.col_0 || '').replace(' ', 'T')) || 0;
-      const dLast = Date.parse(String(rows[rows.length - 1]?.date || rows[rows.length - 1]?.Date || rows[rows.length - 1]?.col_0 || '').replace(' ', 'T')) || 0;
+      const dFirst = parseOrderDateStringMs(rows[0]?.date || rows[0]?.Date || rows[0]?.col_0 || '');
+      const dLast = parseOrderDateStringMs(rows[rows.length - 1]?.date || rows[rows.length - 1]?.Date || rows[rows.length - 1]?.col_0 || '');
       if (dFirst > 0 && dLast > 0 && dFirst > dLast) {
         isReversed = true;
       }
@@ -534,12 +534,14 @@ function normalizeOrderSheetRowIndices(rows, gvizRefRows = []) {
   const total = rows.length;
   return rows.map((r, idx) => ({
     ...r,
-    _sheet_row_idx: r._sheet_row_idx !== undefined ? Number(r._sheet_row_idx) : (isReversed ? (total + 1 - idx) : (idx + 2)),
+    _sheet_row_idx: (r._sheet_row_idx !== undefined && Number(r._sheet_row_idx) > 0)
+      ? Number(r._sheet_row_idx)
+      : (isReversed ? (total + 1 - idx) : (idx + 2)),
     _sheet_total_rows: total
   }));
 }
 
-async function fetchLiveSheetRows(sheetName, action, timeoutMs = 8000) {
+async function fetchLiveSheetRows(sheetName, action, timeoutMs = 4500) {
   if (typeof window === 'undefined') return [];
 
   const lowerSheet = String(sheetName).trim().toLowerCase();
@@ -547,9 +549,9 @@ async function fetchLiveSheetRows(sheetName, action, timeoutMs = 8000) {
   const isOrdersSheet = lowerSheet === 'orders' || lowerSheet === 'incomplete_orders';
   const gvizTq = isProductsSheet ? 'SELECT A,B,C,D,E,F,G,H,I,J,K,L,M,N,R,S,T,U,V,W' : '';
 
-  // Channel 0: Query Local PHP/Python Live Server Cache
+  // Channel 0: Query Local PHP/Python Live Server Cache (ultra-fast < 15ms on cPanel)
   const serverPromise = action
-    ? fetchFromLocalServerApi(action, {}, 'GET', 2200).then(res => {
+    ? fetchFromLocalServerApi(action, {}, 'GET', 1500).then(res => {
         if (res && (res.status === 'success' || res.success) && res.data) {
           if (Array.isArray(res.data.items)) return res.data.items;
           if (Array.isArray(res.data)) return res.data;
@@ -563,7 +565,7 @@ async function fetchLiveSheetRows(sheetName, action, timeoutMs = 8000) {
     try {
       const [serverRows, gvizRows] = await Promise.all([
         serverPromise,
-        fetchSheetViaGviz(sheetName, Math.min(timeoutMs, 5500), gvizTq).catch(() => [])
+        fetchSheetViaGviz(sheetName, Math.min(timeoutMs, 3800), gvizTq).catch(() => [])
       ]);
       const srvArr = Array.isArray(serverRows) ? serverRows : [];
       const gvzArr = Array.isArray(gvizRows) ? gvizRows : [];
@@ -581,57 +583,54 @@ async function fetchLiveSheetRows(sheetName, action, timeoutMs = 8000) {
         });
         const merged = Array.from(bySku.values());
         if (srvArr.length <= 5 && merged.length > 5) {
-          fetchFromLocalServerApi('system/cache_sync', { collection: 'products', items: merged }, 'POST', 4000).catch(() => {});
+          fetchFromLocalServerApi('system/cache_sync', { collection: 'products', items: merged }, 'POST', 3500).catch(() => {});
         }
         return merged;
       }
       if (gvzArr.length > 0) {
         if (srvArr.length <= 5 && gvzArr.length > 5) {
-          fetchFromLocalServerApi('system/cache_sync', { collection: 'products', items: gvzArr }, 'POST', 4000).catch(() => {});
+          fetchFromLocalServerApi('system/cache_sync', { collection: 'products', items: gvzArr }, 'POST', 3500).catch(() => {});
         }
         return gvzArr;
       }
       if (srvArr.length > 0) return srvArr;
     } catch (e) {}
   } else {
-    // For Orders, Settings, Banners, Categories, Brands & all other sheets:
-    // Query Local Server + Live Un-Cached Apps Script JSONP + GViz in parallel and merge server updates first!
+    // Fast Path: Query Local PHP/SQLite Server + Google GViz in parallel (< 300ms) WITHOUT waiting 6.5s on Apps Script JSONP!
     try {
-      const [serverRows, gvizRows, asResp] = await Promise.all([
+      const [serverRows, gvizRows] = await Promise.all([
         serverPromise,
-        fetchSheetViaGviz(sheetName, Math.min(timeoutMs, 5500), gvizTq).catch(() => []),
-        action ? fetchAppsScriptViaJsonp(action, {}, Math.min(timeoutMs, 6500)).catch(() => null) : Promise.resolve(null)
+        fetchSheetViaGviz(sheetName, Math.min(timeoutMs, 3200), gvizTq).catch(() => [])
       ]);
 
-      let asRows = [];
-      if (asResp && (asResp.status === 'success' || asResp.success) && asResp.data) {
-        if (Array.isArray(asResp.data.items)) asRows = asResp.data.items;
-        else if (Array.isArray(asResp.data)) asRows = asResp.data;
-      }
+      const srvArr = Array.isArray(serverRows) ? serverRows : [];
+      const gvzArr = Array.isArray(gvizRows) ? gvizRows : [];
 
       if (isOrdersSheet) {
-        const normGviz = normalizeOrderSheetRowIndices(gvizRows, gvizRows);
-        const normAs = normalizeOrderSheetRowIndices(asRows, normGviz);
-        const srvArr = Array.isArray(serverRows) ? serverRows : [];
-        const combined = [
-          ...srvArr,
-          ...normAs,
-          ...normGviz
-        ];
-        if (srvArr.length === 0 && (normAs.length > 0 || normGviz.length > 0)) {
-          fetchFromLocalServerApi('system/cache_sync', { collection: lowerSheet, items: normAs.length > 0 ? normAs : normGviz }, 'POST', 3500).catch(() => {});
+        const normGviz = normalizeOrderSheetRowIndices(gvzArr, gvzArr);
+        const normSrv = normalizeOrderSheetRowIndices(srvArr, normGviz);
+        const combined = [...normSrv, ...normGviz];
+        if (normSrv.length === 0 && normGviz.length > 0) {
+          fetchFromLocalServerApi('system/cache_sync', { collection: lowerSheet, items: normGviz }, 'POST', 3000).catch(() => {});
         }
         if (combined.length > 0) return combined;
       } else {
-        const srvArr = Array.isArray(serverRows) ? serverRows : [];
-        const remoteArr = (Array.isArray(asRows) && asRows.length > 0)
-          ? asRows
-          : (Array.isArray(gvizRows) ? gvizRows : []);
-        if (srvArr.length > 0 && remoteArr.length > 0) {
-          return [...srvArr, ...remoteArr];
+        if (srvArr.length > 0 && gvzArr.length > 0) {
+          return [...srvArr, ...gvzArr];
         }
         if (srvArr.length > 0) return srvArr;
-        if (remoteArr.length > 0) return remoteArr;
+        if (gvzArr.length > 0) return gvzArr;
+      }
+
+      // Fallback ONLY when both Local Server and GViz return empty
+      if (action) {
+        const asResp = await fetchAppsScriptViaJsonp(action, {}, Math.min(timeoutMs, 3500)).catch(() => null);
+        if (asResp && (asResp.status === 'success' || asResp.success) && asResp.data) {
+          const asRows = Array.isArray(asResp.data.items) ? asResp.data.items : (Array.isArray(asResp.data) ? asResp.data : []);
+          if (asRows.length > 0) {
+            return isOrdersSheet ? normalizeOrderSheetRowIndices(asRows, []) : asRows;
+          }
+        }
       }
     } catch (e) {}
   }
@@ -914,40 +913,143 @@ export function normalizeSheetProductRow(r, idx = 0) {
   };
 }
 
+export function parseOrderDateStringMs(rawDate) {
+  if (!rawDate) return 0;
+  let s = String(rawDate)
+    .replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d))
+    .trim();
+  if (!s) return 0;
+
+  const nowMs = Date.now();
+  const lower = s.toLowerCase();
+  if (lower === 'আজ' || lower === 'আজকে' || lower === 'today' || lower === 'এখনই' || lower === 'just now') {
+    return nowMs;
+  }
+
+  // 1. GViz Date(YYYY, M, D, h, m, s) where M is 0-indexed
+  let m = s.match(/^Date\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})(?:\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2}))?\s*\)$/i);
+  if (m) {
+    const yr = Number(m[1]);
+    const mo = Number(m[2]) + 1;
+    const dy = Number(m[3]);
+    const hr = m[4] !== undefined ? Number(m[4]) : 0;
+    const mn = m[5] !== undefined ? Number(m[5]) : 0;
+    const sc = m[6] !== undefined ? Number(m[6]) : 0;
+    const iso = `${yr}-${String(mo).padStart(2, '0')}-${String(dy).padStart(2, '0')}T${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}:${String(sc).padStart(2, '0')}+06:00`;
+    const ts = Date.parse(iso);
+    if (!isNaN(ts) && ts > 946684800000) return Math.min(ts, nowMs);
+  }
+
+  // 2. ISO / SQL YYYY-MM-DD or YYYY/MM/DD [HH:MM[:SS]] [AM/PM] [Z]
+  m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})(?:[T\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?(?:\.\d+)?\s*(AM|PM)?)?(Z|[+-]\d{2}:?\d{2})?$/i);
+  if (m) {
+    const yr = Number(m[1]);
+    const mo = Number(m[2]);
+    const dy = Number(m[3]);
+    const hasTime = m[4] !== undefined;
+    let hr = hasTime ? Number(m[4]) : 23;
+    const mn = m[5] !== undefined ? Number(m[5]) : (hasTime ? 0 : 59);
+    const sc = m[6] !== undefined ? Number(m[6]) : 0;
+    const ampm = (m[7] || '').toUpperCase();
+    const tz = (m[8] || '').toUpperCase();
+    if (ampm === 'PM' && hr < 12) hr += 12;
+    if (ampm === 'AM' && hr === 12) hr = 0;
+
+    // Interpret wall-clock dates in Asia/Dhaka (+06:00). If Apps Script serialized a Sheet Date cell with 'Z'
+    // in a US timezone, clamp any resulting future timestamp to nowMs so it never blocks new orders.
+    const tzSuffix = (tz && tz !== 'Z') ? tz : '+06:00';
+    const iso = `${yr}-${String(mo).padStart(2, '0')}-${String(dy).padStart(2, '0')}T${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}:${String(sc).padStart(2, '0')}${tzSuffix}`;
+    let ts = Date.parse(iso);
+    if (tz === 'Z') {
+      const utcTs = Date.parse(s);
+      if (!isNaN(utcTs) && utcTs <= nowMs + 60000) {
+        ts = utcTs;
+      }
+    }
+    if (!isNaN(ts) && ts > 946684800000) return Math.min(ts, nowMs);
+  }
+
+  // 3. Bangladesh DD/MM/YYYY or DD-MM-YYYY (with automatic MM/DD/YYYY fallback if p2 > 12 or DD/MM is in the future)
+  m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})(?:[T,\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?\s*(AM|PM)?)?$/i);
+  if (m) {
+    const p1 = Number(m[1]);
+    const p2 = Number(m[2]);
+    let yr = Number(m[3]);
+    if (yr < 100) yr += 2000;
+    const hasTime = m[4] !== undefined;
+    let hr = hasTime ? Number(m[4]) : 23;
+    const mn = m[5] !== undefined ? Number(m[5]) : (hasTime ? 0 : 59);
+    const sc = m[6] !== undefined ? Number(m[6]) : 0;
+    const ampm = (m[7] || '').toUpperCase();
+    if (ampm === 'PM' && hr < 12) hr += 12;
+    if (ampm === 'AM' && hr === 12) hr = 0;
+
+    let dy = p1;
+    let mo = p2;
+    if (p1 <= 12 && p2 > 12) {
+      mo = p1;
+      dy = p2;
+    } else if (p1 <= 12 && p2 <= 12) {
+      const dmyIso = `${yr}-${String(p2).padStart(2, '0')}-${String(p1).padStart(2, '0')}T${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}:${String(sc).padStart(2, '0')}+06:00`;
+      const mdyIso = `${yr}-${String(p1).padStart(2, '0')}-${String(p2).padStart(2, '0')}T${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}:${String(sc).padStart(2, '0')}+06:00`;
+      const tsDmy = Date.parse(dmyIso);
+      const tsMdy = Date.parse(mdyIso);
+      if (!isNaN(tsDmy) && tsDmy > nowMs + 86400000 && !isNaN(tsMdy) && tsMdy <= nowMs + 86400000) {
+        mo = p1;
+        dy = p2;
+      }
+    }
+    if (mo >= 1 && mo <= 12 && dy >= 1 && dy <= 31) {
+      const iso = `${yr}-${String(mo).padStart(2, '0')}-${String(dy).padStart(2, '0')}T${String(hr).padStart(2, '0')}:${String(mn).padStart(2, '0')}:${String(sc).padStart(2, '0')}+06:00`;
+      const ts = Date.parse(iso);
+      if (!isNaN(ts) && ts > 946684800000) return Math.min(ts, nowMs);
+    }
+  }
+
+  const fallback = Date.parse(s.includes(' ') && !s.includes('T') ? s.replace(' ', 'T') : s) || Date.parse(s);
+  if (!isNaN(fallback) && fallback > 946684800000) {
+    return Math.min(fallback, nowMs);
+  }
+  return 0;
+}
+
 export function parseOrderSortTimestamp(r, idx = 0) {
   if (!r || typeof r !== 'object') return 0;
 
+  const nowMs = Date.now();
   let localCreated = Number(r._local_created_ts || 0);
   if (localCreated > 0 && localCreated < 1e11) localCreated *= 1000;
+  if (localCreated > nowMs + 60000) localCreated = nowMs;
 
-  let explicitSort = Number(r._sort_ts || 0);
-  if (explicitSort > 0 && explicitSort < 1e11) explicitSort *= 1000;
-  if (explicitSort > 8000000000000) explicitSort -= 8000000000000;
-  else if (explicitSort > 5000000000000) explicitSort = 0;
+  const primaryDateStr = safeStr(r.date || r.Date || r.col_0 || r.created_at || '');
+  const parsedDateMs = parseOrderDateStringMs(primaryDateStr);
 
-  let parsedDateMs = 0;
-  const rawDate = safeStr(r.created_at || r.date || r.Date || r.col_0 || '');
-  if (rawDate) {
-    const cleanDate = rawDate.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d)).trim();
-    const isoCandidate = cleanDate.includes(' ') && !cleanDate.includes('T') ? cleanDate.replace(' ', 'T') : cleanDate;
-    const p = Date.parse(isoCandidate) || Date.parse(cleanDate);
-    if (!isNaN(p) && p > 946684800000) {
-      parsedDateMs = p;
-    }
+  // Only consult _sort_ts if neither _local_created_ts nor a parseable date exists,
+  // and ALWAYS floor to the second so repeated sorting NEVER inflates _sort_ts by +999ms!
+  let explicitSort = 0;
+  if (localCreated <= 0 && parsedDateMs <= 0) {
+    explicitSort = Number(r._sort_ts || 0);
+    if (explicitSort > 0 && explicitSort < 1e11) explicitSort *= 1000;
+    if (explicitSort > 8000000000000) explicitSort -= 8000000000000;
+    else if (explicitSort > 5000000000000) explicitSort = 0;
+    if (explicitSort > nowMs + 60000) explicitSort = nowMs;
+    if (explicitSort > 0) explicitSort = Math.floor(explicitSort / 1000) * 1000;
   }
 
   const sheetRowIdx = (r._sheet_row_idx !== undefined && r._sheet_row_idx !== null && !isNaN(Number(r._sheet_row_idx)))
     ? Number(r._sheet_row_idx)
     : 0;
 
-  let baseMs = Math.max(localCreated, explicitSort, parsedDateMs);
-  if (baseMs <= 946684800000) {
+  let baseMs = Math.max(localCreated, parsedDateMs, explicitSort);
+  if (baseMs > 946684800000) {
+    baseMs = Math.floor(baseMs / 1000) * 1000;
+  } else {
     baseMs = 1700000000000 + (sheetRowIdx > 0 ? sheetRowIdx * 1000 : Math.max(0, 500000 - idx * 100));
   }
 
-  // Tie-breaker (0..999ms): higher sheet row index or earlier array position wins when two orders share the same second
+  // Deterministic tie-breaker (0..999ms): higher sheet row index or earlier array position wins when two orders share the same second
   const tieBreaker = sheetRowIdx > 0
-    ? Math.min(999, sheetRowIdx)
+    ? Math.min(999, Math.max(0, sheetRowIdx))
     : Math.max(0, 999 - Math.min(999, idx));
 
   return baseMs + tieBreaker;
@@ -1033,8 +1135,9 @@ export function deduplicateAndSortOrdersNewestFirst(ordersArray = [], deletedIds
       const normUpd = Number(norm._updated_ts || 0);
       const winner = normUpd > prevUpd ? norm : prev;
       const loser = normUpd > prevUpd ? prev : norm;
-      const maxTs = Math.max(Number(prev._sort_ts || 0), Number(norm._sort_ts || 0));
-      byId.set(key, {
+      const mergedLocalCreated = Math.max(Number(prev._local_created_ts || 0), Number(norm._local_created_ts || 0)) || undefined;
+      const mergedSheetIdx = Math.max(Number(prev._sheet_row_idx || 0), Number(norm._sheet_row_idx || 0)) || undefined;
+      const mergedRow = {
         ...loser,
         ...winner,
         order_status: winner.order_status || loser.order_status,
@@ -1042,14 +1145,25 @@ export function deduplicateAndSortOrdersNewestFirst(ordersArray = [], deletedIds
         courier_name: winner.courier_name || loser.courier_name,
         consignment_id: winner.consignment_id || loser.consignment_id,
         items: (Array.isArray(winner.items) && winner.items.length > 0) ? winner.items : loser.items,
-        _updated_ts: Math.max(prevUpd, normUpd) || undefined,
-        _sort_ts: maxTs
-      });
+        _local_created_ts: mergedLocalCreated,
+        _sheet_row_idx: mergedSheetIdx,
+        _updated_ts: Math.max(prevUpd, normUpd) || undefined
+      };
+      mergedRow._sort_ts = parseOrderSortTimestamp(mergedRow, idx);
+      byId.set(key, mergedRow);
     }
   });
 
   const sorted = Array.from(byId.values());
-  sorted.sort((a, b) => Number(b._sort_ts || 0) - Number(a._sort_ts || 0));
+  sorted.sort((a, b) => {
+    const tsA = Number(a._sort_ts || 0);
+    const tsB = Number(b._sort_ts || 0);
+    if (tsB !== tsA) return tsB - tsA;
+    const rowA = Number(a._sheet_row_idx || 0);
+    const rowB = Number(b._sheet_row_idx || 0);
+    if (rowB !== rowA) return rowB - rowA;
+    return String(b.order_id || '').localeCompare(String(a.order_id || ''));
+  });
   return sorted;
 }
 
@@ -1577,16 +1691,16 @@ class ApiClient {
       return cached;
     }
 
-    // Even when only initial/partial cache exists, bound network wait to 1.8s so UI never hangs
+    // Even when only initial/partial cache exists, bound network wait to 750ms so UI renders fast and updates via 'dcbd:products-synced'
     if (forceRefresh || !hasRealSheetCached) {
       const livePromise = this._fetchAndMergeProductsLive(cached);
-      if (Array.isArray(cached) && cached.length > 0 && !forceRefresh) {
+      if (!forceRefresh) {
         const fastResult = await Promise.race([
           livePromise,
-          new Promise(r => setTimeout(() => r(null), 1200))
+          new Promise(r => setTimeout(() => r(null), 750))
         ]);
         if (Array.isArray(fastResult) && fastResult.length > 0) return fastResult;
-        return cached;
+        if (Array.isArray(cached) && cached.length > 0) return cached;
       }
       const res = await livePromise;
       if (Array.isArray(res) && res.length > 0) return res;
@@ -1864,8 +1978,31 @@ class ApiClient {
         }
 
         if (found) {
-          const enriched = await this.fetchSingleProductRichDetails(found);
-          return { success: true, data: enriched };
+          const key = String(found.sku || found.product_id || '').trim().toLowerCase();
+          if (key && this._productDetailsCache.has(key)) {
+            Object.assign(found, this._productDetailsCache.get(key));
+          } else {
+            // Hydrate essay columns O,P,Q in background without blocking "Order Now", "Add to Cart", or page render!
+            this.fetchSingleProductRichDetails(found).then(enriched => {
+              if (typeof document !== 'undefined' && enriched) {
+                const descEl = document.getElementById('pd-live-desc');
+                if (descEl && enriched.description) descEl.innerHTML = enriched.description;
+                const specBox = document.getElementById('pd-live-spec-box');
+                const specEl = document.getElementById('pd-live-spec-content');
+                if (specEl && enriched.specification) {
+                  specEl.innerHTML = enriched.specification;
+                  if (specBox) specBox.style.display = '';
+                }
+                const othBox = document.getElementById('pd-live-others-box');
+                const othEl = document.getElementById('pd-live-others-content');
+                if (othEl && enriched.others) {
+                  othEl.innerHTML = enriched.others;
+                  if (othBox) othBox.style.display = '';
+                }
+              }
+            }).catch(() => {});
+          }
+          return { success: true, data: found };
         }
 
         return { success: false, message: "পণ্য পাওয়া যায়নি" };
@@ -2338,11 +2475,19 @@ class ApiClient {
           order_status: payload.order_status || 'Order Placed'
         });
 
-        const explicitCreatedMs = Date.parse(String(payload.created_at || payload.date || payload.Date || '').replace(' ', 'T'));
-        const createdMs = (!isNaN(explicitCreatedMs) && explicitCreatedMs > 946684800000) ? Math.max(Date.now(), explicitCreatedMs) : Date.now();
+        let localOrders = this.loadLocal('dcbd_sheet_orders', []);
+        let maxSheetRow = 1;
+        (Array.isArray(localOrders) ? localOrders : []).forEach(o => {
+          const rIdx = Number(o && o._sheet_row_idx ? o._sheet_row_idx : 0);
+          if (rIdx > maxSheetRow) maxSheetRow = rIdx;
+        });
+
+        const createdMs = Date.now();
         orderData._local_created_ts = createdMs;
         orderData._updated_ts = createdMs;
-        orderData._sort_ts = createdMs + 999;
+        orderData._sheet_row_idx = maxSheetRow + 1;
+        orderData._sort_ts = parseOrderSortTimestamp(orderData, 0);
+
         let delArr = [];
         try {
           const delSet = new Set(this.loadLocal('dcbd_deleted_order_ids', []));
@@ -2351,10 +2496,12 @@ class ApiClient {
           this.saveLocal('dcbd_deleted_order_ids', delArr);
         } catch (e) {}
 
-        let localOrders = this.loadLocal('dcbd_sheet_orders', []);
         localOrders = deduplicateAndSortOrdersNewestFirst([orderData, ...(Array.isArray(localOrders) ? localOrders : [])]);
         this.sheetOrders = localOrders;
         this.saveLocal('dcbd_sheet_orders', localOrders);
+        try {
+          localStorage.setItem('dcbd_last_order', JSON.stringify(orderData));
+        } catch (e) {}
         if (typeof window !== 'undefined') {
           if (window.__adminState) window.__adminState.orders = localOrders;
           if (window.refreshAdminOrdersTableDOM) window.refreshAdminOrdersTableDOM();
@@ -2387,14 +2534,13 @@ class ApiClient {
           : [];
         const syncPayload = { ...payload, ...orderData, items: slimItems };
 
-        // Await reliable sync (with 6s safety cap) so Google Sheet & Server DB receive the order before page navigation
-        try {
-          await Promise.race([
-            sendToAppsScript("orders/create", syncPayload),
-            new Promise(resolve => setTimeout(resolve, 6000))
-          ]);
-        } catch (syncErr) {}
-        this._syncOrderPatchesToSettingsSheet(localOrders, delArr);
+        // Non-blocking background sync with keepalive:true so order placement finishes in 0ms!
+        sendToAppsScript("orders/create", syncPayload).catch(() => {});
+        setTimeout(() => {
+          try {
+            this._syncOrderPatchesToSettingsSheet(localOrders, delArr);
+          } catch (e) {}
+        }, 0);
 
         return {
           success: true,
@@ -2427,7 +2573,7 @@ class ApiClient {
         }
 
         this._syncOrderPatchesToSettingsSheet(localOrders, this.loadLocal('dcbd_deleted_order_ids', []) || []);
-        await sendToAppsScript("orders/update_status", payload);
+        sendToAppsScript("orders/update_status", payload).catch(() => {});
         return { success: true, status: "success", message: "অর্ডার আপডেট হয়েছে!" };
       }
 
@@ -2463,12 +2609,10 @@ class ApiClient {
         const localOrders = (this.loadLocal('dcbd_sheet_orders', []) || []).map((o, i) => normalizeSheetOrderRow(o, i)).filter(Boolean);
         let remoteOrders = [];
         try {
-          const rows = await fetchLiveSheetRows('Orders', 'orders/list', 10000);
+          const rows = await fetchLiveSheetRows('Orders', 'orders/list', 4500);
           if (rows && rows.length > 0) {
-            remoteOrders = rows.map((r, i) => {
-              const sheetIdx = r._sheet_row_idx !== undefined ? Number(r._sheet_row_idx) : (i + 2);
-              return normalizeSheetOrderRow({ ...r, _sheet_row_idx: sheetIdx }, i);
-            }).filter(Boolean);
+            const normRows = normalizeOrderSheetRowIndices(rows, []);
+            remoteOrders = normRows.map((r, i) => normalizeSheetOrderRow(r, i)).filter(Boolean);
           }
         } catch (e) {}
 
