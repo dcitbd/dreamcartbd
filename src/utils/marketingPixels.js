@@ -1127,7 +1127,7 @@ export function installUniversalBilingualSearchEngine() {
         ${matches.map(p => {
           const pName = p.name || p.p_name || 'পণ্য';
           const pPrice = Number(p.selling_price || 0);
-          const pThumb = p.thumbnail || (Array.isArray(p.images) && p.images[0]) || '/public/icon/logo.png';
+          const pThumb = p.thumbnail || (Array.isArray(p.images) && p.images[0]) || '/icon/logo.png';
           const pSlug = p.slug || p.product_id || p.sku || '';
           return `
             <div
@@ -1138,7 +1138,7 @@ export function installUniversalBilingualSearchEngine() {
                 src="${pThumb}"
                 alt="${pName}"
                 class="w-12 h-12 rounded-xl object-cover border border-slate-700 flex-shrink-0 bg-white"
-                onerror="this.src='/public/icon/logo.png'"
+                onerror="this.src='/icon/logo.png'"
               />
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-1.5">

@@ -40,6 +40,64 @@ import {
 
 installSafeLocalStorage();
 
+if (typeof window !== 'undefined') {
+  window.getDcbdLogoUrl = function(rawUrl) {
+    const base = window.__APP_BASE__ || '';
+    const primaryLogo = base + '/icon/logo.png';
+    if (!rawUrl || typeof rawUrl !== 'string') return primaryLogo;
+    const u = rawUrl.trim();
+    if (!u || u === 'null' || u === 'undefined' || u.includes('encrypted-tbn') || u.includes('jijistatic')) {
+      return primaryLogo;
+    }
+    if (
+      u === '/public/icon/logo.png' || u === 'public/icon/logo.png' || u === './public/icon/logo.png' ||
+      u === '/icon/logo.png' || u === 'icon/logo.png' || u === './icon/logo.png' || u === 'logo.png'
+    ) {
+      return primaryLogo;
+    }
+    return u;
+  };
+
+  window.handleDcbdLogoError = function(img) {
+    if (!img) return;
+    try {
+      const base = window.__APP_BASE__ || '';
+      const candidates = [
+        base + '/icon/logo.png',
+        '/icon/logo.png',
+        base + '/public/icon/logo.png',
+        '/public/icon/logo.png',
+        base + '/favicon.ico',
+        '/favicon.ico'
+      ];
+      let step = parseInt(img.getAttribute('data-dcbd-logo-step') || '0', 10);
+      const currentAttr = img.getAttribute('src') || '';
+      while (step < candidates.length && candidates[step] === currentAttr) {
+        step++;
+      }
+      if (step >= candidates.length) {
+        img.onerror = null;
+        return;
+      }
+      img.setAttribute('data-dcbd-logo-step', String(step + 1));
+      img.src = candidates[step];
+    } catch (e) {
+      img.onerror = null;
+    }
+  };
+
+  window.addEventListener('error', function(ev) {
+    const t = ev && ev.target;
+    if (t && t.tagName === 'IMG') {
+      const src = t.getAttribute('src') || '';
+      if (src.includes('logo.png') || t.classList.contains('header-logo-img') || (t.closest && t.closest('.ft-logo-box'))) {
+        window.handleDcbdLogoError(t);
+      }
+    }
+  }, true);
+}
+
+
 
 function injectFloatingActionStyles() {
   if (typeof document === 'undefined') return;

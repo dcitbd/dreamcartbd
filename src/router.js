@@ -791,7 +791,7 @@ export function installAdminOrdersVisitorsCustomersReviewsUpgrade() {
         const safeSku = sku.replace(/'/g, "\\'");
         const name = String(p.name || p.p_name || 'পণ্য').trim();
         const price = Number(p.selling_price || p.price || 0);
-        const thumb = p.thumbnail || (Array.isArray(p.images) && p.images[0]) || '/public/icon/logo.png';
+        const thumb = p.thumbnail || (Array.isArray(p.images) && p.images[0]) || '/icon/logo.png';
         const isSelected = selectedSku && selectedSku.toLowerCase() === sku.toLowerCase();
 
         return `
@@ -799,7 +799,7 @@ export function installAdminOrdersVisitorsCustomersReviewsUpgrade() {
             onclick="window.selectProductForAdminReview('${safeSku}')"
             class="p-2 rounded-xl border ${isSelected ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900'} flex items-center justify-between gap-2 hover:border-emerald-500 cursor-pointer transition">
             <div class="flex items-center gap-2.5 min-w-0">
-              <img src="${thumb}" class="w-9 h-9 rounded-lg object-cover border flex-shrink-0" onerror="this.src='/public/icon/logo.png';" />
+              <img src="${thumb}" class="w-9 h-9 rounded-lg object-cover border flex-shrink-0" onerror="this.src='/icon/logo.png';" />
               <div class="min-w-0">
                 <div class="font-bold text-[11px] text-slate-900 dark:text-white truncate">${name}</div>
                 <div class="text-[10px] text-slate-400 font-mono">SKU: <strong class="text-emerald-600">${sku}</strong> • ৳${price}</div>
@@ -828,7 +828,7 @@ export function installAdminOrdersVisitorsCustomersReviewsUpgrade() {
     const sku = String(found.sku || found.product_id || '').trim();
     const name = String(found.name || found.p_name || '').trim();
     const price = Number(found.selling_price || found.price || 0);
-    const thumb = found.thumbnail || (Array.isArray(found.images) && found.images[0]) || '/public/icon/logo.png';
+    const thumb = found.thumbnail || (Array.isArray(found.images) && found.images[0]) || '/icon/logo.png';
 
     const skuInp = document.getElementById('adm-rev-product-sku');
     const prodInp = document.getElementById('adm-rev-product');
@@ -845,7 +845,7 @@ export function installAdminOrdersVisitorsCustomersReviewsUpgrade() {
       cardBox.innerHTML = `
         <div class="p-2.5 rounded-xl border-2 border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 flex items-center justify-between gap-2">
           <div class="flex items-center gap-2.5 min-w-0">
-            <img src="${thumb}" class="w-10 h-10 rounded-xl object-cover border flex-shrink-0" onerror="this.src='/public/icon/logo.png';" />
+            <img src="${thumb}" class="w-10 h-10 rounded-xl object-cover border flex-shrink-0" onerror="this.src='/icon/logo.png';" />
             <div class="min-w-0">
               <div class="text-[10px] font-black text-emerald-700 dark:text-emerald-300">✓ নির্বাচিত ওয়েবসাইট পণ্য:</div>
               <div class="font-bold text-xs text-slate-900 dark:text-white truncate">${name}</div>
