@@ -31,16 +31,16 @@ foreach ([DCBD_STORAGE_DIR, DCBD_CACHE_DIR, DCBD_LOGS_DIR] as $_dir) {
 define('DCBD_SPREADSHEET_ID', '1BGi8IXV6S7uXDi4IaR_sCJYhtpfzyLGuldo4NnGVmR8');
 define('DCBD_APPS_SCRIPT_URL', 'https://script.google.com/macros/s/AKfycbwflHuBqMKWpKPTTVNY-grU_dnNphwELXbk6Hn-wcBjxJk4xvqScmT2n8i3ZQCStMI3/exec');
 define('DCBD_SITE_ORIGIN', 'https://dreamcartbd.com');
-define('DCBD_VERSION', '5.0.0-LIVE-WEB-TURBO');
+define('DCBD_VERSION', '5.6.0-LIVE-WEB-TURBO');
 
 // Cache TTL Settings (in seconds) for < 0.5ms Local Read + Live Background Sync
-define('DCBD_CACHE_TTL_PRODUCTS', 60);
-define('DCBD_CACHE_TTL_CATEGORIES', 120);
-define('DCBD_CACHE_TTL_BRANDS', 120);
-define('DCBD_CACHE_TTL_BANNERS', 120);
-define('DCBD_CACHE_TTL_SETTINGS', 120);
-define('DCBD_CACHE_TTL_ORDERS', 15);
-define('DCBD_CACHE_TTL_DEFAULT', 60);
+define('DCBD_CACHE_TTL_PRODUCTS', 300);
+define('DCBD_CACHE_TTL_CATEGORIES', 600);
+define('DCBD_CACHE_TTL_BRANDS', 600);
+define('DCBD_CACHE_TTL_BANNERS', 600);
+define('DCBD_CACHE_TTL_SETTINGS', 600);
+define('DCBD_CACHE_TTL_ORDERS', 60);
+define('DCBD_CACHE_TTL_DEFAULT', 300);
 
 // Exact 22+ Google Sheet Names Mapping
 $GLOBALS['DCBD_SHEET_MAP'] = [

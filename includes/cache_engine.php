@@ -184,44 +184,146 @@ class DcbdCacheEngine {
     }
 
     /**
-     * Compute unified chronological timestamp in milliseconds for Order sorting (Newest First!)
+     * Parse any Bangladesh / Google Sheets date string into epoch milliseconds (clamped to current time)
+     */
+    public static function parseOrderDateToMs(string $rawDate, int $nowMs = 0): int {
+        if ($nowMs <= 0) {
+            $nowMs = (int)round(microtime(true) * 1000);
+        }
+        $dateStr = trim($rawDate);
+        if ($dateStr === '') {
+            return 0;
+        }
+        if (in_array($dateStr, ['আজকে', 'আজ', 'এইমাত্র', 'সম্প্রতি'], true)) {
+            return $nowMs;
+        }
+
+        $bnDigits = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
+        $enDigits = ['0','1','2','3','4','5','6','7','8','9'];
+        $clean = trim(str_replace($bnDigits, $enDigits, $dateStr));
+
+        // 1. GViz Date(YYYY, M, D, h, m, s) where M is 0-indexed
+        if (preg_match('/^Date\(\s*(\d{4})\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})(?:\s*,\s*(\d{1,2})\s*,\s*(\d{1,2})(?:\s*,\s*(\d{1,2}))?)?\s*\)/i', $clean, $m)) {
+            $yr  = (int)$m[1];
+            $mon = ((int)$m[2]) + 1;
+            $day = (int)$m[3];
+            $hr  = isset($m[4]) ? (int)$m[4] : 0;
+            $min = isset($m[5]) ? (int)$m[5] : 0;
+            $sec = isset($m[6]) ? (int)$m[6] : 0;
+            $ts  = @strtotime(sprintf('%04d-%02d-%02d %02d:%02d:%02d', $yr, $mon, $day, $hr, $min, $sec));
+            if ($ts !== false && $ts > 946684800) {
+                $ms = $ts * 1000;
+                return $ms > ($nowMs + 60000) ? $nowMs : $ms;
+            }
+        }
+
+        // 2. DD/MM/YYYY or MM/DD/YYYY (with optional time)
+        if (preg_match('/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(.+))?$/', $clean, $m)) {
+            $p1 = (int)$m[1];
+            $p2 = (int)$m[2];
+            $yr = (int)$m[3];
+            $timeTail = isset($m[4]) && trim($m[4]) !== '' ? (' ' . trim($m[4])) : '';
+            if ($p1 > 12) {
+                $day = $p1;
+                $mon = $p2;
+            } elseif ($p2 > 12) {
+                $mon = $p1;
+                $day = $p2;
+            } else {
+                // Both <= 12: prefer DD/MM/YYYY (Bangladesh standard) unless DD/MM is in the future
+                $dmyTs = @strtotime(sprintf('%04d-%02d-%02d', $yr, $p2, $p1) . $timeTail);
+                $mdyTs = @strtotime(sprintf('%04d-%02d-%02d', $yr, $p1, $p2) . $timeTail);
+                $dmyMs = ($dmyTs !== false) ? ($dmyTs * 1000) : 0;
+                $mdyMs = ($mdyTs !== false) ? ($mdyTs * 1000) : 0;
+                if ($mdyMs > ($nowMs + 60000) && $dmyMs > 0 && $dmyMs <= ($nowMs + 60000)) {
+                    $day = $p1;
+                    $mon = $p2;
+                } elseif ($dmyMs > ($nowMs + 60000) && $mdyMs > 0 && $mdyMs <= ($nowMs + 60000)) {
+                    $mon = $p1;
+                    $day = $p2;
+                } else {
+                    $day = $p1;
+                    $mon = $p2;
+                }
+            }
+            $ts = @strtotime(sprintf('%04d-%02d-%02d', $yr, $mon, $day) . $timeTail);
+            if ($ts !== false && $ts > 946684800) {
+                $ms = $ts * 1000;
+                return $ms > ($nowMs + 60000) ? $nowMs : $ms;
+            }
+        }
+
+        // 3. ISO string with trailing Z from Google Apps Script getValues() in US sheet timezone
+        if (preg_match('/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})(?:\.\d+)?Z$/i', $clean, $m)) {
+            $isoTs = @strtotime($clean);
+            $localWallTs = @strtotime($m[1] . ' ' . $m[2]);
+            $isoMs = ($isoTs !== false) ? ($isoTs * 1000) : 0;
+            $wallMs = ($localWallTs !== false) ? ($localWallTs * 1000) : 0;
+            if ($isoMs > ($nowMs + 60000) && $wallMs > 0) {
+                return $wallMs > ($nowMs + 60000) ? $nowMs : $wallMs;
+            }
+            if ($isoMs > 0) {
+                return $isoMs > ($nowMs + 60000) ? $nowMs : $isoMs;
+            }
+        }
+
+        // 4. Standard YYYY-MM-DD HH:mm:ss or general strtotime
+        $ts = @strtotime($clean);
+        if ($ts !== false && $ts > 946684800 && $ts < 4102444800) {
+            $ms = $ts * 1000;
+            return $ms > ($nowMs + 60000) ? $nowMs : $ms;
+        }
+        return 0;
+    }
+
+    /**
+     * Compute idempotent unified chronological timestamp in milliseconds for Order sorting (Newest First!)
      */
     public static function computeOrderSortTimestamp(array $r, int $idx = 0): int {
+        $nowMs = (int)round(microtime(true) * 1000);
+
         $localMs = isset($r['_local_created_ts']) ? (int)$r['_local_created_ts'] : 0;
         if ($localMs > 0 && $localMs < 100000000000) {
             $localMs *= 1000;
         }
-
-        $explicitMs = isset($r['_sort_ts']) ? (int)$r['_sort_ts'] : 0;
-        if ($explicitMs > 0 && $explicitMs < 100000000000) {
-            $explicitMs *= 1000;
-        }
-        // Normalize legacy 5000000000000 / 8000000000000 offsets if present
-        if ($explicitMs >= 8000000000000) {
-            $explicitMs -= 8000000000000;
-        } elseif ($explicitMs >= 5000000000000) {
-            $explicitMs = 0;
+        if ($localMs > ($nowMs + 60000)) {
+            $localMs = $nowMs;
         }
 
-        $parsedDateMs = 0;
-        $dateStr = trim((string)($r['created_at'] ?? $r['date'] ?? $r['Date'] ?? $r['createdAt'] ?? $r['col_0'] ?? ''));
-        if ($dateStr !== '') {
-            // Convert Bengali digits if any
-            $bnDigits = ['০','১','২','৩','৪','৫','৬','৭','৮','৯'];
-            $enDigits = ['0','1','2','3','4','5','6','7','8','9'];
-            $cleanDate = str_replace($bnDigits, $enDigits, $dateStr);
-            $ts = @strtotime($cleanDate);
-            if ($ts !== false && $ts > 1577836800 && $ts < 4102444800) {
-                $parsedDateMs = $ts * 1000;
+        $dateStr = trim((string)($r['date'] ?? $r['Date'] ?? $r['created_at'] ?? $r['createdAt'] ?? $r['col_0'] ?? ''));
+        $parsedDateMs = self::parseOrderDateToMs($dateStr, $nowMs);
+
+        // Only fall back to _sort_ts if neither _local_created_ts nor a valid date exists (prevents +999ms runaway drift)
+        $baseMs = max($localMs, $parsedDateMs);
+        if ($baseMs <= 946684800000) {
+            $explicitMs = isset($r['_sort_ts']) ? (int)$r['_sort_ts'] : 0;
+            if ($explicitMs > 0 && $explicitMs < 100000000000) {
+                $explicitMs *= 1000;
             }
+            if ($explicitMs >= 8000000000000) {
+                $explicitMs -= 8000000000000;
+            } elseif ($explicitMs >= 5000000000000) {
+                $explicitMs = 0;
+            }
+            if ($explicitMs > ($nowMs + 60000)) {
+                $explicitMs = 0;
+            }
+            $baseMs = $explicitMs;
         }
 
-        $baseMs = max($localMs, $explicitMs, $parsedDateMs);
         $sheetRowIdx = isset($r['_sheet_row_idx']) ? (int)$r['_sheet_row_idx'] : 0;
 
-        if ($baseMs > 1577836800000) {
-            $tieBreaker = $sheetRowIdx > 0 ? ($sheetRowIdx % 1000) : max(0, 999 - ($idx % 1000));
-            return $baseMs + $tieBreaker;
+        if ($baseMs > 946684800000) {
+            // Floor to whole second before adding tieBreaker so repeated calls are 100% idempotent!
+            $baseSecMs = (int)(floor($baseMs / 1000) * 1000);
+            if ($localMs > 0 && $sheetRowIdx <= 0) {
+                $tieBreaker = 999;
+            } elseif ($sheetRowIdx > 0) {
+                $tieBreaker = min(998, $sheetRowIdx % 999);
+            } else {
+                $tieBreaker = max(0, 998 - ($idx % 998));
+            }
+            return $baseSecMs + $tieBreaker;
         }
 
         // Fallback for undated legacy sheet rows: higher _sheet_row_idx = newer
@@ -343,7 +445,15 @@ class DcbdCacheEngine {
                 if (empty($merged['consignment_id']) && !empty($loser['consignment_id'])) {
                     $merged['consignment_id'] = $loser['consignment_id'];
                 }
-                $merged['_sort_ts'] = max((int)($existing['_sort_ts'] ?? 0), (int)($norm['_sort_ts'] ?? 0));
+                $maxLocalTs = max((int)($existing['_local_created_ts'] ?? 0), (int)($norm['_local_created_ts'] ?? 0));
+                if ($maxLocalTs > 0) {
+                    $merged['_local_created_ts'] = $maxLocalTs;
+                }
+                $maxSheetRow = max((int)($existing['_sheet_row_idx'] ?? 0), (int)($norm['_sheet_row_idx'] ?? 0));
+                if ($maxSheetRow > 0) {
+                    $merged['_sheet_row_idx'] = $maxSheetRow;
+                }
+                $merged['_sort_ts'] = self::computeOrderSortTimestamp($merged, 0);
                 $merged['_updated_ts'] = max($exUpd, $nmUpd);
                 $byId[$key] = $merged;
             }
@@ -351,13 +461,22 @@ class DcbdCacheEngine {
 
         $result = array_values($byId);
         usort($result, function ($a, $b) {
-            $tsA = (int)($a['_sort_ts'] ?? 0);
-            $tsB = (int)($b['_sort_ts'] ?? 0);
+            $rowA = (int)($a['_sheet_row_idx'] ?? 0);
+            $rowB = (int)($b['_sheet_row_idx'] ?? 0);
+            $tsA  = (int)($a['_sort_ts'] ?? 0);
+            $tsB  = (int)($b['_sort_ts'] ?? 0);
+
+            // If both orders are on the same calendar day (within 24h) and both have sheet row indices, higher sheet row is newer
+            if ($rowA > 0 && $rowB > 0 && $rowA !== $rowB && abs($tsA - $tsB) < 86400000) {
+                $locA = (int)($a['_local_created_ts'] ?? 0);
+                $locB = (int)($b['_local_created_ts'] ?? 0);
+                if ($locA === 0 && $locB === 0) {
+                    return $rowB <=> $rowA;
+                }
+            }
             if ($tsA !== $tsB) {
                 return $tsB <=> $tsA; // Strictly Descending (Newest order ALWAYS at index 0!)
             }
-            $rowA = (int)($a['_sheet_row_idx'] ?? 0);
-            $rowB = (int)($b['_sheet_row_idx'] ?? 0);
             if ($rowA !== $rowB) {
                 return $rowB <=> $rowA;
             }

@@ -1945,6 +1945,13 @@ function getSheetDataAsJson(ss, sheetName, opts) {
       var rawH = String(headers[h] || ("col_" + h)).trim();
       var key = rawH.toLowerCase().replace(/[^a-z0-9_]/g, "_");
       var cellVal = row[h];
+      if (cellVal instanceof Date) {
+        try {
+          cellVal = Utilities.formatDate(cellVal, "Asia/Dhaka", "yyyy-MM-dd HH:mm:ss");
+        } catch (dateErr) {
+          cellVal = cellVal.toISOString();
+        }
+      }
       // Omit huge essay fields on compact catalog list so JSONP payload stays < 500 KB
       if (isCompactProducts && (h === 14 || h === 15 || h === 16)) {
         cellVal = "";
