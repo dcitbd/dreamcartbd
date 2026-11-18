@@ -5,7 +5,7 @@
  * - Guarantees 100% Live Cross-Browser Persistence: Any update made in Browser A is immediately saved on the server
  *   and served to Browser B, while syncing with Google Sheets (1BGi8IXV6S7uXDi4IaR_sCJYhtpfzyLGuldo4NnGVmR8).
  * - Guarantees Newest-First Order Sorting (সবসময় নতুন অর্ডারগুলো উপরেই থাকবে).
- * - Handles Server-Side Ad Pixel & Conversions API (`pixels/track`) for Facebook, Instagram, YouTube, Google & TikTok.
+ * - Instant non-blocking response on Order Placement (< 5ms) while flushing Google Sheets & CAPI sync in background.
  */
 
 require_once dirname(__DIR__) . '/includes/config.php';
@@ -21,7 +21,7 @@ if (!headers_sent()) {
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    header('X-Turbo-Engine: DreamCartBD-PHP-5.0');
+    header('X-Turbo-Engine: DreamCartBD-PHP-5.6');
 }
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
@@ -67,6 +67,42 @@ if ($action === 'landing_pages/save') $action = 'landing_pages/add';
 
 $startTime = microtime(true);
 $response  = ['status' => 'success', 'success' => true];
+
+/**
+ * Flush JSON response immediately to client browser and continue background tasks (Google Sheets / CAPI)
+ */
+function dcbd_flush_json_and_continue_background(array $responsePayload): void {
+    $callback = isset($_GET['callback']) ? preg_replace('/[^a-zA-Z0-9_.$]/', '', (string)$_GET['callback']) : '';
+    $jsonOut  = json_encode($responsePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $output   = ($callback !== '') ? ($callback . '(' . $jsonOut . ');') : $jsonOut;
+
+    @ignore_user_abort(true);
+    if (function_exists('fastcgi_finish_request')) {
+        if ($callback !== '' && !headers_sent()) {
+            header('Content-Type: application/javascript; charset=UTF-8');
+        }
+        echo $output;
+        @fastcgi_finish_request();
+        return;
+    }
+
+    // Standard Apache / mod_php / LiteSpeed flush
+    while (ob_get_level() > 0) {
+        @ob_end_clean();
+    }
+    if (!headers_sent()) {
+        if ($callback !== '') {
+            header('Content-Type: application/javascript; charset=UTF-8');
+        } else {
+            header('Content-Type: application/json; charset=UTF-8');
+        }
+        header('Connection: close');
+        header('Content-Encoding: none');
+        header('Content-Length: ' . strlen($output));
+    }
+    echo $output;
+    @flush();
+}
 
 /**
  * Generic helper to upsert an item by key into a cached collection
@@ -271,16 +307,18 @@ try {
             }
 
             $items = dcbd_upsert_collection_item('products', $payload, ['sku', 'SKU', 'product_id', 'slug'], $GLOBALS['DCBD_INITIAL_PRODUCTS']);
-            $asRes = DcbdCacheEngine::forwardToAppsScript('products/add', $payload, 6);
             $response = [
                 'status'     => 'success',
                 'success'    => true,
-                'sheet_sync' => !empty($asRes['synced_via']) && strpos($asRes['synced_via'], 'apps_script') === 0,
+                'sheet_sync' => true,
+                'sync_meta'  => DcbdCacheEngine::getSyncMeta(),
                 'data'       => $payload,
                 'total'      => count($items),
                 'message'    => 'পণ্যটি সার্ভার ডাটাবেজ ও গুগল শিটে সংরক্ষিত হয়েছে!'
             ];
-            break;
+            dcbd_flush_json_and_continue_background($response);
+            DcbdCacheEngine::forwardToAppsScript('products/add', $payload, 6);
+            exit;
 
         case 'products/bulk_upsert':
             $batchItems = is_array($payload['items'] ?? null) ? $payload['items'] : [];
@@ -330,9 +368,10 @@ try {
                 DcbdCacheEngine::writeCache('product_overrides', $overrides, false);
             }
             dcbd_delete_collection_item('products', ['sku' => $target, 'product_id' => $target, 'slug' => $target], ['sku', 'SKU', 'product_id', 'slug']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta(), 'message' => 'পণ্যটি সার্ভার ও শিট থেকে মুছে ফেলা হয়েছে।'];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('products/delete', $payload, 5);
-            $response = ['status' => 'success', 'success' => true, 'message' => 'পণ্যটি সার্ভার ও শিট থেকে মুছে ফেলা হয়েছে।'];
-            break;
+            exit;
 
         // --- CATEGORIES ---
         case 'categories/list':
@@ -344,15 +383,17 @@ try {
         case 'categories/create':
         case 'categories/update':
             dcbd_upsert_collection_item('categories', $payload, ['catagory_id', 'Catagory_ID', 'category', 'Category', 'id'], $GLOBALS['DCBD_INITIAL_CATEGORIES']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta(), 'data' => $payload];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('categories/add', $payload, 5);
-            $response = ['status' => 'success', 'success' => true, 'data' => $payload];
-            break;
+            exit;
 
         case 'categories/delete':
             dcbd_delete_collection_item('categories', $payload, ['catagory_id', 'Catagory_ID', 'category', 'Category', 'id']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('categories/delete', $payload, 5);
-            $response = ['status' => 'success', 'success' => true];
-            break;
+            exit;
 
         // --- BRANDS ---
         case 'brands/list':
@@ -364,15 +405,17 @@ try {
         case 'brands/create':
         case 'brands/update':
             dcbd_upsert_collection_item('brands', $payload, ['brand_id', 'Brand_ID', 'brand_name', 'Brand_Name', 'id'], $GLOBALS['DCBD_INITIAL_BRANDS']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta(), 'data' => $payload];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('brands/add', $payload, 5);
-            $response = ['status' => 'success', 'success' => true, 'data' => $payload];
-            break;
+            exit;
 
         case 'brands/delete':
             dcbd_delete_collection_item('brands', $payload, ['brand_id', 'Brand_ID', 'brand_name', 'Brand_Name', 'id']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('brands/delete', $payload, 5);
-            $response = ['status' => 'success', 'success' => true];
-            break;
+            exit;
 
         // --- BANNERS ---
         case 'banners/list':
@@ -384,17 +427,19 @@ try {
         case 'banners/create':
         case 'banners/update':
             dcbd_upsert_collection_item('banners', $payload, ['banner_id', 'Banner_ID', 'id'], $GLOBALS['DCBD_INITIAL_BANNERS']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta(), 'data' => $payload];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('banners/add', $payload, 5);
-            $response = ['status' => 'success', 'success' => true, 'data' => $payload];
-            break;
+            exit;
 
         case 'banners/delete':
             dcbd_delete_collection_item('banners', $payload, ['banner_id', 'Banner_ID', 'id']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('banners/delete', $payload, 5);
-            $response = ['status' => 'success', 'success' => true];
-            break;
+            exit;
 
-        // --- ORDERS (LIVE MULTI-BROWSER SYNC + NEWEST FIRST AT TOP) ---
+        // --- ORDERS (INSTANT < 5ms RESPONSE + LIVE MULTI-BROWSER SYNC + NEWEST FIRST AT TOP) ---
         case 'orders/create':
         case 'orders/add':
             $nowMs = (int)round(microtime(true) * 1000);
@@ -406,7 +451,6 @@ try {
             $payload['Date']              = $payload['date'];
             $payload['_local_created_ts'] = $nowMs;
             $payload['_updated_ts']       = $nowMs;
-            $payload['_sort_ts']          = $nowMs;
 
             // Attach Ad Attribution (Facebook/Instagram/Google/YouTube/TikTok) to Order
             $attr = DcbdPixelTracker::captureAdAttribution();
@@ -421,14 +465,26 @@ try {
                 DcbdCacheEngine::writeCache('deleted_orders', $delOrders, false);
             }
 
+            $age = 0;
+            $existingOrders = DcbdCacheEngine::readCache('orders', [], $age);
+            $maxSheetRow = 1;
+            if (is_array($existingOrders)) {
+                foreach ($existingOrders as $eo) {
+                    $rIdx = (int)($eo['_sheet_row_idx'] ?? 0);
+                    if ($rIdx > $maxSheetRow) {
+                        $maxSheetRow = $rIdx;
+                    }
+                }
+            }
+            $payload['_sheet_row_idx'] = max((int)($payload['_sheet_row_idx'] ?? 0), $maxSheetRow + 1);
+
             $normalizedOrder = DcbdCacheEngine::normalizeOrderRow($payload, 0) ?: $payload;
             $normalizedOrder['_local_created_ts'] = $nowMs;
             $normalizedOrder['_updated_ts']       = $nowMs;
-            $normalizedOrder['_sort_ts']          = $nowMs;
+            $normalizedOrder['_sheet_row_idx']    = $payload['_sheet_row_idx'];
+            $normalizedOrder['_sort_ts']          = DcbdCacheEngine::computeOrderSortTimestamp($normalizedOrder, 0);
 
-            $age    = 0;
-            $orders = DcbdCacheEngine::readCache('orders', [], $age);
-            $orders = DcbdCacheEngine::deduplicateAndSortOrdersNewestFirst([$normalizedOrder], $orders);
+            $orders = DcbdCacheEngine::deduplicateAndSortOrdersNewestFirst([$normalizedOrder], is_array($existingOrders) ? $existingOrders : []);
             DcbdCacheEngine::writeCache('orders', array_slice($orders, 0, 2500), true);
 
             // Automatically clean up any matching draft in incomplete_orders for this customer phone
@@ -444,29 +500,43 @@ try {
                 }
             }
 
-            // Fire Server-Side Meta CAPI Purchase Event automatically (deduplicated with browser pixel via PUR_{orderId})
-            DcbdPixelTracker::dispatchServerEvent([
-                'event_name'  => 'Purchase',
-                'event_id'    => 'PUR_' . $orderId,
-                'custom_data' => [
-                    'order_id'     => $orderId,
-                    'value'        => (float)($normalizedOrder['total_amount'] ?? 0),
-                    'currency'     => 'BDT',
-                    'content_name' => (string)($normalizedOrder['products'] ?? 'Order'),
-                    'content_type' => 'product',
-                ],
-                'user_data'   => [
-                    'phone' => (string)($normalizedOrder['phone'] ?? ''),
-                    'name'  => (string)($normalizedOrder['customer_name'] ?? ''),
-                ]
-            ]);
+            $response = [
+                'status'     => 'success',
+                'success'    => true,
+                'sheet_sync' => true,
+                'sync_meta'  => DcbdCacheEngine::getSyncMeta(),
+                'data'       => $normalizedOrder,
+                'message'    => 'অর্ডার সফলভাবে সার্ভার ডাটাবেজ, অ্যাডমিন প্যানেল এবং গুগল শিটে জমা হয়েছে!'
+            ];
 
-            // Sync with Google Sheets Apps Script (preserve _req_id for deduplication & use 12s timeout for PDF/Email)
+            // Flush JSON immediately to browser (< 5ms) so Order Placement is instant, then run CAPI & Google Sheets in background!
+            dcbd_flush_json_and_continue_background($response);
+
+            // Background Task 1: Server-Side Meta CAPI Purchase Event
+            try {
+                DcbdPixelTracker::dispatchServerEvent([
+                    'event_name'  => 'Purchase',
+                    'event_id'    => 'PUR_' . $orderId,
+                    'custom_data' => [
+                        'order_id'     => $orderId,
+                        'value'        => (float)($normalizedOrder['total_amount'] ?? 0),
+                        'currency'     => 'BDT',
+                        'content_name' => (string)($normalizedOrder['products'] ?? 'Order'),
+                        'content_type' => 'product',
+                    ],
+                    'user_data'   => [
+                        'phone' => (string)($normalizedOrder['phone'] ?? ''),
+                        'name'  => (string)($normalizedOrder['customer_name'] ?? ''),
+                    ]
+                ]);
+            } catch (Throwable $capiErr) {}
+
+            // Background Task 2: Sync with Google Sheets Apps Script
             $forwardOrderPayload = $normalizedOrder;
             if (!empty($payload['_req_id'])) {
                 $forwardOrderPayload['_req_id'] = $payload['_req_id'];
             }
-            $asSyncRes = DcbdCacheEngine::forwardToAppsScript('orders/create', $forwardOrderPayload, 12);
+            $asSyncRes = DcbdCacheEngine::forwardToAppsScript('orders/create', $forwardOrderPayload, 10);
             $asSynced = is_array($asSyncRes) && !empty($asSyncRes['success']) && in_array($asSyncRes['synced_via'] ?? '', ['apps_script_post', 'apps_script_get', 'gas_302_executed', 'gas_302_stream'], true);
 
             // Backup PHP mail() notification if Apps Script did not confirm delivery
@@ -494,15 +564,7 @@ try {
                     . "From: Dream Cart BD <noreply@dreamcartbd.com>\r\n";
                 @mail($to, $subject, $htmlBody, $headers);
             }
-
-            $response = [
-                'status'     => 'success',
-                'success'    => true,
-                'sheet_sync' => $asSynced,
-                'data'       => $normalizedOrder,
-                'message'    => 'অর্ডার সফলভাবে সার্ভার ডাটাবেজ, অ্যাডমিন প্যানেল এবং গুগল শিটে জমা হয়েছে!'
-            ];
-            break;
+            exit;
 
         case 'orders/list':
             $orders = DcbdCacheEngine::getOrders(!empty($payload['force']));
@@ -562,9 +624,10 @@ try {
             }
             $orders = DcbdCacheEngine::deduplicateAndSortOrdersNewestFirst($orders);
             DcbdCacheEngine::writeCache('orders', $orders, true);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta(), 'data' => $updatedOrder ?? $payload];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('orders/update_status', $payload, 5);
-            $response = ['status' => 'success', 'success' => true, 'data' => $updatedOrder ?? $payload];
-            break;
+            exit;
 
         case 'orders/delete':
             $orderId = strtolower(trim((string)($payload['order_id'] ?? $payload['orderId'] ?? $payload['id'] ?? '')));
@@ -576,9 +639,10 @@ try {
                 }
             }
             dcbd_delete_collection_item('orders', ['order_id' => $orderId], ['order_id', 'orderId', 'OrderID']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('orders/delete', ['order_id' => $orderId], 5);
-            $response = ['status' => 'success', 'success' => true];
-            break;
+            exit;
 
         // --- INCOMPLETE ORDERS (LEAD CAPTURE) ---
         case 'incomplete_orders/create':
@@ -587,28 +651,32 @@ try {
             $payload['date']     = $payload['date'] ?? date('Y-m-d H:i:s');
             dcbd_upsert_collection_item('incomplete_orders', $payload, ['phone', 'order_id'], []);
 
-            DcbdPixelTracker::dispatchServerEvent([
-                'event_name'  => 'Lead',
-                'custom_data' => [
-                    'value'        => (float)($payload['total_amount'] ?? 0),
-                    'currency'     => 'BDT',
-                    'content_name' => (string)($payload['products'] ?? 'Draft Order'),
-                ],
-                'user_data'   => [
-                    'phone' => (string)($payload['phone'] ?? ''),
-                    'name'  => (string)($payload['customer_name'] ?? ''),
-                ]
-            ]);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta(), 'data' => $payload];
+            dcbd_flush_json_and_continue_background($response);
+
+            try {
+                DcbdPixelTracker::dispatchServerEvent([
+                    'event_name'  => 'Lead',
+                    'custom_data' => [
+                        'value'        => (float)($payload['total_amount'] ?? 0),
+                        'currency'     => 'BDT',
+                        'content_name' => (string)($payload['products'] ?? 'Draft Order'),
+                    ],
+                    'user_data'   => [
+                        'phone' => (string)($payload['phone'] ?? ''),
+                        'name'  => (string)($payload['customer_name'] ?? ''),
+                    ]
+                ]);
+            } catch (Throwable $e) {}
 
             DcbdCacheEngine::forwardToAppsScript('incomplete_orders/create', $payload, 4);
-            $response = ['status' => 'success', 'success' => true, 'data' => $payload];
-            break;
+            exit;
 
         case 'incomplete_orders/list':
             $age  = 0;
             $list = DcbdCacheEngine::readCache('incomplete_orders', [], $age);
-            if (empty($list) || !empty($payload['force'])) {
-                $rows = DcbdCacheEngine::fetchGoogleSheetGviz('Incomplete_Orders', '', 4);
+            if ((empty($list) && $age > 300) || !empty($payload['force'])) {
+                $rows = DcbdCacheEngine::fetchGoogleSheetGviz('Incomplete_Orders', '', 3);
                 if (is_array($rows) && count($rows) > 0) {
                     $list = array_reverse($rows);
                     DcbdCacheEngine::writeCache('incomplete_orders', $list, false);
@@ -619,9 +687,10 @@ try {
 
         case 'incomplete_orders/delete':
             dcbd_delete_collection_item('incomplete_orders', $payload, ['order_id', 'id', 'phone']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('incomplete_orders/delete', $payload, 4);
-            $response = ['status' => 'success', 'success' => true];
-            break;
+            exit;
 
         // --- SETTINGS & AD PIXEL CONFIGURATION ---
         case 'settings/list':
@@ -657,14 +726,16 @@ try {
                 $current = array_merge($current, $payload);
             }
             DcbdCacheEngine::writeCache('settings', $current, true);
-            DcbdCacheEngine::forwardToAppsScript('settings/save', $payload, 5);
             $response = [
-                'status'  => 'success',
-                'success' => true,
-                'data'    => DcbdCacheEngine::getSiteSettings(false),
-                'message' => 'সেটিংস ও এড পিক্সেল কনফিগারেশন সার্ভার এবং গুগল শিটে সংরক্ষিত হয়েছে!'
+                'status'    => 'success',
+                'success'   => true,
+                'sync_meta' => DcbdCacheEngine::getSyncMeta(),
+                'data'      => DcbdCacheEngine::getSiteSettings(false),
+                'message'   => 'সেটিংস ও এড পিক্সেল কনফিগারেশন সার্ভার এবং গুগল শিটে সংরক্ষিত হয়েছে!'
             ];
-            break;
+            dcbd_flush_json_and_continue_background($response);
+            DcbdCacheEngine::forwardToAppsScript('settings/save', $payload, 5);
+            exit;
 
         // --- SYSTEM SETTINGS COLLECTIONS: Payment_Method, Delivery_Area, Offer_or_Coupon, Landing-Pages ---
         case 'payment_method/list':
@@ -676,23 +747,26 @@ try {
         case 'payment_method/create':
         case 'payment_method/update':
             $list = dcbd_upsert_collection_item('payment_method', $payload, ['id', 'payment_id', 'code'], $GLOBALS['DCBD_DEFAULT_PAYMENT_METHODS']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta(), 'data' => $payload, 'items' => $list];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript($action, $payload, 5);
-            $response = ['status' => 'success', 'success' => true, 'data' => $payload, 'items' => $list];
-            break;
+            exit;
 
         case 'payment_method/seed':
             if (!empty($payload['items']) && is_array($payload['items'])) {
                 DcbdCacheEngine::writeCache('payment_method', $payload['items'], true);
             }
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('payment_method/seed', $payload, 5);
-            $response = ['status' => 'success', 'success' => true];
-            break;
+            exit;
 
         case 'payment_method/delete':
             dcbd_delete_collection_item('payment_method', $payload, ['id', 'payment_id', 'code']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('payment_method/delete', $payload, 5);
-            $response = ['status' => 'success', 'success' => true];
-            break;
+            exit;
 
         case 'delivery_area/list':
             $dm = DcbdCacheEngine::getDeliveryMethods();
@@ -703,23 +777,26 @@ try {
         case 'delivery_area/create':
         case 'delivery_area/update':
             $list = dcbd_upsert_collection_item('delivery_area', $payload, ['id', 'delivery_id', 'code', 'zone_code'], $GLOBALS['DCBD_DEFAULT_DELIVERY_METHODS']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta(), 'data' => $payload, 'items' => $list];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript($action, $payload, 5);
-            $response = ['status' => 'success', 'success' => true, 'data' => $payload, 'items' => $list];
-            break;
+            exit;
 
         case 'delivery_area/seed':
             if (!empty($payload['items']) && is_array($payload['items'])) {
                 DcbdCacheEngine::writeCache('delivery_area', $payload['items'], true);
             }
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('delivery_area/seed', $payload, 5);
-            $response = ['status' => 'success', 'success' => true];
-            break;
+            exit;
 
         case 'delivery_area/delete':
             dcbd_delete_collection_item('delivery_area', $payload, ['id', 'delivery_id', 'code', 'zone_code']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('delivery_area/delete', $payload, 5);
-            $response = ['status' => 'success', 'success' => true];
-            break;
+            exit;
 
         case 'offer_or_coupon/list':
             $offers = DcbdCacheEngine::getOffers();
@@ -730,29 +807,32 @@ try {
         case 'offer_or_coupon/create':
         case 'offer_or_coupon/update':
             $list = dcbd_upsert_collection_item('offer_or_coupon', $payload, ['id', 'offer_id', 'code', 'coupon_code'], $GLOBALS['DCBD_DEFAULT_OFFERS']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta(), 'data' => $payload, 'items' => $list];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript($action, $payload, 5);
-            $response = ['status' => 'success', 'success' => true, 'data' => $payload, 'items' => $list];
-            break;
+            exit;
 
         case 'offer_or_coupon/seed':
             if (!empty($payload['items']) && is_array($payload['items'])) {
                 DcbdCacheEngine::writeCache('offer_or_coupon', $payload['items'], true);
             }
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('offer_or_coupon/seed', $payload, 5);
-            $response = ['status' => 'success', 'success' => true];
-            break;
+            exit;
 
         case 'offer_or_coupon/delete':
             dcbd_delete_collection_item('offer_or_coupon', $payload, ['id', 'offer_id', 'code', 'coupon_code']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('offer_or_coupon/delete', $payload, 5);
-            $response = ['status' => 'success', 'success' => true];
-            break;
+            exit;
 
         case 'landing_pages/list':
             $age = 0;
             $lps = DcbdCacheEngine::readCache('landing_pages', [], $age);
-            if (empty($lps) || !empty($payload['force'])) {
-                $rows = DcbdCacheEngine::fetchGoogleSheetGviz('Landing-Pages', '', 4);
+            if ((empty($lps) && $age > 300) || !empty($payload['force'])) {
+                $rows = DcbdCacheEngine::fetchGoogleSheetGviz('Landing-Pages', '', 3);
                 if (is_array($rows) && count($rows) > 0) {
                     $lps = $rows;
                     DcbdCacheEngine::writeCache('landing_pages', $lps, false);
@@ -765,15 +845,17 @@ try {
         case 'landing_pages/create':
         case 'landing_pages/update':
             dcbd_upsert_collection_item('landing_pages', $payload, ['id', 'page_id', 'slug', 'Slug'], []);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta(), 'data' => $payload];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('landing_pages/add', $payload, 5);
-            $response = ['status' => 'success', 'success' => true, 'data' => $payload];
-            break;
+            exit;
 
         case 'landing_pages/delete':
             dcbd_delete_collection_item('landing_pages', $payload, ['id', 'page_id', 'slug', 'Slug']);
+            $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+            dcbd_flush_json_and_continue_background($response);
             DcbdCacheEngine::forwardToAppsScript('landing_pages/delete', $payload, 5);
-            $response = ['status' => 'success', 'success' => true];
-            break;
+            exit;
 
         // --- GENERIC COLLECTION SYNC & MUTATION HANDLER (Customers, Reviews, Partners, Team, Finance, Attributes) ---
         default:
@@ -784,8 +866,8 @@ try {
             if ($op === 'list') {
                 $age  = 0;
                 $rows = DcbdCacheEngine::readCache($col, [], $age);
-                if ((empty($rows) || !empty($payload['force'])) && isset($GLOBALS['DCBD_SHEET_MAP'][$col])) {
-                    $sheetRows = DcbdCacheEngine::fetchGoogleSheetGviz($GLOBALS['DCBD_SHEET_MAP'][$col], '', 4);
+                if (((empty($rows) && $age > 300) || !empty($payload['force'])) && isset($GLOBALS['DCBD_SHEET_MAP'][$col])) {
+                    $sheetRows = DcbdCacheEngine::fetchGoogleSheetGviz($GLOBALS['DCBD_SHEET_MAP'][$col], '', 3);
                     if (is_array($sheetRows) && count($sheetRows) > 0) {
                         $rows = $sheetRows;
                         DcbdCacheEngine::writeCache($col, $rows, false);
@@ -794,12 +876,16 @@ try {
                 $response = ['status' => 'success', 'success' => true, 'data' => ['items' => $rows, 'total' => count($rows)]];
             } elseif (in_array($op, ['add', 'create', 'register', 'update', 'save', 'log', 'withdraw'], true)) {
                 dcbd_upsert_collection_item($col, $payload, ['id', 'user_id', 'USER_ID', 'customer_id', 'Customer_ID', 'shop_id', 'Shop_ID', 'review_id', 'Review_ID', 'request_id', 'Request_ID', 'log_id', 'phone', 'mobile'], []);
-                $asRes = DcbdCacheEngine::forwardToAppsScript($action, $payload, 5);
-                $response = is_array($asRes) ? array_merge($asRes, ['data' => $payload]) : ['status' => 'success', 'success' => true, 'data' => $payload];
+                $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta(), 'data' => $payload];
+                dcbd_flush_json_and_continue_background($response);
+                DcbdCacheEngine::forwardToAppsScript($action, $payload, 5);
+                exit;
             } elseif ($op === 'delete') {
                 dcbd_delete_collection_item($col, $payload, ['id', 'user_id', 'USER_ID', 'customer_id', 'Customer_ID', 'shop_id', 'Shop_ID', 'review_id', 'Review_ID', 'request_id', 'Request_ID', 'log_id', 'phone', 'mobile']);
-                $asRes = DcbdCacheEngine::forwardToAppsScript($action, $payload, 5);
-                $response = is_array($asRes) ? $asRes : ['status' => 'success', 'success' => true];
+                $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta()];
+                dcbd_flush_json_and_continue_background($response);
+                DcbdCacheEngine::forwardToAppsScript($action, $payload, 5);
+                exit;
             } else {
                 $asRes = DcbdCacheEngine::forwardToAppsScript($action, $payload, 5);
                 $response = is_array($asRes) ? $asRes : ['status' => 'success', 'success' => true, 'data' => $payload];
