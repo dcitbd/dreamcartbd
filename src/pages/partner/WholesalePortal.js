@@ -3613,9 +3613,9 @@ function renderWholesaleAuthView(view = 'login') {
         <div class="dc-whs-header">
           <div class="dc-whs-logo-ring">
             <img 
-              src="/public/icon/logo.png" 
+              src="/icon/logo.png" 
               alt="Dream Cart BD"
-              onerror="this.onerror=null; this.src='/public/icon/logo.png';"
+              onerror="this.onerror=null; this.src='/icon/logo.png';"
             />
           </div>
           <span class="dc-whs-badge-pill">

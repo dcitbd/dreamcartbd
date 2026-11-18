@@ -2732,9 +2732,9 @@ function renderResellerAuthView(view = 'login') {
         <div class="dc-res-header">
           <div class="dc-res-logo-ring">
             <img 
-              src="/public/icon/logo.png" 
+              src="/icon/logo.png" 
               alt="Dream Cart BD"
-              onerror="this.onerror=null; this.src='/public/icon/logo.png';"
+              onerror="this.onerror=null; this.src='/icon/logo.png';"
             />
           </div>
           <h1 class="dc-res-title">

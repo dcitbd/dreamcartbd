@@ -388,7 +388,7 @@ export async function renderOrderSuccessPage(orderId = "ORD-2609-8472") {
           <!-- Watermark Logo (Centered Faint Logo on White Background) -->
           <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 1;">
             <img 
-              src="/public/icon/logo.png" 
+              src="/icon/logo.png" 
               alt="Watermark" 
               style="width: 250px; opacity: 0.08; filter: none; object-fit: contain;"
             />
@@ -405,7 +405,7 @@ export async function renderOrderSuccessPage(orderId = "ORD-2609-8472") {
                     <tr>
                       <td style="vertical-align: top; padding-right: 12px; width: 56px;">
                         <img 
-                          src="/public/icon/logo.png" 
+                          src="/icon/logo.png" 
                           alt="Logo" 
                           style="width: 52px; height: 52px; object-fit: contain; border-radius: 12px; border: 1px solid #e2e8f0; padding: 2px; background: #ffffff;"
                         />

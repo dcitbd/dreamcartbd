@@ -66,7 +66,7 @@ export function renderSidebarAndTopbar({
       <div class="space-y-3 overflow-y-auto">
         <div class="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
           <div class="flex items-center gap-2.5">
-            <div class="dc-sidebar-logo" style="background:#ffffff;padding:2px;overflow:hidden;border:1px solid #10b981;"><img src="/public/icon/logo.png" alt="Dream Cart BD" style="width:100%;height:100%;object-fit:contain;border-radius:8px;" /></div>
+            <div class="dc-sidebar-logo" style="background:#ffffff;padding:2px;overflow:hidden;border:1px solid #10b981;"><img src="/icon/logo.png" alt="Dream Cart BD" style="width:100%;height:100%;object-fit:contain;border-radius:8px;" /></div>
             <div>
               <div class="font-black text-sm text-slate-900 dark:text-white">Dream Cart BD</div>
               <div class="text-[10px] text-emerald-600 font-bold">Admin Console</div>
@@ -221,7 +221,7 @@ export function renderSidebarAndTopbar({
 
         <!-- Brand Badge Header -->
         <div class="dc-sidebar-brand">
-          <div class="dc-sidebar-logo" style="background:#ffffff;padding:2px;overflow:hidden;border:1px solid #10b981;"><img src="/public/icon/logo.png" alt="Dream Cart BD" style="width:100%;height:100%;object-fit:contain;border-radius:8px;" /></div>
+          <div class="dc-sidebar-logo" style="background:#ffffff;padding:2px;overflow:hidden;border:1px solid #10b981;"><img src="/icon/logo.png" alt="Dream Cart BD" style="width:100%;height:100%;object-fit:contain;border-radius:8px;" /></div>
           <div>
             <div class="dc-sidebar-title">Dream Cart BD</div>
             <span class="dc-sidebar-badge">মাস্টার অ্যাডমিন পোর্টাল</span>

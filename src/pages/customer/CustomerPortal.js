@@ -2007,10 +2007,10 @@ function renderAuthView(view = 'login') {
           <div class="dc-brand-ring">
             <span class="dc-pulse-dot"></span>
             <img 
-              src="/public/icon/logo.png" 
+              src="/icon/logo.png" 
               alt="Dream Cart BD Logo" 
               class="w-full h-full object-contain rounded-xl"
-              onerror="this.onerror=null; this.src='/public/icon/logo.png';"
+              onerror="this.onerror=null; this.src='/icon/logo.png';"
             />
           </div>
 
@@ -2083,7 +2083,7 @@ function renderAuthView(view = 'login') {
                     src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160" 
                     alt="Profile" 
                     class="w-full h-full object-cover"
-                    onerror="this.onerror=null; this.src='/public/icon/logo.png';"
+                    onerror="this.onerror=null; this.src='/icon/logo.png';"
                   />
                 </div>
                 <div class="dc-input-container flex-1 min-w-0">

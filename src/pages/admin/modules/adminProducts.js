@@ -201,7 +201,7 @@ export function renderProductCatalogModule({ products = [], categories = [], bra
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                 ${products.filter(p => Number(p.stock) > 0 && Number(p.stock) <= 5).slice(0, 48).map(p => `
                   <div class="p-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-900 flex items-center justify-between gap-3">
-                    <img src="${p.thumbnail || '/public/icon/logo.png'}" class="w-12 h-12 rounded-xl object-cover border border-amber-200 flex-shrink-0" />
+                    <img src="${p.thumbnail || '/icon/logo.png'}" class="w-12 h-12 rounded-xl object-cover border border-amber-200 flex-shrink-0" />
                     <div class="min-w-0 flex-1">
                       <div class="font-bold text-slate-900 dark:text-white truncate">${p.name}</div>
                       <div class="text-[10px] text-slate-400 font-mono">${p.sku} | ৳${p.selling_price}</div>
@@ -226,7 +226,7 @@ export function renderProductCatalogModule({ products = [], categories = [], bra
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                 ${products.filter(p => Number(p.stock) === 0).slice(0, 48).map(p => `
                   <div class="p-3 bg-rose-50/50 dark:bg-rose-950/20 rounded-2xl border border-rose-200 dark:border-rose-900 flex items-center justify-between gap-3">
-                    <img src="${p.thumbnail || '/public/icon/logo.png'}" class="w-12 h-12 rounded-xl object-cover border border-rose-200 flex-shrink-0" />
+                    <img src="${p.thumbnail || '/icon/logo.png'}" class="w-12 h-12 rounded-xl object-cover border border-rose-200 flex-shrink-0" />
                     <div class="min-w-0 flex-1">
                       <div class="font-bold text-slate-900 dark:text-white truncate">${p.name}</div>
                       <div class="text-[10px] text-slate-400 font-mono">${p.sku}</div>
@@ -850,7 +850,7 @@ export function renderCategoryBrandModule({ products = [], categories = [], bran
                       <div class="flex items-start justify-between gap-3">
                         <div class="flex items-center gap-3.5">
                           <div class="w-16 h-16 rounded-2xl bg-slate-50 dark:bg-slate-800 p-2 border border-slate-200 dark:border-slate-700 flex items-center justify-center flex-shrink-0 shadow-inner">
-                            <img src="${b.brand_image || '/public/icon/logo.png'}" alt="${b.brand_name}" class="w-full h-full object-contain rounded-xl" onerror="this.src='/public/icon/logo.png';" />
+                            <img src="${b.brand_image || '/icon/logo.png'}" alt="${b.brand_name}" class="w-full h-full object-contain rounded-xl" onerror="this.src='/icon/logo.png';" />
                           </div>
                           <div>
                             <div class="flex items-center gap-1.5">

@@ -138,6 +138,36 @@ if (typeof window !== 'undefined' && !window.__dcbdTermsUI) {
       }
     },
 
+
+    ensureLogosLoaded() {
+      try {
+        const base = window.__APP_BASE__ || '';
+        const candidates = [
+          base + '/icon/logo.png',
+          '/icon/logo.png',
+          base + '/public/icon/logo.png',
+          '/public/icon/logo.png',
+          '/favicon.ico'
+        ];
+        const imgs = document.querySelectorAll('img.header-logo-img, .ft-logo-box img');
+        imgs.forEach((img) => {
+          const tryNext = () => {
+            const step = Number(img.getAttribute('data-dcbd-logo-step') || '0');
+            if (step >= candidates.length) return;
+            img.setAttribute('data-dcbd-logo-step', String(step + 1));
+            img.src = candidates[step];
+          };
+          if (!img.getAttribute('data-dcbd-logo-bound')) {
+            img.setAttribute('data-dcbd-logo-bound', '1');
+            img.addEventListener('error', tryNext);
+          }
+          if (img.complete && img.naturalWidth === 0) {
+            tryNext();
+          }
+        });
+      } catch (e) {}
+    },
+
     scrollToTop() {
       const root = document.getElementById('tc-top-anchor');
       if (root) {
@@ -150,39 +180,43 @@ if (typeof window !== 'undefined' && !window.__dcbdTermsUI) {
 }
 
 export function renderTermsPage() {
+  if (typeof window !== 'undefined' && window.__dcbdTermsUI && typeof window.__dcbdTermsUI.ensureLogosLoaded === 'function') {
+    setTimeout(() => window.__dcbdTermsUI.ensureLogosLoaded(), 60);
+  }
   return `
     <!-- Scoped 3D Professional Styles for Terms & Conditions Page -->
     <style id="terms-page-custom-styles">
-      @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
       .tc-page-root {
-        --tc-font: 'Hind Siliguri', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        --tc-font: 'SolaimanLipi', 'Hind Siliguri', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
         --tc-emerald: #10b981;
         --tc-emerald-dark: #059669;
         --tc-emerald-deep: #047857;
         --tc-surface: #ffffff;
         --tc-surface-soft: #f8fafc;
+        --tc-surface-elevated: #ffffff;
         --tc-border: #e2e8f0;
         --tc-border-3d: #cbd5e1;
         --tc-text-main: #0f172a;
         --tc-text-body: #334155;
         --tc-text-muted: #64748b;
         --tc-shadow-card:
-          0 1px 0 rgba(255, 255, 255, 0.9) inset,
-          0 6px 0 -2px rgba(226, 232, 240, 0.9),
-          0 14px 32px -10px rgba(15, 23, 42, 0.09);
+          0 1px 0 rgba(255, 255, 255, 0.95) inset,
+          0 7px 0 -2px rgba(203, 213, 225, 0.85),
+          0 18px 38px -12px rgba(15, 23, 42, 0.10);
         --tc-shadow-card-hover:
           0 1px 0 rgba(255, 255, 255, 1) inset,
-          0 8px 0 -2px rgba(16, 185, 129, 0.28),
-          0 22px 42px -12px rgba(16, 185, 129, 0.22);
+          0 9px 0 -2px rgba(16, 185, 129, 0.30),
+          0 26px 48px -14px rgba(16, 185, 129, 0.22);
 
         font-family: var(--tc-font);
-        max-width: 1080px;
+        max-width: 1100px;
         margin: 0 auto;
-        padding: 18px 14px 96px;
+        padding: 26px 16px 104px;
         color: var(--tc-text-body);
         box-sizing: border-box;
-        perspective: 1200px;
+        perspective: 1400px;
       }
 
       .tc-page-root *,
@@ -195,24 +229,25 @@ export function renderTermsPage() {
       .dark .tc-page-root {
         --tc-surface: #0f172a;
         --tc-surface-soft: #131f37;
+        --tc-surface-elevated: #172542;
         --tc-border: #1e293b;
-        --tc-border-3d: #0b1222;
+        --tc-border-3d: #020617;
         --tc-text-main: #f8fafc;
         --tc-text-body: #cbd5e1;
         --tc-text-muted: #94a3b8;
         --tc-shadow-card:
           0 1px 0 rgba(255, 255, 255, 0.06) inset,
-          0 6px 0 -2px rgba(2, 6, 23, 0.85),
-          0 18px 38px -10px rgba(0, 0, 0, 0.55);
+          0 7px 0 -2px rgba(2, 6, 23, 0.9),
+          0 20px 42px -12px rgba(0, 0, 0, 0.6);
         --tc-shadow-card-hover:
-          0 1px 0 rgba(52, 211, 153, 0.16) inset,
-          0 8px 0 -2px rgba(16, 185, 129, 0.25),
-          0 24px 46px -12px rgba(16, 185, 129, 0.25);
+          0 1px 0 rgba(52, 211, 153, 0.18) inset,
+          0 9px 0 -2px rgba(16, 185, 129, 0.28),
+          0 26px 50px -14px rgba(16, 185, 129, 0.26);
       }
 
       @media (min-width: 640px) {
         .tc-page-root {
-          padding: 26px 24px 110px;
+          padding: 36px 28px 120px;
         }
       }
 
@@ -220,11 +255,11 @@ export function renderTermsPage() {
       @keyframes tcCardReveal {
         0% {
           opacity: 0;
-          transform: translateY(22px) scale(0.985);
+          transform: translateY(24px) rotateX(2deg) scale(0.985);
         }
         100% {
           opacity: 1;
-          transform: translateY(0) scale(1);
+          transform: translateY(0) rotateX(0deg) scale(1);
         }
       }
 
@@ -233,18 +268,18 @@ export function renderTermsPage() {
           transform: translate3d(0, 0, 0) scale(1);
         }
         50% {
-          transform: translate3d(-16px, 14px, 0) scale(1.08);
+          transform: translate3d(-18px, 14px, 0) scale(1.08);
         }
       }
 
       @keyframes tcPulseDot {
         0%, 100% {
           transform: scale(1);
-          box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.65);
+          box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.7);
         }
         50% {
-          transform: scale(1.15);
-          box-shadow: 0 0 0 7px rgba(52, 211, 153, 0);
+          transform: scale(1.18);
+          box-shadow: 0 0 0 8px rgba(52, 211, 153, 0);
         }
       }
 
@@ -253,7 +288,7 @@ export function renderTermsPage() {
           box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.55), var(--tc-shadow-card-hover);
         }
         50% {
-          box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.28), var(--tc-shadow-card-hover);
+          box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.25), var(--tc-shadow-card-hover);
         }
         100% {
           box-shadow: var(--tc-shadow-card);
@@ -261,38 +296,39 @@ export function renderTermsPage() {
       }
 
       @keyframes tcShimmer {
-        0% { transform: translateX(-120%) skewX(-20deg); }
-        100% { transform: translateX(260%) skewX(-20deg); }
+        0% { transform: translateX(-130%) skewX(-20deg); }
+        100% { transform: translateX(270%) skewX(-20deg); }
       }
 
       .tc-stack {
         display: flex;
         flex-direction: column;
-        gap: 24px;
+        gap: 30px;
       }
 
       /* ==================== 1. 3D HERO BANNER ==================== */
       .tc-hero {
         position: relative;
         overflow: hidden;
-        border-radius: 26px;
-        padding: 28px 22px;
+        border-radius: 28px;
+        padding: 32px 24px;
         color: #ffffff;
         background:
-          radial-gradient(circle at 12% 15%, rgba(16, 185, 129, 0.24) 0%, transparent 45%),
-          radial-gradient(circle at 88% 85%, rgba(14, 165, 233, 0.2) 0%, transparent 48%),
+          radial-gradient(circle at 12% 15%, rgba(16, 185, 129, 0.28) 0%, transparent 45%),
+          radial-gradient(circle at 88% 85%, rgba(14, 165, 233, 0.22) 0%, transparent 48%),
           linear-gradient(135deg, #0b132b 0%, #0f172a 52%, #052e2b 100%);
-        border: 1px solid rgba(52, 211, 153, 0.26);
+        border: 1px solid rgba(52, 211, 153, 0.30);
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.14) inset,
-          0 10px 0 -3px rgba(6, 78, 59, 0.55),
-          0 26px 52px -14px rgba(2, 6, 23, 0.55);
-        animation: tcCardReveal 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+          0 1px 0 rgba(255, 255, 255, 0.16) inset,
+          0 11px 0 -3px rgba(6, 78, 59, 0.6),
+          0 28px 56px -14px rgba(2, 6, 23, 0.58);
+        animation: tcCardReveal 0.48s cubic-bezier(0.16, 1, 0.3, 1) both;
+        transform-style: preserve-3d;
       }
 
       @media (min-width: 768px) {
         .tc-hero {
-          padding: 40px 38px;
+          padding: 44px 42px;
         }
       }
 
@@ -300,11 +336,11 @@ export function renderTermsPage() {
         position: absolute;
         top: -65px;
         right: -45px;
-        width: 240px;
-        height: 240px;
+        width: 260px;
+        height: 260px;
         border-radius: 50%;
         background: radial-gradient(circle, rgba(16, 185, 129, 0.38) 0%, transparent 70%);
-        filter: blur(30px);
+        filter: blur(32px);
         pointer-events: none;
         animation: tcFloatOrb 7s ease-in-out infinite;
       }
@@ -313,10 +349,10 @@ export function renderTermsPage() {
         position: absolute;
         bottom: -75px;
         left: -40px;
-        width: 220px;
-        height: 220px;
+        width: 240px;
+        height: 240px;
         border-radius: 50%;
-        background: radial-gradient(circle, rgba(56, 189, 248, 0.24) 0%, transparent 70%);
+        background: radial-gradient(circle, rgba(56, 189, 248, 0.26) 0%, transparent 70%);
         filter: blur(34px);
         pointer-events: none;
         animation: tcFloatOrb 9s ease-in-out infinite reverse;
@@ -330,7 +366,7 @@ export function renderTermsPage() {
           linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
         background-size: 32px 32px;
         pointer-events: none;
-        opacity: 0.6;
+        opacity: 0.65;
       }
 
       .tc-hero-inner {
@@ -343,8 +379,8 @@ export function renderTermsPage() {
         flex-wrap: wrap;
         align-items: center;
         justify-content: space-between;
-        gap: 14px;
-        margin-bottom: 18px;
+        gap: 16px;
+        margin-bottom: 22px;
       }
 
       .tc-hero-badge {
@@ -353,15 +389,15 @@ export function renderTermsPage() {
         display: inline-flex;
         align-items: center;
         gap: 9px;
-        padding: 7px 16px;
+        padding: 8px 18px;
         border-radius: 999px;
-        background: rgba(16, 185, 129, 0.16);
-        border: 1px solid rgba(52, 211, 153, 0.42);
+        background: rgba(16, 185, 129, 0.18);
+        border: 1px solid rgba(52, 211, 153, 0.45);
         color: #6ee7b7;
         font-size: 13px;
         font-weight: 700;
         letter-spacing: 0.01em;
-        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.2);
+        box-shadow: 0 4px 16px rgba(16, 185, 129, 0.22);
       }
 
       .tc-hero-badge::after {
@@ -371,7 +407,7 @@ export function renderTermsPage() {
         left: 0;
         width: 45%;
         height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
         animation: tcShimmer 4.5s ease-in-out infinite;
       }
 
@@ -386,50 +422,51 @@ export function renderTermsPage() {
       .tc-hero-actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 12px;
       }
 
       .tc-btn-3d {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 7px;
-        padding: 9px 16px;
-        border-radius: 12px;
-        font-size: 13px;
+        gap: 8px;
+        padding: 10px 18px;
+        border-radius: 13px;
+        font-size: 13.5px;
         font-weight: 700;
         line-height: 1.2;
         cursor: pointer;
-        border: 1px solid rgba(255, 255, 255, 0.16);
-        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.11);
         color: #f8fafc;
-        backdrop-filter: blur(8px);
+        backdrop-filter: blur(10px);
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.18) inset,
-          0 4px 0 rgba(2, 6, 23, 0.45),
-          0 8px 18px rgba(0, 0, 0, 0.22);
-        transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
-                    box-shadow 0.18s ease,
-                    background 0.18s ease,
-                    border-color 0.18s ease;
+          0 1px 0 rgba(255, 255, 255, 0.20) inset,
+          0 4px 0 rgba(2, 6, 23, 0.5),
+          0 10px 20px rgba(0, 0, 0, 0.25);
+        transition:
+          transform 0.18s cubic-bezier(0.22, 1, 0.36, 1),
+          box-shadow 0.18s ease,
+          background 0.18s ease,
+          border-color 0.18s ease;
         text-decoration: none;
       }
 
       .tc-btn-3d:hover {
         transform: translateY(-2px);
-        background: rgba(16, 185, 129, 0.24);
-        border-color: rgba(52, 211, 153, 0.55);
+        background: rgba(16, 185, 129, 0.26);
+        border-color: rgba(52, 211, 153, 0.6);
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.25) inset,
-          0 6px 0 rgba(4, 120, 87, 0.6),
-          0 12px 24px rgba(16, 185, 129, 0.3);
+          0 1px 0 rgba(255, 255, 255, 0.28) inset,
+          0 6px 0 rgba(4, 120, 87, 0.65),
+          0 14px 26px rgba(16, 185, 129, 0.32);
       }
 
       .tc-btn-3d:active {
         transform: translateY(2px);
         box-shadow:
           0 1px 0 rgba(255, 255, 255, 0.12) inset,
-          0 1px 0 rgba(2, 6, 23, 0.55);
+          0 1px 0 rgba(2, 6, 23, 0.6);
       }
 
       .tc-btn-3d-primary {
@@ -437,9 +474,9 @@ export function renderTermsPage() {
         border-color: #34d399;
         color: #ffffff;
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.35) inset,
+          0 1px 0 rgba(255, 255, 255, 0.38) inset,
           0 4px 0 #047857,
-          0 10px 22px rgba(16, 185, 129, 0.35);
+          0 12px 24px rgba(16, 185, 129, 0.38);
       }
 
       .tc-btn-3d-primary:hover {
@@ -448,27 +485,27 @@ export function renderTermsPage() {
       }
 
       .tc-hero-title {
-        font-size: 26px;
-        line-height: 1.28;
+        font-size: 27px;
+        line-height: 1.3;
         font-weight: 700;
         color: #ffffff;
         margin: 0 0 12px;
         letter-spacing: -0.015em;
-        text-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+        text-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
       }
 
       @media (min-width: 640px) {
         .tc-hero-title {
-          font-size: 34px;
+          font-size: 36px;
         }
       }
 
       .tc-hero-subtitle {
-        font-size: 15px;
-        line-height: 1.75;
+        font-size: 15.5px;
+        line-height: 1.8;
         color: #cbd5e1;
-        max-width: 760px;
-        margin: 0 0 24px;
+        max-width: 780px;
+        margin: 0 0 26px;
         font-weight: 400;
       }
 
@@ -476,8 +513,8 @@ export function renderTermsPage() {
       .tc-hero-stats {
         display: grid;
         grid-template-columns: repeat(1, minmax(0, 1fr));
-        gap: 12px;
-        margin-bottom: 22px;
+        gap: 14px;
+        margin-bottom: 24px;
       }
 
       @media (min-width: 640px) {
@@ -489,34 +526,39 @@ export function renderTermsPage() {
       .tc-stat-card {
         display: flex;
         align-items: center;
-        gap: 13px;
-        padding: 13px 16px;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        gap: 14px;
+        padding: 15px 18px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.14);
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.12) inset,
-          0 8px 20px rgba(0, 0, 0, 0.22);
-        backdrop-filter: blur(10px);
-        transition: transform 0.22s ease, border-color 0.22s ease;
+          0 1px 0 rgba(255, 255, 255, 0.15) inset,
+          0 5px 0 -1px rgba(2, 6, 23, 0.45),
+          0 10px 22px rgba(0, 0, 0, 0.24);
+        backdrop-filter: blur(12px);
+        transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.22s ease, box-shadow 0.22s ease;
       }
 
       .tc-stat-card:hover {
-        transform: translateY(-3px);
-        border-color: rgba(52, 211, 153, 0.45);
+        transform: translateY(-4px);
+        border-color: rgba(52, 211, 153, 0.5);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.22) inset,
+          0 7px 0 -1px rgba(6, 78, 59, 0.6),
+          0 14px 28px rgba(16, 185, 129, 0.22);
       }
 
       .tc-stat-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
+        width: 44px;
+        height: 44px;
+        border-radius: 13px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 20px;
-        background: linear-gradient(145deg, rgba(16, 185, 129, 0.28), rgba(6, 78, 59, 0.45));
-        border: 1px solid rgba(52, 211, 153, 0.35);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.22);
+        font-size: 21px;
+        background: linear-gradient(145deg, rgba(16, 185, 129, 0.32), rgba(6, 78, 59, 0.5));
+        border: 1px solid rgba(52, 211, 153, 0.4);
+        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.26);
         flex-shrink: 0;
       }
 
@@ -524,34 +566,34 @@ export function renderTermsPage() {
         font-size: 16px;
         font-weight: 700;
         color: #ffffff;
-        line-height: 1.25;
+        line-height: 1.3;
       }
 
       .tc-stat-lbl {
         font-size: 12.5px;
         color: #94a3b8;
-        line-height: 1.35;
+        line-height: 1.4;
       }
 
       /* Meta Chips */
       .tc-meta-grid {
         display: flex;
         flex-wrap: wrap;
-        gap: 10px;
+        gap: 11px;
       }
 
       .tc-meta-chip {
         display: inline-flex;
         align-items: center;
-        gap: 7px;
-        padding: 7px 14px;
-        border-radius: 11px;
-        background: rgba(15, 23, 42, 0.55);
+        gap: 8px;
+        padding: 8px 15px;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.6);
         border: 1px solid rgba(255, 255, 255, 0.14);
         font-size: 13px;
         line-height: 1.4;
         color: #e2e8f0;
-        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.22);
       }
 
       .tc-meta-chip strong {
@@ -564,8 +606,8 @@ export function renderTermsPage() {
         position: relative;
         background: var(--tc-surface);
         border: 1px solid var(--tc-border);
-        border-radius: 22px;
-        padding: 24px 20px;
+        border-radius: 24px;
+        padding: 26px 22px;
         box-shadow: var(--tc-shadow-card);
         transition:
           transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
@@ -577,14 +619,14 @@ export function renderTermsPage() {
 
       @media (min-width: 640px) {
         .tc-card {
-          padding: 28px 30px;
+          padding: 32px 34px;
         }
       }
 
       .tc-card:hover {
         border-color: rgba(16, 185, 129, 0.5);
         box-shadow: var(--tc-shadow-card-hover);
-        transform: translateY(-3px);
+        transform: translateY(-4px);
       }
 
       .tc-card-spotlight {
@@ -593,23 +635,23 @@ export function renderTermsPage() {
       }
 
       .tc-nav-deck {
-        padding: 22px 20px;
+        padding: 24px 22px;
         background: linear-gradient(180deg, var(--tc-surface) 0%, var(--tc-surface-soft) 100%);
       }
 
       @media (min-width: 640px) {
         .tc-nav-deck {
-          padding: 24px 28px;
+          padding: 28px 32px;
         }
       }
 
       .tc-nav-header {
         display: flex;
         flex-direction: column;
-        gap: 14px;
-        margin-bottom: 18px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid var(--tc-border);
+        gap: 16px;
+        margin-bottom: 22px;
+        padding-bottom: 18px;
+        border-bottom: 1.5px solid var(--tc-border);
       }
 
       @media (min-width: 768px) {
@@ -623,21 +665,21 @@ export function renderTermsPage() {
       .tc-nav-heading-wrap {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 5px;
       }
 
       .tc-nav-heading {
         display: flex;
         align-items: center;
         gap: 9px;
-        font-size: 16px;
+        font-size: 17px;
         font-weight: 700;
         color: var(--tc-text-main);
         margin: 0;
       }
 
       .tc-search-count {
-        font-size: 12.5px;
+        font-size: 13px;
         font-weight: 600;
         color: var(--tc-emerald-dark);
       }
@@ -650,7 +692,7 @@ export function renderTermsPage() {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
         width: 100%;
       }
 
@@ -670,8 +712,8 @@ export function renderTermsPage() {
 
       @media (min-width: 768px) {
         .tc-search-box {
-          width: 310px;
-          flex: 0 0 310px;
+          width: 320px;
+          flex: 0 0 320px;
         }
       }
 
@@ -687,7 +729,7 @@ export function renderTermsPage() {
 
       .tc-search-input {
         width: 100%;
-        padding: 11px 38px 11px 40px;
+        padding: 12px 40px 12px 42px;
         border-radius: 14px;
         border: 1.5px solid var(--tc-border);
         background: var(--tc-surface);
@@ -695,7 +737,7 @@ export function renderTermsPage() {
         font-size: 14px;
         font-weight: 500;
         outline: none;
-        box-shadow: 0 3px 8px rgba(15, 23, 42, 0.04) inset;
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.05) inset;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
       }
 
@@ -705,7 +747,7 @@ export function renderTermsPage() {
 
       .tc-search-input:focus {
         border-color: #10b981;
-        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
+        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.16);
       }
 
       .tc-search-clear {
@@ -717,7 +759,7 @@ export function renderTermsPage() {
         height: 24px;
         border-radius: 50%;
         border: none;
-        background: rgba(148, 163, 184, 0.22);
+        background: rgba(148, 163, 184, 0.24);
         color: var(--tc-text-main);
         font-size: 14px;
         font-weight: 700;
@@ -735,30 +777,33 @@ export function renderTermsPage() {
 
       .tc-mini-controls {
         display: inline-flex;
-        gap: 8px;
+        gap: 10px;
       }
 
       .tc-btn-soft {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        padding: 9px 13px;
-        border-radius: 12px;
-        font-size: 12.5px;
+        gap: 7px;
+        padding: 10px 15px;
+        border-radius: 13px;
+        font-size: 13px;
         font-weight: 700;
         color: var(--tc-text-body);
         background: var(--tc-surface);
         border: 1px solid var(--tc-border);
-        box-shadow: 0 3px 0 var(--tc-border-3d);
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.8) inset,
+          0 3px 0 var(--tc-border-3d);
         cursor: pointer;
-        transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        text-decoration: none;
+        transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, color 0.16s ease;
       }
 
       .tc-btn-soft:hover {
-        transform: translateY(-1px);
+        transform: translateY(-2px);
         border-color: #10b981;
         color: var(--tc-emerald-dark);
-        box-shadow: 0 4px 0 rgba(16, 185, 129, 0.35);
+        box-shadow: 0 4px 0 rgba(16, 185, 129, 0.38);
       }
 
       .dark .tc-btn-soft:hover {
@@ -770,27 +815,37 @@ export function renderTermsPage() {
         box-shadow: 0 1px 0 var(--tc-border-3d);
       }
 
-      /* Quick Navigation 3D Pills */
+      /* Quick Navigation 3D Grid Pills (Clean, Non-Cluttered Alignment) */
       .tc-nav-pills {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 9px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+        gap: 11px;
+      }
+
+      @media (min-width: 640px) {
+        .tc-nav-pills {
+          grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+          gap: 12px;
+        }
       }
 
       .tc-nav-pill {
-        display: inline-flex;
+        display: flex;
         align-items: center;
-        gap: 6px;
-        padding: 8px 14px;
-        border-radius: 12px;
+        justify-content: flex-start;
+        gap: 8px;
+        width: 100%;
+        text-align: left;
+        padding: 10px 14px;
+        border-radius: 13px;
         font-size: 13px;
         font-weight: 600;
-        line-height: 1.3;
+        line-height: 1.35;
         background: var(--tc-surface);
         color: var(--tc-text-body);
         border: 1px solid var(--tc-border);
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.7) inset,
+          0 1px 0 rgba(255, 255, 255, 0.75) inset,
           0 3px 0 var(--tc-border-3d);
         text-decoration: none;
         cursor: pointer;
@@ -817,7 +872,7 @@ export function renderTermsPage() {
         box-shadow:
           0 1px 0 rgba(255, 255, 255, 0.3) inset,
           0 4px 0 #047857,
-          0 8px 18px rgba(16, 185, 129, 0.3);
+          0 10px 20px rgba(16, 185, 129, 0.3);
       }
 
       .tc-nav-pill:active {
@@ -832,16 +887,16 @@ export function renderTermsPage() {
         align-items: center;
         justify-content: center;
         text-align: center;
-        padding: 44px 24px;
-        border-radius: 22px;
+        padding: 48px 26px;
+        border-radius: 24px;
         background: var(--tc-surface);
-        border: 1.5px dashed rgba(16, 185, 129, 0.45);
+        border: 1.5px dashed rgba(16, 185, 129, 0.48);
         box-shadow: var(--tc-shadow-card);
-        gap: 10px;
+        gap: 12px;
       }
 
       .tc-empty-icon {
-        font-size: 40px;
+        font-size: 42px;
         line-height: 1;
       }
 
@@ -862,9 +917,9 @@ export function renderTermsPage() {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 14px;
-        padding-bottom: 18px;
-        margin-bottom: 20px;
+        gap: 16px;
+        padding-bottom: 20px;
+        margin-bottom: 22px;
         border-bottom: 1.5px solid var(--tc-border);
         cursor: pointer;
         user-select: none;
@@ -879,50 +934,50 @@ export function renderTermsPage() {
       .tc-group-head-left {
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 16px;
         min-width: 0;
       }
 
       .tc-group-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 15px;
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
         background: linear-gradient(145deg, #ecfdf5 0%, #d1fae5 100%);
-        border: 1px solid rgba(16, 185, 129, 0.35);
+        border: 1px solid rgba(16, 185, 129, 0.38);
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.9) inset,
-          0 4px 0 rgba(16, 185, 129, 0.22),
-          0 8px 16px rgba(16, 185, 129, 0.15);
+          0 1px 0 rgba(255, 255, 255, 0.92) inset,
+          0 4px 0 rgba(16, 185, 129, 0.24),
+          0 10px 18px rgba(16, 185, 129, 0.16);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 22px;
+        font-size: 24px;
         flex-shrink: 0;
-        transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+        transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
       }
 
       .dark .tc-group-icon {
-        background: linear-gradient(145deg, rgba(16, 185, 129, 0.24) 0%, rgba(6, 78, 59, 0.5) 100%);
-        border-color: rgba(52, 211, 153, 0.4);
+        background: linear-gradient(145deg, rgba(16, 185, 129, 0.24) 0%, rgba(6, 78, 59, 0.52) 100%);
+        border-color: rgba(52, 211, 153, 0.42);
         box-shadow:
           0 1px 0 rgba(255, 255, 255, 0.14) inset,
-          0 4px 0 rgba(2, 6, 23, 0.65),
-          0 8px 18px rgba(16, 185, 129, 0.2);
+          0 4px 0 rgba(2, 6, 23, 0.7),
+          0 10px 20px rgba(16, 185, 129, 0.22);
       }
 
       .tc-card:hover .tc-group-icon {
-        transform: scale(1.06) rotate(-4deg);
+        transform: scale(1.07) rotate(-4deg);
       }
 
       .tc-group-meta {
         display: flex;
         flex-direction: column;
-        gap: 3px;
+        gap: 4px;
         min-width: 0;
       }
 
       .tc-group-tag {
-        font-size: 11.5px;
+        font-size: 12px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.04em;
@@ -935,7 +990,7 @@ export function renderTermsPage() {
 
       .tc-group-title {
         font-size: 19px;
-        line-height: 1.35;
+        line-height: 1.38;
         font-weight: 700;
         color: var(--tc-text-main);
         margin: 0;
@@ -943,14 +998,14 @@ export function renderTermsPage() {
 
       @media (min-width: 640px) {
         .tc-group-title {
-          font-size: 21px;
+          font-size: 21.5px;
         }
       }
 
       .tc-toggle-btn {
-        width: 36px;
-        height: 36px;
-        border-radius: 11px;
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
         border: 1px solid var(--tc-border);
         background: var(--tc-surface-soft);
         color: var(--tc-text-muted);
@@ -960,7 +1015,7 @@ export function renderTermsPage() {
         font-size: 13px;
         font-weight: 700;
         flex-shrink: 0;
-        box-shadow: 0 2px 0 var(--tc-border-3d);
+        box-shadow: 0 3px 0 var(--tc-border-3d);
         transition: transform 0.25s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
       }
 
@@ -976,36 +1031,42 @@ export function renderTermsPage() {
       .tc-group-body {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 18px;
       }
 
       .tc-section-group.tc-collapsed .tc-group-body {
         display: none;
       }
 
-      /* ==================== 4. INDIVIDUAL CLAUSE SUB-CARDS ==================== */
+      /* ==================== 4. INDIVIDUAL 3D CLAUSE SUB-CARDS ==================== */
       .tc-clause-item {
-        background: var(--tc-surface-soft);
+        background: linear-gradient(180deg, var(--tc-surface-elevated) 0%, var(--tc-surface-soft) 100%);
         border: 1px solid var(--tc-border);
         border-left: 4px solid #10b981;
-        border-radius: 16px;
-        padding: 18px 20px;
+        border-radius: 18px;
+        padding: 20px 22px;
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.75) inset,
-          0 4px 14px -6px rgba(15, 23, 42, 0.06);
-        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+          0 1px 0 rgba(255, 255, 255, 0.8) inset,
+          0 4px 0 -1px rgba(203, 213, 225, 0.6),
+          0 8px 18px -8px rgba(15, 23, 42, 0.08);
+        transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.22s ease, box-shadow 0.22s ease;
       }
 
       .dark .tc-clause-item {
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.04) inset,
-          0 6px 16px -6px rgba(0, 0, 0, 0.38);
+          0 1px 0 rgba(255, 255, 255, 0.05) inset,
+          0 4px 0 -1px rgba(2, 6, 23, 0.8),
+          0 8px 20px -6px rgba(0, 0, 0, 0.42);
       }
 
       .tc-clause-item:hover {
-        transform: translateX(3px);
-        border-color: rgba(16, 185, 129, 0.45);
+        transform: translateY(-2px);
+        border-color: rgba(16, 185, 129, 0.5);
         border-left-color: #059669;
+        box-shadow:
+          0 1px 0 rgba(255, 255, 255, 0.9) inset,
+          0 5px 0 -1px rgba(16, 185, 129, 0.25),
+          0 14px 26px -10px rgba(16, 185, 129, 0.16);
       }
 
       .tc-clause-title {
@@ -1014,25 +1075,25 @@ export function renderTermsPage() {
         align-items: center;
         gap: 10px;
         font-size: 16.5px;
-        line-height: 1.4;
+        line-height: 1.45;
         font-weight: 700;
         color: var(--tc-text-main);
-        margin: 0 0 11px;
+        margin: 0 0 13px;
       }
 
       .tc-clause-num {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 3px 11px;
-        border-radius: 8px;
+        padding: 4px 12px;
+        border-radius: 9px;
         background: linear-gradient(180deg, #10b981 0%, #059669 100%);
         color: #ffffff;
         font-size: 12.5px;
         font-weight: 700;
         letter-spacing: 0.02em;
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.3) inset,
+          0 1px 0 rgba(255, 255, 255, 0.35) inset,
           0 3px 0 #047857;
         flex-shrink: 0;
       }
@@ -1045,15 +1106,15 @@ export function renderTermsPage() {
 
       /* Readable Bengali Body Typography */
       .tc-text {
-        font-size: 15px;
-        line-height: 1.85;
+        font-size: 15.5px;
+        line-height: 1.88;
         color: var(--tc-text-body);
         margin: 0;
         font-weight: 400;
       }
 
       .tc-text + .tc-text {
-        margin-top: 10px;
+        margin-top: 12px;
       }
 
       .tc-text strong {
@@ -1065,38 +1126,39 @@ export function renderTermsPage() {
       .tc-list {
         list-style: none;
         padding: 0;
-        margin: 4px 0 0;
+        margin: 6px 0 0;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 11px;
       }
 
       .tc-list li {
         position: relative;
-        padding: 10px 14px 10px 38px;
-        border-radius: 12px;
+        padding: 12px 16px 12px 42px;
+        border-radius: 13px;
         background: var(--tc-surface);
         border: 1px solid var(--tc-border);
         font-size: 14.5px;
-        line-height: 1.75;
+        line-height: 1.78;
         color: var(--tc-text-body);
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.03);
         transition: border-color 0.18s ease, transform 0.18s ease;
       }
 
       .tc-list li:hover {
         border-color: rgba(16, 185, 129, 0.45);
-        transform: translateX(2px);
+        transform: translateX(3px);
       }
 
       .tc-list li::before {
         content: '✓';
         position: absolute;
-        left: 11px;
-        top: 12px;
-        width: 20px;
-        height: 20px;
-        border-radius: 6px;
-        background: rgba(16, 185, 129, 0.14);
+        left: 12px;
+        top: 14px;
+        width: 21px;
+        height: 21px;
+        border-radius: 7px;
+        background: rgba(16, 185, 129, 0.15);
         color: #059669;
         font-size: 12px;
         font-weight: 800;
@@ -1106,7 +1168,7 @@ export function renderTermsPage() {
       }
 
       .dark .tc-list li::before {
-        background: rgba(16, 185, 129, 0.22);
+        background: rgba(16, 185, 129, 0.24);
         color: #34d399;
       }
 
@@ -1119,8 +1181,8 @@ export function renderTermsPage() {
       .tc-def-grid {
         display: grid;
         grid-template-columns: repeat(1, minmax(0, 1fr));
-        gap: 12px;
-        margin-top: 6px;
+        gap: 14px;
+        margin-top: 8px;
       }
 
       @media (min-width: 640px) {
@@ -1132,10 +1194,10 @@ export function renderTermsPage() {
       .tc-def-box {
         background: var(--tc-surface);
         border: 1px solid var(--tc-border);
-        border-radius: 14px;
-        padding: 14px 16px;
+        border-radius: 16px;
+        padding: 16px 18px;
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.75) inset,
+          0 1px 0 rgba(255, 255, 255, 0.8) inset,
           0 4px 0 -1px var(--tc-border-3d);
         transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
       }
@@ -1147,22 +1209,22 @@ export function renderTermsPage() {
       }
 
       .tc-def-box:hover {
-        transform: translateY(-2px);
+        transform: translateY(-3px);
         border-color: rgba(16, 185, 129, 0.55);
         box-shadow:
           0 1px 0 rgba(255, 255, 255, 0.85) inset,
-          0 5px 0 -1px rgba(16, 185, 129, 0.28),
-          0 10px 18px -6px rgba(16, 185, 129, 0.16);
+          0 6px 0 -1px rgba(16, 185, 129, 0.30),
+          0 12px 20px -6px rgba(16, 185, 129, 0.18);
       }
 
       .tc-def-term {
-        font-size: 14.5px;
+        font-size: 15px;
         font-weight: 700;
         color: var(--tc-emerald-dark);
-        margin-bottom: 5px;
+        margin-bottom: 6px;
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 7px;
       }
 
       .dark .tc-def-term {
@@ -1171,41 +1233,41 @@ export function renderTermsPage() {
 
       .tc-def-desc {
         font-size: 14px;
-        line-height: 1.7;
+        line-height: 1.72;
         color: var(--tc-text-body);
       }
 
       /* Security Warning Alert Card */
       .tc-alert {
-        margin-top: 14px;
-        padding: 15px 18px;
-        border-radius: 14px;
-        background: linear-gradient(135deg, rgba(244, 63, 94, 0.08) 0%, rgba(251, 113, 133, 0.04) 100%);
-        border: 1.5px solid rgba(244, 63, 94, 0.3);
-        box-shadow: 0 6px 16px -6px rgba(244, 63, 94, 0.18);
+        margin-top: 16px;
+        padding: 16px 20px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(244, 63, 94, 0.09) 0%, rgba(251, 113, 133, 0.04) 100%);
+        border: 1.5px solid rgba(244, 63, 94, 0.32);
+        box-shadow: 0 6px 18px -6px rgba(244, 63, 94, 0.2);
         display: flex;
         align-items: flex-start;
-        gap: 12px;
-        font-size: 14px;
-        line-height: 1.75;
+        gap: 13px;
+        font-size: 14.5px;
+        line-height: 1.78;
         color: #9f1239;
       }
 
       .dark .tc-alert {
-        background: linear-gradient(135deg, rgba(244, 63, 94, 0.16) 0%, rgba(136, 19, 55, 0.2) 100%);
-        border-color: rgba(251, 113, 133, 0.42);
+        background: linear-gradient(135deg, rgba(244, 63, 94, 0.18) 0%, rgba(136, 19, 55, 0.22) 100%);
+        border-color: rgba(251, 113, 133, 0.44);
         color: #fecdd3;
       }
 
       .tc-alert-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        background: rgba(244, 63, 94, 0.14);
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
+        background: rgba(244, 63, 94, 0.15);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 18px;
+        font-size: 19px;
         flex-shrink: 0;
       }
 
@@ -1230,8 +1292,8 @@ export function renderTermsPage() {
       .tc-contact-grid {
         display: grid;
         grid-template-columns: repeat(1, minmax(0, 1fr));
-        gap: 14px;
-        margin-top: 14px;
+        gap: 16px;
+        margin-top: 16px;
       }
 
       @media (min-width: 640px) {
@@ -1247,13 +1309,13 @@ export function renderTermsPage() {
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        gap: 12px;
+        gap: 14px;
         background: var(--tc-surface);
         border: 1px solid var(--tc-border);
-        border-radius: 16px;
-        padding: 18px 18px;
+        border-radius: 18px;
+        padding: 20px 20px;
         box-shadow:
-          0 1px 0 rgba(255, 255, 255, 0.8) inset,
+          0 1px 0 rgba(255, 255, 255, 0.85) inset,
           0 5px 0 -1px var(--tc-border-3d);
         transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
       }
@@ -1268,35 +1330,35 @@ export function renderTermsPage() {
         transform: translateY(-3px);
         border-color: #10b981;
         box-shadow:
-          0 6px 0 -1px rgba(16, 185, 129, 0.28),
-          0 14px 26px -8px rgba(16, 185, 129, 0.2);
+          0 6px 0 -1px rgba(16, 185, 129, 0.3),
+          0 16px 28px -8px rgba(16, 185, 129, 0.22);
       }
 
       .tc-contact-actions {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
+        gap: 9px;
       }
 
       .tc-action-btn {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 7px 13px;
-        border-radius: 10px;
-        font-size: 12.5px;
+        padding: 8px 14px;
+        border-radius: 11px;
+        font-size: 13px;
         font-weight: 700;
         text-decoration: none;
         cursor: pointer;
-        border: 1px solid rgba(16, 185, 129, 0.35);
-        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.36);
+        background: rgba(16, 185, 129, 0.11);
         color: var(--tc-emerald-dark);
-        box-shadow: 0 3px 0 rgba(16, 185, 129, 0.22);
+        box-shadow: 0 3px 0 rgba(16, 185, 129, 0.24);
         transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
       }
 
       .dark .tc-action-btn {
-        background: rgba(16, 185, 129, 0.16);
+        background: rgba(16, 185, 129, 0.18);
         color: #6ee7b7;
       }
 
@@ -1321,27 +1383,28 @@ export function renderTermsPage() {
 
       /* Final Consent Footer Card */
       .tc-consent-banner {
-        margin-top: 22px;
-        padding: 22px 20px;
-        border-radius: 18px;
+        margin-top: 24px;
+        padding: 26px 22px;
+        border-radius: 20px;
         text-align: center;
-        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(14, 165, 233, 0.08) 100%);
-        border: 1.5px solid rgba(16, 185, 129, 0.32);
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.11) 0%, rgba(14, 165, 233, 0.08) 100%);
+        border: 1.5px solid rgba(16, 185, 129, 0.35);
+        box-shadow: 0 10px 26px -10px rgba(16, 185, 129, 0.22);
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
       }
 
       .tc-consent-text {
-        font-size: 14.5px;
-        line-height: 1.7;
+        font-size: 15px;
+        line-height: 1.75;
         font-weight: 700;
         color: var(--tc-text-main);
       }
 
       .tc-consent-brand {
-        font-size: 15px;
+        font-size: 15.5px;
         font-weight: 700;
         color: var(--tc-emerald-dark);
       }
@@ -1351,11 +1414,11 @@ export function renderTermsPage() {
       }
 
       .tc-footer-nav-row {
-        margin-top: 10px;
+        margin-top: 12px;
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 10px;
+        gap: 12px;
       }
 
       /* Staggered Animation Delays */
@@ -1364,6 +1427,18 @@ export function renderTermsPage() {
       .tc-section-group:nth-of-type(3) { animation-delay: 0.12s; }
       .tc-section-group:nth-of-type(4) { animation-delay: 0.16s; }
       .tc-section-group:nth-of-type(5) { animation-delay: 0.20s; }
+
+      @media (prefers-reduced-motion: reduce) {
+        .tc-hero,
+        .tc-card,
+        .tc-hero-orb-1,
+        .tc-hero-orb-2,
+        .tc-hero-badge::after,
+        .tc-status-dot {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
 
       /* Print Support */
       @media print {

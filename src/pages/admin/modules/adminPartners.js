@@ -99,14 +99,14 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
               ${resellers.map(r => {
                 const id = r.shop_id || r.id || 'RSL-101';
                 const safeId = String(id).replace(/'/g, "\\'");
-                const logo = r.shop_logo || '/public/icon/logo.png';
+                const logo = r.shop_logo || '/icon/logo.png';
                 const phone = r.mobile || r.phone || '';
                 return `
                   <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                     <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">${id}</td>
                     <td class="py-2.5 px-3">
                       <div class="flex items-center gap-2">
-                        <img src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='/public/icon/logo.png';" />
+                        <img src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='/icon/logo.png';" />
                         <div>
                           <div class="font-bold text-slate-900 dark:text-white">${r.name}</div>
                           <div class="text-[10px] text-slate-400">শপ: ${r.shop_name || r.shop} • User: ${r.user_id || phone}</div>
@@ -203,14 +203,14 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
               ${wholesalers.map(w => {
                 const id = w.shop_id || w.id || 'WHS-101';
                 const safeId = String(id).replace(/'/g, "\\'");
-                const logo = w.shop_logo || '/public/icon/logo.png';
+                const logo = w.shop_logo || '/icon/logo.png';
                 const phone = w.mobile || w.phone || '';
                 return `
                   <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition">
                     <td class="py-2.5 px-3 font-mono font-bold text-amber-600">${id}</td>
                     <td class="py-2.5 px-3">
                       <div class="flex items-center gap-2">
-                        <img src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='/public/icon/logo.png';" />
+                        <img src="${logo}" class="w-8 h-8 rounded-lg object-cover border flex-shrink-0" onerror="this.src='/icon/logo.png';" />
                         <div>
                           <div class="font-bold text-slate-900 dark:text-white">${w.shop_name || w.company}</div>
                           <div class="text-[10px] text-slate-400">মালিক: ${w.name} • User: ${w.user_id || phone}</div>
@@ -393,11 +393,11 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
           ${admins.map(a => {
             const id = a.user_id || a.id || 'ADM-01';
             const safeId = String(id).replace(/'/g, "\\'");
-            const photo = a.profile_photo || '/public/icon/logo.png';
+            const photo = a.profile_photo || '/icon/logo.png';
             return `
               <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div class="flex items-center gap-3">
-                  <img src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='/public/icon/logo.png';" />
+                  <img src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='/icon/logo.png';" />
                   <div>
                     <div class="flex items-center gap-2">
                       <span class="font-mono text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded">${id}</span>
@@ -443,12 +443,12 @@ export function renderPartnersModule({ resellers, wholesalers, sellers, markets,
           ${workers.map(w => {
             const id = w.user_id || w.id || 'WRK-01';
             const safeId = String(id).replace(/'/g, "\\'");
-            const photo = w.profile_photo || '/public/icon/logo.png';
+            const photo = w.profile_photo || '/icon/logo.png';
             return `
               <div class="p-3.5 bg-slate-50 dark:bg-slate-800 rounded-2xl border flex flex-col justify-between gap-3">
                 <div class="flex items-start justify-between gap-2.5">
                   <div class="flex items-center gap-3">
-                    <img src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='/public/icon/logo.png';" />
+                    <img src="${photo}" class="w-11 h-11 rounded-xl object-cover border flex-shrink-0" onerror="this.src='/icon/logo.png';" />
                     <div>
                       <span class="font-mono text-[10px] font-bold bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">${id}</span>
                       <div class="font-bold text-slate-900 dark:text-white mt-0.5">${w.name}</div>
