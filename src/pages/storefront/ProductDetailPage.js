@@ -10,7 +10,7 @@ import { escapeHtml } from '../../utils/security.js';
  * - Wholesaler minimum order quantity validation (cannot order under MOQ)
  * - Out of Stock state: shows Pre Order button and hides Order Now button
  * - Direct Send WhatsApp 1 & 2 buttons
- * - Image gallery, specifications, warranty, reviews, and related products
+ * - Image gallery with prev/next arrow buttons & scrollable thumbnails, specifications, warranty, reviews, and related products
  * - Scoped CSS with elegant padding, clean typography, soft contrast, and seamless dark mode support.
  */
 
@@ -29,7 +29,7 @@ function getColorHex(name) {
   if (n.includes('blue') || n.includes('ব্লু') || n.includes('নীল') || n.includes('navy')) return '#2563eb';
   if (n.includes('red') || n.includes('লাল') || n.includes('রেড')) return '#dc2626';
   if (n.includes('green') || n.includes('সবুজ') || n.includes('গ্রিন') || n.includes('emerald')) return '#10b981';
-  if (n.includes('white') || n.includes('সাদা') || n.includes('হোয়াইট')) return '#ffffff';
+  if (n.includes('white') || n.includes('সাদা') || n.includes('হোয়াইট')) return '#ffffff';
   if (n.includes('gold') || n.includes('গোল্ড') || n.includes('golden') || n.includes('হলুদ') || n.includes('yellow')) return '#f59e0b';
   if (n.includes('pink') || n.includes('গোলাপি') || n.includes('রোজ') || n.includes('rose')) return '#f43f5e';
   if (n.includes('purple') || n.includes('বেগুনী')) return '#9333ea';
@@ -38,6 +38,53 @@ function getColorHex(name) {
   return '#10b981';
 }
 
+// Global helpers for Gallery Navigation & Thumbnail Scroll
+if (typeof window !== 'undefined' && !window.__pdGalleryHelpersAttached) {
+  window.__pdGalleryHelpersAttached = true;
+
+  window.__pdSelectImageByIndex = function(index) {
+    var gallery = document.getElementById('pd-gallery-root');
+    var mainImg = document.getElementById('detail-main-img');
+    var thumbs = document.querySelectorAll('#pd-thumb-row .thumb-btn');
+    if (!mainImg || !thumbs.length) return;
+
+    var total = thumbs.length;
+    var targetIdx = ((index % total) + total) % total;
+    var targetBtn = thumbs[targetIdx];
+    if (!targetBtn) return;
+
+    var imgUrl = targetBtn.getAttribute('data-img');
+    if (imgUrl) {
+      mainImg.src = imgUrl;
+    }
+
+    thumbs.forEach(function(b) {
+      b.classList.remove('border-emerald-500');
+    });
+    targetBtn.classList.add('border-emerald-500');
+
+    if (gallery) {
+      gallery.setAttribute('data-active-index', String(targetIdx));
+    }
+
+    if (targetBtn.scrollIntoView) {
+      targetBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    }
+  };
+
+  window.__pdStepImage = function(step) {
+    var gallery = document.getElementById('pd-gallery-root');
+    var currentIdx = gallery ? Number(gallery.getAttribute('data-active-index') || 0) : 0;
+    window.__pdSelectImageByIndex(currentIdx + step);
+  };
+
+  window.__pdScrollThumbs = function(direction) {
+    var row = document.getElementById('pd-thumb-row');
+    if (!row) return;
+    var amount = Math.max(180, Math.round(row.clientWidth * 0.75));
+    row.scrollBy({ left: direction * amount, behavior: 'smooth' });
+  };
+}
 
 // Global helper for instant, reliable Favourite toggle on Product Details Page
 if (typeof window !== 'undefined' && !window.__toggleProductDetailFavouriteAttached) {
@@ -82,14 +129,14 @@ if (typeof window !== 'undefined' && !window.__toggleProductDetailFavouriteAttac
         el.setAttribute('title', 'পছন্দের তালিকা থেকে সরান');
       } else {
         el.classList.remove('is-favourite');
-        el.setAttribute('title', 'পছন্দের তালিকায় রাখুন');
+        el.setAttribute('title', 'পছন্দের তালিকায় রাখুন');
       }
     });
 
     // Update main action button label
     var mainBtnLabel = document.getElementById('detail-fav-btn-label');
     if (mainBtnLabel) {
-      mainBtnLabel.textContent = isAdded ? 'পছন্দের তালিকায় আছে' : 'পছন্দের তালিকায় রাখুন';
+      mainBtnLabel.textContent = isAdded ? 'পছন্দের তালিকায় আছে' : 'পছন্দের তালিকায় রাখুন';
     }
 
     // Update header pill label
@@ -102,7 +149,7 @@ if (typeof window !== 'undefined' && !window.__toggleProductDetailFavouriteAttac
     if (window.toast && window.toast.show) {
       window.toast.show({
         type: isAdded ? 'success' : 'info',
-        title: isAdded ? 'পছন্দের তালিকায় যুক্ত হয়েছে' : 'পছন্দের তালিকা থেকে সরানো হয়েছে',
+        title: isAdded ? 'পছন্দের তালিকায় যুক্ত হয়েছে' : 'পছন্দের তালিকা থেকে সরানো হয়েছে',
         message: productObj.name || 'পণ্য',
         duration: 2500
       });
@@ -143,8 +190,8 @@ export async function renderProductDetailPage(slugOrId) {
     return `
       <div class="py-24 text-center space-y-4">
         <div class="text-5xl">📦</div>
-        <h2 class="text-xl font-bold text-slate-800 dark:text-white">পণ্যটি খুঁজে পাওয়া যায়নি</h2>
-        <p class="text-xs text-slate-500">অনুরোধকৃত পণ্যটি সম্ভবত সরানো হয়েছে বা লিঙ্কটি ভুল।</p>
+        <h2 class="text-xl font-bold text-slate-800 dark:text-white">পণ্যটি খুঁজে পাওয়া যায়নি</h2>
+        <p class="text-xs text-slate-500">অনুরোধকৃত পণ্যটি সম্ভবত সরানো হয়েছে বা লিঙ্কটি ভুল।</p>
         <a href="/products" class="btn-primary text-xs py-2 px-5 inline-flex">সকল পণ্য দেখুন</a>
       </div>
     `;
@@ -285,7 +332,7 @@ export async function renderProductDetailPage(slugOrId) {
         color: #34d399;
       }
 
-      /* Main 2-Column Grid (minmax(0, ...) prevents wide thumbnail rows from breaking layout) */
+      /* Main 2-Column Grid (minmax(0, ...) locks column width regardless of image count) */
       .pd-main-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
@@ -310,6 +357,7 @@ export async function renderProductDetailPage(slugOrId) {
         min-width: 0;
         width: 100%;
         max-width: 100%;
+        overflow: hidden;
       }
       .pd-main-img-box {
         position: relative;
@@ -337,6 +385,53 @@ export async function renderProductDetailPage(slugOrId) {
       .pd-main-img:hover {
         transform: scale(1.03);
       }
+
+      /* Main Image Left/Right Arrow Buttons */
+      .pd-img-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 10;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        transition: all 0.18s ease;
+        padding: 0;
+        outline: none;
+      }
+      .pd-img-nav.prev { left: 12px; }
+      .pd-img-nav.next { right: 12px; }
+      .pd-img-nav:hover {
+        background: #10b981;
+        border-color: #10b981;
+        color: #ffffff;
+        transform: translateY(-50%) scale(1.08);
+      }
+      .dark .pd-img-nav {
+        background: rgba(15, 23, 42, 0.84);
+        border-color: rgba(255, 255, 255, 0.16);
+        color: #f8fafc;
+      }
+      .dark .pd-img-nav:hover {
+        background: #10b981;
+        border-color: #10b981;
+        color: #ffffff;
+      }
+      .pd-img-nav svg {
+        width: 18px;
+        height: 18px;
+      }
+
       .pd-discount-badge {
         position: absolute;
         top: 16px;
@@ -408,34 +503,74 @@ export async function renderProductDetailPage(slugOrId) {
         transform: scale(1.15);
       }
 
-      /* Thumbnails */
+      /* Thumbnails Wrapper with Arrow Buttons */
+      .pd-thumb-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+      .pd-thumb-arrow {
+        flex: 0 0 auto;
+        width: 30px;
+        height: 58px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #334155;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        padding: 0;
+        outline: none;
+      }
+      .pd-thumb-arrow:hover {
+        border-color: #10b981;
+        color: #10b981;
+        background: #ecfdf5;
+      }
+      .dark .pd-thumb-arrow {
+        background: #0f172a;
+        border-color: rgba(255, 255, 255, 0.12);
+        color: #cbd5e1;
+      }
+      .dark .pd-thumb-arrow:hover {
+        border-color: #10b981;
+        color: #34d399;
+        background: rgba(16, 185, 129, 0.15);
+      }
+      .pd-thumb-arrow svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      /* Thumbnails Scroll Strip (flex: 1 1 0% + width: 0 guarantees zero parent expansion) */
       .pd-thumb-row {
         display: flex;
         align-items: center;
         flex-wrap: nowrap;
         gap: 10px;
-        width: 100%;
-        max-width: 100%;
+        flex: 1 1 0%;
+        width: 0;
         min-width: 0;
+        max-width: 100%;
         box-sizing: border-box;
         overflow-x: auto;
         overflow-y: hidden;
         overscroll-behavior-x: contain;
         -webkit-overflow-scrolling: touch;
         scroll-snap-type: x proximity;
-        padding: 3px 3px 8px;
-        scrollbar-width: thin;
-        scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+        padding: 3px 2px 6px;
+        scrollbar-width: none;
       }
       .pd-thumb-row::-webkit-scrollbar {
-        height: 5px;
-      }
-      .pd-thumb-row::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      .pd-thumb-row::-webkit-scrollbar-thumb {
-        background: rgba(148, 163, 184, 0.45);
-        border-radius: 9999px;
+        display: none;
       }
       .pd-thumb-btn {
         width: 58px;
@@ -453,7 +588,12 @@ export async function renderProductDetailPage(slugOrId) {
       }
       @media (min-width: 640px) {
         .pd-thumb-row {
-          gap: 12px;
+          gap: 10px;
+        }
+        .pd-thumb-arrow {
+          width: 34px;
+          height: 68px;
+          border-radius: 14px;
         }
         .pd-thumb-btn {
           width: 68px;
@@ -472,7 +612,7 @@ export async function renderProductDetailPage(slugOrId) {
       .pd-thumb-btn.border-emerald-500 {
         opacity: 1;
         border-color: #10b981 !important;
-        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.28);
       }
       .pd-thumb-img {
         width: 100%;
@@ -1313,7 +1453,7 @@ export async function renderProductDetailPage(slugOrId) {
       <div class="pd-main-grid">
         
         <!-- Left: Image Gallery -->
-        <div class="pd-gallery">
+        <div class="pd-gallery" id="pd-gallery-root" data-active-index="0">
           <div class="pd-main-img-box">
             <img 
               id="detail-main-img"
@@ -1322,10 +1462,19 @@ export async function renderProductDetailPage(slugOrId) {
               class="pd-main-img" 
               onerror="this.onerror=null; this.src='${fallbackImg}';"
             />
+
+            ${images.length > 1 ? `
+              <button type="button" class="pd-img-nav prev" aria-label="পূর্ববর্তী ছবি" onclick="window.__pdStepImage(-1);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <button type="button" class="pd-img-nav next" aria-label="পরবর্তী ছবি" onclick="window.__pdStepImage(1);">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            ` : ""}
             
             ${discountPercent > 0 ? `
               <div class="pd-discount-badge">
-                -${discountPercent}% ছাড়
+                -${discountPercent}% ছাড়
               </div>
             ` : ""}
 
@@ -1338,7 +1487,7 @@ export async function renderProductDetailPage(slugOrId) {
               data-product-price="${activePrice}"
               data-product-thumb="${escapeHtml(mainImage)}"
               data-product-json="${encodedJson}"
-              title="${isFavourite ? 'ফেভারিট থেকে সরান' : 'পছন্দের তালিকায় রাখুন'}"
+              title="${isFavourite ? 'ফেভারিট থেকে সরান' : 'পছন্দের তালিকায় রাখুন'}"
               aria-label="Wishlist"
               onclick="window.toggleProductDetailFavourite(event, this);"
             >
@@ -1346,19 +1495,34 @@ export async function renderProductDetailPage(slugOrId) {
             </button>
           </div>
 
-          <!-- Thumbnail Strip -->
+          <!-- Thumbnail Strip with Arrow Controls -->
           ${images.length > 1 ? `
-            <div class="pd-thumb-row">
-              ${images.map((img, i) => `
-                <button 
-                  type="button"
-                  class="thumb-btn pd-thumb-btn ${i === 0 ? 'border-emerald-500' : ''}"
-                  data-img="${escapeHtml(img)}"
-                  onclick="var m = document.getElementById('detail-main-img'); if (m) m.src = this.getAttribute('data-img'); document.querySelectorAll('.thumb-btn').forEach(function(b) { b.classList.remove('border-emerald-500'); }); this.classList.add('border-emerald-500');"
-                >
-                  <img src="${escapeHtml(img)}" alt="Thumbnail ${i + 1}" class="pd-thumb-img" onerror="this.onerror=null; this.src='${fallbackImg}';" />
+            <div class="pd-thumb-wrap">
+              ${images.length > 4 ? `
+                <button type="button" class="pd-thumb-arrow prev" aria-label="বামে স্ক্রল করুন" onclick="window.__pdScrollThumbs(-1);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
-              `).join("")}
+              ` : ""}
+
+              <div class="pd-thumb-row" id="pd-thumb-row">
+                ${images.map((img, i) => `
+                  <button 
+                    type="button"
+                    class="thumb-btn pd-thumb-btn ${i === 0 ? 'border-emerald-500' : ''}"
+                    data-img="${escapeHtml(img)}"
+                    data-index="${i}"
+                    onclick="window.__pdSelectImageByIndex(${i});"
+                  >
+                    <img src="${escapeHtml(img)}" alt="Thumbnail ${i + 1}" class="pd-thumb-img" onerror="this.onerror=null; this.src='${fallbackImg}';" />
+                  </button>
+                `).join("")}
+              </div>
+
+              ${images.length > 4 ? `
+                <button type="button" class="pd-thumb-arrow next" aria-label="ডানে স্ক্রল করুন" onclick="window.__pdScrollThumbs(1);">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              ` : ""}
             </div>
           ` : ""}
         </div>
@@ -1382,7 +1546,7 @@ export async function renderProductDetailPage(slugOrId) {
                 data-product-thumb="${escapeHtml(mainImage)}"
                 data-product-json="${encodedJson}"
                 onclick="window.toggleProductDetailFavourite(event, this);"
-                title="${isFavourite ? 'পছন্দের তালিকা থেকে সরান' : 'পছন্দের তালিকায় রাখুন'}"
+                title="${isFavourite ? 'পছন্দের তালিকা থেকে সরান' : 'পছন্দের তালিকায় রাখুন'}"
               >
                 <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
                 <span id="detail-fav-badge-label">${isFavourite ? 'ফেভারিটে আছে' : 'ফেভারিট'}</span>
@@ -1411,7 +1575,7 @@ export async function renderProductDetailPage(slugOrId) {
                   ${formatCurrency(originalPrice)}
                 </span>
                 <span style="font-size: 12px; font-weight: 800; color: #e11d48; background: #ffe4e6; padding: 2px 8px; border-radius: 6px;">
-                  সাশ্রয়: ${formatCurrency(discountAmount)}
+                  সাশ্রয়: ${formatCurrency(discountAmount)}
                 </span>
               ` : ""}
               
@@ -1424,7 +1588,7 @@ export async function renderProductDetailPage(slugOrId) {
             <!-- Wholesaler Minimum Order Quantity Warning -->
             ${isWholesale ? `
               <div class="pd-moq-alert">
-                <span>⚠️</span> পাইকারি ক্রয়ের জন্য সর্বনিম্ন অর্ডার পরিমাণ (MOQ): <strong>${minOrderQty} পিস</strong>
+                <span>⚠️</span> পাইকারি ক্রয়ের জন্য সর্বনিম্ন অর্ডার পরিমাণ (MOQ): <strong>${minOrderQty} পিস</strong>
               </div>
             ` : ""}
           </div>
@@ -1558,12 +1722,12 @@ export async function renderProductDetailPage(slugOrId) {
                 data-product-price="${activePrice}"
                 data-product-thumb="${escapeHtml(mainImage)}"
                 data-product-json="${encodedJson}"
-                title="${isFavourite ? 'পছন্দের তালিকা থেকে সরান' : 'পছন্দের তালিকায় রাখুন'}"
+                title="${isFavourite ? 'পছন্দের তালিকা থেকে সরান' : 'পছন্দের তালিকায় রাখুন'}"
                 aria-label="Wishlist"
                 onclick="window.toggleProductDetailFavourite(event, this);"
               >
                 <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-                <span id="detail-fav-btn-label">${isFavourite ? 'পছন্দের তালিকায় আছে' : 'পছন্দের তালিকায় রাখুন'}</span>
+                <span id="detail-fav-btn-label">${isFavourite ? 'পছন্দের তালিকায় আছে' : 'পছন্দের তালিকায় রাখুন'}</span>
               </button>
 
             </div>
@@ -1658,14 +1822,14 @@ export async function renderProductDetailPage(slugOrId) {
               <span class="pd-review-name">রাকিবুল হাসান (কুমিল্লা)</span>
               <span class="pd-review-stars">★★★★★</span>
             </div>
-            <p class="pd-review-text">খুবই চমৎকার প্যাকেজিং এবং আসল পণ্য। পদুয়ার বাজার শোরুম থেকে সরাসরি নিয়েছি। ধন্যবাদ!</p>
+            <p class="pd-review-text">খুবই চমৎকার প্যাকেজিং এবং আসল পণ্য। পদুয়ার বাজার শোরুম থেকে সরাসরি নিয়েছি। ধন্যবাদ!</p>
           </div>
           <div class="pd-review-card">
             <div class="pd-review-user-row">
               <span class="pd-review-name">শফিকুল ইসলাম (ঢাকা)</span>
               <span class="pd-review-stars">★★★★★</span>
             </div>
-            <p class="pd-review-text">অর্ডার করার ২ দিনের মধ্যে ডেলিভারি পেয়েছি। পণ্যের কোয়ালিটি ১০০% জেনুইন।</p>
+            <p class="pd-review-text">অর্ডার করার ২ দিনের মধ্যে ডেলিভারি পেয়েছি। পণ্যের কোয়ালিটি ১০০% জেনুইন।</p>
           </div>
         </div>
       </div>
