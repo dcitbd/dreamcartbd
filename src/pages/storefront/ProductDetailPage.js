@@ -10,7 +10,7 @@ import { escapeHtml } from '../../utils/security.js';
  * - Wholesaler minimum order quantity validation (cannot order under MOQ)
  * - Out of Stock state: shows Pre Order button and hides Order Now button
  * - Direct Send WhatsApp 1 & 2 buttons
- * - Image gallery with prev/next arrow buttons & scrollable thumbnails, specifications, warranty, reviews, and related products
+ * - Image gallery with prev/next arrow buttons, counter & scrollable thumbnails, specifications, warranty, reviews, and related products
  * - Scoped CSS with elegant padding, clean typography, soft contrast, and seamless dark mode support.
  */
 
@@ -45,6 +45,7 @@ if (typeof window !== 'undefined' && !window.__pdGalleryHelpersAttached) {
   window.__pdSelectImageByIndex = function(index) {
     var gallery = document.getElementById('pd-gallery-root');
     var mainImg = document.getElementById('detail-main-img');
+    var counter = document.getElementById('pd-img-counter');
     var thumbs = document.querySelectorAll('#pd-thumb-row .thumb-btn');
     if (!mainImg || !thumbs.length) return;
 
@@ -67,6 +68,10 @@ if (typeof window !== 'undefined' && !window.__pdGalleryHelpersAttached) {
       gallery.setAttribute('data-active-index', String(targetIdx));
     }
 
+    if (counter) {
+      counter.textContent = (targetIdx + 1) + ' / ' + total;
+    }
+
     if (targetBtn.scrollIntoView) {
       targetBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
     }
@@ -81,7 +86,7 @@ if (typeof window !== 'undefined' && !window.__pdGalleryHelpersAttached) {
   window.__pdScrollThumbs = function(direction) {
     var row = document.getElementById('pd-thumb-row');
     if (!row) return;
-    var amount = Math.max(180, Math.round(row.clientWidth * 0.75));
+    var amount = Math.max(160, Math.round(row.clientWidth * 0.75));
     row.scrollBy({ left: direction * amount, behavior: 'smooth' });
   };
 }
@@ -300,22 +305,28 @@ export async function renderProductDetailPage(slugOrId) {
         width: 100%;
         max-width: 1180px;
         margin: 0 auto;
-        padding: 16px 16px 80px;
+        padding: 8px 0 80px;
         box-sizing: border-box;
         overflow-x: hidden;
         overflow-x: clip;
+      }
+      @media (min-width: 640px) {
+        .pd-wrapper {
+          padding: 16px 16px 80px;
+        }
       }
 
       /* Breadcrumbs */
       .pd-breadcrumb {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         font-size: 12px;
         color: #94a3b8;
-        margin-bottom: 24px;
+        margin-bottom: 18px;
         flex-wrap: wrap;
         min-width: 0;
+        max-width: 100%;
       }
       .pd-breadcrumb a {
         color: #64748b;
@@ -331,21 +342,31 @@ export async function renderProductDetailPage(slugOrId) {
       .dark .pd-breadcrumb a:hover {
         color: #34d399;
       }
+      .pd-breadcrumb-current {
+        font-weight: 700;
+        color: #334155;
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
       /* Main 2-Column Grid (minmax(0, ...) locks column width regardless of image count) */
       .pd-main-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
-        gap: 28px;
+        gap: 24px;
         align-items: start;
         width: 100%;
-        margin-bottom: 48px;
+        max-width: 100%;
+        margin-bottom: 40px;
         box-sizing: border-box;
       }
       @media (min-width: 1024px) {
         .pd-main-grid {
           grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-          gap: 48px;
+          gap: 44px;
+          margin-bottom: 48px;
         }
       }
 
@@ -353,7 +374,7 @@ export async function renderProductDetailPage(slugOrId) {
       .pd-gallery {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 12px;
         min-width: 0;
         width: 100%;
         max-width: 100%;
@@ -364,11 +385,16 @@ export async function renderProductDetailPage(slugOrId) {
         width: 100%;
         max-width: 100%;
         aspect-ratio: 1 / 1;
-        border-radius: 24px;
+        border-radius: 20px;
         overflow: hidden;
         background: #ffffff;
         border: 1px solid rgba(226, 232, 240, 0.9);
         box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+      }
+      @media (min-width: 640px) {
+        .pd-main-img-box {
+          border-radius: 24px;
+        }
       }
       .dark .pd-main-img-box {
         background: #0f172a;
@@ -391,8 +417,8 @@ export async function renderProductDetailPage(slugOrId) {
         position: absolute;
         top: 50%;
         transform: translateY(-50%);
-        width: 38px;
-        height: 38px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         background: rgba(255, 255, 255, 0.9);
         backdrop-filter: blur(8px);
@@ -404,13 +430,13 @@ export async function renderProductDetailPage(slugOrId) {
         justify-content: center;
         cursor: pointer;
         z-index: 10;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
         transition: all 0.18s ease;
         padding: 0;
         outline: none;
       }
-      .pd-img-nav.prev { left: 12px; }
-      .pd-img-nav.next { right: 12px; }
+      .pd-img-nav.prev { left: 10px; }
+      .pd-img-nav.next { right: 10px; }
       .pd-img-nav:hover {
         background: #10b981;
         border-color: #10b981;
@@ -432,15 +458,31 @@ export async function renderProductDetailPage(slugOrId) {
         height: 18px;
       }
 
+      .pd-img-counter {
+        position: absolute;
+        bottom: 12px;
+        right: 12px;
+        background: rgba(15, 23, 42, 0.72);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        color: #f8fafc;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        z-index: 10;
+        pointer-events: none;
+      }
+
       .pd-discount-badge {
         position: absolute;
-        top: 16px;
-        left: 16px;
+        top: 14px;
+        left: 14px;
         background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
         color: #ffffff;
-        font-size: 12px;
+        font-size: 11.5px;
         font-weight: 800;
-        padding: 6px 14px;
+        padding: 5px 12px;
         border-radius: 9999px;
         box-shadow: 0 4px 12px rgba(225, 29, 72, 0.3);
         letter-spacing: 0.3px;
@@ -451,10 +493,10 @@ export async function renderProductDetailPage(slugOrId) {
       /* Floating Favourite Heart on Image */
       .pd-fav-btn {
         position: absolute;
-        top: 16px;
-        right: 16px;
-        width: 44px;
-        height: 44px;
+        top: 14px;
+        right: 14px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         background: rgba(255, 255, 255, 0.92);
         backdrop-filter: blur(8px);
@@ -470,6 +512,12 @@ export async function renderProductDetailPage(slugOrId) {
         z-index: 10;
         outline: none;
         padding: 0;
+      }
+      @media (min-width: 640px) {
+        .pd-fav-btn {
+          width: 44px;
+          height: 44px;
+        }
       }
       .dark .pd-fav-btn {
         background: rgba(15, 23, 42, 0.88);
@@ -494,8 +542,8 @@ export async function renderProductDetailPage(slugOrId) {
         color: #fb7185 !important;
       }
       .pd-fav-btn svg {
-        width: 22px;
-        height: 22px;
+        width: 20px;
+        height: 20px;
         fill: currentColor;
         transition: transform 0.2s ease;
       }
@@ -507,7 +555,7 @@ export async function renderProductDetailPage(slugOrId) {
       .pd-thumb-wrap {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         width: 100%;
         max-width: 100%;
         min-width: 0;
@@ -516,9 +564,9 @@ export async function renderProductDetailPage(slugOrId) {
       }
       .pd-thumb-arrow {
         flex: 0 0 auto;
-        width: 30px;
-        height: 58px;
-        border-radius: 12px;
+        width: 28px;
+        height: 56px;
+        border-radius: 10px;
         border: 1px solid #e2e8f0;
         background: #ffffff;
         color: #334155;
@@ -555,7 +603,7 @@ export async function renderProductDetailPage(slugOrId) {
         display: flex;
         align-items: center;
         flex-wrap: nowrap;
-        gap: 10px;
+        gap: 8px;
         flex: 1 1 0%;
         width: 0;
         min-width: 0;
@@ -566,15 +614,15 @@ export async function renderProductDetailPage(slugOrId) {
         overscroll-behavior-x: contain;
         -webkit-overflow-scrolling: touch;
         scroll-snap-type: x proximity;
-        padding: 3px 2px 6px;
+        padding: 3px 2px 4px;
         scrollbar-width: none;
       }
       .pd-thumb-row::-webkit-scrollbar {
         display: none;
       }
       .pd-thumb-btn {
-        width: 58px;
-        height: 58px;
+        width: 56px;
+        height: 56px;
         border-radius: 12px;
         overflow: hidden;
         border: 2px solid #e2e8f0;
@@ -587,6 +635,9 @@ export async function renderProductDetailPage(slugOrId) {
         opacity: 0.75;
       }
       @media (min-width: 640px) {
+        .pd-thumb-wrap {
+          gap: 8px;
+        }
         .pd-thumb-row {
           gap: 10px;
         }
@@ -625,7 +676,7 @@ export async function renderProductDetailPage(slugOrId) {
       .pd-info-panel {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 18px;
         min-width: 0;
         width: 100%;
         max-width: 100%;
@@ -722,7 +773,7 @@ export async function renderProductDetailPage(slugOrId) {
       }
 
       .pd-title {
-        font-size: 22px;
+        font-size: 21px;
         font-weight: 800;
         color: #0f172a;
         line-height: 1.35;
@@ -743,11 +794,17 @@ export async function renderProductDetailPage(slugOrId) {
       .pd-price-box {
         background: linear-gradient(135deg, rgba(236, 253, 245, 0.9) 0%, rgba(240, 253, 250, 0.8) 100%);
         border: 1px solid rgba(167, 243, 208, 0.8);
-        border-radius: 20px;
-        padding: 20px 24px;
+        border-radius: 18px;
+        padding: 16px 18px;
         display: flex;
         flex-direction: column;
         gap: 8px;
+      }
+      @media (min-width: 640px) {
+        .pd-price-box {
+          border-radius: 20px;
+          padding: 20px 24px;
+        }
       }
       .dark .pd-price-box {
         background: linear-gradient(135deg, rgba(6, 78, 59, 0.28) 0%, rgba(13, 148, 136, 0.18) 100%);
@@ -766,11 +823,11 @@ export async function renderProductDetailPage(slugOrId) {
       .pd-price-row {
         display: flex;
         align-items: baseline;
-        gap: 12px;
+        gap: 10px;
         flex-wrap: wrap;
       }
       .pd-active-price {
-        font-size: 32px;
+        font-size: 30px;
         font-weight: 900;
         color: #065f46;
         font-family: 'Plus Jakarta Sans', monospace;
@@ -785,7 +842,7 @@ export async function renderProductDetailPage(slugOrId) {
         color: #34d399;
       }
       .pd-regular-price {
-        font-size: 16px;
+        font-size: 15px;
         color: #94a3b8;
         text-decoration: line-through;
         font-weight: 600;
@@ -824,6 +881,7 @@ export async function renderProductDetailPage(slugOrId) {
         display: flex;
         align-items: center;
         gap: 6px;
+        flex-wrap: wrap;
       }
       .dark .pd-moq-alert {
         background: rgba(245, 158, 11, 0.15);
@@ -850,6 +908,8 @@ export async function renderProductDetailPage(slugOrId) {
         justify-content: space-between;
         font-size: 12.5px;
         margin-bottom: 8px;
+        gap: 8px;
+        flex-wrap: wrap;
       }
       .pd-selector-title {
         font-weight: 700;
@@ -959,8 +1019,9 @@ export async function renderProductDetailPage(slugOrId) {
       .pd-qty-row {
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 12px;
         font-size: 12.5px;
+        flex-wrap: wrap;
       }
       .pd-qty-label {
         font-weight: 700;
@@ -1034,7 +1095,7 @@ export async function renderProductDetailPage(slugOrId) {
         color: #ffffff;
         border: none;
         border-radius: 14px;
-        padding: 14px 24px;
+        padding: 14px 20px;
         font-size: 14px;
         font-weight: 800;
         cursor: pointer;
@@ -1057,7 +1118,7 @@ export async function renderProductDetailPage(slugOrId) {
         color: #ffffff;
         border: none;
         border-radius: 14px;
-        padding: 14px 24px;
+        padding: 14px 20px;
         font-size: 14px;
         font-weight: 800;
         cursor: pointer;
@@ -1078,13 +1139,12 @@ export async function renderProductDetailPage(slugOrId) {
       /* Secondary Actions Grid (Cart + Favourite) */
       .pd-secondary-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 8px;
       }
-      @media (max-width: 640px) {
+      @media (min-width: 640px) {
         .pd-secondary-grid {
-          grid-template-columns: 1fr 1fr;
-          gap: 8px;
+          gap: 12px;
         }
       }
 
@@ -1093,16 +1153,25 @@ export async function renderProductDetailPage(slugOrId) {
         color: #0f172a;
         border: 1.5px solid #cbd5e1;
         border-radius: 14px;
-        padding: 13px 20px;
-        font-size: 13.5px;
+        padding: 11px 10px;
+        font-size: 12px;
         font-weight: 800;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 6px;
         transition: all 0.2s ease;
         outline: none;
+        min-width: 0;
+        text-align: center;
+      }
+      @media (min-width: 640px) {
+        .pd-btn-cart {
+          padding: 13px 20px;
+          font-size: 13.5px;
+          gap: 8px;
+        }
       }
       .dark .pd-btn-cart {
         background: rgba(255, 255, 255, 0.06);
@@ -1127,16 +1196,25 @@ export async function renderProductDetailPage(slugOrId) {
         color: #475569;
         border: 1.5px solid #cbd5e1;
         border-radius: 14px;
-        padding: 13px 18px;
-        font-size: 13.5px;
+        padding: 11px 10px;
+        font-size: 12px;
         font-weight: 700;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
+        gap: 6px;
         transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         outline: none;
+        min-width: 0;
+        text-align: center;
+      }
+      @media (min-width: 640px) {
+        .pd-btn-fav {
+          padding: 13px 18px;
+          font-size: 13.5px;
+          gap: 8px;
+        }
       }
       .dark .pd-btn-fav {
         background: rgba(255, 255, 255, 0.06);
@@ -1167,10 +1245,17 @@ export async function renderProductDetailPage(slugOrId) {
         color: #fb7185 !important;
       }
       .pd-btn-fav svg {
-        width: 19px;
-        height: 19px;
+        width: 17px;
+        height: 17px;
         fill: currentColor;
+        flex-shrink: 0;
         transition: transform 0.2s ease;
+      }
+      @media (min-width: 640px) {
+        .pd-btn-fav svg {
+          width: 19px;
+          height: 19px;
+        }
       }
       .pd-btn-fav:hover svg {
         transform: scale(1.15);
@@ -1179,12 +1264,12 @@ export async function renderProductDetailPage(slugOrId) {
       /* WhatsApp Buttons */
       .pd-wa-grid {
         display: grid;
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 10px;
       }
       @media (min-width: 640px) {
         .pd-wa-grid {
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         }
       }
       .pd-wa-btn {
@@ -1192,7 +1277,7 @@ export async function renderProductDetailPage(slugOrId) {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        padding: 11px 16px;
+        padding: 11px 14px;
         border-radius: 12px;
         font-size: 12.5px;
         font-weight: 700;
@@ -1231,26 +1316,28 @@ export async function renderProductDetailPage(slugOrId) {
       /* Trust Cards */
       .pd-trust-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 8px;
         padding-top: 4px;
       }
       @media (min-width: 640px) {
         .pd-trust-grid {
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 10px;
         }
       }
       .pd-trust-item {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 12px;
-        padding: 10px 12px;
+        padding: 10px;
         display: flex;
         align-items: center;
         gap: 8px;
         font-size: 11.5px;
         font-weight: 600;
         color: #334155;
+        min-width: 0;
       }
       .dark .pd-trust-item {
         background: rgba(255, 255, 255, 0.03);
@@ -1266,10 +1353,17 @@ export async function renderProductDetailPage(slugOrId) {
       .pd-section-card {
         background: #ffffff;
         border: 1px solid rgba(226, 232, 240, 0.9);
-        border-radius: 24px;
-        padding: 28px 24px;
+        border-radius: 18px;
+        padding: 20px 16px;
         box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.03);
-        margin-bottom: 32px;
+        margin-bottom: 24px;
+      }
+      @media (min-width: 640px) {
+        .pd-section-card {
+          border-radius: 24px;
+          padding: 28px 24px;
+          margin-bottom: 32px;
+        }
       }
       .dark .pd-section-card {
         background: #0f172a;
@@ -1277,7 +1371,7 @@ export async function renderProductDetailPage(slugOrId) {
         box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.4);
       }
       .pd-section-title {
-        font-size: 18px;
+        font-size: 17px;
         font-weight: 800;
         color: #0f172a;
         margin: 0 0 16px;
@@ -1286,6 +1380,11 @@ export async function renderProductDetailPage(slugOrId) {
         display: flex;
         align-items: center;
         gap: 8px;
+      }
+      @media (min-width: 640px) {
+        .pd-section-title {
+          font-size: 18px;
+        }
       }
       .dark .pd-section-title {
         color: #f8fafc;
@@ -1306,7 +1405,7 @@ export async function renderProductDetailPage(slugOrId) {
         background: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 14px;
-        padding: 16px 18px;
+        padding: 14px 16px;
         margin-top: 18px;
       }
       .dark .pd-spec-box {
@@ -1362,12 +1461,12 @@ export async function renderProductDetailPage(slugOrId) {
       }
       .pd-review-grid {
         display: grid;
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         gap: 14px;
       }
       @media (min-width: 640px) {
         .pd-review-grid {
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         }
       }
       .pd-review-card {
@@ -1385,6 +1484,8 @@ export async function renderProductDetailPage(slugOrId) {
         align-items: center;
         justify-content: space-between;
         margin-bottom: 8px;
+        gap: 8px;
+        flex-wrap: wrap;
       }
       .pd-review-name {
         font-size: 13px;
@@ -1415,12 +1516,18 @@ export async function renderProductDetailPage(slugOrId) {
         align-items: center;
         justify-content: space-between;
         margin-bottom: 18px;
+        gap: 10px;
       }
       .pd-related-title {
-        font-size: 18px;
+        font-size: 17px;
         font-weight: 800;
         color: #0f172a;
         margin: 0;
+      }
+      @media (min-width: 640px) {
+        .pd-related-title {
+          font-size: 18px;
+        }
       }
       .dark .pd-related-title {
         color: #f8fafc;
@@ -1430,6 +1537,7 @@ export async function renderProductDetailPage(slugOrId) {
         font-weight: 700;
         color: #10b981;
         text-decoration: none;
+        flex-shrink: 0;
       }
       .pd-related-link:hover {
         text-decoration: underline;
@@ -1446,7 +1554,7 @@ export async function renderProductDetailPage(slugOrId) {
         <span>/</span>
         <a href="/products?cat=${encodeURIComponent(product.category || '')}">${product.category || 'ক্যাটাগরি'}</a>
         <span>/</span>
-        <span style="font-weight: 700; color: #334155;" class="dark:text-slate-200 truncate max-w-xs">${product.name || product.p_name}</span>
+        <span class="pd-breadcrumb-current dark:text-slate-200">${product.name || product.p_name}</span>
       </div>
 
       <!-- Main Product Display Grid -->
@@ -1470,6 +1578,7 @@ export async function renderProductDetailPage(slugOrId) {
               <button type="button" class="pd-img-nav next" aria-label="পরবর্তী ছবি" onclick="window.__pdStepImage(1);">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
+              <div id="pd-img-counter" class="pd-img-counter">1 / ${images.length}</div>
             ` : ""}
             
             ${discountPercent > 0 ? `
@@ -1498,7 +1607,7 @@ export async function renderProductDetailPage(slugOrId) {
           <!-- Thumbnail Strip with Arrow Controls -->
           ${images.length > 1 ? `
             <div class="pd-thumb-wrap">
-              ${images.length > 4 ? `
+              ${images.length > 3 ? `
                 <button type="button" class="pd-thumb-arrow prev" aria-label="বামে স্ক্রল করুন" onclick="window.__pdScrollThumbs(-1);">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
@@ -1518,7 +1627,7 @@ export async function renderProductDetailPage(slugOrId) {
                 `).join("")}
               </div>
 
-              ${images.length > 4 ? `
+              ${images.length > 3 ? `
                 <button type="button" class="pd-thumb-arrow next" aria-label="ডানে স্ক্রল করুন" onclick="window.__pdScrollThumbs(1);">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
@@ -1708,7 +1817,7 @@ export async function renderProductDetailPage(slugOrId) {
                 class="pd-btn-cart"
                 data-product-id="${productId}"
               >
-                <svg style="width: 19px; height: 19px; color: #10b981; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                <svg style="width: 18px; height: 18px; color: #10b981; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
                 <span>কার্টে যোগ করুন</span>
               </button>
 
@@ -1836,7 +1945,7 @@ export async function renderProductDetailPage(slugOrId) {
 
       <!-- Related Products Carousel -->
       ${related.length > 0 ? `
-        <section style="margin-top: 40px;">
+        <section style="margin-top: 32px;">
           <div class="pd-related-header">
             <h3 class="pd-related-title">সম্পর্কিত অন্যান্য পণ্য (Related Products)</h3>
             <a href="/products?cat=${encodeURIComponent(product.category || '')}" class="pd-related-link">আরও দেখুন →</a>
