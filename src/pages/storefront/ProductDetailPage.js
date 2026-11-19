@@ -1,3 +1,4 @@
+import { escapeHtml } from '../../utils/security.js';
 /**
  * DREAM CART BD — PRODUCT DETAIL PAGE (ProductDetailPage.js)
  * Implements user requirements:
@@ -37,16 +38,6 @@ function getColorHex(name) {
   return '#10b981';
 }
 
-// Safe HTML escaper
-function escapeHtml(str) {
-  if (str === null || str === undefined) return '';
-  return String(str)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
 
 // Global helper for instant, reliable Favourite toggle on Product Details Page
 if (typeof window !== 'undefined' && !window.__toggleProductDetailFavouriteAttached) {
@@ -201,7 +192,12 @@ export async function renderProductDetailPage(slugOrId) {
   const discountPercent = isDiscounted ? Math.round(((originalPrice - activePrice) / originalPrice) * 100) : 0;
   const discountAmount = isDiscounted ? (originalPrice - activePrice) : 0;
 
-  const images = Array.isArray(product.images) && product.images.length > 0 ? product.images : [product.thumbnail || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80"];
+  const fallbackImg = "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80";
+  const rawImages = Array.isArray(product.images)
+    ? product.images
+    : (typeof product.images === 'string' ? product.images.split(/[\n,]+/) : []);
+  const cleanImages = rawImages.map(u => String(u || '').trim()).filter(Boolean);
+  const images = cleanImages.length > 0 ? cleanImages : [String(product.thumbnail || '').trim() || fallbackImg];
   const mainImage = images[0];
 
   // Options Parsing (Color & Size)
@@ -254,10 +250,13 @@ export async function renderProductDetailPage(slugOrId) {
     <style id="dc-product-detail-styles">
       .pd-wrapper {
         font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        width: 100%;
         max-width: 1180px;
         margin: 0 auto;
         padding: 16px 16px 80px;
         box-sizing: border-box;
+        overflow-x: hidden;
+        overflow-x: clip;
       }
 
       /* Breadcrumbs */
@@ -269,6 +268,7 @@ export async function renderProductDetailPage(slugOrId) {
         color: #94a3b8;
         margin-bottom: 24px;
         flex-wrap: wrap;
+        min-width: 0;
       }
       .pd-breadcrumb a {
         color: #64748b;
@@ -285,18 +285,19 @@ export async function renderProductDetailPage(slugOrId) {
         color: #34d399;
       }
 
-      /* Main 2-Column Grid */
+      /* Main 2-Column Grid (minmax(0, ...) prevents wide thumbnail rows from breaking layout) */
       .pd-main-grid {
         display: grid;
-        grid-template-columns: 1fr;
-        gap: 32px;
+        grid-template-columns: minmax(0, 1fr);
+        gap: 28px;
         align-items: start;
+        width: 100%;
         margin-bottom: 48px;
         box-sizing: border-box;
       }
       @media (min-width: 1024px) {
         .pd-main-grid {
-          grid-template-columns: 5fr 7fr;
+          grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
           gap: 48px;
         }
       }
@@ -305,10 +306,15 @@ export async function renderProductDetailPage(slugOrId) {
       .pd-gallery {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 14px;
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
       }
       .pd-main-img-box {
         position: relative;
+        width: 100%;
+        max-width: 100%;
         aspect-ratio: 1 / 1;
         border-radius: 24px;
         overflow: hidden;
@@ -325,6 +331,7 @@ export async function renderProductDetailPage(slugOrId) {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        display: block;
         transition: transform 0.3s ease;
       }
       .pd-main-img:hover {
@@ -405,22 +412,54 @@ export async function renderProductDetailPage(slugOrId) {
       .pd-thumb-row {
         display: flex;
         align-items: center;
-        gap: 12px;
+        flex-wrap: nowrap;
+        gap: 10px;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
         overflow-x: auto;
-        padding-bottom: 4px;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+        padding: 3px 3px 8px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+      }
+      .pd-thumb-row::-webkit-scrollbar {
+        height: 5px;
+      }
+      .pd-thumb-row::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .pd-thumb-row::-webkit-scrollbar-thumb {
+        background: rgba(148, 163, 184, 0.45);
+        border-radius: 9999px;
       }
       .pd-thumb-btn {
-        width: 68px;
-        height: 68px;
-        border-radius: 14px;
+        width: 58px;
+        height: 58px;
+        border-radius: 12px;
         overflow: hidden;
         border: 2px solid #e2e8f0;
         background: #ffffff;
         cursor: pointer;
-        flex-shrink: 0;
+        flex: 0 0 auto;
+        scroll-snap-align: start;
         padding: 0;
         transition: all 0.15s ease;
         opacity: 0.75;
+      }
+      @media (min-width: 640px) {
+        .pd-thumb-row {
+          gap: 12px;
+        }
+        .pd-thumb-btn {
+          width: 68px;
+          height: 68px;
+          border-radius: 14px;
+        }
       }
       .dark .pd-thumb-btn {
         background: #0f172a;
@@ -439,6 +478,7 @@ export async function renderProductDetailPage(slugOrId) {
         width: 100%;
         height: 100%;
         object-fit: cover;
+        display: block;
       }
 
       /* Right Info Panel */
@@ -446,6 +486,9 @@ export async function renderProductDetailPage(slugOrId) {
         display: flex;
         flex-direction: column;
         gap: 20px;
+        min-width: 0;
+        width: 100%;
+        max-width: 100%;
       }
       .pd-badge-row {
         display: flex;
@@ -544,6 +587,8 @@ export async function renderProductDetailPage(slugOrId) {
         color: #0f172a;
         line-height: 1.35;
         margin: 0;
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
       @media (min-width: 640px) {
         .pd-title {
@@ -1111,6 +1156,8 @@ export async function renderProductDetailPage(slugOrId) {
         line-height: 1.7;
         color: #475569;
         white-space: pre-line;
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
       .dark .pd-desc-text {
         color: #cbd5e1;
@@ -1142,6 +1189,8 @@ export async function renderProductDetailPage(slugOrId) {
         line-height: 1.6;
         color: #334155;
         font-family: monospace;
+        overflow-wrap: break-word;
+        word-break: break-word;
       }
       .dark .pd-spec-content {
         color: #e2e8f0;
@@ -1268,10 +1317,10 @@ export async function renderProductDetailPage(slugOrId) {
           <div class="pd-main-img-box">
             <img 
               id="detail-main-img"
-              src="${mainImage}" 
-              alt="${product.name || product.p_name}" 
+              src="${escapeHtml(mainImage)}" 
+              alt="${escapeHtml(product.name || product.p_name)}" 
               class="pd-main-img" 
-              onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80';"
+              onerror="this.onerror=null; this.src='${fallbackImg}';"
             />
             
             ${discountPercent > 0 ? `
@@ -1287,7 +1336,7 @@ export async function renderProductDetailPage(slugOrId) {
               data-product-id="${productId}"
               data-product-name="${escapeHtml(product.name || product.p_name)}"
               data-product-price="${activePrice}"
-              data-product-thumb="${mainImage}"
+              data-product-thumb="${escapeHtml(mainImage)}"
               data-product-json="${encodedJson}"
               title="${isFavourite ? 'ফেভারিট থেকে সরান' : 'পছন্দের তালিকায় রাখুন'}"
               aria-label="Wishlist"
@@ -1302,10 +1351,12 @@ export async function renderProductDetailPage(slugOrId) {
             <div class="pd-thumb-row">
               ${images.map((img, i) => `
                 <button 
+                  type="button"
                   class="thumb-btn pd-thumb-btn ${i === 0 ? 'border-emerald-500' : ''}"
-                  onclick="document.getElementById('detail-main-img').src='${img}'; document.querySelectorAll('.thumb-btn').forEach(b => b.classList.remove('border-emerald-500')); this.classList.add('border-emerald-500');"
+                  data-img="${escapeHtml(img)}"
+                  onclick="var m = document.getElementById('detail-main-img'); if (m) m.src = this.getAttribute('data-img'); document.querySelectorAll('.thumb-btn').forEach(function(b) { b.classList.remove('border-emerald-500'); }); this.classList.add('border-emerald-500');"
                 >
-                  <img src="${img}" alt="Thumbnail" class="pd-thumb-img" />
+                  <img src="${escapeHtml(img)}" alt="Thumbnail ${i + 1}" class="pd-thumb-img" onerror="this.onerror=null; this.src='${fallbackImg}';" />
                 </button>
               `).join("")}
             </div>
@@ -1328,7 +1379,7 @@ export async function renderProductDetailPage(slugOrId) {
                 data-product-id="${productId}"
                 data-product-name="${escapeHtml(product.name || product.p_name)}"
                 data-product-price="${activePrice}"
-                data-product-thumb="${mainImage}"
+                data-product-thumb="${escapeHtml(mainImage)}"
                 data-product-json="${encodedJson}"
                 onclick="window.toggleProductDetailFavourite(event, this);"
                 title="${isFavourite ? 'পছন্দের তালিকা থেকে সরান' : 'পছন্দের তালিকায় রাখুন'}"
@@ -1505,7 +1556,7 @@ export async function renderProductDetailPage(slugOrId) {
                 data-product-id="${productId}"
                 data-product-name="${escapeHtml(product.name || product.p_name)}"
                 data-product-price="${activePrice}"
-                data-product-thumb="${mainImage}"
+                data-product-thumb="${escapeHtml(mainImage)}"
                 data-product-json="${encodedJson}"
                 title="${isFavourite ? 'পছন্দের তালিকা থেকে সরান' : 'পছন্দের তালিকায় রাখুন'}"
                 aria-label="Wishlist"
@@ -1570,18 +1621,22 @@ export async function renderProductDetailPage(slugOrId) {
           <span>📋</span> পণ্যের পূর্ণ বিবরণ ও স্পেসিফিকেশন
         </h2>
 
-        <div id="pd-live-desc" class="pd-desc-text">
+        <div class="pd-desc-text">
           ${product.description || 'পণ্যটির বিস্তারিত বিবরণ শীঘ্রই যুক্ত করা হচ্ছে। পণ্য সংক্রান্ত যেকোনো তথ্যের জন্য আমাদের হেল্পলাইনে কল করুন।'}
         </div>
 
-        <div id="pd-live-spec-box" class="pd-spec-box" style="${product.specification ? '' : 'display:none;'}">
-          <div class="pd-spec-header">স্পেসিফিকেশন হাইলাইটস:</div>
-          <div id="pd-live-spec-content" class="pd-spec-content">${product.specification || ''}</div>
-        </div>
+        ${product.specification ? `
+          <div class="pd-spec-box">
+            <div class="pd-spec-header">স্পেসিফিকেশন হাইলাইটস:</div>
+            <div class="pd-spec-content">${product.specification}</div>
+          </div>
+        ` : ""}
 
-        <div id="pd-live-others-box" style="font-size: 12.5px; color: #64748b; margin-top: 14px; ${product.others ? '' : 'display:none;'}" class="dark:text-slate-400">
-          <strong>অন্যান্য তথ্য:</strong> <span id="pd-live-others-content">${product.others || ''}</span>
-        </div>
+        ${product.others ? `
+          <div style="font-size: 12.5px; color: #64748b; margin-top: 14px;" class="dark:text-slate-400">
+            <strong>অন্যান্য তথ্য:</strong> ${product.others}
+          </div>
+        ` : ""}
       </div>
 
       <!-- Customer Reviews & Rating Section -->
