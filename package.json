@@ -1,0 +1,17 @@
+{
+  "name": "dreamcartbd",
+  "private": true,
+  "version": "2.5.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "node --input-type=commonjs -e \"const fs=require('fs'),p=require('path');if(!fs.existsSync('src/main.js')){const find=(d,lvl)=>{if(lvl>3)return null;for(const e of fs.readdirSync(d,{withFileTypes:true})){if(!e.isDirectory()||e.name==='node_modules'||e.name==='.git'||e.name==='dist')continue;const fp=p.join(d,e.name);if(e.name.toLowerCase()==='src'&&fs.existsSync(p.join(fp,'main.js')))return fp;const hit=find(fp,lvl+1);if(hit)return hit;}return null;};const found=find('.',0);if(found){console.log('Auto-located src at:',found);fs.cpSync(found,'src',{recursive:true});}else{console.error('ERROR: src/main.js not found in repo! Root contents:',fs.readdirSync('.'));process.exit(1);}}\" && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.4",
+    "vite": "^5.3.1"
+  }
+}
