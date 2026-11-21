@@ -813,7 +813,11 @@ export function renderProductCard(product) {
     roleLabel = "রিসেলার দর";
   }
 
-  const isDiscounted = originalPrice > displayedPrice;
+  // Pre-Order rule: when stock <= 0, price increases by 15% and no discount/coupon applies
+  if (isOutOfStock) {
+    displayedPrice = Math.round(displayedPrice * 1.15);
+  }
+  const isDiscounted = !isOutOfStock && (originalPrice > displayedPrice);
   const discountPercent = isDiscounted ? Math.round(((originalPrice - displayedPrice) / originalPrice) * 100) : 0;
   const discountSavings = isDiscounted ? (originalPrice - displayedPrice) : 0;
 
@@ -875,12 +879,16 @@ export function renderProductCard(product) {
           />
         </a>
 
-        <!-- Discount Percentage Badge (Top-Left) -->
-        ${discountPercent > 0 ? `
+        <!-- Discount Percentage / Pre-Order Badge (Top-Left) -->
+        ${isOutOfStock ? `
+          <div class="dc-discount-pill" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); box-shadow: 0 3px 10px rgba(217, 119, 6, 0.35);">
+            ⏳ প্রি-অর্ডার (+১৫%)
+          </div>
+        ` : (discountPercent > 0 ? `
           <div class="dc-discount-pill">
             -${discountPercent}% ছাড়
           </div>
-        ` : ""}
+        ` : "")}
 
         <!-- Love / Favourite Icon (Top-Right Floating Circle) -->
         <button 
@@ -903,7 +911,7 @@ export function renderProductCard(product) {
         <!-- Stock Status Pill (Bottom-Left on image) -->
         <div class="dc-stock-pill ${isOutOfStock ? 'dc-stock-out' : 'dc-stock-in'}">
           ${isOutOfStock ? `
-            <span>● স্টক শেষ</span>
+            <span>● স্টক শেষ • অনলাইন পেমেন্ট</span>
           ` : `
             <span class="dc-pulse-dot"></span>
             <span>স্টক: ${stock}</span>

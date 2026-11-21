@@ -46,11 +46,11 @@ export async function renderShopPage(params = {}) {
   const childCat = (params.child || "").trim();
   const brand = (params.brand || "").trim();
   
-  // Stock filter: In-Stock (selected by default), Out of Stock, All
-  const stockFilter = params.stock || (params.in_stock === '0' || params.in_stock === false ? 'all' : (params.in_stock === '1' || params.in_stock === true ? 'in_stock' : 'in_stock'));
-  
   const sort = params.sort || "featured";
   const search = (params.search || "").trim();
+
+  // Stock filter: In-Stock by default on browse; All by default on search (so out-of-stock pre-order matches appear)
+  const stockFilter = params.stock || (params.in_stock === '0' || params.in_stock === false ? 'all' : (params.in_stock === '1' || params.in_stock === true ? 'in_stock' : (search ? 'all' : 'in_stock')));
   const page = parseInt(params.page || "1", 10);
   const pageSize = 60; // 60 pcs per page
 
@@ -115,10 +115,50 @@ export async function renderShopPage(params = {}) {
   let relatedProducts = [];
 
   if (search) {
-    // Intelligent Search: Exact & most matching products first, related products right after
+    // Intelligent Search: Separate Exact Match(es) on top, followed by Related Products below
     const searchRes = SearchService.search(allProducts, search);
-    directMatches = [...searchRes.directMatches];
-    relatedProducts = [...searchRes.relatedProducts];
+    const qNorm = SearchService.normalize ? SearchService.normalize(search) : search.toLowerCase().trim();
+    const qSku = SearchService.cleanSku ? SearchService.cleanSku(search) : search.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const qTokens = SearchService.tokenize ? SearchService.tokenize(search) : qNorm.split(' ').filter(Boolean);
+
+    const isExactMatchProduct = (p) => {
+      const pName = SearchService.normalize ? SearchService.normalize(p.name || p.p_name || '') : String(p.name || p.p_name || '').toLowerCase().trim();
+      const pSku = SearchService.cleanSku ? SearchService.cleanSku(p.sku || p.product_id || '') : String(p.sku || p.product_id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const pSlug = SearchService.normalize ? SearchService.normalize(p.slug || '') : String(p.slug || '').toLowerCase().trim();
+      if (qSku.length >= 2 && pSku && pSku === qSku) return true;
+      if (pName && qNorm && (pName === qNorm || pName.startsWith(qNorm) || (qNorm.length >= 3 && pName.includes(qNorm)))) return true;
+      if (pSlug && qNorm && pSlug === qNorm) return true;
+      if (qTokens.length >= 2 && pName && qTokens.every(tok => pName.includes(tok))) return true;
+      if (Number(p._searchScore || 0) >= 650) return true;
+      return false;
+    };
+
+    const rawDirect = [...(searchRes.directMatches || [])];
+    const exactBucket = [];
+    const partialBucket = [];
+    const seenIds = new Set();
+
+    rawDirect.forEach(p => {
+      const uid = String(p.product_id || p.sku || p.slug || p.name || '').toLowerCase();
+      if (uid) seenIds.add(uid);
+      if (isExactMatchProduct(p)) {
+        exactBucket.push({ ...p, _isDirectMatch: true, _isExactMatch: true });
+      } else {
+        partialBucket.push({ ...p, _isDirectMatch: false, _isExactMatch: false });
+      }
+    });
+
+    const extraRelated = (searchRes.relatedProducts || [])
+      .filter(p => {
+        const uid = String(p.product_id || p.sku || p.slug || p.name || '').toLowerCase();
+        if (uid && seenIds.has(uid)) return false;
+        if (uid) seenIds.add(uid);
+        return true;
+      })
+      .map(p => ({ ...p, _isDirectMatch: false, _isExactMatch: false }));
+
+    directMatches = exactBucket;
+    relatedProducts = [...partialBucket, ...extraRelated];
 
     // Category hierarchy filter (if selected in sidebar)
     if (cat) {
@@ -560,16 +600,16 @@ export async function renderShopPage(params = {}) {
           ` : (search ? `
             <div class="space-y-8">
               ${pageDirectMatches.length > 0 ? `
-                <!-- Direct Matches Section (Highest Relevance First) -->
-                <div class="space-y-3">
-                  <div class="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
+                <!-- Exact Match Section (Highlighted Separately at Top) -->
+                <div class="space-y-3 p-4 sm:p-5 rounded-3xl bg-emerald-50/60 dark:bg-emerald-950/20 border-2 border-emerald-300/80 dark:border-emerald-700/60 shadow-sm">
+                  <div class="flex items-center justify-between border-b border-emerald-200/80 dark:border-emerald-800/60 pb-2.5">
                     <div class="flex items-center gap-2">
-                      <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 text-xs font-bold shadow-xs">🎯</span>
-                      <h2 class="text-sm font-black text-slate-900 dark:text-white tracking-wide">
-                        সরাসরি মিলে যাওয়া পণ্য (${directMatches.length} টি)
+                      <span class="inline-flex items-center justify-center w-7 h-7 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-xs">🎯</span>
+                      <h2 class="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-wide">
+                        হুবহু মিলে যাওয়া পণ্য (${directMatches.length} টি)
                       </h2>
                     </div>
-                    <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">সেরা ফলাফল</span>
+                    <span class="text-[11px] font-extrabold text-white bg-emerald-600 px-2.5 py-0.5 rounded-full">Exact Match</span>
                   </div>
                   <div class="product-grid">
                     ${pageDirectMatches.map(p => renderProductCard(p)).join("")}
@@ -585,16 +625,16 @@ export async function renderShopPage(params = {}) {
               `}
 
               ${pageRelatedProducts.length > 0 ? `
-                <!-- Related Products Section (Category / Brand Match) -->
-                <div class="space-y-3 pt-2">
+                <!-- Related Products Section (Below Exact Match) -->
+                <div class="space-y-3 pt-3">
                   <div class="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800 pb-2.5">
                     <div class="flex items-center gap-2">
-                      <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 text-xs font-bold shadow-xs">✨</span>
-                      <h2 class="text-sm font-black text-slate-900 dark:text-white tracking-wide">
-                        সম্পর্কিত অন্যান্য পণ্যসমূহ (${relatedProducts.length} টি)
+                      <span class="inline-flex items-center justify-center w-7 h-7 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 text-xs font-bold shadow-xs">✨</span>
+                      <h2 class="text-sm sm:text-base font-black text-slate-900 dark:text-white tracking-wide">
+                        রিলেটেড প্রোডাক্টসমূহ (${relatedProducts.length} টি)
                       </h2>
                     </div>
-                    <span class="text-[11px] text-slate-500 dark:text-slate-400">একই ক্যাটাগরি ও ব্র্যান্ডের অন্যান্য পছন্দ</span>
+                    <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400">সম্পর্কিত অন্যান্য পণ্য</span>
                   </div>
                   <div class="product-grid">
                     ${pageRelatedProducts.map(p => renderProductCard(p)).join("")}

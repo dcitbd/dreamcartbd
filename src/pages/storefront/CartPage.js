@@ -998,7 +998,8 @@ export function renderCartPage() {
                     : (it.stock !== undefined && it.stock !== null && it.stock !== '' ? it.stock : 25)
                 );
                 const itemQty = Number(it.quantity) || 1;
-                const isMaxReached = itemQty >= stock;
+                const isPreOrder = Boolean(it.is_preorder) || stock <= 0;
+                const isMaxReached = !isPreOrder && itemQty >= stock;
                 const itemColor = it.color ? String(it.color).trim() : '';
                 const itemSize = it.size ? String(it.size).trim() : '';
                 
@@ -1105,8 +1106,8 @@ export function renderCartPage() {
                     <div class="cp-col-qty">
                       
                       <!-- Stock status badge -->
-                      <div class="cp-stock-status ${stock <= 5 ? 'low-stock' : 'normal-stock'}">
-                        <span>📦 স্টক: ${stock}</span>${isMaxReached ? `<span class="cp-stock-max-badge">সর্বোচ্চ সীমা</span>` : ''}
+                      <div class="cp-stock-status ${isPreOrder ? 'low-stock' : (stock <= 5 ? 'low-stock' : 'normal-stock')}">
+                        <span>${isPreOrder ? '⏳ প্রি-অর্ডার (+১৫%)' : `📦 স্টক: ${stock}`}</span>${isMaxReached ? `<span class="cp-stock-max-badge">সর্বোচ্চ সীমা</span>` : ''}
                       </div>
 
                       <div class="cp-qty-box">
@@ -1160,8 +1161,8 @@ export function renderCartPage() {
                     <div class="cp-mobile-controls-row">
                       
                       <div class="flex flex-col gap-1">
-                        <div class="cp-stock-status ${stock <= 5 ? 'low-stock' : 'normal-stock'}">
-                          <span>📦 স্টক: ${stock}</span>${isMaxReached ? `<span class="cp-stock-max-badge">সর্বোচ্চ</span>` : ''}
+                        <div class="cp-stock-status ${isPreOrder ? 'low-stock' : (stock <= 5 ? 'low-stock' : 'normal-stock')}">
+                          <span>${isPreOrder ? '⏳ প্রি-অর্ডার (+১৫%)' : `📦 স্টক: ${stock}`}</span>${isMaxReached ? `<span class="cp-stock-max-badge">সর্বোচ্চ</span>` : ''}
                         </div>
                         <div class="cp-qty-box">
                           <button 

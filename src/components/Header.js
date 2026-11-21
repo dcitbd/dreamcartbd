@@ -1556,12 +1556,35 @@ export function renderHeader() {
         pointer-events: none;
       }
 
-      /* Predictive Preview Popups (Top Z-Index) */
-      #search-preview-popup, #mobile-search-preview-popup {
+      /* Predictive Preview Popups (Strictly BELOW Search Bar, Never Overlapping Input) */
+      #search-preview-popup {
+        position: absolute !important;
+        top: calc(100% + 8px) !important;
+        left: 0 !important;
+        right: 0 !important;
+        margin-top: 0 !important;
         background: #0f172a !important;
         border: 1px solid #1e293b !important;
         color: #f8fafc !important;
         z-index: 1000001 !important;
+        max-height: 70vh !important;
+        overflow-y: auto !important;
+      }
+      #mobile-search-preview-popup {
+        position: absolute !important;
+        top: calc(100% + 4px) !important;
+        left: 1rem !important;
+        right: 1rem !important;
+        margin-top: 0 !important;
+        background: #0f172a !important;
+        border: 1px solid #1e293b !important;
+        color: #f8fafc !important;
+        z-index: 1000001 !important;
+        max-height: 65vh !important;
+        overflow-y: auto !important;
+      }
+      #search-preview-popup.hidden, #mobile-search-preview-popup.hidden {
+        display: none !important;
       }
 
       /* Dropdown Panels */

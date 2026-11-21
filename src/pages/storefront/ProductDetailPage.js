@@ -162,6 +162,208 @@ if (typeof window !== 'undefined' && !window.__toggleProductDetailFavouriteAttac
   };
 }
 
+// Global helpers for Product Review Form (Login-Tracked Auto-Fill & Submission)
+if (typeof window !== 'undefined' && !window.__pdReviewHelpersAttached) {
+  window.__pdReviewHelpersAttached = true;
+
+  window.__pdGetTrackedReviewerProfile = function() {
+    if (!authStore || !authStore.isAuthenticated()) return null;
+    const u = authStore.user || {};
+    const uid = String(u.customer_id || u.id || u.user_id || u.mobile || u.phone || u.email || u.mail || u.user_name || authStore.getUserDisplayName() || 'member').trim().toLowerCase();
+    const accountType = authStore.getAccountType ? authStore.getAccountType() : 'CUSTOMER';
+    const baseName = authStore.getUserDisplayName ? authStore.getUserDisplayName() : (u.name || u.shop_name || 'সদস্য');
+    const basePhoto = u.profile_photo || u.photo || u.avatar || u.shop_logo || u.image || '';
+    const baseLocation = u.address || u.city || '';
+
+    let remembered = {};
+    try {
+      const map = JSON.parse(localStorage.getItem('dcbd_reviewer_profiles') || '{}');
+      if (map && map[uid]) remembered = map[uid];
+    } catch (e) {}
+
+    const profile = {
+      uid,
+      accountType,
+      name: (remembered.name || baseName || 'সম্মানিত গ্রাহক').trim(),
+      photo: (remembered.photo || basePhoto || '').trim(),
+      location: (remembered.location || baseLocation || '').trim()
+    };
+
+    try {
+      const map = JSON.parse(localStorage.getItem('dcbd_reviewer_profiles') || '{}');
+      map[uid] = { ...profile, updatedAt: Date.now() };
+      localStorage.setItem('dcbd_reviewer_profiles', JSON.stringify(map));
+    } catch (e) {}
+
+    return profile;
+  };
+
+  window.__pdSetReviewRating = function(val) {
+    const rating = Math.max(1, Math.min(5, Number(val) || 5));
+    const inp = document.getElementById('pd-review-rating-val');
+    if (inp) inp.value = String(rating);
+    const label = document.getElementById('pd-review-rating-label');
+    const labels = { 1: '১/৫ — খারাপ', 2: '২/৫ — মোটামুটি', 3: '৩/৫ — ভালো', 4: '৪/৫ — খুব ভালো', 5: '৫/৫ — চমৎকার!' };
+    if (label) label.textContent = labels[rating] || '৫/৫';
+    document.querySelectorAll('.pd-star-pick-btn').forEach(btn => {
+      const starVal = Number(btn.getAttribute('data-star') || 0);
+      if (starVal <= rating) {
+        btn.classList.add('active');
+        btn.style.color = '#f59e0b';
+      } else {
+        btn.classList.remove('active');
+        btn.style.color = '#cbd5e1';
+      }
+    });
+  };
+
+  window.__pdHandleReviewPhotoFile = function(input) {
+    const file = input && input.files && input.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      if (window.toast && window.toast.show) {
+        window.toast.show({ type: 'error', title: 'ছবি বড়', message: 'অনুগ্রহ করে ২ এমবি-এর কম সাইজের ছবি নির্বাচন করুন।' });
+      }
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const dataUrl = String(ev.target && ev.target.result || '');
+      const photoInput = document.getElementById('pd-review-photo-input');
+      const avatarPreview = document.getElementById('pd-reviewer-avatar-preview');
+      if (photoInput) photoInput.value = dataUrl;
+      if (avatarPreview && dataUrl) {
+        avatarPreview.innerHTML = `<img src="${dataUrl}" alt="Avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  window.__pdSubmitProductReview = async function(e) {
+    if (e) e.preventDefault();
+    if (!authStore || !authStore.isAuthenticated()) {
+      if (window.toast && window.toast.show) {
+        window.toast.show({ type: 'error', title: 'লগইন প্রয়োজন', message: 'রিভিউ লিখতে অনুগ্রহ করে আগে আপনার অ্যাকাউন্টে লগইন করুন।' });
+      }
+      return;
+    }
+
+    const form = e ? e.target : document.getElementById('pd-write-review-form');
+    if (!form) return;
+    const productSku = form.getAttribute('data-product-sku') || '';
+    const productName = form.getAttribute('data-product-name') || 'পণ্য';
+    const nameEl = document.getElementById('pd-review-name-input');
+    const photoEl = document.getElementById('pd-review-photo-input');
+    const ratingEl = document.getElementById('pd-review-rating-val');
+    const commentEl = document.getElementById('pd-review-comment-input');
+    const submitBtn = document.getElementById('pd-review-submit-btn');
+
+    const reviewerName = (nameEl?.value || authStore.getUserDisplayName() || 'গ্রাহক').trim();
+    const reviewerPhoto = (photoEl?.value || '').trim();
+    const rating = Math.max(1, Math.min(5, Number(ratingEl?.value || 5)));
+    const comment = (commentEl?.value || '').trim();
+
+    if (!comment || comment.length < 3) {
+      if (window.toast && window.toast.show) {
+        window.toast.show({ type: 'error', title: 'মতামত লিখুন', message: 'অনুগ্রহ করে পণ্যটি সম্পর্কে আপনার মতামত লিখুন।' });
+      }
+      if (commentEl) commentEl.focus();
+      return;
+    }
+
+    const profile = window.__pdGetTrackedReviewerProfile();
+    if (profile && profile.uid) {
+      try {
+        const map = JSON.parse(localStorage.getItem('dcbd_reviewer_profiles') || '{}');
+        map[profile.uid] = { ...profile, name: reviewerName, photo: reviewerPhoto, updatedAt: Date.now() };
+        localStorage.setItem('dcbd_reviewer_profiles', JSON.stringify(map));
+      } catch (err) {}
+    }
+
+    const nowDate = new Date().toLocaleDateString('bn-BD', { year: 'numeric', month: 'short', day: 'numeric' });
+    const newReview = {
+      id: 'REV-' + Date.now(),
+      review_id: 'REV-' + Date.now(),
+      product_sku: productSku,
+      product: productName,
+      customer_name: reviewerName,
+      customer: reviewerName,
+      account_type: authStore.getAccountType ? authStore.getAccountType() : 'CUSTOMER',
+      rating: rating,
+      comment: comment,
+      image: reviewerPhoto,
+      avatar: reviewerPhoto,
+      status: 'Approved',
+      date: nowDate
+    };
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'সাবমিট হচ্ছে...';
+    }
+
+    try {
+      await apiClient.request('reviews/create', newReview);
+    } catch (err) {}
+
+    // Persist immediately in local review cache so it appears right away and stays across reloads
+    try {
+      const existing = JSON.parse(localStorage.getItem('dcbd_sheet_reviews') || '[]');
+      const updated = [newReview, ...(Array.isArray(existing) ? existing : [])];
+      localStorage.setItem('dcbd_sheet_reviews', JSON.stringify(updated));
+    } catch (err) {}
+
+    // Insert into DOM immediately
+    const grid = document.getElementById('pd-review-list-grid');
+    if (grid) {
+      const starsStr = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+      const initial = (reviewerName.charAt(0) || 'U').toUpperCase();
+      const avatarHtml = reviewerPhoto
+        ? `<img src="${escapeHtml(reviewerPhoto)}" alt="${escapeHtml(reviewerName)}" class="pd-reviewer-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><span class="pd-reviewer-avatar-fallback" style="display:none;">${escapeHtml(initial)}</span>`
+        : `<span class="pd-reviewer-avatar-fallback">${escapeHtml(initial)}</span>`;
+      const cardHtml = `
+        <div class="pd-review-card" style="border-color: rgba(16, 185, 129, 0.45);">
+          <div class="pd-review-user-row">
+            <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+              <div class="pd-reviewer-avatar">${avatarHtml}</div>
+              <div style="min-width:0;">
+                <div class="pd-review-name">${escapeHtml(reviewerName)}</div>
+                <div style="font-size:10.5px; color:#94a3b8;">${escapeHtml(newReview.account_type)} • ${escapeHtml(nowDate)}</div>
+              </div>
+            </div>
+            <span class="pd-review-stars">${starsStr}</span>
+          </div>
+          <p class="pd-review-text">${escapeHtml(comment)}</p>
+        </div>
+      `;
+      grid.insertAdjacentHTML('afterbegin', cardHtml);
+    }
+
+    const countEl = document.getElementById('pd-review-count-label');
+    if (countEl) {
+      const cur = parseInt(countEl.getAttribute('data-count') || '2', 10) + 1;
+      countEl.setAttribute('data-count', String(cur));
+      countEl.textContent = `(${cur} টি রিভিউ)`;
+    }
+
+    if (commentEl) commentEl.value = '';
+    window.__pdSetReviewRating(5);
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'রিভিউ সাবমিট করুন';
+    }
+
+    if (window.toast && window.toast.show) {
+      window.toast.show({
+        type: 'success',
+        title: 'রিভিউ যুক্ত হয়েছে!',
+        message: 'আপনার মূল্যবান মতামতের জন্য ধন্যবাদ।',
+        duration: 3500
+      });
+    }
+  };
+}
+
 export async function renderProductDetailPage(slugOrId) {
   const cleanId = (slugOrId || '').toString().trim();
   let decodedId = cleanId;
@@ -240,7 +442,11 @@ export async function renderProductDetailPage(slugOrId) {
     roleTitle = "রিসেলার মূল্য (Reseller Margin Price)";
   }
 
-  const isDiscounted = originalPrice > activePrice;
+  // Pre-Order rule: when stock <= 0, price increases by 15% and no discount/coupon applies
+  if (isOutOfStock) {
+    activePrice = Math.round(activePrice * 1.15);
+  }
+  const isDiscounted = !isOutOfStock && (originalPrice > activePrice);
   const discountPercent = isDiscounted ? Math.round(((originalPrice - activePrice) / originalPrice) * 100) : 0;
   const discountAmount = isDiscounted ? (originalPrice - activePrice) : 0;
 
@@ -297,6 +503,51 @@ export async function renderProductDetailPage(slugOrId) {
     const relatedRes = await apiClient.request("products/list", { category: product.category });
     related = ((relatedRes.data && relatedRes.data.items) || []).filter(p => (p.product_id || p.sku) !== productId).slice(0, 4);
   } catch(e) {}
+
+  // Fetch reviews for this product (from live sheet / local cache)
+  let productReviews = [];
+  try {
+    const revRes = await apiClient.request("reviews/list");
+    const allRevs = (revRes && revRes.data && Array.isArray(revRes.data.items)) ? revRes.data.items : [];
+    const matchTargets = [
+      String(productId || '').toLowerCase(),
+      String(product.sku || '').toLowerCase(),
+      String(product.slug || '').toLowerCase(),
+      String(product.name || product.p_name || '').toLowerCase()
+    ].filter(Boolean);
+    productReviews = allRevs.filter(rv => {
+      const rSku = String(rv.product_sku || '').trim().toLowerCase();
+      const rProd = String(rv.product || '').trim().toLowerCase();
+      return matchTargets.includes(rSku) || matchTargets.includes(rProd);
+    });
+  } catch (e) {}
+
+  const defaultReviews = [
+    {
+      customer_name: 'রাকিবুল হাসান (কুমিল্লা)',
+      account_type: 'Verified Buyer',
+      rating: 5,
+      comment: 'খুবই চমৎকার প্যাকেজিং এবং আসল পণ্য। পদুয়ার বাজার শোরুম থেকে সরাসরি নিয়েছি। ধন্যবাদ!',
+      image: '',
+      date: 'ভেরিফাইড ক্রেতা'
+    },
+    {
+      customer_name: 'শফিকুল ইসলাম (ঢাকা)',
+      account_type: 'Verified Buyer',
+      rating: 5,
+      comment: 'অর্ডার করার ২ দিনের মধ্যে ডেলিভারি পেয়েছি। পণ্যের কোয়ালিটি ১০০% জেনুইন।',
+      image: '',
+      date: 'ভেরিফাইড ক্রেতা'
+    }
+  ];
+  const displayedReviews = [...productReviews, ...defaultReviews];
+  const avgRatingVal = displayedReviews.length > 0
+    ? (displayedReviews.reduce((s, r) => s + (Number(r.rating) || 5), 0) / displayedReviews.length).toFixed(1)
+    : '4.9';
+  const isLoggedInForReview = authStore.isAuthenticated();
+  const trackedReviewer = (typeof window !== 'undefined' && window.__pdGetTrackedReviewerProfile && isLoggedInForReview)
+    ? window.__pdGetTrackedReviewerProfile()
+    : null;
 
   return `
     <style id="dc-product-detail-styles">
@@ -1542,6 +1793,82 @@ export async function renderProductDetailPage(slugOrId) {
       .pd-related-link:hover {
         text-decoration: underline;
       }
+
+      /* Reviewer Avatar & Interactive Write-a-Review Form */
+      .pd-reviewer-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        overflow: hidden;
+        flex-shrink: 0;
+        border: 2px solid rgba(16, 185, 129, 0.35);
+        background: #ecfdf5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .dark .pd-reviewer-avatar {
+        background: rgba(16, 185, 129, 0.16);
+      }
+      .pd-reviewer-avatar-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .pd-reviewer-avatar-fallback {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 800;
+        color: #059669;
+      }
+      .dark .pd-reviewer-avatar-fallback {
+        color: #34d399;
+      }
+      .pd-review-form-box {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 18px;
+        margin-bottom: 20px;
+      }
+      .dark .pd-review-form-box {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+      .pd-star-pick-btn {
+        background: none;
+        border: none;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+        padding: 2px 3px;
+        color: #f59e0b;
+        transition: transform 0.15s ease;
+      }
+      .pd-star-pick-btn:hover {
+        transform: scale(1.18);
+      }
+      .pd-preorder-notice {
+        margin-top: 8px;
+        padding: 9px 12px;
+        border-radius: 11px;
+        background: rgba(245, 158, 11, 0.13);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        color: #b45309;
+        font-size: 11.5px;
+        font-weight: 700;
+        line-height: 1.45;
+      }
+      .dark .pd-preorder-notice {
+        background: rgba(245, 158, 11, 0.16);
+        border-color: rgba(245, 158, 11, 0.35);
+        color: #fbbf24;
+      }
     </style>
 
     <div class="pd-wrapper">
@@ -1581,11 +1908,15 @@ export async function renderProductDetailPage(slugOrId) {
               <div id="pd-img-counter" class="pd-img-counter">1 / ${images.length}</div>
             ` : ""}
             
-            ${discountPercent > 0 ? `
+            ${isOutOfStock ? `
+              <div class="pd-discount-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                ⏳ প্রি-অর্ডার (+১৫%)
+              </div>
+            ` : (discountPercent > 0 ? `
               <div class="pd-discount-badge">
                 -${discountPercent}% ছাড়
               </div>
-            ` : ""}
+            ` : "")}
 
             <!-- Floating Favourite Toggle Button on Image -->
             <button 
@@ -1690,9 +2021,15 @@ export async function renderProductDetailPage(slugOrId) {
               
               <!-- Stock Indicator -->
               <span class="pd-stock-pill ${isOutOfStock ? 'pd-stock-out' : 'pd-stock-in'}">
-                ${isOutOfStock ? '● স্টক আউট (প্রি-অর্ডার প্রযোজ্য)' : `● স্টকে আছে (${stock} পিস)`}
+                ${isOutOfStock ? '● স্টক শেষ (প্রি-অর্ডার +১৫%)' : `● স্টকে আছে (${stock} পিস)`}
               </span>
             </div>
+
+            ${isOutOfStock ? `
+              <div class="pd-preorder-notice">
+                ⏳ প্রি-অর্ডার নিয়ম: স্টক শেষ হওয়ায় এই পণ্যটি +১৫% মূল্যে প্রি-অর্ডার করতে হবে। শুধুমাত্র অনলাইন পেমেন্ট গ্রহণযোগ্য — কোনো ক্যাশ অন ডেলিভারি, কুপন বা এক্সট্রা ডিসকাউন্ট প্রযোজ্য নয়।
+              </div>
+            ` : ""}
 
             <!-- Wholesaler Minimum Order Quantity Warning -->
             ${isWholesale ? `
@@ -1879,8 +2216,8 @@ export async function renderProductDetailPage(slugOrId) {
               <span>৭ দিনের রিপ্লেসমেন্ট</span>
             </div>
             <div class="pd-trust-item">
-              <span class="pd-trust-icon">💵</span>
-              <span>ক্যাশ অন ডেলিভারি</span>
+              <span class="pd-trust-icon">${isOutOfStock ? '💳' : '💵'}</span>
+              <span>${isOutOfStock ? 'শুধু অনলাইন পেমেন্ট' : 'ক্যাশ অন ডেলিভারি'}</span>
             </div>
           </div>
 
@@ -1913,33 +2250,143 @@ export async function renderProductDetailPage(slugOrId) {
       </div>
 
       <!-- Customer Reviews & Rating Section -->
-      <div class="pd-section-card">
+      <div class="pd-section-card" id="pd-reviews-section">
         <div class="pd-reviews-head">
           <div>
             <h3 style="font-size: 17px; font-weight: 800; color: #0f172a; margin: 0;" class="dark:text-white">গ্রাহক রিভিউ ও রেটিং (Customer Reviews)</h3>
-            <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0;">আমাদের ভেরিফাইড ক্রেতাদের অভিজ্ঞতা</p>
+            <p style="font-size: 12px; color: #94a3b8; margin: 4px 0 0;">আমাদের ভেরিফাইড ক্রেতাদের অভিজ্ঞতা ও আপনার মতামত</p>
           </div>
           <div class="pd-rating-badge">
-            <span>★ 4.9</span>
-            <span>(২৮+ রিভিউ)</span>
+            <span>★ ${avgRatingVal}</span>
+            <span id="pd-review-count-label" data-count="${displayedReviews.length}">(${displayedReviews.length} টি রিভিউ)</span>
           </div>
         </div>
 
-        <div class="pd-review-grid">
-          <div class="pd-review-card">
-            <div class="pd-review-user-row">
-              <span class="pd-review-name">রাকিবুল হাসান (কুমিল্লা)</span>
-              <span class="pd-review-stars">★★★★★</span>
+        <!-- Write a Review Box (Login Required + Tracked Auto-Fill) -->
+        <div class="pd-review-form-box">
+          ${isLoggedInForReview && trackedReviewer ? `
+            <form id="pd-write-review-form" data-product-sku="${escapeHtml(product.sku || productId)}" data-product-name="${escapeHtml(product.name || product.p_name || 'পণ্য')}" onsubmit="window.__pdSubmitProductReview(event)" class="space-y-3.5">
+              <div class="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-slate-200/80 dark:border-slate-700/80">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="pd-reviewer-avatar" id="pd-reviewer-avatar-preview">
+                    ${trackedReviewer.photo
+                      ? `<img src="${escapeHtml(trackedReviewer.photo)}" alt="${escapeHtml(trackedReviewer.name)}" class="pd-reviewer-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><span class="pd-reviewer-avatar-fallback" style="display:none;">${escapeHtml((trackedReviewer.name || 'U').charAt(0).toUpperCase())}</span>`
+                      : `<span class="pd-reviewer-avatar-fallback">${escapeHtml((trackedReviewer.name || 'U').charAt(0).toUpperCase())}</span>`
+                    }
+                  </div>
+                  <div class="min-w-0">
+                    <div class="text-xs font-extrabold text-slate-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                      <span>${escapeHtml(trackedReviewer.name)}</span>
+                      <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">${escapeHtml(trackedReviewer.accountType)}</span>
+                    </div>
+                    <div class="text-[11px] text-slate-500 dark:text-slate-400">আপনার অ্যাকাউন্ট থেকে নাম ও ছবি অটো-ফিলাপ হয়েছে</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1">
+                  ${[1, 2, 3, 4, 5].map(st => `
+                    <button type="button" class="pd-star-pick-btn active" data-star="${st}" onclick="window.__pdSetReviewRating(${st})" title="${st} স্টার">★</button>
+                  `).join('')}
+                  <span id="pd-review-rating-label" class="text-xs font-bold text-amber-600 dark:text-amber-400 ml-1">৫/৫ — চমৎকার!</span>
+                  <input type="hidden" id="pd-review-rating-val" value="5" />
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label for="pd-review-name-input" class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">আপনার নাম</label>
+                  <input
+                    type="text"
+                    id="pd-review-name-input"
+                    required
+                    value="${escapeHtml(trackedReviewer.name)}"
+                    class="w-full py-2 px-3 rounded-xl text-xs font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label for="pd-review-photo-input" class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">প্রোফাইল ছবি (অটো-ফিল / পরিবর্তন)</label>
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="text"
+                      id="pd-review-photo-input"
+                      value="${escapeHtml(trackedReviewer.photo)}"
+                      placeholder="ছবির লিংক বা আপলোড করুন"
+                      class="flex-1 py-2 px-3 rounded-xl text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none"
+                    />
+                    <label class="px-2.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-emerald-600 hover:text-white text-[11px] font-bold cursor-pointer transition flex-shrink-0">
+                      📷 ছবি
+                      <input type="file" accept="image/*" class="hidden" onchange="window.__pdHandleReviewPhotoFile(this)" />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label for="pd-review-comment-input" class="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-1">আপনার রিভিউ লিখুন <span class="text-rose-500">*</span></label>
+                <textarea
+                  id="pd-review-comment-input"
+                  required
+                  rows="3"
+                  placeholder="পণ্যটির মান, প্যাকেজিং ও ডেলিভারি সম্পর্কে আপনার অভিজ্ঞতা লিখুন..."
+                  class="w-full p-3 rounded-xl text-xs bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white outline-none leading-relaxed"
+                ></textarea>
+              </div>
+
+              <div class="flex justify-end">
+                <button
+                  type="submit"
+                  id="pd-review-submit-btn"
+                  class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm transition cursor-pointer"
+                >
+                  রিভিউ সাবমিট করুন
+                </button>
+              </div>
+            </form>
+          ` : `
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg flex-shrink-0">✍️</div>
+                <div>
+                  <div class="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white">এই পণ্যটি সম্পর্কে রিভিউ লিখুন</div>
+                  <p class="text-[11.5px] text-slate-500 dark:text-slate-400 mt-0.5">রিভিউ দিতে অনুগ্রহ করে আপনার কাস্টমার বা অন্য যেকোনো অ্যাকাউন্টে লগইন করুন।</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <a href="/customer/login" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition">কাস্টমার লগইন</a>
+                <a href="/customer/register" class="px-3.5 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold hover:border-emerald-500 transition">রেজিস্টার</a>
+                <a href="/reseller/login" class="px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-semibold hover:border-emerald-500 transition">অন্যান্য অ্যাকাউন্ট</a>
+              </div>
             </div>
-            <p class="pd-review-text">খুবই চমৎকার প্যাকেজিং এবং আসল পণ্য। পদুয়ার বাজার শোরুম থেকে সরাসরি নিয়েছি। ধন্যবাদ!</p>
-          </div>
-          <div class="pd-review-card">
-            <div class="pd-review-user-row">
-              <span class="pd-review-name">শফিকুল ইসলাম (ঢাকা)</span>
-              <span class="pd-review-stars">★★★★★</span>
-            </div>
-            <p class="pd-review-text">অর্ডার করার ২ দিনের মধ্যে ডেলিভারি পেয়েছি। পণ্যের কোয়ালিটি ১০০% জেনুইন।</p>
-          </div>
+          `}
+        </div>
+
+        <div class="pd-review-grid" id="pd-review-list-grid">
+          ${displayedReviews.map(rv => {
+            const rName = rv.customer_name || rv.customer || 'গ্রাহক';
+            const rRating = Math.max(1, Math.min(5, Number(rv.rating) || 5));
+            const rStars = '★'.repeat(rRating) + '☆'.repeat(5 - rRating);
+            const rPhoto = rv.avatar || rv.image || '';
+            const rInitial = (rName.charAt(0) || 'G').toUpperCase();
+            return `
+              <div class="pd-review-card">
+                <div class="pd-review-user-row">
+                  <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+                    <div class="pd-reviewer-avatar">
+                      ${rPhoto
+                        ? `<img src="${escapeHtml(rPhoto)}" alt="${escapeHtml(rName)}" class="pd-reviewer-avatar-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" /><span class="pd-reviewer-avatar-fallback" style="display:none;">${escapeHtml(rInitial)}</span>`
+                        : `<span class="pd-reviewer-avatar-fallback">${escapeHtml(rInitial)}</span>`
+                      }
+                    </div>
+                    <div style="min-width:0;">
+                      <div class="pd-review-name">${escapeHtml(rName)}</div>
+                      <div style="font-size:10.5px; color:#94a3b8;">${escapeHtml(rv.date || 'ভেরিফাইড ক্রেতা')}</div>
+                    </div>
+                  </div>
+                  <span class="pd-review-stars">${rStars}</span>
+                </div>
+                <p class="pd-review-text">${escapeHtml(rv.comment || '')}</p>
+              </div>
+            `;
+          }).join('')}
         </div>
       </div>
 

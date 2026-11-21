@@ -1158,6 +1158,83 @@ export async function renderHomePage() {
         border-color: rgba(16, 185, 129, 0.3);
       }
 
+      /* Mobile-Only Compact 2-Line Responsive Category Header */
+      @media (max-width: 640px) {
+        .dc-section-header.dc-cat-header {
+          display: grid !important;
+          grid-template-columns: auto minmax(0, 1fr) auto !important;
+          grid-template-rows: auto auto !important;
+          align-items: center !important;
+          gap: 0.35rem 0.45rem !important;
+          padding-bottom: 0.55rem !important;
+          margin-bottom: 0.75rem !important;
+        }
+        .dc-section-header.dc-cat-header .dc-section-header-left,
+        .dc-section-header.dc-cat-header .dc-section-title-wrap {
+          display: contents !important;
+        }
+        .dc-section-header.dc-cat-header .dc-section-icon {
+          grid-column: 1;
+          grid-row: 1;
+          width: 28px !important;
+          height: 28px !important;
+          border-radius: 8px !important;
+          font-size: 0.82rem !important;
+        }
+        .dc-section-header.dc-cat-header .dc-section-title {
+          grid-column: 2;
+          grid-row: 1;
+          font-size: 0.85rem !important;
+          line-height: 1.2 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+        .dc-section-header.dc-cat-header .dc-section-action-wrap {
+          grid-column: 3;
+          grid-row: 1;
+        }
+        .dc-section-header.dc-cat-header .dc-section-link-btn {
+          padding: 0.25rem 0.52rem !important;
+          font-size: 0.64rem !important;
+          border-radius: 8px !important;
+          gap: 0.2rem !important;
+          line-height: 1.2 !important;
+        }
+        .dc-section-header.dc-cat-header .dc-subcat-pills {
+          grid-column: 1 / -1;
+          grid-row: 2;
+          display: flex !important;
+          flex-wrap: nowrap !important;
+          overflow-x: auto !important;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+          gap: 0.28rem !important;
+          margin-top: 0 !important;
+          padding-bottom: 1px;
+        }
+        .dc-section-header.dc-cat-header .dc-subcat-pills::-webkit-scrollbar {
+          display: none;
+        }
+        .dc-section-header.dc-cat-header .dc-subcat-pill {
+          flex-shrink: 0 !important;
+          white-space: nowrap !important;
+          font-size: 0.6rem !important;
+          padding: 0.14rem 0.42rem !important;
+          border-radius: 5px !important;
+          line-height: 1.25 !important;
+        }
+        .dc-section-header.dc-cat-header .dc-section-subtitle {
+          grid-column: 1 / -1;
+          grid-row: 2;
+          font-size: 0.64rem !important;
+          margin-top: 0 !important;
+          white-space: nowrap !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+        }
+      }
+
       /* Products Grid Layout with Clean Spacing & Margins */
       .product-grid {
         display: grid !important;
@@ -1824,7 +1901,7 @@ export async function renderHomePage() {
           <section class="dc-home-section" id="cat-section-${encodeURIComponent(cat.name.toLowerCase().replace(/[^a-z0-9]/g, '-'))}">
             
             <!-- Category Header -->
-            <div class="dc-section-header">
+            <div class="dc-section-header dc-cat-header">
               <div class="dc-section-header-left">
                 <div class="dc-section-icon bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
                   ⚡
@@ -1848,7 +1925,7 @@ export async function renderHomePage() {
                 </div>
               </div>
 
-              <div>
+              <div class="dc-section-action-wrap">
                 <a href="/products?cat=${encodeURIComponent(cat.name)}" class="dc-section-link-btn">
                   সবগুলো দেখুন (${cat.products.length}) <span>→</span>
                 </a>
