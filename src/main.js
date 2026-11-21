@@ -701,16 +701,18 @@ function attachEventListeners() {
       e.preventDefault();
       e.stopPropagation();
       const pId = preOrderBtn.getAttribute('data-product-id');
+      const qtyInp = document.getElementById('product-qty-input');
+      const qty = preOrderBtn.id === 'btn-detail-preorder' ? Math.max(1, parseInt(qtyInp ? qtyInp.value : '1', 10) || 1) : 1;
       const color = document.getElementById('selected-color')?.value || '';
       const size = document.getElementById('selected-size')?.value || '';
 
       const prod = await findProductFast(pId);
       if (prod) {
-        cartStore.addItem(prod, 1, { color, size });
+        cartStore.addItem({ ...prod, is_preorder: true }, qty, { color, size });
         toast.show({
           type: "info",
-          title: "প্রি-অর্ডার বুকিং",
-          message: `${prod.name} প্রি-অর্ডার কার্টে যুক্ত হয়েছে। চেকআউটে কনফার্ম করুন।`,
+          title: "প্রি-অর্ডার বুকিং (+১৫% মূল্য)",
+          message: `${prod.name} প্রি-অর্ডার কার্টে যুক্ত হয়েছে। শুধুমাত্র অনলাইন পেমেন্টে কনফার্ম করুন।`,
           duration: 4000
         });
         router.navigate('/checkout');
@@ -880,7 +882,14 @@ function attachEventListeners() {
         return;
       }
 
-      if (cartStore.isOnlinePayment() && trxId === 'N/A') {
+      if (cartStore.hasPreOrderItems && cartStore.hasPreOrderItems()) {
+        if (!cartStore.isOnlinePayment() || cartStore.paymentMethod === 'COD') {
+          alert('প্রি-অর্ডার পণ্যের জন্য ক্যাশ অন ডেলিভারি প্রযোজ্য নয়। অনুগ্রহ করে অনলাইন পেমেন্ট মাধ্যম নির্বাচন করুন।');
+          return;
+        }
+      }
+
+      if (cartStore.isOnlinePayment() && (!trxId || trxId === 'N/A')) {
         alert('অনলাইন পেমেন্ট নির্বাচিত হয়েছে। অনুগ্রহ করে পেমেন্ট ট্রানজেকশন আইডি (TrxID) প্রদান করুন।');
         return;
       }
@@ -1329,7 +1338,7 @@ function attachLiveSearchHandlers() {
                   </div>
                   <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
                     <span class="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[9px] text-slate-600 dark:text-slate-300">${p.sku}</span>
-                    <span class="text-emerald-600 dark:text-emerald-400 font-black">${formatCurrency(p.selling_price)}</span>${p.category ? `<span class="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[9px] font-bold">${p.category}</span>` : ''}
+                    <span class="text-emerald-600 dark:text-emerald-400 font-black">${formatCurrency(Number(p.stock !== undefined && p.stock !== null && p.stock !== '' ? p.stock : 25) <= 0 ? Math.round(Number(p.selling_price || 0) * 1.15) : p.selling_price)}</span>${p.category ? `<span class="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded text-[9px] font-bold">${p.category}</span>` : ''}
                   </div>
                 </div>
                 <span class="text-slate-400 text-xs flex-shrink-0 font-bold">→</span>

@@ -3,6 +3,7 @@
  * Manages cart items, role-based pricing (Customer, Reseller, Wholesaler),
  * wholesale minimum order quantity enforcement, dynamic delivery fees
  * synced with Admin System Settings, free shipping threshold, online prepayment discount,
+ * Pre-Order (+15% price, online payment only, zero discount/coupon) rules when stock <= 0,
  * and dynamic Promo Coupon discounts.
  */
 
@@ -14,14 +15,69 @@ import {
   getGlobalOffers
 } from '../api/client.js';
 
+export const PREORDER_MARKUP_MULTIPLIER = 1.15;
+
+export function isProductOutOfStock(product) {
+  if (!product) return false;
+  if (product.is_preorder === true) return true;
+  if (product.stock === undefined || product.stock === null || product.stock === '') return false;
+  return Number(product.stock) <= 0;
+}
+
+export function applyPreOrderMarkup(basePrice) {
+  const num = Number(basePrice || 0);
+  if (!Number.isFinite(num) || num <= 0) return 0;
+  return Math.round(num * PREORDER_MARKUP_MULTIPLIER);
+}
+
 class CartStore {
   constructor() {
     this.items = [];
     this.coupon = null;
+    this.couponCode = "";
     this.deliveryZone = "dhaka"; // 'cumilla', 'dhaka', 'outside', 'pickup' or custom zone code
     this.paymentMethod = "COD"; // 'COD', 'BKASH_PERSONAL', 'BKASH_PAYMENT', 'NAGAD_PERSONAL', 'ROCKET_PERSONAL', 'BANK', or custom code
     this.listeners = [];
     this.loadFromStorage();
+  }
+
+  getFirstOnlinePaymentMethod() {
+    try {
+      const activeMethods = getGlobalPaymentMethods(true) || [];
+      for (const pm of activeMethods) {
+        const code = String(pm.code || '').toUpperCase().trim();
+        const name = String(pm.name || '').toLowerCase();
+        const type = String(pm.type || '').toLowerCase();
+        const isCod = code === 'COD' || type === 'cod' || name.includes('cash') || name.includes('cod') || name.includes('ক্যাশ');
+        if (!isCod) {
+          if (code) return code;
+          if (name.includes('bkash') || name.includes('বিকাশ')) {
+            return (type.includes('merchant') || type.includes('link') || name.includes('link')) ? 'BKASH_PAYMENT' : 'BKASH_PERSONAL';
+          }
+          if (name.includes('nagad') || name.includes('নগদ')) return 'NAGAD_PERSONAL';
+          if (name.includes('rocket') || name.includes('রকেট')) return 'ROCKET_PERSONAL';
+          if (name.includes('bank') || name.includes('ব্যাংক')) return 'BANK';
+          if (pm.id) return String(pm.id).toUpperCase();
+        }
+      }
+    } catch (e) {}
+    return "BKASH_PERSONAL";
+  }
+
+  hasPreOrderItems() {
+    return this.items.some(it => isProductOutOfStock(it));
+  }
+
+  enforcePreOrderRules() {
+    if (!this.hasPreOrderItems()) return;
+    // Pre-order items cannot use coupons or COD
+    if (this.coupon || this.couponCode) {
+      this.coupon = null;
+      this.couponCode = "";
+    }
+    if (!this.paymentMethod || this.paymentMethod === "COD" || !this.isOnlinePayment()) {
+      this.paymentMethod = this.getFirstOnlinePaymentMethod();
+    }
   }
 
   loadFromStorage() {
@@ -41,7 +97,9 @@ class CartStore {
       const savedCoupon = localStorage.getItem("dcbd_applied_coupon");
       if (savedCoupon) {
         this.coupon = JSON.parse(savedCoupon);
+        this.couponCode = this.coupon?.code || "";
       }
+      this.enforcePreOrderRules();
     } catch (e) {
       this.items = [];
     }
@@ -49,6 +107,7 @@ class CartStore {
 
   saveToStorage() {
     try {
+      this.enforcePreOrderRules();
       localStorage.setItem("dcbd_cart", JSON.stringify(this.items));
       localStorage.setItem("dcbd_delivery_zone", this.deliveryZone);
       localStorage.setItem("dcbd_payment_method", this.paymentMethod);
@@ -73,13 +132,16 @@ class CartStore {
   }
 
   getProductPriceForCurrentRole(product) {
+    let basePrice = Number(product.selling_price || product.price || 0);
     if (authStore.isWholesaler() && product.wholesale_price) {
-      return Number(product.wholesale_price);
+      basePrice = Number(product.wholesale_price);
+    } else if (authStore.isReseller() && product.reseller_price) {
+      basePrice = Number(product.reseller_price);
     }
-    if (authStore.isReseller() && product.reseller_price) {
-      return Number(product.reseller_price);
+    if (isProductOutOfStock(product)) {
+      return applyPreOrderMarkup(basePrice);
     }
-    return Number(product.selling_price || product.price || 0);
+    return basePrice;
   }
 
   addItem(product, quantity = 1, options = {}) {
@@ -89,7 +151,9 @@ class CartStore {
       quantity = minQty;
     }
 
+    const isPreOrder = isProductOutOfStock(product);
     const price = this.getProductPriceForCurrentRole(product);
+    const rawStock = product.stock !== undefined && product.stock !== null && product.stock !== '' ? Number(product.stock) : 50;
     const existingIndex = this.items.findIndex(
       it => it.product_id === product.product_id && it.color === (options.color || "") && it.size === (options.size || "")
     );
@@ -97,6 +161,8 @@ class CartStore {
     if (existingIndex > -1) {
       this.items[existingIndex].quantity += quantity;
       this.items[existingIndex].price = price;
+      this.items[existingIndex].stock = rawStock;
+      this.items[existingIndex].is_preorder = isPreOrder;
     } else {
       this.items.push({
         product_id: product.product_id,
@@ -104,12 +170,13 @@ class CartStore {
         name: product.name || product.p_name || "",
         slug: product.slug || "",
         price: price,
-        original_price: product.original_price || product.regular_price || price,
+        original_price: isPreOrder ? price : (product.original_price || product.regular_price || price),
         wholesale_price: product.wholesale_price || price,
         reseller_price: product.reseller_price || price,
         min_order_qty: minQty,
         thumbnail: product.thumbnail || (product.images && product.images[0]) || "",
-        stock: product.stock !== undefined ? product.stock : 50,
+        stock: rawStock,
+        is_preorder: isPreOrder,
         color: options.color || "",
         size: options.size || "",
         quantity: Math.max(1, quantity)
@@ -160,6 +227,7 @@ class CartStore {
   clear() {
     this.items = [];
     this.coupon = null;
+    this.couponCode = "";
     this.saveToStorage();
   }
 
@@ -169,35 +237,59 @@ class CartStore {
   }
 
   setPaymentMethod(method) {
-    this.paymentMethod = method;
+    if (this.hasPreOrderItems() && String(method || '').toUpperCase() === 'COD') {
+      this.paymentMethod = this.getFirstOnlinePaymentMethod();
+    } else {
+      this.paymentMethod = method;
+    }
     this.saveToStorage();
   }
 
   applyCoupon(couponData) {
+    if (this.hasPreOrderItems()) {
+      this.coupon = null;
+      this.couponCode = "";
+      this.saveToStorage();
+      return;
+    }
     this.coupon = couponData;
+    this.couponCode = couponData?.code || "";
     this.saveToStorage();
   }
 
   removeCoupon() {
     this.coupon = null;
+    this.couponCode = "";
     this.saveToStorage();
   }
 
+  clearCoupon() {
+    this.removeCoupon();
+  }
+
   validateAndApplyCoupon(rawCode) {
+    if (this.hasPreOrderItems()) {
+      this.removeCoupon();
+      return {
+        success: false,
+        valid: false,
+        message: 'প্রি-অর্ডার পণ্যের জন্য কোনো কুপন বা ডিসকাউন্ট প্রযোজ্য নয়।'
+      };
+    }
     const code = String(rawCode || '').trim().toUpperCase();
-    if (!code) return { success: false, message: 'কুপন কোড লিখুন।' };
+    if (!code) return { success: false, valid: false, message: 'কুপন কোড লিখুন।' };
     const activeOffers = getGlobalOffers(true);
     const matched = activeOffers.find(o => String(o.code || '').trim().toUpperCase() === code);
     if (!matched) {
-      return { success: false, message: 'কুপন কোডটি সঠিক নয় বা বর্তমানে নিষ্ক্রিয়।' };
+      return { success: false, valid: false, message: 'কুপন কোডটি সঠিক নয় বা বর্তমানে নিষ্ক্রিয়।' };
     }
     const subtotal = this.getSubtotal();
     const minSpend = Number(matched.min_spend || 0);
     if (subtotal < minSpend) {
-      return { success: false, message: `এই কুপনটি ব্যবহারের জন্য সর্বনিম্ন ৳${minSpend} এর অর্ডার প্রয়োজন।` };
+      return { success: false, valid: false, message: `এই কুপনটি ব্যবহারের জন্য সর্বনিম্ন ৳${minSpend} এর অর্ডার প্রয়োজন।` };
     }
     this.applyCoupon(matched);
-    return { success: true, coupon: matched, message: `কুপন "${code}" সফলভাবে যুক্ত হয়েছে (${matched.discount})!` };
+    return { success: true, valid: true, coupon: matched, message: `কুপন "${code}" সফলভাবে যুক্ত হয়েছে (${matched.discount})!` };
   }
 
   getSubtotal() {
@@ -205,6 +297,7 @@ class CartStore {
   }
 
   getCouponDiscount() {
+    if (this.hasPreOrderItems()) return 0;
     if (!this.coupon) return 0;
     const subtotal = this.getSubtotal();
     const minSpend = Number(this.coupon.min_spend || 0);
@@ -230,7 +323,7 @@ class CartStore {
     const zoneObj = activeZones.find(z => z.code === this.deliveryZone || z.id === this.deliveryZone);
     if (zoneObj && Number(zoneObj.charge) === 0) return true;
 
-    if (this.coupon && (this.coupon.discount_type === 'free_shipping' || String(this.coupon.discount || '').includes('ফ্রি'))) {
+    if (!this.hasPreOrderItems() && this.coupon && (this.coupon.discount_type === 'free_shipping' || String(this.coupon.discount || '').includes('ফ্রি'))) {
       if (this.getSubtotal() >= Number(this.coupon.min_spend || 0)) return true;
     }
 
@@ -276,6 +369,7 @@ class CartStore {
   }
 
   getOnlinePaymentDiscount() {
+    if (this.hasPreOrderItems()) return 0;
     if (authStore.isWholesaler()) return 0;
     if (this.isOnlinePayment()) {
       const subtotal = this.getSubtotal();

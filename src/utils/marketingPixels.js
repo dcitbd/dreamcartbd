@@ -1126,7 +1126,9 @@ export function installUniversalBilingualSearchEngine() {
         </div>
         ${matches.map(p => {
           const pName = p.name || p.p_name || 'পণ্য';
-          const pPrice = Number(p.selling_price || 0);
+          const pStock = Number(p.stock !== undefined && p.stock !== null && p.stock !== '' ? p.stock : 25);
+          const isPreOrder = pStock <= 0;
+          const pPrice = isPreOrder ? Math.round(Number(p.selling_price || 0) * 1.15) : Number(p.selling_price || 0);
           const pThumb = p.thumbnail || (Array.isArray(p.images) && p.images[0]) || '/icon/logo.png';
           const pSlug = p.slug || p.product_id || p.sku || '';
           return `
@@ -1147,7 +1149,7 @@ export function installUniversalBilingualSearchEngine() {
                 </div>
                 <div class="flex items-center gap-2 text-[10px] text-slate-400 mt-1 flex-wrap">
                   <span class="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-[9px] text-slate-300">${p.sku || ''}</span>
-                  <span class="text-emerald-400 font-black">৳${pPrice.toLocaleString('bn-BD')}</span>
+                  <span class="text-emerald-400 font-black">৳${pPrice.toLocaleString('bn-BD')}</span>${isPreOrder ? `<span class="bg-amber-950/80 text-amber-300 px-1.5 py-0.5 rounded text-[9px] font-bold">প্রি-অর্ডার (+১৫%)</span>` : ''}
                   ${p.category ? `<span class="bg-emerald-950/70 text-emerald-300 px-1.5 py-0.5 rounded text-[9px] font-bold">${p.category}</span>` : ''}
                 </div>
               </div>
