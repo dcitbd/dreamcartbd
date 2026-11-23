@@ -1159,7 +1159,7 @@ class DcbdCacheEngine {
             'version_ts'        => $tsMs,
             'sync_updated_at'   => $tsMs,
             'collections_meta'  => $meta['collections'] ?? [],
-            'settings'          => self::getSiteSettings(),
+            'settings'          => array_diff_key(self::getSiteSettings(), ['fbCapiToken' => true, 'FB_CAPI_Token' => true]),
             'products'          => self::getProducts(),
             'product_overrides' => self::readCache('product_overrides', [], $age),
             'deleted_products'  => self::readCache('deleted_products', [], $age),
