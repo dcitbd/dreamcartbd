@@ -149,6 +149,8 @@ function dcbd_render_app_page(string $forcedRoute = ''): void {
 
   <!-- Main ES Module Bootstrapper -->
   <script type="module" src="/src/main.js"></script>
+  <!-- Dream Cart BD Isolated First-Party Tracking SDK (Async/Defer, Zero Blocking) -->
+  <script defer src="/tracking/sdk/dcbd-tracking-loader.js"></script>
 </body>
 </html>
 HTML;
