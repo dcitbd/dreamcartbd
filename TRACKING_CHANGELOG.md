@@ -22,3 +22,8 @@
 
 ### Unchanged (100% Preserved)
 - All 413 other existing files including `src/main.js`, `src/router.js`, `src/store/*`, `src/pages/storefront/*`, `src/pages/admin/*`, `src/styles/*`, `includes/config.php`, `includes/cache_engine.php`, `includes/seo_renderer.php`, and all existing tables in `storage/dreamcartbd.sqlite`.
+
+## [1.0.1] — 2026-11-24
+- Pre-configured Meta Pixel ID `2237994360112976` in isolated `tracking/config.php` (`meta_pixel_enabled = true`) and `.env.example` without duplicating Meta base code in `index.html`.
+- Added cross-module duplicate `fbq('init')` and `PageView` guard in `tracking/sdk/dcbd-tracking.js` (`window.__dcbdConfiguredPixelIds` + `window.__dcbdInitialPageViewFired`).
+- Stripped `fbCapiToken` / `FB_CAPI_Token` from browser SSR payload (`includes/cache_engine.php` `getPreloadedSsrState`) so CAPI tokens are never exposed to frontend JS or `localStorage`.

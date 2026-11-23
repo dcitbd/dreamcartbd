@@ -258,15 +258,19 @@
       }
     }
 
-    // 3. Meta Pixel (strictly marketing consent gated)
+    // 3. Meta Pixel (strictly marketing consent gated + cross-module duplicate-init guard)
     if (p.meta && p.meta.enabled && p.meta.pixelId && c.marketing && !state.loadedProviders.meta) {
+      window.__dcbdConfiguredPixelIds = window.__dcbdConfiguredPixelIds || new Set();
       if (!window.fbq) {
         var n = window.fbq = function () { n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments); };
         if (!window._fbq) window._fbq = n;
         n.push = n; n.loaded = true; n.version = '2.0'; n.queue = [];
       }
       injectScriptOnce('meta', 'https://connect.facebook.net/en_US/fbevents.js');
-      window.fbq('init', p.meta.pixelId, { country: 'bd' });
+      if (!window.__dcbdConfiguredPixelIds.has('fb:' + p.meta.pixelId)) {
+        window.__dcbdConfiguredPixelIds.add('fb:' + p.meta.pixelId);
+        window.fbq('init', p.meta.pixelId, { country: 'bd' });
+      }
     }
 
     // 4. TikTok Pixel (strictly marketing consent gated)
@@ -378,7 +382,16 @@
         }
         if (ev.order_id) mData.order_id = ev.order_id;
         if (ev.search_term) mData.search_string = ev.search_term;
-        window.fbq('track', metaName, mData, { eventID: ev.event_id });
+        if (metaName === 'PageView') {
+          if (window.__dcbdInitialPageViewFired && !window.__dcbdTrkFirstPvConsumed) {
+            window.__dcbdTrkFirstPvConsumed = true;
+          } else {
+            window.fbq('track', 'PageView', {}, { eventID: ev.event_id });
+            window.__dcbdInitialPageViewFired = true;
+          }
+        } else {
+          window.fbq('track', metaName, mData, { eventID: ev.event_id });
+        }
       }
     }
 

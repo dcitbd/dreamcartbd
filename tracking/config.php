@@ -116,7 +116,7 @@ function dcbd_trk_default_settings(): array {
         'retention_days'                => (int)dcbd_trk_env('DCBD_TRK_RETENTION_DAYS', '90'),
 
         // Platform Enable Switches (independently toggleable)
-        'meta_pixel_enabled'            => false,
+        'meta_pixel_enabled'            => true,
         'meta_capi_enabled'             => false,
         'gtm_enabled'                   => false,
         'ga4_enabled'                   => false,
@@ -134,7 +134,7 @@ function dcbd_trk_default_settings(): array {
         'ga4_measurement_id'            => dcbd_trk_env('GA4_MEASUREMENT_ID', ''),
         'google_ads_conversion_id'      => dcbd_trk_env('GOOGLE_ADS_CONVERSION_ID', ''),
         'google_ads_conversion_label'   => dcbd_trk_env('GOOGLE_ADS_CONVERSION_LABEL', ''),
-        'meta_pixel_id'                 => dcbd_trk_env('META_PIXEL_ID', ''),
+        'meta_pixel_id'                 => dcbd_trk_env('META_PIXEL_ID', '2237994360112976'),
         'meta_test_event_code'          => dcbd_trk_env('META_TEST_EVENT_CODE', ''),
         'tiktok_pixel_id'               => dcbd_trk_env('TIKTOK_PIXEL_ID', ''),
         'tiktok_test_event_code'        => dcbd_trk_env('TIKTOK_TEST_EVENT_CODE', ''),
