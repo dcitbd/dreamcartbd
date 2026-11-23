@@ -512,6 +512,14 @@ try {
             // Flush JSON immediately to browser (< 5ms) so Order Placement is instant, then run CAPI & Google Sheets in background!
             dcbd_flush_json_and_continue_background($response);
 
+            // Background Task 0: Isolated Durable Tracking Queue (Authoritative Server-Side Purchase)
+            try {
+                if (is_file(dirname(__DIR__) . '/tracking/queue.php')) {
+                    require_once dirname(__DIR__) . '/tracking/queue.php';
+                    DcbdTrackingQueue::enqueueOrderEvent($normalizedOrder, 'order_placed');
+                }
+            } catch (Throwable $trkErr) {}
+
             // Background Task 1: Server-Side Meta CAPI Purchase Event
             try {
                 DcbdPixelTracker::dispatchServerEvent([
@@ -626,6 +634,12 @@ try {
             DcbdCacheEngine::writeCache('orders', $orders, true);
             $response = ['status' => 'success', 'success' => true, 'sync_meta' => DcbdCacheEngine::getSyncMeta(), 'data' => $updatedOrder ?? $payload];
             dcbd_flush_json_and_continue_background($response);
+            try {
+                if (!empty($updatedOrder) && is_file(dirname(__DIR__) . '/tracking/queue.php')) {
+                    require_once dirname(__DIR__) . '/tracking/queue.php';
+                    DcbdTrackingQueue::enqueueOrderEvent($updatedOrder, 'order_status_updated');
+                }
+            } catch (Throwable $trkErr) {}
             DcbdCacheEngine::forwardToAppsScript('orders/update_status', $payload, 5);
             exit;
 
