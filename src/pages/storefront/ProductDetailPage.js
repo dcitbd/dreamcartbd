@@ -364,6 +364,388 @@ if (typeof window !== 'undefined' && !window.__pdReviewHelpersAttached) {
   };
 }
 
+// Global helpers for Product Share & Bulk Image Folder Download
+if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
+  window.__pdShareDownloadHelpersAttached = true;
+
+  // Sanitize folder/file name from Product ID or SKU
+  function sanitizeFilePart(str, fallback = 'product-images') {
+    const cleaned = String(str || '')
+      .trim()
+      .replace(/[\\/:*?"<>|\x00-\x1f]+/g, '-')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    return cleaned || fallback;
+  }
+
+  // Pure-JS CRC32 + Uncompressed (STORE) ZIP builder so folder-<SKU>/<images> works everywhere without external libs
+  const crcTable = (function () {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) {
+        c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+      }
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(bytes) {
+    let crc = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) {
+      crc = crcTable[(crc ^ bytes[i]) & 0xff] ^ (crc >>> 8);
+    }
+    return (crc ^ 0xffffffff) >>> 0;
+  }
+
+  function buildZipWithFolder(folderName, files) {
+    const encoder = new TextEncoder();
+    const localParts = [];
+    const centralParts = [];
+    let offset = 0;
+
+    const now = new Date();
+    const dosTime = ((now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1)) & 0xffff;
+    const dosDate = (((Math.max(1980, now.getFullYear()) - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate()) & 0xffff;
+
+    for (const file of files) {
+      const entryName = `${folderName}/${file.name}`;
+      const nameBytes = encoder.encode(entryName);
+      const data = file.bytes;
+      const crc = crc32(data);
+      const size = data.length;
+
+      // Local file header (30 bytes + nameBytes)
+      const localHeader = new Uint8Array(30 + nameBytes.length);
+      const lv = new DataView(localHeader.buffer);
+      lv.setUint32(0, 0x04034b50, true);
+      lv.setUint16(4, 20, true); // version needed
+      lv.setUint16(6, 0x0800, true); // UTF-8 filename flag
+      lv.setUint16(8, 0, true); // compression: STORE
+      lv.setUint16(10, dosTime, true);
+      lv.setUint16(12, dosDate, true);
+      lv.setUint32(14, crc, true);
+      lv.setUint32(18, size, true);
+      lv.setUint32(22, size, true);
+      lv.setUint16(26, nameBytes.length, true);
+      lv.setUint16(28, 0, true);
+      localHeader.set(nameBytes, 30);
+
+      localParts.push(localHeader, data);
+
+      // Central directory header (46 bytes + nameBytes)
+      const centralHeader = new Uint8Array(46 + nameBytes.length);
+      const cv = new DataView(centralHeader.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(8, 0x0800, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, dosTime, true);
+      cv.setUint16(14, dosDate, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, size, true);
+      cv.setUint32(24, size, true);
+      cv.setUint16(28, nameBytes.length, true);
+      cv.setUint16(30, 0, true);
+      cv.setUint16(32, 0, true);
+      cv.setUint16(34, 0, true);
+      cv.setUint16(36, 0, true);
+      cv.setUint32(38, 0, true);
+      cv.setUint32(42, offset, true);
+      centralHeader.set(nameBytes, 46);
+
+      centralParts.push(centralHeader);
+      offset += localHeader.length + size;
+    }
+
+    const centralSize = centralParts.reduce((s, p) => s + p.length, 0);
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(4, 0, true);
+    ev.setUint16(6, 0, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+    ev.setUint16(20, 0, true);
+
+    return new Blob([...localParts, ...centralParts, eocd], { type: 'application/zip' });
+  }
+
+  function guessImageExt(url, mimeType) {
+    const mime = String(mimeType || '').toLowerCase();
+    if (mime.includes('png')) return 'png';
+    if (mime.includes('webp')) return 'webp';
+    if (mime.includes('gif')) return 'gif';
+    if (mime.includes('avif')) return 'avif';
+    if (mime.includes('jpeg') || mime.includes('jpg')) return 'jpg';
+    const match = String(url || '').split('?')[0].match(/\.(jpe?g|png|webp|gif|avif)$/i);
+    if (match) return match[1].toLowerCase() === 'jpeg' ? 'jpg' : match[1].toLowerCase();
+    return 'jpg';
+  }
+
+  async function fetchImageAsBlob(url) {
+    try {
+      const res = await fetch(url, { mode: 'cors', cache: 'no-store' });
+      if (res.ok) {
+        const blob = await res.blob();
+        if (blob && blob.size > 0) return blob;
+      }
+    } catch (e) {}
+
+    // Canvas fallback for servers that allow anonymous <img> CORS
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function () {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width || 800;
+          canvas.height = img.naturalHeight || img.height || 800;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob((blob) => resolve(blob || null), 'image/jpeg', 0.92);
+        } catch (err) {
+          resolve(null);
+        }
+      };
+      img.onerror = function () {
+        resolve(null);
+      };
+      img.src = url;
+    });
+  }
+
+  window.__pdDownloadAllImages = async function (btn) {
+    if (!btn || btn.dataset.downloading === '1') return;
+
+    let imageUrls = [];
+    try {
+      imageUrls = JSON.parse(decodeURIComponent(btn.getAttribute('data-images-json') || '[]'));
+    } catch (e) {}
+    imageUrls = Array.isArray(imageUrls) ? imageUrls.filter(Boolean) : [];
+
+    if (!imageUrls.length) {
+      if (window.toast && window.toast.show) {
+        window.toast.show({ type: 'error', title: 'ছবি পাওয়া যায়নি', message: 'ডাউনলোড করার মতো কোনো ছবি নেই।' });
+      }
+      return;
+    }
+
+    const rawFolder = btn.getAttribute('data-folder-name') || btn.getAttribute('data-product-sku') || btn.getAttribute('data-product-id') || 'product';
+    const folderName = sanitizeFilePart(rawFolder, 'product-images');
+    const labelEl = btn.querySelector('.pd-download-label');
+    const origLabel = labelEl ? labelEl.textContent : '';
+
+    btn.dataset.downloading = '1';
+    btn.disabled = true;
+    if (labelEl) labelEl.textContent = `ডাউনলোড হচ্ছে (0/${imageUrls.length})...`;
+
+    try {
+      // Fetch all images first
+      const fetchedFiles = [];
+      for (let i = 0; i < imageUrls.length; i++) {
+        if (labelEl) labelEl.textContent = `ছবি প্রস্তুত হচ্ছে (${i + 1}/${imageUrls.length})...`;
+        const url = imageUrls[i];
+        const blob = await fetchImageAsBlob(url);
+        if (blob) {
+          const ext = guessImageExt(url, blob.type);
+          const fileName = `${folderName}_${i + 1}.${ext}`;
+          const buf = await blob.arrayBuffer();
+          fetchedFiles.push({ name: fileName, blob, bytes: new Uint8Array(buf) });
+        }
+      }
+
+      if (!fetchedFiles.length) {
+        // Fallback: open/download individual URLs if CORS blocked all fetches
+        imageUrls.forEach((url, idx) => {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${folderName}_${idx + 1}.jpg`;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        });
+        if (window.toast && window.toast.show) {
+          window.toast.show({
+            type: 'info',
+            title: 'ছবি ডাউনলোড শুরু হয়েছে',
+            message: `${imageUrls.length}টি ছবির ডাউনলোড ট্রিগার করা হয়েছে।`,
+            duration: 3000
+          });
+        }
+        return;
+      }
+
+      // Primary method: File System Access API (creates an actual OS folder named <SKU/ID>)
+      let savedToFolder = false;
+      if (typeof window.showDirectoryPicker === 'function') {
+        try {
+          const parentDir = await window.showDirectoryPicker({ mode: 'readwrite' });
+          const targetDir = await parentDir.getDirectoryHandle(folderName, { create: true });
+          for (let i = 0; i < fetchedFiles.length; i++) {
+            if (labelEl) labelEl.textContent = `সেভ হচ্ছে (${i + 1}/${fetchedFiles.length})...`;
+            const f = fetchedFiles[i];
+            const fileHandle = await targetDir.getFileHandle(f.name, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(f.blob);
+            await writable.close();
+          }
+          savedToFolder = true;
+          if (window.toast && window.toast.show) {
+            window.toast.show({
+              type: 'success',
+              title: 'ফোল্ডারে ডাউনলোড সম্পন্ন!',
+              message: `"${folderName}" ফোল্ডারে ${fetchedFiles.length}টি ছবি সেভ হয়েছে।`,
+              duration: 3500
+            });
+          }
+        } catch (dirErr) {
+          if (dirErr && dirErr.name === 'AbortError') {
+            return; // User cancelled directory picker
+          }
+          // For SecurityError (e.g. iframe) or other errors, fall back to ZIP containing the folder
+        }
+      }
+
+      // Universal fallback: Download <SKU/ID>.zip containing <SKU/ID>/<images> folder
+      if (!savedToFolder) {
+        if (labelEl) labelEl.textContent = 'ফোল্ডার তৈরি হচ্ছে...';
+        const zipBlob = buildZipWithFolder(folderName, fetchedFiles);
+        const zipUrl = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = zipUrl;
+        a.download = `${folderName}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(zipUrl), 10000);
+
+        if (window.toast && window.toast.show) {
+          window.toast.show({
+            type: 'success',
+            title: 'সব ছবি ডাউনলোড সম্পন্ন!',
+            message: `"${folderName}" ফোল্ডারসহ (${fetchedFiles.length}টি ছবি) ZIP ডাউনলোড হয়েছে।`,
+            duration: 3500
+          });
+        }
+      }
+    } finally {
+      btn.dataset.downloading = '0';
+      btn.disabled = false;
+      if (labelEl) labelEl.textContent = origLabel;
+    }
+  };
+
+  window.__pdOpenShareModal = function (btn) {
+    const modal = document.getElementById('pd-share-modal');
+    if (!modal) return;
+    const url = (btn && btn.getAttribute('data-share-url')) || window.location.href;
+    const title = (btn && btn.getAttribute('data-share-title')) || document.title;
+    const price = (btn && btn.getAttribute('data-share-price')) || '';
+    const sku = (btn && btn.getAttribute('data-share-sku')) || '';
+
+    modal.setAttribute('data-share-url', url);
+    modal.setAttribute('data-share-title', title);
+    modal.setAttribute('data-share-price', price);
+    modal.setAttribute('data-share-sku', sku);
+
+    const urlInput = document.getElementById('pd-share-url-input');
+    if (urlInput) urlInput.value = url;
+
+    const nativeBtn = document.getElementById('pd-share-native-btn');
+    if (nativeBtn) {
+      nativeBtn.style.display = (typeof navigator !== 'undefined' && typeof navigator.share === 'function') ? 'flex' : 'none';
+    }
+
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+  };
+
+  window.__pdCloseShareModal = function () {
+    const modal = document.getElementById('pd-share-modal');
+    if (!modal) return;
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+  };
+
+  window.__pdTriggerNativeShare = async function () {
+    const modal = document.getElementById('pd-share-modal');
+    if (!modal || !navigator.share) return;
+    const url = modal.getAttribute('data-share-url') || window.location.href;
+    const title = modal.getAttribute('data-share-title') || document.title;
+    const price = modal.getAttribute('data-share-price') || '';
+    try {
+      await navigator.share({
+        title: title,
+        text: price ? `${title} — মূল্য: ${price}` : title,
+        url: url
+      });
+    } catch (e) {}
+  };
+
+  window.__pdCopyShareLink = async function (withDetails) {
+    const modal = document.getElementById('pd-share-modal');
+    const url = (modal && modal.getAttribute('data-share-url')) || window.location.href;
+    const title = (modal && modal.getAttribute('data-share-title')) || '';
+    const price = (modal && modal.getAttribute('data-share-price')) || '';
+    const sku = (modal && modal.getAttribute('data-share-sku')) || '';
+
+    const textToCopy = withDetails
+      ? `${title}${sku ? `\nSKU: ${sku}` : ''}${price ? `\nমূল্য: ${price}` : ''}\nঅর্ডার লিংক: ${url}`
+      : url;
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = textToCopy;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      if (window.toast && window.toast.show) {
+        window.toast.show({
+          type: 'success',
+          title: withDetails ? 'পণ্যের তথ্য ও লিংক কপি হয়েছে!' : 'লিংক কপি হয়েছে!',
+          message: 'এখন যেকোনো জায়গায় পেস্ট করে শেয়ার করতে পারবেন।',
+          duration: 2500
+        });
+      }
+    } catch (e) {}
+  };
+
+  window.__pdShareToSocial = function (platform) {
+    const modal = document.getElementById('pd-share-modal');
+    const url = (modal && modal.getAttribute('data-share-url')) || window.location.href;
+    const title = (modal && modal.getAttribute('data-share-title')) || '';
+    const price = (modal && modal.getAttribute('data-share-price')) || '';
+    const shareText = `${title}${price ? ` (${price})` : ''}`;
+
+    let targetUrl = '';
+    if (platform === 'whatsapp') {
+      targetUrl = `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${url}`)}`;
+    } else if (platform === 'facebook') {
+      targetUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+    } else if (platform === 'telegram') {
+      targetUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(shareText)}`;
+    }
+    if (targetUrl) {
+      window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+}
+
 export async function renderProductDetailPage(slugOrId) {
   const cleanId = (slugOrId || '').toString().trim();
   let decodedId = cleanId;
@@ -490,6 +872,10 @@ export async function renderProductDetailPage(slugOrId) {
     min_order_qty: minOrderQty
   };
   const encodedJson = encodeURIComponent(JSON.stringify(productPayload));
+  const downloadFolderName = String(product.sku || productId || 'product-images').trim();
+  const encodedImagesJson = encodeURIComponent(JSON.stringify(images));
+  const shareProductTitle = String(product.name || product.p_name || 'Dream Cart BD পণ্য').trim();
+  const sharePriceText = formatCurrency(activePrice);
 
   // WhatsApp link preparation
   const currentUrl = (typeof window !== 'undefined' && window.location) ? window.location.href : 'https://dreamcartbd.com/product/' + (product.slug || productId);
@@ -1864,6 +2250,255 @@ export async function renderProductDetailPage(slugOrId) {
         font-weight: 700;
         line-height: 1.45;
       }
+      /* Gallery Utility Bar (Download All Images & Share) */
+      .pd-media-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        margin-top: 2px;
+      }
+      .pd-btn-download-imgs {
+        background: #f8fafc;
+        color: #0f172a;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        transition: all 0.18s ease;
+        outline: none;
+        min-width: 0;
+      }
+      .pd-btn-download-imgs:hover:not(:disabled) {
+        border-color: #10b981;
+        background: #ecfdf5;
+        color: #047857;
+        transform: translateY(-1px);
+      }
+      .pd-btn-download-imgs:disabled {
+        opacity: 0.7;
+        cursor: wait;
+      }
+      .dark .pd-btn-download-imgs {
+        background: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.14);
+        color: #e2e8f0;
+      }
+      .dark .pd-btn-download-imgs:hover:not(:disabled) {
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.16);
+        color: #34d399;
+      }
+      .pd-btn-share-trigger {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1.5px solid #bfdbfe;
+        border-radius: 12px;
+        padding: 10px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: all 0.18s ease;
+        outline: none;
+        white-space: nowrap;
+      }
+      .pd-btn-share-trigger:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #ffffff;
+        transform: translateY(-1px);
+      }
+      .dark .pd-btn-share-trigger {
+        background: rgba(37, 99, 235, 0.16);
+        border-color: rgba(96, 165, 250, 0.3);
+        color: #60a5fa;
+      }
+      .dark .pd-btn-share-trigger:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #ffffff;
+      }
+
+      /* Quick Share Pill in Meta Row */
+      .pd-badge-share {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1d4ed8;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3.5px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        outline: none;
+      }
+      .pd-badge-share:hover {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #ffffff;
+      }
+      .dark .pd-badge-share {
+        background: rgba(37, 99, 235, 0.16);
+        border-color: rgba(96, 165, 250, 0.28);
+        color: #60a5fa;
+      }
+      .dark .pd-badge-share:hover {
+        background: #2563eb;
+        color: #ffffff;
+      }
+
+      /* Share Modal */
+      .pd-share-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(15, 23, 42, 0.55);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+      }
+      .pd-share-modal.is-open {
+        display: flex;
+      }
+      .pd-share-dialog {
+        width: 100%;
+        max-width: 420px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 20px;
+        box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.25);
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .dark .pd-share-dialog {
+        background: #0f172a;
+        border-color: rgba(255, 255, 255, 0.12);
+        color: #f8fafc;
+      }
+      .pd-share-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .pd-share-title {
+        font-size: 16px;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+      }
+      .dark .pd-share-title {
+        color: #f8fafc;
+      }
+      .pd-share-close {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #475569;
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .dark .pd-share-close {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.12);
+        color: #cbd5e1;
+      }
+      .pd-share-link-box {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        padding: 6px 8px 6px 12px;
+      }
+      .dark .pd-share-link-box {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+      .pd-share-link-input {
+        flex: 1;
+        min-width: 0;
+        border: none;
+        background: transparent;
+        font-size: 12px;
+        color: #334155;
+        outline: none;
+      }
+      .dark .pd-share-link-input {
+        color: #e2e8f0;
+      }
+      .pd-share-copy-btn {
+        background: #10b981;
+        color: #ffffff;
+        border: none;
+        border-radius: 8px;
+        padding: 7px 12px;
+        font-size: 11.5px;
+        font-weight: 700;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .pd-share-copy-btn:hover {
+        background: #059669;
+      }
+      .pd-share-options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .pd-share-opt-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        color: #1e293b;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .pd-share-opt-btn:hover {
+        border-color: #10b981;
+        background: #ecfdf5;
+        color: #047857;
+      }
+      .dark .pd-share-opt-btn {
+        background: #1e293b;
+        border-color: rgba(255, 255, 255, 0.1);
+        color: #e2e8f0;
+      }
+      .dark .pd-share-opt-btn:hover {
+        border-color: #10b981;
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+      }
       .dark .pd-preorder-notice {
         background: rgba(245, 158, 11, 0.16);
         border-color: rgba(245, 158, 11, 0.35);
@@ -1961,6 +2596,39 @@ export async function renderProductDetailPage(slugOrId) {
               ` : ""}
             </div>
           ` : ""}
+
+          <!-- Download All Images (Folder by Product ID/SKU) & Share Bar -->
+          <div class="pd-media-actions">
+            <button
+              type="button"
+              id="btn-detail-download-images"
+              class="pd-btn-download-imgs"
+              data-product-id="${escapeHtml(productId)}"
+              data-product-sku="${escapeHtml(product.sku || productId)}"
+              data-folder-name="${escapeHtml(downloadFolderName)}"
+              data-images-json="${encodedImagesJson}"
+              onclick="window.__pdDownloadAllImages(this);"
+              title="প্রোডাক্ট আইডি/SKU নামে ফোল্ডার করে সকল ছবি ডাউনলোড করুন"
+            >
+              <svg style="width: 16px; height: 16px; flex-shrink: 0;" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3"/></svg>
+              <span class="pd-download-label">সব ছবি ডাউনলোড (${images.length})</span>
+            </button>
+
+            <button
+              type="button"
+              id="btn-detail-share-gallery"
+              class="pd-btn-share-trigger"
+              data-share-url="${escapeHtml(currentUrl)}"
+              data-share-title="${escapeHtml(shareProductTitle)}"
+              data-share-price="${escapeHtml(sharePriceText)}"
+              data-share-sku="${escapeHtml(product.sku || productId)}"
+              onclick="window.__pdOpenShareModal(this);"
+              title="পণ্যটি শেয়ার করুন"
+            >
+              <svg style="width: 15px; height: 15px; flex-shrink: 0;" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+              <span>শেয়ার</span>
+            </button>
+          </div>
         </div>
 
         <!-- Right: Product Information & Action Panel -->
@@ -1986,6 +2654,21 @@ export async function renderProductDetailPage(slugOrId) {
               >
                 <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
                 <span id="detail-fav-badge-label">${isFavourite ? 'ফেভারিটে আছে' : 'ফেভারিট'}</span>
+              </button>
+
+              <!-- Header Quick Share Pill -->
+              <button
+                type="button"
+                class="pd-badge-share"
+                data-share-url="${escapeHtml(currentUrl)}"
+                data-share-title="${escapeHtml(shareProductTitle)}"
+                data-share-price="${escapeHtml(sharePriceText)}"
+                data-share-sku="${escapeHtml(product.sku || productId)}"
+                onclick="window.__pdOpenShareModal(this);"
+                title="পণ্যটি শেয়ার করুন"
+              >
+                <svg style="width: 13px; height: 13px; flex-shrink: 0;" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+                <span>শেয়ার</span>
               </button>
             </div>
 
@@ -2392,6 +3075,39 @@ export async function renderProductDetailPage(slugOrId) {
           </div>
         </section>
       ` : ""}
+
+      <!-- Product Share Modal -->
+      <div id="pd-share-modal" class="pd-share-modal" aria-hidden="true" onclick="if (event.target === this) window.__pdCloseShareModal();">
+        <div class="pd-share-dialog" role="dialog" aria-modal="true" aria-labelledby="pd-share-modal-title">
+          <div class="pd-share-head">
+            <h3 id="pd-share-modal-title" class="pd-share-title">পণ্যটি শেয়ার করুন</h3>
+            <button type="button" class="pd-share-close" aria-label="বন্ধ করুন" onclick="window.__pdCloseShareModal();">✕</button>
+          </div>
+
+          <div class="pd-share-link-box">
+            <input type="text" id="pd-share-url-input" class="pd-share-link-input" readonly value="${escapeHtml(currentUrl)}" onclick="this.select();" />
+            <button type="button" class="pd-share-copy-btn" onclick="window.__pdCopyShareLink(false);">কপি লিংক</button>
+          </div>
+
+          <div class="pd-share-options">
+            <button type="button" class="pd-share-opt-btn" onclick="window.__pdShareToSocial('whatsapp');">
+              <span>💬</span> WhatsApp
+            </button>
+            <button type="button" class="pd-share-opt-btn" onclick="window.__pdShareToSocial('facebook');">
+              <span>📘</span> Facebook
+            </button>
+            <button type="button" class="pd-share-opt-btn" onclick="window.__pdShareToSocial('telegram');">
+              <span>✈️</span> Telegram
+            </button>
+            <button type="button" class="pd-share-opt-btn" onclick="window.__pdCopyShareLink(true);">
+              <span>📋</span> তথ্যসহ কপি
+            </button>
+            <button type="button" id="pd-share-native-btn" class="pd-share-opt-btn" style="grid-column: 1 / -1; display: none;" onclick="window.__pdTriggerNativeShare();">
+              <span>📤</span> অন্যান্য অ্যাপে শেয়ার করুন
+            </button>
+          </div>
+        </div>
+      </div>
 
     </div>
   `;
