@@ -488,16 +488,25 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
     return 'jpg';
   }
 
-  async function tryFetchBlob(fetchUrl) {
+  async function tryFetchBlob(fetchUrl, timeoutMs = 8000) {
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     try {
-      const res = await fetch(fetchUrl, { mode: 'cors', credentials: 'omit', cache: 'no-store' });
+      const res = await fetch(fetchUrl, {
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-store',
+        signal: controller ? controller.signal : undefined
+      });
       if (res.ok) {
         const blob = await res.blob();
         if (blob && blob.size > 0 && (!blob.type || blob.type.startsWith('image/') || blob.type === 'application/octet-stream')) {
           return blob;
         }
       }
-    } catch (e) {}
+    } catch (e) {} finally {
+      if (timer) clearTimeout(timer);
+    }
     return null;
   }
 
@@ -505,7 +514,9 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
+      const timer = setTimeout(() => resolve(null), 8000);
       img.onload = function () {
+        clearTimeout(timer);
         try {
           const canvas = document.createElement('canvas');
           canvas.width = img.naturalWidth || img.width || 800;
@@ -518,6 +529,7 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
         }
       };
       img.onerror = function () {
+        clearTimeout(timer);
         resolve(null);
       };
       img.src = imgUrl;
@@ -530,7 +542,17 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
     return `${url}${sep}_dcbd_dl=${Date.now()}`;
   }
 
-  async function fetchImageAsBlob(url) {
+  function toAbsoluteUrl(url) {
+    try {
+      return new URL(url, window.location.origin).href;
+    } catch (e) {
+      return url;
+    }
+  }
+
+  async function fetchImageAsBlob(rawUrl) {
+    const url = toAbsoluteUrl(rawUrl);
+
     // 1. Direct fetch (data:, blob:, same-origin, or CORS-enabled CDN)
     let blob = await tryFetchBlob(url);
     if (blob) return blob;
@@ -546,11 +568,12 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
     blob = await tryCanvasBlob(busted);
     if (blob) return blob;
 
-    // 4. CORS-friendly image proxy fallbacks for third-party image hosts without CORS headers
+    // 4. CORS-friendly proxy fallbacks for third-party image hosts without CORS headers
     if (/^https?:\/\//i.test(url)) {
       const proxyUrls = [
         `https://wsrv.nl/?url=${encodeURIComponent(url)}`,
-        `https://corsproxy.io/?${encodeURIComponent(url)}`
+        `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
       ];
       for (const pUrl of proxyUrls) {
         blob = await tryFetchBlob(pUrl);
@@ -561,13 +584,17 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
     return null;
   }
 
-  window.__pdDownloadAllImages = async function (btn) {
+  window.__pdDownloadAllImages = async function (btn, e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!btn || btn.dataset.downloading === '1') return;
 
     let imageUrls = [];
     try {
       imageUrls = JSON.parse(decodeURIComponent(btn.getAttribute('data-images-json') || '[]'));
-    } catch (e) {}
+    } catch (err) {}
     imageUrls = Array.isArray(imageUrls) ? imageUrls.filter(Boolean) : [];
 
     if (!imageUrls.length) {
@@ -587,18 +614,21 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
     if (labelEl) labelEl.textContent = `ডাউনলোড হচ্ছে (0/${imageUrls.length})...`;
 
     try {
-      const fetchedFiles = [];
-      for (let i = 0; i < imageUrls.length; i++) {
-        if (labelEl) labelEl.textContent = `ডাউনলোড হচ্ছে (${i + 1}/${imageUrls.length})...`;
-        const url = imageUrls[i];
-        const blob = await fetchImageAsBlob(url);
-        if (blob) {
+      let doneCount = 0;
+      const results = await Promise.all(
+        imageUrls.map(async (url, i) => {
+          const blob = await fetchImageAsBlob(url);
+          doneCount++;
+          if (labelEl) labelEl.textContent = `ডাউনলোড হচ্ছে (${doneCount}/${imageUrls.length})...`;
+          if (!blob) return null;
           const ext = guessImageExt(url, blob.type);
           const fileName = `${folderName}_${i + 1}.${ext}`;
           const buf = await blob.arrayBuffer();
-          fetchedFiles.push({ name: fileName, blob, bytes: new Uint8Array(buf) });
-        }
-      }
+          return { name: fileName, blob, bytes: new Uint8Array(buf) };
+        })
+      );
+
+      const fetchedFiles = results.filter(Boolean);
 
       if (!fetchedFiles.length) {
         if (window.toast && window.toast.show) {
@@ -613,12 +643,13 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
       }
 
       // Auto-download immediately as <SKU/ID>.zip containing <SKU/ID>/ folder with all images
-      if (labelEl) labelEl.textContent = 'ফোল্ডার তৈরি হচ্ছে...';
+      if (labelEl) labelEl.textContent = 'ZIP তৈরি হচ্ছে...';
       const zipBlob = buildZipWithFolder(folderName, fetchedFiles);
       const zipUrl = URL.createObjectURL(zipBlob);
       const a = document.createElement('a');
       a.href = zipUrl;
-      a.download = `${folderName}.zip`;
+      a.setAttribute('download', `${folderName}.zip`);
+      a.rel = 'noopener';
       a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
@@ -629,7 +660,7 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
         window.toast.show({
           type: 'success',
           title: 'সব ছবি ডাউনলোড সম্পন্ন!',
-          message: `"${folderName}" ফোল্ডারসহ (${fetchedFiles.length}টি ছবি) অটো ডাউনলোড হয়েছে।`,
+          message: `"${folderName}.zip" (${fetchedFiles.length}টি ছবি) লোকাল স্টোরেজে ডাউনলোড হয়েছে।`,
           duration: 3500
         });
       }
@@ -2604,7 +2635,7 @@ export async function renderProductDetailPage(slugOrId) {
               data-product-sku="${escapeHtml(product.sku || productId)}"
               data-folder-name="${escapeHtml(downloadFolderName)}"
               data-images-json="${encodedImagesJson}"
-              onclick="window.__pdDownloadAllImages(this);"
+              onclick="window.__pdDownloadAllImages(this, event);"
               title="প্রোডাক্ট আইডি/SKU নামে ফোল্ডার করে সকল ছবি ডাউনলোড করুন"
             >
               <svg style="width: 16px; height: 16px; flex-shrink: 0;" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3"/></svg>
