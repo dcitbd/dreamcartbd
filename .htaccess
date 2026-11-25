@@ -1,0 +1,37 @@
+# DREAM CART BD — APACHE / LITESPEED CLEAN URL & SSR ROUTING (.htaccess)
+Options -Indexes -MultiViews
+DirectoryIndex index.php index.html
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Allow Let's Encrypt / ACME challenges
+  RewriteRule ^\.well-known/ - [L]
+
+  # Block direct access to internal PHP includes, storage, python engine & apps-script
+  RewriteRule ^(includes|storage|python_engine|apps-script)/ - [F,L]
+
+  # Route all Product Detail URLs (/product/<slug-or-sku>) directly to PHP SSR for dynamic OG Meta Tags
+  RewriteRule ^product/(.+)$ index.php [L,QSA]
+
+  # Serve existing static files (CSS, JS, images, icons, API endpoints, sitemaps) directly
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Route all other clean SPA URLs to index.php (HTTP 200 with dynamic SSR <head>)
+  RewriteRule ^ index.php [L,QSA]
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Prevent stale HTML caching on Cloudflare/Browser so updated OG meta tags appear immediately
+  <FilesMatch "\.(php|html)$">
+    Header set Cache-Control "no-cache, must-revalidate, max-age=0"
+  </FilesMatch>
+
+  # Cache static assets (images, CSS, JS) cleanly
+  <FilesMatch "\.(css|js|png|jpg|jpeg|webp|gif|svg|ico|woff2?)$">
+    Header set Cache-Control "public, max-age=604800"
+  </FilesMatch>
+</IfModule>
