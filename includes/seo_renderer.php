@@ -563,18 +563,65 @@ class DcbdSeoRenderer
         if ($productSlug !== '') {
             $currentProduct = DcbdCacheEngine::findProduct($productSlug);
             if ($currentProduct) {
-                $pName  = $currentProduct['name'] ?? $currentProduct['p_name'] ?? 'Product';
+                $pName  = trim((string)($currentProduct['name'] ?? $currentProduct['p_name'] ?? 'Product'));
                 $pPrice = (float)($currentProduct['selling_price'] ?? 0);
-                $pBrand = $currentProduct['brand'] ?? 'Dream Cart BD';
-                $pCat   = $currentProduct['category'] ?? 'Smart Gadgets';
-                $pSku   = $currentProduct['sku'] ?? $currentProduct['product_id'] ?? 'DCBD-ITEM';
-                $pSlug  = $currentProduct['slug'] ?? $productSlug;
-                $title  = "{$pName} — ৳" . number_format($pPrice, 0, '.', '') . " | Dream Cart BD (ড্রিম কার্ট বিডি)";
-                $description = $currentProduct['description'] ?: "{$pName} কিনুন মাত্র ৳{$pPrice} টাকায় Dream Cart BD (ড্রিম কার্ট বিডি / dream cart bd) থেকে। ব্র্যান্ড: {$pBrand} | ক্যাটাগরি: {$pCat} | সারা দেশে দ্রুত ক্যাশ অন ডেলিভারি।";
-                $keywords = "{$pName}, " . mb_strtolower((string)$pName, 'UTF-8') . ", {$pSku}, " . strtolower((string)$pSku) . ", {$pBrand}, {$pCat}, dream cart bd, Dream Cart BD, ড্রিম কার্ট বিডি, প্রোডাক্ট’স পেজ";
-                $canonicalUrl = $siteOrigin . '/product/' . rawurlencode((string)$pSlug);
-                $rawThumb = $currentProduct['thumbnail'] ?? ($currentProduct['images'][0] ?? $ogBanner);
-                $ogImage = strpos((string)$rawThumb, 'http') === 0 ? $rawThumb : ($siteOrigin . '/' . ltrim((string)$rawThumb, '/'));
+                $pBrand = trim((string)($currentProduct['brand'] ?? 'Dream Cart BD')) ?: 'Dream Cart BD';
+                $pCat   = trim((string)($currentProduct['category'] ?? 'Smart Gadgets')) ?: 'Smart Gadgets';
+                $pSku   = trim((string)($currentProduct['sku'] ?? $currentProduct['product_id'] ?? $productSlug));
+                $pSlug  = trim((string)($currentProduct['slug'] ?? ''));
+                if ($pSlug === '') {
+                    $pSlug = $pSku !== '' ? $pSku : $productSlug;
+                }
+
+                $priceLabel = $pPrice > 0 ? (' — ৳' . number_format($pPrice, 0, '.', '')) : '';
+                $title  = "{$pName}{$priceLabel} | Dream Cart BD";
+
+                $rawDesc = trim(preg_replace('/\s+/u', ' ', strip_tags((string)($currentProduct['description'] ?? ''))));
+                if ($rawDesc !== '') {
+                    $description = mb_strlen($rawDesc, 'UTF-8') > 200
+                        ? (mb_substr($rawDesc, 0, 197, 'UTF-8') . '...')
+                        : $rawDesc;
+                } else {
+                    $priceText = $pPrice > 0 ? ('মাত্র ৳' . number_format($pPrice, 0, '.', '') . ' টাকায় ') : '';
+                    $description = "{$pName} কিনুন {$priceText}Dream Cart BD থেকে। ব্র্যান্ড: {$pBrand} | ক্যাটাগরি: {$pCat} | সারা দেশে দ্রুত ক্যাশ অন ডেলিভারি।";
+                }
+
+                $keywords = "{$pName}, " . mb_strtolower($pName, 'UTF-8') . ", {$pSku}, " . strtolower($pSku) . ", {$pBrand}, {$pCat}, dream cart bd, Dream Cart BD, ড্রিম কার্ট বিডি, প্রোডাক্ট’স পেজ";
+                $canonicalUrl = $siteOrigin . '/product/' . rawurlencode($pSlug);
+
+                // Resolve primary product image safely (supports thumbnail, array images, or comma/newline-separated string)
+                $rawThumb = trim((string)($currentProduct['thumbnail'] ?? ($currentProduct['image'] ?? ($currentProduct['img'] ?? ''))));
+                if ($rawThumb === '' && !empty($currentProduct['images'])) {
+                    if (is_array($currentProduct['images'])) {
+                        foreach ($currentProduct['images'] as $imgItem) {
+                            $candidate = trim((string)$imgItem);
+                            if ($candidate !== '') {
+                                $rawThumb = $candidate;
+                                break;
+                            }
+                        }
+                    } elseif (is_string($currentProduct['images'])) {
+                        $parts = preg_split('/[\r\n,]+/', $currentProduct['images']);
+                        foreach ($parts as $imgItem) {
+                            $candidate = trim((string)$imgItem);
+                            if ($candidate !== '') {
+                                $rawThumb = $candidate;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if ($rawThumb === '') {
+                    $rawThumb = $ogBanner;
+                }
+                if (stripos($rawThumb, 'http://') === 0) {
+                    $rawThumb = 'https://' . substr($rawThumb, 7);
+                } elseif (stripos($rawThumb, '//') === 0) {
+                    $rawThumb = 'https:' . $rawThumb;
+                } elseif (stripos($rawThumb, 'https://') !== 0) {
+                    $rawThumb = $siteOrigin . '/' . ltrim($rawThumb, '/');
+                }
+                $ogImage = $rawThumb;
                 $ogType = 'product';
             }
         }
@@ -643,6 +690,20 @@ class DcbdSeoRenderer
         $rob  = htmlspecialchars($meta['robots'], ENT_QUOTES, 'UTF-8');
         $ogT  = htmlspecialchars($meta['ogType'], ENT_QUOTES, 'UTF-8');
 
+        // Detect image MIME type dynamically from URL extension
+        $imgPath = strtolower((string)(parse_url($meta['ogImage'], PHP_URL_PATH) ?? ''));
+        $imgType = 'image/jpeg';
+        if (preg_match('/\.png$/', $imgPath)) {
+            $imgType = 'image/png';
+        } elseif (preg_match('/\.webp$/', $imgPath)) {
+            $imgType = 'image/webp';
+        } elseif (preg_match('/\.gif$/', $imgPath)) {
+            $imgType = 'image/gif';
+        } elseif (preg_match('/\.avif$/', $imgPath)) {
+            $imgType = 'image/avif';
+        }
+        $extraLogoOg = ($meta['ogType'] === 'product') ? '' : ("\n  <meta property=\"og:image\" content=\"{$logo}\" />");
+
         $out = <<<HTML
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -676,19 +737,18 @@ class DcbdSeoRenderer
   <link rel="prefetch" href="https://dreamcartbd.com/contact" />
   <link rel="prefetch" href="https://dreamcartbd.com/track" />
 
-  <!-- OpenGraph Social Preview (WhatsApp, Facebook, Instagram, Messenger, Telegram, YouTube) -->
-  <meta property="og:site_name" content="Dream Cart BD (ড্রিম কার্ট বিডি)" />
+  <!-- OpenGraph Social Preview (WhatsApp, Facebook, Instagram, Messenger, Telegram, LinkedIn) -->
+  <meta property="og:site_name" content="Dream Cart BD" />
   <meta property="og:type" content="{$ogT}" />
   <meta property="og:title" content="{$t}" />
   <meta property="og:description" content="{$d}" />
   <meta property="og:url" content="{$c}" />
   <meta property="og:image" content="{$img}" />
   <meta property="og:image:secure_url" content="{$img}" />
-  <meta property="og:image:type" content="image/jpeg" />
+  <meta property="og:image:type" content="{$imgType}" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="{$t}" />
-  <meta property="og:image" content="{$logo}" />
+  <meta property="og:image:alt" content="{$t}" />{$extraLogoOg}
   <meta property="og:locale" content="bn_BD" />
 
   <!-- Twitter / X, TikTok & YouTube Link Preview Cards -->
