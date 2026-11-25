@@ -653,9 +653,9 @@ class DcbdCacheEngine {
         $deletedIds = array_flip(array_map('strtolower', self::readCache('deleted_products', [])));
         $overrides = self::readCache('product_overrides', []);
 
-        // If products cache only has the 5 initial demo products or forceSheetSync is requested, sync from Google Sheets
+        // Sync from Google Sheets when forced, empty, or cache TTL expired (or initial seed)
         $isOnlyInitialSeed = count($products) <= 5;
-        if ($forceSheetSync || empty($products) || ($isOnlyInitialSeed && $age > DCBD_CACHE_TTL_PRODUCTS)) {
+        if ($forceSheetSync || empty($products) || $age > DCBD_CACHE_TTL_PRODUCTS || ($isOnlyInitialSeed && $age > 30)) {
             $gvizRows = self::fetchGoogleSheetGviz('Products', 'SELECT A,B,C,D,E,F,G,H,I,J,K,L,M,N,R,S,T,U,V,W', 4);
             if (is_array($gvizRows) && count($gvizRows) > 0) {
                 $mergedMap = [];
@@ -694,26 +694,46 @@ class DcbdCacheEngine {
         if ($target === '') {
             return null;
         }
-        $products = self::getProducts();
-        foreach ($products as $p) {
-            if (!is_array($p)) continue;
-            $sku = strtolower(trim((string)($p['sku'] ?? $p['product_id'] ?? '')));
-            $slug = strtolower(trim((string)($p['slug'] ?? '')));
-            $name = strtolower(trim((string)($p['name'] ?? $p['p_name'] ?? '')));
-            $normName = preg_replace('/[^a-z0-9]+/', '-', $name);
-            if ($sku === $target || $slug === $target || $name === $target || $normName === $target) {
-                return $p;
+
+        $matchFromList = static function (array $list) use ($target): ?array {
+            foreach ($list as $p) {
+                if (!is_array($p)) continue;
+                $id       = strtolower(trim((string)($p['id'] ?? '')));
+                $pid      = strtolower(trim((string)($p['product_id'] ?? '')));
+                $sku      = strtolower(trim((string)($p['sku'] ?? $p['SKU'] ?? $pid)));
+                $slug     = strtolower(trim((string)($p['slug'] ?? '')));
+                $name     = strtolower(trim((string)($p['name'] ?? $p['p_name'] ?? '')));
+                $normName = preg_replace('/[^a-z0-9]+/', '-', $name);
+                if ($id === $target || $pid === $target || $sku === $target || $slug === $target || $name === $target || $normName === $target) {
+                    return $p;
+                }
             }
-        }
-        foreach ($products as $p) {
-            if (!is_array($p)) continue;
-            $slug = strtolower(trim((string)($p['slug'] ?? '')));
-            $sku = strtolower(trim((string)($p['sku'] ?? '')));
-            if (($slug !== '' && (strpos($target, $slug) !== false || strpos($slug, $target) !== false)) ||
-                ($sku !== '' && (strpos($target, $sku) !== false || strpos($sku, $target) !== false))) {
-                return $p;
+            foreach ($list as $p) {
+                if (!is_array($p)) continue;
+                $slug = strtolower(trim((string)($p['slug'] ?? '')));
+                $sku  = strtolower(trim((string)($p['sku'] ?? $p['SKU'] ?? $p['product_id'] ?? '')));
+                if (($slug !== '' && (strpos($target, $slug) !== false || strpos($slug, $target) !== false)) ||
+                    ($sku !== '' && (strpos($target, $sku) !== false || strpos($sku, $target) !== false))) {
+                    return $p;
+                }
             }
+            return null;
+        };
+
+        $products = self::getProducts(false);
+        $found = $matchFromList($products);
+        if ($found !== null) {
+            return $found;
         }
+
+        // If not found in local cache, force a fresh Google Sheets sync once (throttled to >15s)
+        $age = 0;
+        self::readCache('products', [], $age);
+        if ($age > 15) {
+            $freshProducts = self::getProducts(true);
+            return $matchFromList($freshProducts);
+        }
+
         return null;
     }
 
