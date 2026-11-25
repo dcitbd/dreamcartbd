@@ -488,16 +488,20 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
     return 'jpg';
   }
 
-  async function fetchImageAsBlob(url) {
+  async function tryFetchBlob(fetchUrl) {
     try {
-      const res = await fetch(url, { mode: 'cors', cache: 'no-store' });
+      const res = await fetch(fetchUrl, { mode: 'cors', credentials: 'omit', cache: 'no-store' });
       if (res.ok) {
         const blob = await res.blob();
-        if (blob && blob.size > 0) return blob;
+        if (blob && blob.size > 0 && (!blob.type || blob.type.startsWith('image/') || blob.type === 'application/octet-stream')) {
+          return blob;
+        }
       }
     } catch (e) {}
+    return null;
+  }
 
-    // Canvas fallback for servers that allow anonymous <img> CORS
+  function tryCanvasBlob(imgUrl) {
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = 'anonymous';
@@ -516,8 +520,45 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
       img.onerror = function () {
         resolve(null);
       };
-      img.src = url;
+      img.src = imgUrl;
     });
+  }
+
+  function addCacheBuster(url) {
+    if (!url || url.startsWith('data:') || url.startsWith('blob:')) return url;
+    const sep = url.includes('?') ? '&' : '?';
+    return `${url}${sep}_dcbd_dl=${Date.now()}`;
+  }
+
+  async function fetchImageAsBlob(url) {
+    // 1. Direct fetch (data:, blob:, same-origin, or CORS-enabled CDN)
+    let blob = await tryFetchBlob(url);
+    if (blob) return blob;
+
+    // 2. Cache-busted CORS fetch (avoids browser's non-CORS cached <img> response)
+    const busted = addCacheBuster(url);
+    if (busted !== url) {
+      blob = await tryFetchBlob(busted);
+      if (blob) return blob;
+    }
+
+    // 3. Cache-busted <img crossOrigin="anonymous"> + canvas export
+    blob = await tryCanvasBlob(busted);
+    if (blob) return blob;
+
+    // 4. CORS-friendly image proxy fallbacks for third-party image hosts without CORS headers
+    if (/^https?:\/\//i.test(url)) {
+      const proxyUrls = [
+        `https://wsrv.nl/?url=${encodeURIComponent(url)}`,
+        `https://corsproxy.io/?${encodeURIComponent(url)}`
+      ];
+      for (const pUrl of proxyUrls) {
+        blob = await tryFetchBlob(pUrl);
+        if (blob) return blob;
+      }
+    }
+
+    return null;
   }
 
   window.__pdDownloadAllImages = async function (btn) {
@@ -546,10 +587,9 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
     if (labelEl) labelEl.textContent = `ডাউনলোড হচ্ছে (0/${imageUrls.length})...`;
 
     try {
-      // Fetch all images first
       const fetchedFiles = [];
       for (let i = 0; i < imageUrls.length; i++) {
-        if (labelEl) labelEl.textContent = `ছবি প্রস্তুত হচ্ছে (${i + 1}/${imageUrls.length})...`;
+        if (labelEl) labelEl.textContent = `ডাউনলোড হচ্ছে (${i + 1}/${imageUrls.length})...`;
         const url = imageUrls[i];
         const blob = await fetchImageAsBlob(url);
         if (blob) {
@@ -561,80 +601,37 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
       }
 
       if (!fetchedFiles.length) {
-        // Fallback: open/download individual URLs if CORS blocked all fetches
-        imageUrls.forEach((url, idx) => {
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `${folderName}_${idx + 1}.jpg`;
-          a.target = '_blank';
-          a.rel = 'noopener noreferrer';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        });
         if (window.toast && window.toast.show) {
           window.toast.show({
-            type: 'info',
-            title: 'ছবি ডাউনলোড শুরু হয়েছে',
-            message: `${imageUrls.length}টি ছবির ডাউনলোড ট্রিগার করা হয়েছে।`,
-            duration: 3000
+            type: 'error',
+            title: 'ডাউনলোড করা যায়নি',
+            message: 'ছবির সার্ভার থেকে ফাইল সংগ্রহ করা যায়নি। অনুগ্রহ করে পরে আবার চেষ্টা করুন।',
+            duration: 3500
           });
         }
         return;
       }
 
-      // Primary method: File System Access API (creates an actual OS folder named <SKU/ID>)
-      let savedToFolder = false;
-      if (typeof window.showDirectoryPicker === 'function') {
-        try {
-          const parentDir = await window.showDirectoryPicker({ mode: 'readwrite' });
-          const targetDir = await parentDir.getDirectoryHandle(folderName, { create: true });
-          for (let i = 0; i < fetchedFiles.length; i++) {
-            if (labelEl) labelEl.textContent = `সেভ হচ্ছে (${i + 1}/${fetchedFiles.length})...`;
-            const f = fetchedFiles[i];
-            const fileHandle = await targetDir.getFileHandle(f.name, { create: true });
-            const writable = await fileHandle.createWritable();
-            await writable.write(f.blob);
-            await writable.close();
-          }
-          savedToFolder = true;
-          if (window.toast && window.toast.show) {
-            window.toast.show({
-              type: 'success',
-              title: 'ফোল্ডারে ডাউনলোড সম্পন্ন!',
-              message: `"${folderName}" ফোল্ডারে ${fetchedFiles.length}টি ছবি সেভ হয়েছে।`,
-              duration: 3500
-            });
-          }
-        } catch (dirErr) {
-          if (dirErr && dirErr.name === 'AbortError') {
-            return; // User cancelled directory picker
-          }
-          // For SecurityError (e.g. iframe) or other errors, fall back to ZIP containing the folder
-        }
-      }
+      // Auto-download immediately as <SKU/ID>.zip containing <SKU/ID>/ folder with all images
+      if (labelEl) labelEl.textContent = 'ফোল্ডার তৈরি হচ্ছে...';
+      const zipBlob = buildZipWithFolder(folderName, fetchedFiles);
+      const zipUrl = URL.createObjectURL(zipBlob);
+      const a = document.createElement('a');
+      a.href = zipUrl;
+      a.download = `${folderName}.zip`;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(zipUrl), 15000);
 
-      // Universal fallback: Download <SKU/ID>.zip containing <SKU/ID>/<images> folder
-      if (!savedToFolder) {
-        if (labelEl) labelEl.textContent = 'ফোল্ডার তৈরি হচ্ছে...';
-        const zipBlob = buildZipWithFolder(folderName, fetchedFiles);
-        const zipUrl = URL.createObjectURL(zipBlob);
-        const a = document.createElement('a');
-        a.href = zipUrl;
-        a.download = `${folderName}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(zipUrl), 10000);
-
-        if (window.toast && window.toast.show) {
-          window.toast.show({
-            type: 'success',
-            title: 'সব ছবি ডাউনলোড সম্পন্ন!',
-            message: `"${folderName}" ফোল্ডারসহ (${fetchedFiles.length}টি ছবি) ZIP ডাউনলোড হয়েছে।`,
-            duration: 3500
-          });
-        }
+      if (window.toast && window.toast.show) {
+        window.toast.show({
+          type: 'success',
+          title: 'সব ছবি ডাউনলোড সম্পন্ন!',
+          message: `"${folderName}" ফোল্ডারসহ (${fetchedFiles.length}টি ছবি) অটো ডাউনলোড হয়েছে।`,
+          duration: 3500
+        });
       }
     } finally {
       btn.dataset.downloading = '0';
