@@ -38,6 +38,23 @@ function getColorHex(name) {
   return '#10b981';
 }
 
+// Format multiline text from Google Sheet (preserves line-by-line breaks cleanly)
+function formatMultilineSheetText(rawText) {
+  if (rawText === null || rawText === undefined) return '';
+  const normalized = String(rawText)
+    .replace(/\r\n?/g, '\n')
+    .replace(/\\n/g, '\n')
+    .trim();
+  if (!normalized) return '';
+  const hasHtmlTags = /<\s*(br|p|div|ul|ol|li|table|tr|td|th|h[1-6]|strong|b|em|i|span)\b[^>]*>/i.test(normalized);
+  if (hasHtmlTags) {
+    return normalized
+      .replace(/(<\/(?:p|div|li|ul|ol|table|tr|h[1-6])>|<br\s*\/?>)\s*\n+/gi, '$1')
+      .replace(/\n/g, '<br>');
+  }
+  return escapeHtml(normalized).replace(/\n/g, '<br>');
+}
+
 // Global helpers for Gallery Navigation & Thumbnail Scroll
 if (typeof window !== 'undefined' && !window.__pdGalleryHelpersAttached) {
   window.__pdGalleryHelpersAttached = true;
@@ -88,6 +105,318 @@ if (typeof window !== 'undefined' && !window.__pdGalleryHelpersAttached) {
     if (!row) return;
     var amount = Math.max(160, Math.round(row.clientWidth * 0.75));
     row.scrollBy({ left: direction * amount, behavior: 'smooth' });
+  };
+}
+
+// Global helpers for Popup Image Preview (Lightbox) with Auto-Slide & Left/Right Drag/Swipe
+if (typeof window !== 'undefined' && !window.__pdLightboxHelpersAttached) {
+  window.__pdLightboxHelpersAttached = true;
+
+  var lbState = {
+    images: [],
+    index: 0,
+    autoPlay: true,
+    timer: null,
+    intervalMs: 3500,
+    isDragging: false,
+    pointerId: null,
+    startX: 0,
+    startY: 0,
+    deltaX: 0,
+    lockedAxis: null,
+    suppressClickUntil: 0
+  };
+
+  function getLightboxModal() {
+    return document.getElementById('pd-lightbox-modal');
+  }
+
+  function clearLightboxTimer() {
+    if (lbState.timer) {
+      clearInterval(lbState.timer);
+      lbState.timer = null;
+    }
+  }
+
+  function updateAutoPlayButton() {
+    var btn = document.getElementById('pd-lb-auto-btn');
+    if (!btn) return;
+    if (lbState.images.length <= 1) {
+      btn.style.display = 'none';
+      return;
+    }
+    btn.style.display = 'inline-flex';
+    if (lbState.autoPlay) {
+      btn.classList.add('is-active');
+      btn.innerHTML = '<span>⏸</span><span>অটো স্লাইড চালু</span>';
+      btn.setAttribute('aria-pressed', 'true');
+    } else {
+      btn.classList.remove('is-active');
+      btn.innerHTML = '<span>▶</span><span>অটো স্লাইড বন্ধ</span>';
+      btn.setAttribute('aria-pressed', 'false');
+    }
+  }
+
+  function startLightboxTimer() {
+    clearLightboxTimer();
+    if (!lbState.autoPlay || lbState.images.length <= 1) return;
+    lbState.timer = setInterval(function() {
+      var modal = getLightboxModal();
+      if (!modal || !modal.classList.contains('is-open')) {
+        clearLightboxTimer();
+        return;
+      }
+      if (!lbState.isDragging) {
+        window.__pdLightboxStep(1, false);
+      }
+    }, lbState.intervalMs);
+  }
+
+  function renderLightboxSlide(animateDir) {
+    var imgEl = document.getElementById('pd-lb-img');
+    var counterEl = document.getElementById('pd-lb-counter');
+    var thumbsWrap = document.getElementById('pd-lb-thumbs');
+    if (!imgEl || !lbState.images.length) return;
+
+    var total = lbState.images.length;
+    var idx = ((lbState.index % total) + total) % total;
+    lbState.index = idx;
+
+    imgEl.style.transition = 'none';
+    if (animateDir) {
+      imgEl.style.transform = 'translateX(' + (animateDir > 0 ? '36px' : '-36px') + ')';
+      imgEl.style.opacity = '0.35';
+    }
+    imgEl.src = lbState.images[idx];
+
+    requestAnimationFrame(function() {
+      imgEl.style.transition = 'transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease';
+      imgEl.style.transform = 'translateX(0px)';
+      imgEl.style.opacity = '1';
+    });
+
+    if (counterEl) {
+      counterEl.textContent = (idx + 1) + ' / ' + total;
+    }
+
+    if (thumbsWrap) {
+      var thumbBtns = thumbsWrap.querySelectorAll('.pd-lb-thumb');
+      thumbBtns.forEach(function(b, i) {
+        if (i === idx) {
+          b.classList.add('is-active');
+          if (b.scrollIntoView) {
+            b.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+          }
+        } else {
+          b.classList.remove('is-active');
+        }
+      });
+    }
+
+    // Keep main product gallery synced with lightbox selection
+    if (typeof window.__pdSelectImageByIndex === 'function') {
+      window.__pdSelectImageByIndex(idx);
+    }
+  }
+
+  function bindLightboxDrag(stage) {
+    if (!stage || stage.dataset.dragBound === '1') return;
+    stage.dataset.dragBound = '1';
+
+    var SWIPE_THRESHOLD = 45;
+
+    function onStart(clientX, clientY, pointerId) {
+      if (lbState.images.length <= 1) return;
+      lbState.isDragging = true;
+      lbState.pointerId = pointerId !== undefined ? pointerId : null;
+      lbState.startX = clientX;
+      lbState.startY = clientY;
+      lbState.deltaX = 0;
+      lbState.lockedAxis = null;
+      stage.classList.add('is-dragging');
+      clearLightboxTimer();
+      var imgEl = document.getElementById('pd-lb-img');
+      if (imgEl) imgEl.style.transition = 'none';
+    }
+
+    function onMove(clientX, clientY) {
+      if (!lbState.isDragging) return;
+      var dx = clientX - lbState.startX;
+      var dy = clientY - lbState.startY;
+      if (!lbState.lockedAxis) {
+        if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
+          lbState.lockedAxis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+        }
+      }
+      if (lbState.lockedAxis !== 'x') return;
+      lbState.deltaX = dx;
+      var imgEl = document.getElementById('pd-lb-img');
+      if (imgEl) {
+        var damped = dx * 0.72;
+        var opacity = Math.max(0.45, 1 - Math.abs(dx) / 420);
+        imgEl.style.transform = 'translateX(' + damped + 'px)';
+        imgEl.style.opacity = String(opacity);
+      }
+    }
+
+    function onEnd() {
+      if (!lbState.isDragging) return;
+      var dx = lbState.deltaX;
+      lbState.isDragging = false;
+      lbState.pointerId = null;
+      lbState.deltaX = 0;
+      lbState.lockedAxis = null;
+      stage.classList.remove('is-dragging');
+
+      if (Math.abs(dx) > 6) {
+        lbState.suppressClickUntil = Date.now() + 280;
+      }
+      if (Math.abs(dx) >= SWIPE_THRESHOLD) {
+        // Right-to-left drag (dx < 0) -> next image; Left-to-right drag (dx > 0) -> previous image
+        window.__pdLightboxStep(dx < 0 ? 1 : -1, true);
+      } else {
+        var imgEl = document.getElementById('pd-lb-img');
+        if (imgEl) {
+          imgEl.style.transition = 'transform 0.22s ease, opacity 0.2s ease';
+          imgEl.style.transform = 'translateX(0px)';
+          imgEl.style.opacity = '1';
+        }
+        startLightboxTimer();
+      }
+    }
+
+    if (typeof window.PointerEvent !== 'undefined') {
+      stage.addEventListener('pointerdown', function(ev) {
+        if (ev.button !== undefined && ev.button !== 0) return;
+        if (ev.target && ev.target.closest && ev.target.closest('button')) return;
+        onStart(ev.clientX, ev.clientY, ev.pointerId);
+        try { stage.setPointerCapture(ev.pointerId); } catch (e) {}
+      });
+      stage.addEventListener('pointermove', function(ev) {
+        if (!lbState.isDragging || (lbState.pointerId !== null && ev.pointerId !== lbState.pointerId)) return;
+        onMove(ev.clientX, ev.clientY);
+      });
+      stage.addEventListener('pointerup', function(ev) {
+        if (!lbState.isDragging) return;
+        try { stage.releasePointerCapture(ev.pointerId); } catch (e) {}
+        onEnd();
+      });
+      stage.addEventListener('pointercancel', onEnd);
+    } else {
+      stage.addEventListener('mousedown', function(ev) {
+        if (ev.button !== 0) return;
+        if (ev.target && ev.target.closest && ev.target.closest('button')) return;
+        ev.preventDefault();
+        onStart(ev.clientX, ev.clientY);
+      });
+      window.addEventListener('mousemove', function(ev) {
+        if (!lbState.isDragging) return;
+        onMove(ev.clientX, ev.clientY);
+      });
+      window.addEventListener('mouseup', onEnd);
+      stage.addEventListener('touchstart', function(ev) {
+        if (!ev.touches || !ev.touches[0]) return;
+        onStart(ev.touches[0].clientX, ev.touches[0].clientY);
+      }, { passive: true });
+      stage.addEventListener('touchmove', function(ev) {
+        if (!lbState.isDragging || !ev.touches || !ev.touches[0]) return;
+        onMove(ev.touches[0].clientX, ev.touches[0].clientY);
+      }, { passive: true });
+      stage.addEventListener('touchend', onEnd);
+      stage.addEventListener('touchcancel', onEnd);
+    }
+  }
+
+  document.addEventListener('keydown', function(ev) {
+    var modal = getLightboxModal();
+    if (!modal || !modal.classList.contains('is-open')) return;
+    if (ev.key === 'Escape') {
+      window.__pdCloseLightbox();
+    } else if (ev.key === 'ArrowRight') {
+      window.__pdLightboxStep(1, true);
+    } else if (ev.key === 'ArrowLeft') {
+      window.__pdLightboxStep(-1, true);
+    }
+  });
+
+  window.__pdOpenLightbox = function(startIndex) {
+    var modal = getLightboxModal();
+    var gallery = document.getElementById('pd-gallery-root');
+    if (!modal || !gallery) return;
+
+    var imgs = [];
+    try {
+      imgs = JSON.parse(decodeURIComponent(gallery.getAttribute('data-images-json') || '[]'));
+    } catch (e) {}
+    if (!Array.isArray(imgs) || !imgs.length) {
+      var mainImg = document.getElementById('detail-main-img');
+      if (mainImg && mainImg.src) imgs = [mainImg.src];
+    }
+    if (!imgs.length) return;
+
+    var activeIdx = typeof startIndex === 'number'
+      ? startIndex
+      : Number(gallery.getAttribute('data-active-index') || 0);
+
+    lbState.images = imgs;
+    lbState.index = isNaN(activeIdx) ? 0 : activeIdx;
+    lbState.autoPlay = imgs.length > 1;
+    lbState.isDragging = false;
+
+    var stage = document.getElementById('pd-lb-stage');
+    bindLightboxDrag(stage);
+
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+
+    updateAutoPlayButton();
+    renderLightboxSlide(0);
+    startLightboxTimer();
+  };
+
+  window.__pdCloseLightbox = function() {
+    var modal = getLightboxModal();
+    clearLightboxTimer();
+    lbState.isDragging = false;
+    if (modal) {
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+    document.body.style.overflow = '';
+  };
+
+  window.__pdLightboxGoTo = function(index) {
+    if (!lbState.images.length) return;
+    var dir = index >= lbState.index ? 1 : -1;
+    lbState.index = index;
+    renderLightboxSlide(dir);
+    startLightboxTimer();
+  };
+
+  window.__pdLightboxStep = function(step, resetTimer) {
+    if (lbState.images.length <= 1) return;
+    lbState.index = lbState.index + step;
+    renderLightboxSlide(step >= 0 ? 1 : -1);
+    if (resetTimer !== false) {
+      startLightboxTimer();
+    }
+  };
+
+  window.__pdLightboxToggleAuto = function() {
+    lbState.autoPlay = !lbState.autoPlay;
+    updateAutoPlayButton();
+    if (lbState.autoPlay) {
+      startLightboxTimer();
+    } else {
+      clearLightboxTimer();
+    }
+  };
+
+  window.__pdLightboxBackdropClick = function(ev) {
+    if (!ev || ev.target !== ev.currentTarget) return;
+    if (Date.now() < lbState.suppressClickUntil) return;
+    window.__pdCloseLightbox();
   };
 }
 
@@ -1071,7 +1400,26 @@ export async function renderProductDetailPage(slugOrId) {
         height: 100%;
         object-fit: cover;
         display: block;
+        cursor: zoom-in;
         transition: transform 0.3s ease;
+      }
+      .pd-img-zoom-hint {
+        position: absolute;
+        bottom: 12px;
+        left: 12px;
+        background: rgba(15, 23, 42, 0.72);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        color: #f8fafc;
+        font-size: 11px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        z-index: 10;
+        pointer-events: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
       }
       .pd-main-img:hover {
         transform: scale(1.03);
@@ -2089,15 +2437,28 @@ export async function renderProductDetailPage(slugOrId) {
         color: #34d399;
       }
       .pd-spec-content {
-        font-size: 12.5px;
-        line-height: 1.6;
+        font-size: 13px;
+        line-height: 1.8;
         color: #334155;
-        font-family: monospace;
+        font-family: 'Hind Siliguri', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        white-space: pre-line;
         overflow-wrap: break-word;
         word-break: break-word;
       }
       .dark .pd-spec-content {
         color: #e2e8f0;
+      }
+      .pd-others-box {
+        font-size: 12.5px;
+        color: #64748b;
+        margin-top: 14px;
+        line-height: 1.75;
+      }
+      .pd-others-content {
+        white-space: pre-line;
+        overflow-wrap: break-word;
+        word-break: break-word;
+        margin-top: 4px;
       }
 
       /* Customer Reviews Section */
@@ -2532,6 +2893,226 @@ export async function renderProductDetailPage(slugOrId) {
         border-color: rgba(245, 158, 11, 0.35);
         color: #fbbf24;
       }
+
+      /* Fullscreen Image Preview Popup (Lightbox) */
+      .pd-lightbox-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: none;
+        flex-direction: column;
+        background: rgba(2, 6, 23, 0.94);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: #f8fafc;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .pd-lightbox-modal.is-open {
+        display: flex;
+      }
+      .pd-lb-topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 12px 16px;
+        background: rgba(15, 23, 42, 0.78);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        flex-shrink: 0;
+      }
+      .pd-lb-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+      }
+      .pd-lb-counter {
+        background: rgba(16, 185, 129, 0.22);
+        border: 1px solid rgba(16, 185, 129, 0.45);
+        color: #6ee7b7;
+        font-size: 12px;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        flex-shrink: 0;
+      }
+      .pd-lb-title {
+        font-size: 13px;
+        font-weight: 700;
+        color: #e2e8f0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .pd-lb-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .pd-lb-auto-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        color: #e2e8f0;
+        font-size: 11.5px;
+        font-weight: 700;
+        padding: 6px 12px;
+        border-radius: 9999px;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        outline: none;
+      }
+      .pd-lb-auto-btn.is-active {
+        background: rgba(16, 185, 129, 0.2);
+        border-color: rgba(16, 185, 129, 0.55);
+        color: #6ee7b7;
+      }
+      .pd-lb-auto-btn:hover {
+        background: rgba(16, 185, 129, 0.32);
+        color: #ffffff;
+      }
+      .pd-lb-close {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.08);
+        color: #ffffff;
+        font-size: 17px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.18s ease;
+        outline: none;
+      }
+      .pd-lb-close:hover {
+        background: #e11d48;
+        border-color: #e11d48;
+      }
+      .pd-lb-stage {
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px 52px;
+        overflow: hidden;
+        cursor: grab;
+        touch-action: pan-y;
+      }
+      .pd-lb-stage.is-dragging {
+        cursor: grabbing;
+      }
+      @media (max-width: 639px) {
+        .pd-lb-stage {
+          padding: 12px 14px;
+        }
+      }
+      .pd-lb-img {
+        max-width: 100%;
+        max-height: 74vh;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        border-radius: 14px;
+        box-shadow: 0 20px 55px rgba(0, 0, 0, 0.55);
+        pointer-events: auto;
+        user-select: none;
+        -webkit-user-drag: none;
+        will-change: transform, opacity;
+      }
+      .pd-lb-nav {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: rgba(15, 23, 42, 0.72);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 5;
+        transition: all 0.18s ease;
+        outline: none;
+        padding: 0;
+      }
+      .pd-lb-nav.prev { left: 14px; }
+      .pd-lb-nav.next { right: 14px; }
+      .pd-lb-nav:hover {
+        background: #10b981;
+        border-color: #10b981;
+        transform: translateY(-50%) scale(1.08);
+      }
+      .pd-lb-nav svg {
+        width: 22px;
+        height: 22px;
+      }
+      .pd-lb-footer {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px 14px;
+        background: rgba(15, 23, 42, 0.78);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        flex-shrink: 0;
+      }
+      .pd-lb-hint {
+        font-size: 11px;
+        color: #94a3b8;
+        text-align: center;
+      }
+      .pd-lb-thumbs {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        max-width: 100%;
+        overflow-x: auto;
+        padding: 2px 4px;
+        scrollbar-width: none;
+      }
+      .pd-lb-thumbs::-webkit-scrollbar {
+        display: none;
+      }
+      .pd-lb-thumb {
+        width: 52px;
+        height: 52px;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 2px solid rgba(255, 255, 255, 0.16);
+        background: #0f172a;
+        padding: 0;
+        cursor: pointer;
+        flex: 0 0 auto;
+        opacity: 0.6;
+        transition: all 0.16s ease;
+        outline: none;
+      }
+      .pd-lb-thumb:hover {
+        opacity: 0.95;
+        border-color: #34d399;
+      }
+      .pd-lb-thumb.is-active {
+        opacity: 1;
+        border-color: #10b981;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.45);
+      }
+      .pd-lb-thumb img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
     </style>
 
     <div class="pd-wrapper">
@@ -2551,15 +3132,18 @@ export async function renderProductDetailPage(slugOrId) {
       <div class="pd-main-grid">
         
         <!-- Left: Image Gallery -->
-        <div class="pd-gallery" id="pd-gallery-root" data-active-index="0">
+        <div class="pd-gallery" id="pd-gallery-root" data-active-index="0" data-images-json="${encodedImagesJson}">
           <div class="pd-main-img-box">
             <img 
               id="detail-main-img"
               src="${escapeHtml(mainImage)}" 
               alt="${escapeHtml(product.name || product.p_name)}" 
-              class="pd-main-img" 
+              class="pd-main-img"
+              title="বড় করে প্রিভিউ দেখতে ক্লিক করুন"
+              onclick="window.__pdOpenLightbox();"
               onerror="this.onerror=null; this.src='${fallbackImg}';"
             />
+            <div class="pd-img-zoom-hint">🔍 প্রিভিউ দেখুন</div>
 
             ${images.length > 1 ? `
               <button type="button" class="pd-img-nav prev" aria-label="পূর্ববর্তী ছবি" onclick="window.__pdStepImage(-1);">
@@ -2932,22 +3516,17 @@ export async function renderProductDetailPage(slugOrId) {
           <span>📋</span> পণ্যের পূর্ণ বিবরণ ও স্পেসিফিকেশন
         </h2>
 
-        <div class="pd-desc-text">
-          ${product.description || 'পণ্যটির বিস্তারিত বিবরণ শীঘ্রই যুক্ত করা হচ্ছে। পণ্য সংক্রান্ত যেকোনো তথ্যের জন্য আমাদের হেল্পলাইনে কল করুন।'}
+        <div id="pd-live-desc" class="pd-desc-text">${formatMultilineSheetText(product.description) || 'পণ্যটির বিস্তারিত বিবরণ শীঘ্রই যুক্ত করা হচ্ছে। পণ্য সংক্রান্ত যেকোনো তথ্যের জন্য আমাদের হেল্পলাইনে কল করুন।'}</div>
+
+        <div id="pd-live-spec-box" class="pd-spec-box" style="${product.specification ? '' : 'display:none;'}">
+          <div class="pd-spec-header">স্পেসিফিকেশন হাইলাইটস:</div>
+          <div id="pd-live-spec-content" class="pd-spec-content">${formatMultilineSheetText(product.specification)}</div>
         </div>
 
-        ${product.specification ? `
-          <div class="pd-spec-box">
-            <div class="pd-spec-header">স্পেসিফিকেশন হাইলাইটস:</div>
-            <div class="pd-spec-content">${product.specification}</div>
-          </div>
-        ` : ""}
-
-        ${product.others ? `
-          <div style="font-size: 12.5px; color: #64748b; margin-top: 14px;" class="dark:text-slate-400">
-            <strong>অন্যান্য তথ্য:</strong> ${product.others}
-          </div>
-        ` : ""}
+        <div id="pd-live-others-box" class="pd-others-box dark:text-slate-400" style="${product.others ? '' : 'display:none;'}">
+          <strong>অন্যান্য তথ্য:</strong>
+          <div id="pd-live-others-content" class="pd-others-content">${formatMultilineSheetText(product.others)}</div>
+        </div>
       </div>
 
       <!-- Customer Reviews & Rating Section -->
@@ -3135,6 +3714,66 @@ export async function renderProductDetailPage(slugOrId) {
             </button>
           </div>
         </div>
+      </div>
+
+      <!-- Fullscreen Image Preview Popup (Lightbox) -->
+      <div id="pd-lightbox-modal" class="pd-lightbox-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-label="ছবি প্রিভিউ">
+        <div class="pd-lb-topbar">
+          <div class="pd-lb-meta">
+            <span id="pd-lb-counter" class="pd-lb-counter">1 / ${images.length}</span>
+            <span class="pd-lb-title">${escapeHtml(product.name || product.p_name || 'পণ্য প্রিভিউ')}</span>
+          </div>
+          <div class="pd-lb-controls">
+            ${images.length > 1 ? `
+              <button type="button" id="pd-lb-auto-btn" class="pd-lb-auto-btn is-active" aria-pressed="true" onclick="window.__pdLightboxToggleAuto();">
+                <span>⏸</span><span>অটো স্লাইড চালু</span>
+              </button>
+            ` : ""}
+            <button type="button" class="pd-lb-close" aria-label="বন্ধ করুন" onclick="window.__pdCloseLightbox();">✕</button>
+          </div>
+        </div>
+
+        <div id="pd-lb-stage" class="pd-lb-stage" onclick="window.__pdLightboxBackdropClick(event);">
+          ${images.length > 1 ? `
+            <button type="button" class="pd-lb-nav prev" aria-label="পূর্ববর্তী ছবি" onclick="event.stopPropagation(); window.__pdLightboxStep(-1, true);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+          ` : ""}
+
+          <img
+            id="pd-lb-img"
+            src="${escapeHtml(mainImage)}"
+            alt="${escapeHtml(product.name || product.p_name)}"
+            class="pd-lb-img"
+            draggable="false"
+            ondragstart="return false;"
+            onerror="this.onerror=null; this.src='${fallbackImg}';"
+          />
+
+          ${images.length > 1 ? `
+            <button type="button" class="pd-lb-nav next" aria-label="পরবর্তী ছবি" onclick="event.stopPropagation(); window.__pdLightboxStep(1, true);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          ` : ""}
+        </div>
+
+        ${images.length > 1 ? `
+          <div class="pd-lb-footer">
+            <div class="pd-lb-thumbs" id="pd-lb-thumbs">
+              ${images.map((img, i) => `
+                <button
+                  type="button"
+                  class="pd-lb-thumb ${i === 0 ? 'is-active' : ''}"
+                  aria-label="ছবি ${i + 1}"
+                  onclick="window.__pdLightboxGoTo(${i});"
+                >
+                  <img src="${escapeHtml(img)}" alt="Preview ${i + 1}" draggable="false" onerror="this.onerror=null; this.src='${fallbackImg}';" />
+                </button>
+              `).join("")}
+            </div>
+            <div class="pd-lb-hint">ডানে-বামে ড্রাগ বা সোয়াইপ করে ছবি পরিবর্তন করুন • অটো স্লাইড চালু আছে</div>
+          </div>
+        ` : ""}
       </div>
 
     </div>
