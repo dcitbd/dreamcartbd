@@ -1,16 +1,16 @@
 /**
- * DREAM CART BD — ULTRA-FAST ALL CATEGORIES & TREE HIERARCHY PAGE (CategoryPage.js)
+ * DREAM CART BD — ULTRA-FAST 3D CATEGORY GRID & TREE MODAL (CategoryPage.js)
  * Performance & Design Upgrades:
- * - O(N) Single-Pass Aggregation (eliminates O(N^3) nested filters that caused UI freezes)
- * - Virtualized Single-Pane Rendering: Renders ONLY the active category pane in DOM (~95% fewer DOM nodes & images)
- * - Native lazy-loading + async image decoding (`loading="lazy" decoding="async"`)
- * - Modern 3D Bento & Tree Explorer UI with instant client-side search, light/dark mode, and mobile-first layout
- * - Strict 100% deduplication: No category name appears twice
+ * - Instant 0ms data read from apiClient.sheetCategories / apiClient.sheetProducts / SSR cache
+ * - O(N) Single-Pass Aggregation (zero nested .filter() loops)
+ * - CSS `content-visibility: auto` + `loading="lazy" decoding="async"` for instant paint & zero scroll lag
+ * - Clean 3D Bento Grid of all unique categories (2 cols mobile, 3 tablet, 4 desktop)
+ * - On-demand Tree Explorer Modal for Sub-Categories & Child-Categories (zero hidden DOM bloat)
+ * - Strict 100% deduplication & full Dark/Light mode support
  */
 
 import { apiClient, INITIAL_CATEGORIES } from '../../api/client.js';
 
-// Safe HTML escaper
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -23,7 +23,6 @@ function escapeHtml(str) {
 
 const FALLBACK_CAT_IMG = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&auto=format&fit=crop&q=75';
 
-// Default enriched hierarchies to guarantee rich sub/child trees even before sheet syncs
 const DEFAULT_CAT_HIERARCHIES = {
   "smartwatches": {
     name: "Smartwatches",
@@ -67,197 +66,108 @@ const DEFAULT_CAT_HIERARCHIES = {
   }
 };
 
-// Render child leaf nodes for a subcategory
-function renderChildNodesHtml(children, catName, subName) {
-  if (!children || children.length === 0) {
-    return '<div class="text-xs text-slate-400 py-2 pl-3 italic">এই সাব-ক্যাটাগরির সকল পণ্য সরাসরি অন্তর্ভুক্ত।</div>';
-  }
-
-  return (
-    '<div class="cat-tree-children">' +
-    children.map(function (ch) {
-      const countBadge = ch.count > 0 ? `<span class="cat-leaf-count">${ch.count} টি</span>` : '';
-      const linkUrl = '/products?cat=' + encodeURIComponent(catName) + '&sub=' + encodeURIComponent(subName) + '&child=' + encodeURIComponent(ch.name);
-      return `
-        <a href="${linkUrl}" class="cat-leaf-chip">
-          <span class="cat-leaf-dot"></span>
-          <span class="truncate font-semibold">${escapeHtml(ch.name)}</span>
-          ${countBadge}
-        </a>
-      `;
-    }).join('') +
-    '</div>'
-  );
-}
-
-// Render ONLY the active category pane (keeps DOM tiny & 0ms render)
-function buildCategoryPaneHtml(c) {
-  if (!c) {
-    return '<div class="p-10 text-center text-sm text-slate-400">কোনো ক্যাটাগরি পাওয়া যায়নি।</div>';
-  }
-
+function buildTreeModalBodyHtml(c) {
+  if (!c) return '';
   const shopUrl = '/products?cat=' + encodeURIComponent(c.category);
   const subCategories = c.subCategories || [];
 
-  const subCatsHtml = subCategories.length === 0
-    ? `
-      <div class="p-8 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-800/30">
-        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">এই ক্যাটাগরির সকল পণ্য সরাসরি ব্রাউজ করুন</p>
-        <a href="${shopUrl}" class="btn-primary py-2 px-5 text-xs font-bold inline-flex rounded-xl">
-          পণ্যগুলো দেখুন →
+  if (subCategories.length === 0) {
+    return `
+      <div class="p-6 text-center space-y-3">
+        <p class="text-xs text-slate-500 dark:text-slate-400">এই ক্যাটাগরিতে মোট <strong>${c.matchingCount}টি</strong> পণ্য রয়েছে।</p>
+        <a href="${shopUrl}" class="btn-primary py-2 px-5 text-xs font-bold inline-flex rounded-xl" onclick="window.closeCategoryTreeModal();">
+          সকল পণ্য দেখুন →
         </a>
       </div>
-    `
-    : subCategories.map(function (sub, sIdx) {
-        const isOpen = sIdx < 2;
-        const subShopUrl = '/products?cat=' + encodeURIComponent(c.category) + '&sub=' + encodeURIComponent(sub.name);
-        return `
-          <div class="cat-sub-node ${isOpen ? 'is-open' : ''}">
-            <div class="cat-sub-head" onclick="window.toggleSubCategoryTree(this);">
-              <div class="flex items-center gap-2.5 min-w-0">
-                <span class="cat-sub-caret">▸</span>
-                <div class="min-w-0">
-                  <div class="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 truncate">
-                    ${escapeHtml(sub.name)}
-                  </div>
-                  <div class="text-[11px] text-slate-400 flex items-center gap-2">
-                    <span>${sub.count} টি পণ্য</span>
-                    <span>•</span>
-                    <span class="text-emerald-600 dark:text-emerald-400 font-bold">${sub.children.length} টি শাখা</span>
-                  </div>
-                </div>
-              </div>
-              <a
-                href="${subShopUrl}"
-                class="cat-sub-shop-btn"
-                onclick="event.stopPropagation();"
-              >
-                দেখুন →
-              </a>
-            </div>
-            <div class="cat-sub-body">
-              ${renderChildNodesHtml(sub.children, c.category, sub.name)}
-            </div>
-          </div>
-        `;
-      }).join('');
+    `;
+  }
 
-  return `
-    <!-- Active Category Hero Card -->
-    <div class="cat-hero-card">
-      <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5">
-        <div class="cat-hero-img-wrap">
-          <img
-            src="${escapeHtml(c.category_image || FALLBACK_CAT_IMG)}"
-            alt="${escapeHtml(c.category)}"
-            loading="eager"
-            decoding="async"
-            class="w-full h-full object-cover"
-            onerror="this.onerror=null; this.src='${FALLBACK_CAT_IMG}';"
-          />
-        </div>
-        <div class="flex-1 min-w-0 text-center sm:text-left space-y-2.5">
-          <div class="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-            <span class="cat-id-badge">${escapeHtml(c.catagory_id)}</span>
-            <span class="cat-slug-badge">/${escapeHtml(c.catagory_slug)}</span>
-            <span class="cat-count-badge">${c.matchingCount} টি পণ্য</span>
-          </div>
-          <h2 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
-            ${escapeHtml(c.category)}
-          </h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">
-            মোট <strong>${subCategories.length}টি</strong> সাব-ক্যাটাগরি ও <strong>${c.matchingCount}টি</strong> পণ্য তালিকাভুক্ত আছে
-          </p>
-          <div class="pt-1 flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
-            <a href="${shopUrl}" class="btn-primary py-2 px-5 text-xs font-bold inline-flex items-center gap-1.5 rounded-xl shadow-sm">
-              <span>🛍️</span> ${escapeHtml(c.category)} শপ করুন →
+  return subCategories.map(function (sub, sIdx) {
+    const subUrl = '/products?cat=' + encodeURIComponent(c.category) + '&sub=' + encodeURIComponent(sub.name);
+    const childrenHtml = (sub.children && sub.children.length > 0)
+      ? sub.children.map(function (ch) {
+          const chUrl = subUrl + '&child=' + encodeURIComponent(ch.name);
+          return `
+            <a href="${chUrl}" class="cat-leaf-chip" onclick="window.closeCategoryTreeModal();">
+              <span class="cat-leaf-dot"></span>
+              <span>${escapeHtml(ch.name)}</span>
+              ${ch.count > 0 ? `<span class="cat-leaf-count">${ch.count}</span>` : ''}
             </a>
-          </div>
-        </div>
-      </div>
-    </div>
+          `;
+        }).join('')
+      : '<span class="text-[11px] text-slate-400 italic">সরাসরি সাব-ক্যাটাগরি পণ্য</span>';
 
-    <!-- Sub-category & Child-category Tree -->
-    <div class="cat-tree-panel">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 mb-3.5 border-b border-slate-100 dark:border-slate-800 gap-2.5">
-        <div>
-          <h3 class="text-sm sm:text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <span>🌳</span> সাব-ক্যাটাগরি ও চাইল্ড ট্রি
-          </h3>
-          <p class="text-[11px] text-slate-400 mt-0.5">সাব-ক্যাটাগরিতে ক্লিক করে চাইল্ড শাখাগুলো দেখুন</p>
-        </div>
-        ${subCategories.length > 0 ? `
-          <div class="flex items-center gap-2">
-            <button type="button" class="cat-ctrl-btn" onclick="window.expandAllCategoryTrees();">সব খুলুন +</button>
-            <button type="button" class="cat-ctrl-btn" onclick="window.collapseAllCategoryTrees();">বন্ধ করুন −</button>
+    return `
+      <div class="cat-sub-node ${sIdx < 3 ? 'is-open' : ''}">
+        <div class="cat-sub-head" onclick="this.parentElement.classList.toggle('is-open');">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="cat-sub-caret">▸</span>
+            <span class="text-xs sm:text-sm font-extrabold text-slate-800 dark:text-slate-100 truncate">${escapeHtml(sub.name)}</span>
+            <span class="cat-leaf-count">${sub.count}</span>
           </div>
-        ` : ''}
+          <a href="${subUrl}" class="cat-sub-shop-btn" onclick="event.stopPropagation(); window.closeCategoryTreeModal();">
+            শপ →
+          </a>
+        </div>
+        <div class="cat-sub-body">
+          <div class="cat-tree-children">${childrenHtml}</div>
+        </div>
       </div>
-      <div class="space-y-2.5">
-        ${subCatsHtml}
-      </div>
-    </div>
-  `;
+    `;
+  }).join('');
 }
 
-// Attach lightweight global handlers once
-if (typeof window !== 'undefined' && !window.__dcbdCategoryHubHandlersAttached) {
-  window.__dcbdCategoryHubHandlersAttached = true;
+if (typeof window !== 'undefined' && !window.__dcbdFastCatHandlersAttached) {
+  window.__dcbdFastCatHandlersAttached = true;
 
-  window.toggleSubCategoryTree = function (headEl) {
-    if (!headEl) return;
-    const node = headEl.closest('.cat-sub-node');
-    if (node) node.classList.toggle('is-open');
-  };
-
-  window.expandAllCategoryTrees = function () {
-    document.querySelectorAll('#cat-active-pane-host .cat-sub-node').forEach(function (n) {
-      n.classList.add('is-open');
-    });
-  };
-
-  window.collapseAllCategoryTrees = function () {
-    document.querySelectorAll('#cat-active-pane-host .cat-sub-node').forEach(function (n) {
-      n.classList.remove('is-open');
-    });
-  };
-
-  window.selectCategoryTab = function (idx) {
-    const list = window.__dcbdCategoryHubData || [];
-    const cat = list[idx];
-    if (!cat) return;
-
-    document.querySelectorAll('.cat-nav-item').forEach(function (el) {
-      el.classList.remove('is-active');
-    });
-    const activeEl = document.getElementById('cat-nav-' + idx);
-    if (activeEl) activeEl.classList.add('is-active');
-
-    const host = document.getElementById('cat-active-pane-host');
-    if (host) {
-      host.innerHTML = buildCategoryPaneHtml(cat);
-      if (window.innerWidth < 1024) {
-        host.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }
-  };
-
-  window.filterSidebarCategories = function (query) {
+  window.filterCategoryGrid = function (query) {
     const q = (query || '').toLowerCase().trim();
-    let visibleCount = 0;
-    document.querySelectorAll('.cat-nav-item').forEach(function (card) {
+    let visible = 0;
+    document.querySelectorAll('#cat-bento-grid .cat-3d-card').forEach(function (card) {
       const name = (card.getAttribute('data-cat-name') || '').toLowerCase();
-      const id = (card.getAttribute('data-cat-id') || '').toLowerCase();
-      const slug = (card.getAttribute('data-cat-slug') || '').toLowerCase();
-      if (!q || name.includes(q) || id.includes(q) || slug.includes(q)) {
-        card.style.display = 'flex';
-        visibleCount++;
+      const subs = (card.getAttribute('data-cat-subs') || '').toLowerCase();
+      if (!q || name.includes(q) || subs.includes(q)) {
+        card.style.display = '';
+        visible++;
       } else {
         card.style.display = 'none';
       }
     });
-    const emptyEl = document.getElementById('cat-nav-empty');
-    if (emptyEl) emptyEl.style.display = visibleCount === 0 ? 'block' : 'none';
+    const emptyEl = document.getElementById('cat-grid-empty');
+    if (emptyEl) emptyEl.style.display = visible === 0 ? 'block' : 'none';
+  };
+
+  window.openCategoryTreeModal = function (idx, e) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const list = window.__dcbdCategoryHubData || [];
+    const c = list[idx];
+    const modal = document.getElementById('cat-tree-modal');
+    if (!c || !modal) return;
+
+    const titleEl = document.getElementById('cat-modal-title');
+    const metaEl = document.getElementById('cat-modal-meta');
+    const shopEl = document.getElementById('cat-modal-shop-link');
+    const bodyEl = document.getElementById('cat-modal-body');
+
+    if (titleEl) titleEl.textContent = c.category;
+    if (metaEl) metaEl.textContent = `${c.matchingCount} টি পণ্য • ${c.subCategories.length} টি সাব-ক্যাটাগরি`;
+    if (shopEl) shopEl.href = '/products?cat=' + encodeURIComponent(c.category);
+    if (bodyEl) bodyEl.innerHTML = buildTreeModalBodyHtml(c);
+
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.closeCategoryTreeModal = function () {
+    const modal = document.getElementById('cat-tree-modal');
+    if (!modal) return;
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
   };
 }
 
@@ -268,30 +178,33 @@ export async function renderCategoryPage(params = {}) {
   let products = [];
 
   try {
-    // Use already-loaded in-memory lists immediately if present, otherwise fetch in parallel
-    const hasMemCats = Array.isArray(apiClient.sheetCategories) && apiClient.sheetCategories.length > 0;
-    const hasMemProds = Array.isArray(apiClient.products) && apiClient.products.length > 0;
+    const ssrCache = (typeof window !== 'undefined' && window.__DCBD_SSR_CACHE__) ? window.__DCBD_SSR_CACHE__ : null;
+    const memCats = (Array.isArray(apiClient.sheetCategories) && apiClient.sheetCategories.length > 0)
+      ? apiClient.sheetCategories
+      : (ssrCache && Array.isArray(ssrCache.categories) && ssrCache.categories.length > 0 ? ssrCache.categories : null);
+    const memProds = (Array.isArray(apiClient.sheetProducts) && apiClient.sheetProducts.length > 0)
+      ? apiClient.sheetProducts
+      : (ssrCache && Array.isArray(ssrCache.products) && ssrCache.products.length > 0 ? ssrCache.products : null);
 
-    if (hasMemCats && hasMemProds) {
-      rawCategories = apiClient.sheetCategories;
-      products = apiClient.products;
+    if (memCats && memProds) {
+      rawCategories = memCats;
+      products = memProds;
     } else {
       const [catRes, prodRes] = await Promise.all([
-        apiClient.request("categories/list"),
-        apiClient.request("products/list")
+        memCats ? Promise.resolve({ data: { items: memCats } }) : apiClient.request("categories/list"),
+        memProds ? Promise.resolve({ data: { items: memProds } }) : apiClient.request("products/list")
       ]);
       rawCategories = (catRes && catRes.data && catRes.data.items) || [];
       products = (prodRes && prodRes.data && prodRes.data.items) || [];
     }
   } catch (e) {
     rawCategories = INITIAL_CATEGORIES || [];
-    products = apiClient.products || [];
+    products = apiClient.sheetProducts || [];
   }
 
-  // O(N) Single-Pass Deduplicated Aggregation Map
+  // O(N) Single-Pass Deduplicated Aggregation
   const catMap = new Map();
 
-  // 1. Seed base default hierarchies
   Object.values(DEFAULT_CAT_HIERARCHIES).forEach(function (dh) {
     const key = dh.name.toLowerCase().trim();
     const subMap = new Map();
@@ -300,11 +213,7 @@ export async function renderCategoryPage(params = {}) {
       childList.forEach(function (ch) {
         childMap.set(ch.toLowerCase().trim(), { name: ch, count: 0 });
       });
-      subMap.set(sName.toLowerCase().trim(), {
-        name: sName,
-        count: 0,
-        childMap: childMap
-      });
+      subMap.set(sName.toLowerCase().trim(), { name: sName, count: 0, childMap: childMap });
     });
 
     catMap.set(key, {
@@ -318,7 +227,6 @@ export async function renderCategoryPage(params = {}) {
     });
   });
 
-  // 2. Ingest API Categories (O(C))
   for (let i = 0; i < rawCategories.length; i++) {
     const c = rawCategories[i];
     if (!c) continue;
@@ -354,11 +262,7 @@ export async function renderCategoryPage(params = {}) {
         const sName = subList[s];
         const sKey = sName.toLowerCase();
         if (!catObj.subCatsMap.has(sKey)) {
-          catObj.subCatsMap.set(sKey, {
-            name: sName,
-            count: 0,
-            childMap: new Map()
-          });
+          catObj.subCatsMap.set(sKey, { name: sName, count: 0, childMap: new Map() });
         }
         const subObj = catObj.subCatsMap.get(sKey);
         for (let k = 0; k < childList.length; k++) {
@@ -372,7 +276,6 @@ export async function renderCategoryPage(params = {}) {
     }
   }
 
-  // 3. Single-pass O(P) Product Counting & Tree Association
   for (let i = 0; i < products.length; i++) {
     const p = products[i];
     if (!p) continue;
@@ -402,11 +305,7 @@ export async function renderCategoryPage(params = {}) {
     if (pSub) {
       const sKey = pSub.toLowerCase();
       if (!catObj.subCatsMap.has(sKey)) {
-        catObj.subCatsMap.set(sKey, {
-          name: pSub,
-          count: 0,
-          childMap: new Map()
-        });
+        catObj.subCatsMap.set(sKey, { name: pSub, count: 0, childMap: new Map() });
       }
       const subObj = catObj.subCatsMap.get(sKey);
       subObj.count += 1;
@@ -422,7 +321,6 @@ export async function renderCategoryPage(params = {}) {
     }
   }
 
-  // 4. Finalize sorted categories array
   const categories = Array.from(catMap.values()).map(function (catObj, catIdx) {
     let img = catObj.category_image;
     if ((!img || img.includes('photo-1579586337278-3befd40fd17a') || img.includes('jijistatic')) && catObj.firstThumb) {
@@ -449,251 +347,316 @@ export async function renderCategoryPage(params = {}) {
     };
   }).sort((a, b) => b.matchingCount - a.matchingCount || a.category.localeCompare(b.category));
 
-  // Determine active category index
-  const queryCat = String(safeParams.cat || safeParams.category || '').toLowerCase().trim();
-  let activeIndex = 0;
-  if (queryCat) {
-    const foundIdx = categories.findIndex(c =>
-      c.category.toLowerCase() === queryCat || c.catagory_slug.toLowerCase() === queryCat
-    );
-    if (foundIdx !== -1) activeIndex = foundIdx;
-  }
-
-  // Save lightweight data in memory for instant 0ms tab switching
   if (typeof window !== 'undefined') {
     window.__dcbdCategoryHubData = categories;
   }
 
-  const sidebarItemsHtml = categories.map(function (c, idx) {
-    const isActive = idx === activeIndex;
+  // If URL has ?cat=..., auto-open that category's tree modal after render
+  const queryCat = String(safeParams.cat || safeParams.category || '').toLowerCase().trim();
+  if (queryCat && typeof window !== 'undefined') {
+    const foundIdx = categories.findIndex(c =>
+      c.category.toLowerCase() === queryCat || c.catagory_slug.toLowerCase() === queryCat
+    );
+    if (foundIdx !== -1) {
+      setTimeout(() => {
+        if (window.openCategoryTreeModal) window.openCategoryTreeModal(foundIdx);
+      }, 60);
+    }
+  }
+
+  const cardsHtml = categories.map(function (c, idx) {
+    const shopUrl = '/products?cat=' + encodeURIComponent(c.category);
+    const subPreview = c.subCategories.slice(0, 3).map(s => s.name).join(', ');
     return `
-      <button
-        type="button"
-        id="cat-nav-${idx}"
-        class="cat-nav-item ${isActive ? 'is-active' : ''}"
+      <article
+        class="cat-3d-card"
         data-cat-name="${escapeHtml(c.category)}"
-        data-cat-id="${escapeHtml(c.catagory_id)}"
-        data-cat-slug="${escapeHtml(c.catagory_slug)}"
-        onclick="window.selectCategoryTab(${idx});"
+        data-cat-subs="${escapeHtml(subPreview)}"
       >
-        <div class="cat-nav-thumb">
+        <a href="${shopUrl}" class="cat-3d-thumb-link" aria-label="${escapeHtml(c.category)}">
           <img
             src="${escapeHtml(c.category_image)}"
             alt="${escapeHtml(c.category)}"
-            loading="lazy"
+            loading="${idx < 8 ? 'eager' : 'lazy'}"
             decoding="async"
+            class="cat-3d-thumb"
             onerror="this.onerror=null; this.src='${FALLBACK_CAT_IMG}';"
           />
-        </div>
-        <div class="flex-1 min-w-0 text-left">
-          <div class="text-xs font-extrabold truncate cat-nav-title">${escapeHtml(c.category)}</div>
-          <div class="text-[10.5px] opacity-75 flex items-center gap-1.5 mt-0.5">
-            <span>${c.matchingCount} পণ্য</span>
-            <span>•</span>
-            <span>${c.subCategories.length} শাখা</span>
+          <span class="cat-3d-count-pill">${c.matchingCount} পণ্য</span>
+        </a>
+
+        <div class="cat-3d-body">
+          <a href="${shopUrl}" class="cat-3d-title" title="${escapeHtml(c.category)}">
+            ${escapeHtml(c.category)}
+          </a>
+          <div class="cat-3d-submeta">
+            ${c.subCategories.length > 0
+              ? `${c.subCategories.length} টি সাব-ক্যাটাগরি`
+              : 'ডাইরেক্ট কালেকশন'}
+          </div>
+
+          <div class="cat-3d-actions">
+            <a href="${shopUrl}" class="cat-3d-shop-btn">
+              শপ করুন →
+            </a>
+            ${c.subCategories.length > 0 ? `
+              <button
+                type="button"
+                class="cat-3d-tree-btn"
+                onclick="window.openCategoryTreeModal(${idx}, event);"
+                title="সাব-ক্যাটাগরি ও চাইল্ড ট্রি দেখুন"
+              >
+                🌳 ট্রি
+              </button>
+            ` : ''}
           </div>
         </div>
-        <span class="cat-nav-arrow">›</span>
-      </button>
+      </article>
     `;
   }).join('');
 
-  const initialPaneHtml = buildCategoryPaneHtml(categories[activeIndex]);
-
   return `
-    <style id="dc-category-hub-styles">
-      .cat-hub-wrap {
+    <style id="dc-category-fast-styles">
+      .cat-fast-page {
         font-family: 'Plus Jakarta Sans', 'Hind Siliguri', system-ui, -apple-system, sans-serif;
         max-width: 1240px;
         margin: 0 auto;
         padding-bottom: 64px;
       }
-      .cat-sidebar-box {
+      .cat-fast-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .dark .cat-fast-header {
+        border-bottom-color: #1e293b;
+      }
+      .cat-fast-search {
+        position: relative;
+        width: 100%;
+        max-width: 300px;
+      }
+      .cat-fast-search input {
+        width: 100%;
+        padding: 9px 12px 9px 34px;
+        font-size: 12.5px;
+        font-weight: 600;
+        border-radius: 12px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff;
+        color: #0f172a;
+        outline: none;
+      }
+      .cat-fast-search input:focus {
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
+      }
+      .dark .cat-fast-search input {
+        background: #0f172a;
+        border-color: #334155;
+        color: #f8fafc;
+      }
+
+      /* Ultra-Fast 3D Bento Grid */
+      .cat-bento-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+      @media (min-width: 640px) {
+        .cat-bento-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+        }
+      }
+      @media (min-width: 1024px) {
+        .cat-bento-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 18px;
+        }
+      }
+
+      .cat-3d-card {
+        content-visibility: auto;
+        contain-intrinsic-size: 230px;
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 22px;
-        padding: 14px;
-        box-shadow: 0 8px 24px -12px rgba(15, 23, 42, 0.08);
-      }
-      .dark .cat-sidebar-box {
-        background: #0f172a;
-        border-color: #1e293b;
-        box-shadow: 0 10px 28px -12px rgba(0, 0, 0, 0.5);
-      }
-      .cat-nav-list {
+        border-radius: 18px;
+        overflow: hidden;
         display: flex;
         flex-direction: column;
-        gap: 6px;
-        max-height: 580px;
-        overflow-y: auto;
-        padding-right: 2px;
+        box-shadow: 0 6px 18px -10px rgba(15, 23, 42, 0.1);
+        transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
       }
-      @media (max-width: 1023px) {
-        .cat-nav-list {
-          flex-direction: row;
-          max-height: none;
-          overflow-x: auto;
-          overflow-y: hidden;
-          padding-bottom: 6px;
-          scrollbar-width: none;
-        }
-        .cat-nav-list::-webkit-scrollbar {
-          display: none;
-        }
-        .cat-nav-item {
-          min-width: 210px;
-          flex-shrink: 0;
-        }
+      .cat-3d-card:hover {
+        transform: translateY(-3px);
+        border-color: #10b981;
+        box-shadow: 0 14px 28px -14px rgba(16, 185, 129, 0.28);
       }
-      .cat-nav-item {
-        width: 100%;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 10px;
-        border-radius: 14px;
-        border: 1px solid #f1f5f9;
-        background: #f8fafc;
-        color: #1e293b;
-        cursor: pointer;
-        transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
-      }
-      .dark .cat-nav-item {
+      .dark .cat-3d-card {
+        background: #0f172a;
         border-color: #1e293b;
-        background: #131c31;
-        color: #e2e8f0;
+        box-shadow: 0 8px 20px -12px rgba(0, 0, 0, 0.5);
       }
-      .cat-nav-item:hover {
+      .dark .cat-3d-card:hover {
         border-color: #10b981;
-        background: #ecfdf5;
       }
-      .dark .cat-nav-item:hover {
-        border-color: #10b981;
-        background: rgba(16, 185, 129, 0.12);
-      }
-      .cat-nav-item.is-active {
-        background: linear-gradient(135deg, #059669, #10b981);
-        border-color: #059669;
-        color: #ffffff;
-        box-shadow: 0 6px 16px -6px rgba(16, 185, 129, 0.6);
-      }
-      .cat-nav-thumb {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
+
+      .cat-3d-thumb-link {
+        position: relative;
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        background: #f1f5f9;
         overflow: hidden;
-        background: #ffffff;
-        border: 1px solid rgba(148, 163, 184, 0.25);
-        flex-shrink: 0;
       }
-      .cat-nav-thumb img {
+      .dark .cat-3d-thumb-link {
+        background: #1e293b;
+      }
+      .cat-3d-thumb {
         width: 100%;
         height: 100%;
         object-fit: cover;
         display: block;
       }
-      .cat-nav-arrow {
-        font-size: 16px;
-        font-weight: 800;
-        opacity: 0.55;
-        flex-shrink: 0;
-      }
-      .cat-nav-item.is-active .cat-nav-arrow {
-        opacity: 1;
-      }
-
-      /* Right Active Category Hero & Tree */
-      .cat-hero-card {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 22px;
-        padding: 20px;
-        box-shadow: 0 8px 24px -12px rgba(15, 23, 42, 0.08);
-      }
-      .dark .cat-hero-card {
-        background: #0f172a;
-        border-color: #1e293b;
-      }
-      .cat-hero-img-wrap {
-        width: 108px;
-        height: 108px;
-        border-radius: 18px;
-        overflow: hidden;
-        background: #f8fafc;
-        border: 2px solid rgba(16, 185, 129, 0.25);
-        flex-shrink: 0;
-      }
-      .cat-id-badge {
-        font-size: 10.5px;
-        font-family: ui-monospace, monospace;
-        font-weight: 800;
-        padding: 2px 8px;
-        border-radius: 6px;
-        background: #ecfdf5;
-        color: #047857;
-        border: 1px solid #a7f3d0;
-      }
-      .dark .cat-id-badge {
-        background: rgba(16, 185, 129, 0.15);
-        color: #34d399;
-        border-color: rgba(16, 185, 129, 0.35);
-      }
-      .cat-slug-badge {
-        font-size: 10.5px;
-        font-family: ui-monospace, monospace;
-        padding: 2px 8px;
-        border-radius: 6px;
-        background: #f1f5f9;
-        color: #64748b;
-      }
-      .dark .cat-slug-badge {
-        background: #1e293b;
-        color: #94a3b8;
-      }
-      .cat-count-badge {
+      .cat-3d-count-pill {
+        position: absolute;
+        bottom: 8px;
+        right: 8px;
         font-size: 10.5px;
         font-weight: 800;
-        padding: 2px 9px;
+        padding: 3px 9px;
         border-radius: 9999px;
-        background: #059669;
+        background: rgba(15, 23, 42, 0.82);
         color: #ffffff;
       }
 
-      .cat-tree-panel {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        border-radius: 22px;
-        padding: 20px;
-        box-shadow: 0 8px 24px -12px rgba(15, 23, 42, 0.08);
+      .cat-3d-body {
+        padding: 12px 13px 13px;
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        gap: 6px;
       }
-      .dark .cat-tree-panel {
-        background: #0f172a;
-        border-color: #1e293b;
+      .cat-3d-title {
+        font-size: 13.5px;
+        font-weight: 800;
+        color: #0f172a;
+        text-decoration: none;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
-      .cat-ctrl-btn {
+      .cat-3d-title:hover {
+        color: #059669;
+      }
+      .dark .cat-3d-title {
+        color: #f8fafc;
+      }
+      .cat-3d-submeta {
         font-size: 11px;
-        font-weight: 700;
-        padding: 5px 10px;
+        color: #64748b;
+        font-weight: 600;
+      }
+      .dark .cat-3d-submeta {
+        color: #94a3b8;
+      }
+
+      .cat-3d-actions {
+        margin-top: auto;
+        padding-top: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .cat-3d-shop-btn {
+        flex: 1;
+        text-align: center;
+        padding: 7px 10px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #059669, #10b981);
+        color: #ffffff;
+        font-size: 11.5px;
+        font-weight: 800;
+        text-decoration: none;
+      }
+      .cat-3d-tree-btn {
+        padding: 7px 10px;
         border-radius: 10px;
         border: 1px solid #e2e8f0;
         background: #f8fafc;
         color: #334155;
+        font-size: 11.5px;
+        font-weight: 700;
         cursor: pointer;
-        transition: all 0.15s ease;
       }
-      .cat-ctrl-btn:hover {
+      .cat-3d-tree-btn:hover {
         border-color: #10b981;
         color: #059669;
       }
-      .dark .cat-ctrl-btn {
+      .dark .cat-3d-tree-btn {
         background: #1e293b;
         border-color: #334155;
         color: #cbd5e1;
       }
 
+      /* Tree Modal */
+      .cat-tree-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        background: rgba(15, 23, 42, 0.65);
+      }
+      .cat-tree-modal.is-open {
+        display: flex;
+      }
+      .cat-tree-dialog {
+        width: 100%;
+        max-width: 560px;
+        max-height: 82vh;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 22px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 24px 60px -15px rgba(0, 0, 0, 0.35);
+      }
+      .dark .cat-tree-dialog {
+        background: #0f172a;
+        border-color: #334155;
+      }
+      .cat-tree-dialog-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 15px 18px;
+        border-bottom: 1px solid #f1f5f9;
+      }
+      .dark .cat-tree-dialog-head {
+        border-bottom-color: #1e293b;
+      }
+      .cat-tree-dialog-body {
+        padding: 14px 18px 18px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
       .cat-sub-node {
         border: 1px solid #e2e8f0;
-        border-radius: 16px;
+        border-radius: 14px;
         overflow: hidden;
         background: #f8fafc;
       }
@@ -705,8 +668,8 @@ export async function renderCategoryPage(params = {}) {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
-        padding: 12px 14px;
+        gap: 8px;
+        padding: 10px 12px;
         background: #ffffff;
         cursor: pointer;
       }
@@ -717,54 +680,32 @@ export async function renderCategoryPage(params = {}) {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 22px;
-        height: 22px;
-        border-radius: 7px;
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
         background: #f1f5f9;
         color: #475569;
-        font-size: 11px;
-        font-weight: 800;
-        flex-shrink: 0;
-        transition: transform 0.18s ease, background 0.15s ease;
-      }
-      .dark .cat-sub-caret {
-        background: #1e293b;
-        color: #94a3b8;
+        font-size: 10px;
+        transition: transform 0.15s ease;
       }
       .cat-sub-node.is-open .cat-sub-caret {
         transform: rotate(90deg);
         background: #ecfdf5;
         color: #059669;
       }
-      .dark .cat-sub-node.is-open .cat-sub-caret {
-        background: rgba(16, 185, 129, 0.18);
-        color: #34d399;
-      }
       .cat-sub-shop-btn {
         font-size: 11px;
         font-weight: 700;
-        padding: 5px 11px;
-        border-radius: 9px;
-        border: 1px solid #e2e8f0;
-        background: #f8fafc;
+        padding: 4px 10px;
+        border-radius: 8px;
+        background: #ecfdf5;
         color: #059669;
         text-decoration: none;
-        white-space: nowrap;
         flex-shrink: 0;
-      }
-      .cat-sub-shop-btn:hover {
-        background: #059669;
-        color: #ffffff;
-        border-color: #059669;
-      }
-      .dark .cat-sub-shop-btn {
-        background: #1e293b;
-        border-color: #334155;
-        color: #34d399;
       }
       .cat-sub-body {
         display: none;
-        padding: 12px 14px;
+        padding: 10px 12px;
         border-top: 1px solid #f1f5f9;
       }
       .dark .cat-sub-body {
@@ -773,12 +714,11 @@ export async function renderCategoryPage(params = {}) {
       .cat-sub-node.is-open .cat-sub-body {
         display: block;
       }
-
       .cat-tree-children {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        padding-left: 12px;
+        gap: 6px;
+        padding-left: 10px;
         border-left: 2px dashed #cbd5e1;
       }
       .dark .cat-tree-children {
@@ -788,35 +728,29 @@ export async function renderCategoryPage(params = {}) {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 6px 11px;
-        border-radius: 10px;
+        padding: 5px 10px;
+        border-radius: 9px;
         background: #ffffff;
         border: 1px solid #e2e8f0;
         color: #334155;
         font-size: 11.5px;
+        font-weight: 600;
         text-decoration: none;
-        transition: border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
       }
       .cat-leaf-chip:hover {
         border-color: #10b981;
         color: #059669;
-        transform: translateY(-1px);
       }
       .dark .cat-leaf-chip {
         background: #0f172a;
         border-color: #334155;
         color: #e2e8f0;
       }
-      .dark .cat-leaf-chip:hover {
-        border-color: #10b981;
-        color: #34d399;
-      }
       .cat-leaf-dot {
-        width: 6px;
-        height: 6px;
+        width: 5px;
+        height: 5px;
         border-radius: 50%;
         background: #10b981;
-        flex-shrink: 0;
       }
       .cat-leaf-count {
         font-size: 10px;
@@ -832,9 +766,8 @@ export async function renderCategoryPage(params = {}) {
       }
     </style>
 
-    <div class="cat-hub-wrap space-y-6">
-      <!-- Top Header -->
-      <div class="border-b border-slate-200/80 dark:border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div class="cat-fast-page space-y-6">
+      <div class="cat-fast-header">
         <div>
           <div class="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
             <a href="/" class="hover:text-emerald-600 transition">হোম</a>
@@ -842,45 +775,48 @@ export async function renderCategoryPage(params = {}) {
             <span class="text-slate-700 dark:text-slate-300 font-bold">ক্যাটাগরি সমূহ</span>
           </div>
           <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-2">
-            <span>📂</span> সকল ক্যাটাগরি ও ট্রি হাব
+            <span>📂</span> সকল পণ্য ক্যাটাগরি
+            <span class="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+              ${categories.length}টি
+            </span>
           </h1>
         </div>
-        <div class="flex items-center gap-2.5 self-start sm:self-center">
-          <span class="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-            🏷️ <strong>${categories.length}টি</strong> ক্যাটাগরি
-          </span>
-          <a href="/products" class="btn-primary py-1.5 px-3.5 text-xs font-bold rounded-xl">
-            সকল পণ্য →
-          </a>
+
+        <div class="cat-fast-search">
+          <span class="absolute left-3 top-2.5 text-xs text-slate-400">🔍</span>
+          <input
+            type="text"
+            placeholder="ক্যাটাগরি খুঁজুন..."
+            oninput="window.filterCategoryGrid(this.value);"
+          />
         </div>
       </div>
 
-      <!-- Main 2-Column Layout -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <!-- Left Sidebar / Mobile Horizontal Strip -->
-        <aside class="lg:col-span-4 cat-sidebar-box space-y-3 lg:sticky lg:top-20">
-          <div class="relative">
-            <input
-              type="text"
-              placeholder="ক্যাটাগরি খুঁজুন..."
-              class="form-control text-xs w-full py-2 pl-8 pr-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 outline-none text-slate-900 dark:text-white"
-              oninput="window.filterSidebarCategories(this.value);"
-            />
-            <span class="absolute left-2.5 top-2.5 text-xs text-slate-400">🔍</span>
-          </div>
+      <div id="cat-bento-grid" class="cat-bento-grid">
+        ${cardsHtml}
+      </div>
 
-          <div id="sidebar-categories-list" class="cat-nav-list">
-            ${sidebarItemsHtml}
-          </div>
-          <div id="cat-nav-empty" style="display:none;" class="text-center py-4 text-xs text-slate-400">
-            কোনো ক্যাটাগরি পাওয়া যায়নি
-          </div>
-        </aside>
+      <div id="cat-grid-empty" style="display:none;" class="p-12 text-center text-sm text-slate-400 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+        কোনো ক্যাটাগরি পাওয়া যায়নি।
+      </div>
 
-        <!-- Right Single Active Pane (Ultra-fast 0ms DOM swap) -->
-        <main id="cat-active-pane-host" class="lg:col-span-8 space-y-5">
-          ${initialPaneHtml}
-        </main>
+      <!-- On-Demand Sub/Child Category Tree Modal -->
+      <div id="cat-tree-modal" class="cat-tree-modal" aria-hidden="true" onclick="if(event.target === this) window.closeCategoryTreeModal();">
+        <div class="cat-tree-dialog" role="dialog" aria-modal="true">
+          <div class="cat-tree-dialog-head">
+            <div>
+              <h3 id="cat-modal-title" class="text-base font-black text-slate-900 dark:text-white">ক্যাটাগরি</h3>
+              <p id="cat-modal-meta" class="text-[11px] text-slate-400"></p>
+            </div>
+            <div class="flex items-center gap-2">
+              <a id="cat-modal-shop-link" href="/products" class="btn-primary py-1.5 px-3 text-xs font-bold rounded-lg" onclick="window.closeCategoryTreeModal();">
+                সব দেখুন →
+              </a>
+              <button type="button" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 font-bold" onclick="window.closeCategoryTreeModal();">✕</button>
+            </div>
+          </div>
+          <div id="cat-modal-body" class="cat-tree-dialog-body"></div>
+        </div>
       </div>
     </div>
   `;
