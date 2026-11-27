@@ -1036,45 +1036,29 @@ export async function renderShopPage(params = {}) {
             </div>
           </div>
 
-          <!-- 4. Brand Tree Filter -->
+          <!-- 4. Brand Dropdown Filter -->
           <div class="sf-tree-group">
             <button type="button" class="sf-tree-head" onclick="window.__dcbdToggleTreeSection(this);">
               <span>🏷️ ব্র্যান্ড ফিল্টার (${uniqueBrands.length})</span>
               <span class="sf-tree-caret">▾</span>
             </button>
             <div class="sf-tree-body space-y-2">
-              ${uniqueBrands.length > 5 ? `
-                <input
-                  type="text"
-                  class="sf-price-input text-left"
-                  style="text-align: left; padding: 6px 10px;"
-                  placeholder="🔍 ব্র্যান্ড খুঁজুন..."
-                  oninput="window.__dcbdFilterBrandList(this.value);"
-                />
-              ` : ''}
-              <div id="sf-brand-list" class="sf-branch-list max-h-[220px] overflow-y-auto pr-1">
-                <a 
-                  href="${buildFilterUrl({ brand: '', page: 1 })}" 
-                  class="sf-branch-item sf-brand-item ${!brand ? 'is-active' : ''}"
-                  data-brand-name="all"
-                >
-                  <span class="truncate">সকল ব্র্যান্ড (All)</span>
-                  <span class="sf-count-pill">${allProducts.length}</span>
-                </a>
-                ${uniqueBrands.map(b => {
-                  const isActiveBrand = brand.toLowerCase() === b.toLowerCase();
-                  return `
-                    <a 
-                      href="${buildFilterUrl({ brand: b, page: 1 })}" 
-                      class="sf-branch-item sf-brand-item ${isActiveBrand ? 'is-active' : ''}"
-                      data-brand-name="${escShopHtml(b)}"
-                    >
-                      <span class="truncate">${escShopHtml(b)}</span>
-                      <span class="sf-count-pill">${brandCountsMap[b]}</span>
-                    </a>
-                  `;
-                }).join("")}
+              <div class="flex items-center justify-between text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                <span>ব্র্যান্ড নির্বাচন করুন</span>
+                ${brand ? `<a href="${buildFilterUrl({ brand: '', page: 1 })}" class="text-emerald-600 hover:underline">ক্লিয়ার</a>` : ''}
               </div>
+              <select
+                id="filter-brand-select"
+                class="form-control w-full py-2 px-3 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-white outline-none cursor-pointer"
+                onchange="window.__dcbdApplyShopFilter({ brand: this.value, page: '1' });"
+              >
+                <option value="">সকল ব্র্যান্ড (All Brands - ${allProducts.length})</option>
+                ${uniqueBrands.map(b => `
+                  <option value="${escShopHtml(b)}" ${brand.toLowerCase() === b.toLowerCase() ? 'selected' : ''}>
+                    ${escShopHtml(b)} (${brandCountsMap[b]})
+                  </option>
+                `).join("")}
+              </select>
             </div>
           </div>
 
