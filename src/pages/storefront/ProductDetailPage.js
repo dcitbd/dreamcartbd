@@ -55,11 +55,12 @@ function formatMultilineSheetText(rawText) {
   return escapeHtml(normalized).replace(/\n/g, '<br>');
 }
 
-// Global helpers for Gallery Navigation & Thumbnail Scroll
+// Global helpers for Gallery Navigation, Auto-Slide Animation & Thumbnail Scroll
 if (typeof window !== 'undefined' && !window.__pdGalleryHelpersAttached) {
   window.__pdGalleryHelpersAttached = true;
+  window.__pdGalleryAutoTimer = null;
 
-  window.__pdSelectImageByIndex = function(index) {
+  window.__pdSelectImageByIndex = function(index, slideDir) {
     var gallery = document.getElementById('pd-gallery-root');
     var mainImg = document.getElementById('detail-main-img');
     var counter = document.getElementById('pd-img-counter');
@@ -67,13 +68,32 @@ if (typeof window !== 'undefined' && !window.__pdGalleryHelpersAttached) {
     if (!mainImg || !thumbs.length) return;
 
     var total = thumbs.length;
+    var prevIdx = gallery ? Number(gallery.getAttribute('data-active-index') || 0) : 0;
     var targetIdx = ((index % total) + total) % total;
     var targetBtn = thumbs[targetIdx];
     if (!targetBtn) return;
 
+    var dir = typeof slideDir === 'number'
+      ? slideDir
+      : (targetIdx >= prevIdx ? 1 : -1);
+
     var imgUrl = targetBtn.getAttribute('data-img');
     if (imgUrl) {
-      mainImg.src = imgUrl;
+      if (targetIdx !== prevIdx || mainImg.getAttribute('data-loaded-src') !== imgUrl) {
+        mainImg.style.transition = 'none';
+        mainImg.style.transform = 'translateX(' + (dir >= 0 ? '36px' : '-36px') + ')';
+        mainImg.style.opacity = '0.35';
+        mainImg.setAttribute('data-loaded-src', imgUrl);
+        mainImg.src = imgUrl;
+
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            mainImg.style.transition = 'transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease';
+            mainImg.style.transform = 'translateX(0px)';
+            mainImg.style.opacity = '1';
+          });
+        });
+      }
     }
 
     thumbs.forEach(function(b) {
@@ -89,15 +109,61 @@ if (typeof window !== 'undefined' && !window.__pdGalleryHelpersAttached) {
       counter.textContent = (targetIdx + 1) + ' / ' + total;
     }
 
-    if (targetBtn.scrollIntoView) {
-      targetBtn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+    var thumbRow = document.getElementById('pd-thumb-row');
+    if (thumbRow && targetBtn) {
+      var targetLeft = targetBtn.offsetLeft - (thumbRow.clientWidth / 2) + (targetBtn.offsetWidth / 2);
+      thumbRow.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
     }
   };
 
-  window.__pdStepImage = function(step) {
+  window.__pdStopGalleryAutoSlide = function() {
+    if (window.__pdGalleryAutoTimer) {
+      clearInterval(window.__pdGalleryAutoTimer);
+      window.__pdGalleryAutoTimer = null;
+    }
+  };
+
+  window.__pdStartGalleryAutoSlide = function(allowRetry) {
+    window.__pdStopGalleryAutoSlide();
+    var gallery = document.getElementById('pd-gallery-root');
+    if (!gallery) {
+      if (allowRetry) {
+        setTimeout(function() {
+          if (typeof window.__pdStartGalleryAutoSlide === 'function') {
+            window.__pdStartGalleryAutoSlide(false);
+          }
+        }, 260);
+      }
+      return;
+    }
+    var thumbs = document.querySelectorAll('#pd-thumb-row .thumb-btn');
+    if (!thumbs || thumbs.length <= 1) return;
+
+    window.__pdGalleryAutoTimer = setInterval(function() {
+      var g = document.getElementById('pd-gallery-root');
+      if (!g || !document.body.contains(g)) {
+        window.__pdStopGalleryAutoSlide();
+        return;
+      }
+      var modal = document.getElementById('pd-lightbox-modal');
+      if (modal && modal.classList.contains('is-open')) return;
+      if (g.dataset.paused === '1') return;
+
+      window.__pdStepImage(1, true);
+    }, 3500);
+  };
+
+  window.__pdResetGalleryAutoSlide = function() {
+    window.__pdStartGalleryAutoSlide(false);
+  };
+
+  window.__pdStepImage = function(step, isAuto) {
     var gallery = document.getElementById('pd-gallery-root');
     var currentIdx = gallery ? Number(gallery.getAttribute('data-active-index') || 0) : 0;
-    window.__pdSelectImageByIndex(currentIdx + step);
+    window.__pdSelectImageByIndex(currentIdx + step, step >= 0 ? 1 : -1);
+    if (!isAuto) {
+      window.__pdResetGalleryAutoSlide();
+    }
   };
 
   window.__pdScrollThumbs = function(direction) {
@@ -839,6 +905,56 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
     return null;
   }
 
+  async function convertBlobToJpeg(blob) {
+    if (!blob) return null;
+    try {
+      const header = new Uint8Array(await blob.slice(0, 3).arrayBuffer());
+      if (header.length >= 3 && header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) {
+        return blob.type === 'image/jpeg' ? blob : new Blob([blob], { type: 'image/jpeg' });
+      }
+    } catch (e) {}
+
+    return new Promise((resolve) => {
+      let objUrl = '';
+      try {
+        objUrl = URL.createObjectURL(blob);
+      } catch (e) {
+        resolve(null);
+        return;
+      }
+      const img = new Image();
+      const timer = setTimeout(() => {
+        URL.revokeObjectURL(objUrl);
+        resolve(null);
+      }, 8000);
+      img.onload = function () {
+        clearTimeout(timer);
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth || img.width || 800;
+          canvas.height = img.naturalHeight || img.height || 800;
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob((jpgBlob) => {
+            URL.revokeObjectURL(objUrl);
+            resolve(jpgBlob || null);
+          }, 'image/jpeg', 0.92);
+        } catch (err) {
+          URL.revokeObjectURL(objUrl);
+          resolve(null);
+        }
+      };
+      img.onerror = function () {
+        clearTimeout(timer);
+        URL.revokeObjectURL(objUrl);
+        resolve(null);
+      };
+      img.src = objUrl;
+    });
+  }
+
   function tryCanvasBlob(imgUrl) {
     return new Promise((resolve) => {
       const img = new Image();
@@ -851,6 +967,8 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
           canvas.width = img.naturalWidth || img.width || 800;
           canvas.height = img.naturalHeight || img.height || 800;
           const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0);
           canvas.toBlob((blob) => resolve(blob || null), 'image/jpeg', 0.92);
         } catch (err) {
@@ -882,31 +1000,40 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
   async function fetchImageAsBlob(rawUrl) {
     const url = toAbsoluteUrl(rawUrl);
 
-    // 1. Direct fetch (data:, blob:, same-origin, or CORS-enabled CDN)
+    // 1. Direct fetch (data:, blob:, same-origin, or CORS-enabled CDN) -> convert to .jpg
     let blob = await tryFetchBlob(url);
-    if (blob) return blob;
+    if (blob) {
+      const jpgBlob = await convertBlobToJpeg(blob);
+      if (jpgBlob) return jpgBlob;
+    }
 
-    // 2. Cache-busted CORS fetch (avoids browser's non-CORS cached <img> response)
+    // 2. Cache-busted CORS fetch -> convert to .jpg
     const busted = addCacheBuster(url);
     if (busted !== url) {
       blob = await tryFetchBlob(busted);
-      if (blob) return blob;
+      if (blob) {
+        const jpgBlob = await convertBlobToJpeg(blob);
+        if (jpgBlob) return jpgBlob;
+      }
     }
 
-    // 3. Cache-busted <img crossOrigin="anonymous"> + canvas export
+    // 3. Cache-busted <img crossOrigin="anonymous"> + canvas export (.jpg)
     blob = await tryCanvasBlob(busted);
     if (blob) return blob;
 
-    // 4. CORS-friendly proxy fallbacks for third-party image hosts without CORS headers
+    // 4. CORS-friendly proxy fallbacks for third-party image hosts without CORS headers -> convert to .jpg
     if (/^https?:\/\//i.test(url)) {
       const proxyUrls = [
-        `https://wsrv.nl/?url=${encodeURIComponent(url)}`,
+        `https://wsrv.nl/?url=${encodeURIComponent(url)}&output=jpg`,
         `https://corsproxy.io/?${encodeURIComponent(url)}`,
         `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
       ];
       for (const pUrl of proxyUrls) {
         blob = await tryFetchBlob(pUrl);
-        if (blob) return blob;
+        if (blob) {
+          const jpgBlob = await convertBlobToJpeg(blob);
+          if (jpgBlob) return jpgBlob;
+        }
       }
     }
 
@@ -950,8 +1077,7 @@ if (typeof window !== 'undefined' && !window.__pdShareDownloadHelpersAttached) {
           doneCount++;
           if (labelEl) labelEl.textContent = `ডাউনলোড হচ্ছে (${doneCount}/${imageUrls.length})...`;
           if (!blob) return null;
-          const ext = guessImageExt(url, blob.type);
-          const fileName = `${folderName}_${i + 1}.${ext}`;
+          const fileName = `${folderName}_${i + 1}.jpg`;
           const buf = await blob.arrayBuffer();
           return { name: fileName, blob, bytes: new Uint8Array(buf) };
         })
@@ -1291,6 +1417,12 @@ export async function renderProductDetailPage(slugOrId) {
   const trackedReviewer = (typeof window !== 'undefined' && window.__pdGetTrackedReviewerProfile && isLoggedInForReview)
     ? window.__pdGetTrackedReviewerProfile()
     : null;
+
+  if (typeof window !== 'undefined' && typeof window.__pdStartGalleryAutoSlide === 'function') {
+    setTimeout(function () {
+      window.__pdStartGalleryAutoSlide(true);
+    }, 80);
+  }
 
   return `
     <style id="dc-product-detail-styles">
@@ -3133,7 +3265,7 @@ export async function renderProductDetailPage(slugOrId) {
         
         <!-- Left: Image Gallery -->
         <div class="pd-gallery" id="pd-gallery-root" data-active-index="0" data-images-json="${encodedImagesJson}">
-          <div class="pd-main-img-box">
+          <div class="pd-main-img-box" onmouseenter="var g=document.getElementById('pd-gallery-root');if(g)g.dataset.paused='1';" onmouseleave="var g=document.getElementById('pd-gallery-root');if(g)g.dataset.paused='0';">
             <img 
               id="detail-main-img"
               src="${escapeHtml(mainImage)}" 
@@ -3194,7 +3326,7 @@ export async function renderProductDetailPage(slugOrId) {
                     class="thumb-btn pd-thumb-btn ${i === 0 ? 'border-emerald-500' : ''}"
                     data-img="${escapeHtml(img)}"
                     data-index="${i}"
-                    onclick="window.__pdSelectImageByIndex(${i});"
+                    onclick="window.__pdSelectImageByIndex(${i}); if(window.__pdResetGalleryAutoSlide) window.__pdResetGalleryAutoSlide();"
                   >
                     <img src="${escapeHtml(img)}" alt="Thumbnail ${i + 1}" class="pd-thumb-img" onerror="this.onerror=null; this.src='${fallbackImg}';" />
                   </button>
