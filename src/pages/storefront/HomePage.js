@@ -102,24 +102,52 @@ if (typeof window !== 'undefined' && !window.__dcbdSliderInitialized) {
 
 export async function renderHomePage() {
   if (typeof window !== 'undefined') window.__dcbdRenderingHome = true;
-  let prodRes, catRes, brandRes, bannerRes;
+  let products = [];
+  let categories = [];
+  let brands = [];
+  let rawBanners = [];
+
   try {
-    [prodRes, catRes, brandRes, bannerRes] = await Promise.all([
-      apiClient.request("products/list"),
-      apiClient.request("categories/list"),
-      apiClient.request("brands/list"),
-      apiClient.request("banners/list")
-    ]);
+    const ssrCache = (typeof window !== 'undefined' && window.__DCBD_SSR_CACHE__) ? window.__DCBD_SSR_CACHE__ : null;
+    const memProds = (Array.isArray(apiClient.sheetProducts) && apiClient.sheetProducts.length > 0)
+      ? apiClient.sheetProducts
+      : (ssrCache && Array.isArray(ssrCache.products) && ssrCache.products.length > 0 ? ssrCache.products : null);
+    const memCats = (Array.isArray(apiClient.sheetCategories) && apiClient.sheetCategories.length > 0)
+      ? apiClient.sheetCategories
+      : (ssrCache && Array.isArray(ssrCache.categories) && ssrCache.categories.length > 0 ? ssrCache.categories : null);
+    const memBrands = (Array.isArray(apiClient.sheetBrands) && apiClient.sheetBrands.length > 0)
+      ? apiClient.sheetBrands
+      : (ssrCache && Array.isArray(ssrCache.brands) && ssrCache.brands.length > 0 ? ssrCache.brands : null);
+    let memBanners = null;
+    try {
+      const savedB = apiClient.loadLocal ? apiClient.loadLocal('dcbd_sheet_banners', null) : null;
+      if (Array.isArray(savedB) && savedB.length > 0) memBanners = savedB;
+    } catch (e) {}
+
+    if (memProds && memCats && memBrands) {
+      products = memProds;
+      categories = memCats;
+      brands = memBrands;
+      rawBanners = memBanners || [];
+      // Non-blocking background refresh for banners/data
+      if (!memBanners) apiClient.request("banners/list").catch(() => {});
+    } else {
+      const [prodRes, catRes, brandRes, bannerRes] = await Promise.all([
+        memProds ? Promise.resolve({ data: { items: memProds } }) : apiClient.request("products/list"),
+        memCats ? Promise.resolve({ data: { items: memCats } }) : apiClient.request("categories/list"),
+        memBrands ? Promise.resolve({ data: { items: memBrands } }) : apiClient.request("brands/list"),
+        memBanners ? Promise.resolve({ data: { items: memBanners } }) : apiClient.request("banners/list")
+      ]);
+      products = (prodRes && prodRes.data && prodRes.data.items) || [];
+      categories = (catRes && catRes.data && catRes.data.items) || [];
+      brands = (brandRes && brandRes.data && brandRes.data.items) || [];
+      rawBanners = (bannerRes && bannerRes.data && bannerRes.data.items) || [];
+    }
   } finally {
     if (typeof window !== 'undefined') {
       setTimeout(() => { window.__dcbdRenderingHome = false; }, 100);
     }
   }
-
-  const products = (prodRes.data && prodRes.data.items) || [];
-  const categories = (catRes.data && catRes.data.items) || [];
-  const brands = (brandRes.data && brandRes.data.items) || [];
-  const rawBanners = (bannerRes.data && bannerRes.data.items) || [];
 
   // Filter active banners dynamically from Google Sheets & Admin Portal
   const activeBanners = rawBanners.filter(b => {
@@ -214,6 +242,7 @@ export async function renderHomePage() {
         name: rawName,
         category_image: String(c.category_image || '').trim(),
         subCategories: new Set(),
+        seenIds: new Set(),
         products: []
       });
     }
@@ -244,18 +273,16 @@ export async function renderHomePage() {
         name: rawCat,
         category_image: p.thumbnail || '',
         subCategories: new Set(),
+        seenIds: new Set(),
         products: []
       });
     }
 
     const catObj = uniqueCategoryMap.get(key);
-    // Ensure product is added only once to this category
+    // O(1) product deduplication per category
     const pId = String(p.product_id || p.sku || p.name || idx).trim();
-    const exists = catObj.products.some(it => {
-      const itId = String(it.product_id || it.sku || it.name || '').trim();
-      return itId && itId === pId;
-    });
-    if (!exists) {
+    if (pId && !catObj.seenIds.has(pId)) {
+      catObj.seenIds.add(pId);
       catObj.products.push(p);
     }
 
@@ -438,8 +465,6 @@ export async function renderHomePage() {
         font-weight: 800;
         letter-spacing: 0.03em;
         line-height: 1.2;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
         box-shadow: 0 4px 14px rgba(16, 185, 129, 0.18);
       }
 
@@ -464,8 +489,6 @@ export async function renderHomePage() {
         font-size: 0.72rem;
         font-weight: 800;
         line-height: 1.2;
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
       }
 
       /* Main Banner Heading */
@@ -513,8 +536,6 @@ export async function renderHomePage() {
         border: 1px solid rgba(255, 255, 255, 0.18);
         padding: 0.35rem 0.85rem;
         border-radius: 10px;
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
       }
 
       /* Banner CTA Buttons Row */
@@ -562,8 +583,6 @@ export async function renderHomePage() {
         background: rgba(255, 255, 255, 0.14);
         border: 1px solid rgba(255, 255, 255, 0.3);
         border-radius: 14px;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
         text-decoration: none;
         transition: all 0.25s ease;
       }
@@ -585,8 +604,6 @@ export async function renderHomePage() {
         border-radius: 22px;
         background: rgba(15, 23, 42, 0.55);
         border: 1px solid rgba(255, 255, 255, 0.18);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
         box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.5);
       }
 
@@ -688,8 +705,6 @@ export async function renderHomePage() {
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
         transition: all 0.2s ease;
         user-select: none;
       }
@@ -938,6 +953,8 @@ export async function renderHomePage() {
 
       /* Reusable Home Section Card Module */
       .dc-home-section {
+        content-visibility: auto;
+        contain-intrinsic-size: 420px;
         position: relative;
         background: #ffffff;
         border: 1px solid rgba(226, 232, 240, 0.95);
@@ -1614,8 +1631,6 @@ export async function renderHomePage() {
         font-size: 0.8125rem;
         padding: 0.85rem 1.5rem;
         border-radius: 13px;
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
         text-decoration: none;
         transition: all 0.2s ease;
       }
@@ -1677,7 +1692,7 @@ export async function renderHomePage() {
                 <img 
                   src="${imgUrl}" 
                   alt="${title || 'Dream Cart BD Banner'}" 
-                  class="dc-banner-bg-img"
+                  loading="${idx === 0 ? 'eager' : 'lazy'}" decoding="async" class="dc-banner-bg-img"
                   onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=1600&auto=format&fit=crop&q=80';"
                 />
                 
@@ -1856,8 +1871,10 @@ export async function renderHomePage() {
                   <img 
                     src="${b.brand_image}" 
                     alt="${b.brand_name}" 
+                    loading="lazy"
+                    decoding="async"
                     class="w-full h-full object-contain"
-                    onerror="this.onerror=null; this.src='https://cdn.iconscout.com/icon/free/png-256/free-shield-icon-download-in-svg-png-gif-file-formats--safety-protection-security-secure-protect-pack-crime-icons-1779836.png?f=webp&w=128';"
+                    onerror="this.onerror=null; this.src=&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none'%3E%3Crect width='64' height='64' rx='16' fill='%23ecfdf5'/%3E%3Cpath d='M32 14l14 6v11c0 9.5-6 17.6-14 20-8-2.4-14-10.5-14-20V20l14-6z' stroke='%23059669' stroke-width='3' fill='%23d1fae5'/%3E%3C/svg%3E&quot;;"
                   />
                 </div>
                 <span class="dc-brand-name">
