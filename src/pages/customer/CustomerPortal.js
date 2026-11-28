@@ -434,13 +434,28 @@ export async function renderCustomerPortal(params = {}) {
     `;
   }
 
-  // Fetch orders from Sheets / local client
+  // 0ms Instant order read from memory/localStorage; background sync if already cached
   let allOrders = [];
-  try {
-    const orderRes = await apiClient.request("orders/list");
-    allOrders = (orderRes.data && orderRes.data.items) || [];
-  } catch (e) {
-    allOrders = apiClient.sheetOrders || [];
+  if (Array.isArray(apiClient.sheetOrders) && apiClient.sheetOrders.length > 0) {
+    allOrders = apiClient.sheetOrders;
+  } else {
+    try {
+      const localOrders = JSON.parse(localStorage.getItem('dcbd_sheet_orders') || '[]');
+      if (Array.isArray(localOrders) && localOrders.length > 0) allOrders = localOrders;
+    } catch (e) {}
+  }
+
+  if (allOrders.length === 0) {
+    try {
+      const orderRes = await apiClient.request("orders/list");
+      allOrders = (orderRes.data && orderRes.data.items) || [];
+    } catch (e) {
+      allOrders = apiClient.sheetOrders || [];
+    }
+  } else {
+    try {
+      apiClient.request("orders/list").catch(() => {});
+    } catch (e) {}
   }
 
   // Filter orders for logged in user (matching phone or email) or show all local placed orders
@@ -495,14 +510,25 @@ export async function renderCustomerPortal(params = {}) {
 
   return `
     <style id="dc-customer-portal-styles">
+      @keyframes dcDashIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
       .dc-cust-dashboard {
+        font-family: 'Plus Jakarta Sans', 'Hind Siliguri', system-ui, -apple-system, sans-serif;
         display: flex;
         flex-direction: column;
         gap: 1.5rem;
         width: 100%;
         max-width: 1280px;
         margin: 0 auto;
+        padding: 1rem 0.5rem 3.5rem;
         box-sizing: border-box;
+        animation: dcDashIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .customer-order-item {
+        content-visibility: auto;
+        contain-intrinsic-size: 96px;
       }
 
       .dc-cust-grid {
@@ -522,10 +548,10 @@ export async function renderCustomerPortal(params = {}) {
 
       .dc-cust-sidebar {
         background: #ffffff;
-        border: 1px solid rgba(226, 232, 240, 0.95);
-        border-radius: 20px;
-        padding: 1.25rem;
-        box-shadow: 0 4px 18px -4px rgba(0, 0, 0, 0.04);
+        border: 1px solid #e2e8f0;
+        border-radius: 24px;
+        padding: 1.5rem;
+        box-shadow: 0 14px 34px -16px rgba(15, 23, 42, 0.12);
         display: flex;
         flex-direction: column;
         gap: 1.25rem;
