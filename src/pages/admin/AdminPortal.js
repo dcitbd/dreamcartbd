@@ -424,14 +424,19 @@ export async function renderAdminPortal(params = {}) {
     combinedModulesHtml = dashMod.renderDashboardModule(data);
   } else if (gid === 'group-products') {
     const prodMod = await import('./modules/adminProducts.js');
-    combinedModulesHtml = [
-      prodMod.renderProductCatalogModule(data),
-      prodMod.renderAddProductModule(data),
-      prodMod.renderCategoryBrandModule(data),
-      prodMod.renderBulkToolsModule(data),
-      prodMod.renderLandingCmsModule(data),
-      prodMod.renderOthersModule(data)
-    ].join('\n');
+    if (pid === 'page-prod-all' || pid === 'page-prod-low-stock' || pid === 'page-prod-out-stock' || pid === 'page-prod-error') {
+      combinedModulesHtml = prodMod.renderProductCatalogModule(data);
+    } else if (pid === 'page-prod-add') {
+      combinedModulesHtml = prodMod.renderAddProductModule(data);
+    } else if (pid === 'page-prod-categories' || pid === 'page-prod-brands' || pid === 'page-prod-brand-add' || pid === 'page-prod-variants' || pid === 'page-prod-variant-add' || pid === 'page-prod-banners') {
+      combinedModulesHtml = prodMod.renderCategoryBrandModule(data);
+    } else if (pid === 'page-prod-bulk-add' || pid === 'page-prod-bulk-price' || pid === 'page-prod-bulk-image') {
+      combinedModulesHtml = prodMod.renderBulkToolsModule(data);
+    } else if (pid === 'page-prod-landing' || pid === 'page-prod-landing-add') {
+      combinedModulesHtml = prodMod.renderLandingCmsModule(data);
+    } else {
+      combinedModulesHtml = prodMod.renderOthersModule(data);
+    }
   } else if (gid === 'group-orders') {
     const ordMod = await import('./modules/adminOrders.js');
     combinedModulesHtml = ordMod.renderOrdersModule(data);
