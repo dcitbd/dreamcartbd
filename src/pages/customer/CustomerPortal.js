@@ -1655,53 +1655,85 @@ function renderAuthView(view = 'login') {
 
   return `
     <style id="dc-customer-auth-styles">
+      @keyframes dcAuthCardIn {
+        from {
+          opacity: 0;
+          transform: translateY(14px) scale(0.985);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
       .dc-auth-wrapper {
         font-family: 'Plus Jakarta Sans', 'Hind Siliguri', system-ui, -apple-system, sans-serif;
-        min-height: calc(100vh - 170px);
+        min-height: calc(100vh - 150px);
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 1.5rem 1rem 3rem;
+        padding: 2.5rem 1rem 4rem;
         box-sizing: border-box;
+        background: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.07) 0%, transparent 55%);
       }
+
       .dc-auth-card {
         width: 100%;
-        max-width: ${isRegister ? '520px' : '440px'};
+        max-width: ${isRegister ? '540px' : '450px'};
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-radius: 24px;
-        padding: 1.75rem 1.5rem;
-        box-shadow: 0 18px 40px -16px rgba(15, 23, 42, 0.14);
+        border-radius: 26px;
+        padding: 2rem 1.5rem;
+        box-shadow:
+          0 24px 50px -18px rgba(15, 23, 42, 0.14),
+          0 6px 16px -6px rgba(16, 185, 129, 0.1);
+        position: relative;
+        overflow: hidden;
         box-sizing: border-box;
+        animation: dcAuthCardIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+      }
+      .dc-auth-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #059669 0%, #10b981 50%, #0d9488 100%);
       }
       .dark .dc-auth-card {
         background: #0f172a;
         border-color: #1e293b;
-        box-shadow: 0 20px 48px -16px rgba(0, 0, 0, 0.6);
+        box-shadow: 0 26px 56px -18px rgba(0, 0, 0, 0.65);
       }
       @media (min-width: 640px) {
         .dc-auth-card {
-          padding: 2rem 2rem;
+          padding: 2.5rem 2.25rem;
         }
       }
 
       .dc-auth-head {
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-bottom: 1.25rem;
+        gap: 14px;
+        margin-bottom: 1.5rem;
       }
       .dc-brand-ring {
-        width: 48px;
-        height: 48px;
-        border-radius: 14px;
+        width: 52px;
+        height: 52px;
+        border-radius: 16px;
         background: #ecfdf5;
         border: 1.5px solid #10b981;
-        padding: 6px;
+        padding: 7px;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
+        box-shadow: 0 6px 16px -6px rgba(16, 185, 129, 0.35);
+        transition: transform 0.2s ease;
+      }
+      .dc-brand-ring:hover {
+        transform: scale(1.05);
       }
       .dark .dc-brand-ring {
         background: rgba(16, 185, 129, 0.14);
@@ -1711,11 +1743,11 @@ function renderAuthView(view = 'login') {
         display: grid;
         grid-template-columns: 1fr 1fr;
         background: #f1f5f9;
-        padding: 4px;
-        border-radius: 14px;
+        padding: 5px;
+        border-radius: 16px;
         border: 1px solid #e2e8f0;
-        margin-bottom: 1.25rem;
-        gap: 4px;
+        margin-bottom: 1.5rem;
+        gap: 5px;
       }
       .dark .dc-auth-tabs {
         background: #1e293b;
@@ -1725,14 +1757,17 @@ function renderAuthView(view = 'login') {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
-        padding: 0.6rem 0.75rem;
-        font-size: 0.8125rem;
+        gap: 7px;
+        padding: 0.65rem 0.85rem;
+        font-size: 0.82rem;
         font-weight: 700;
-        border-radius: 10px;
+        border-radius: 12px;
         color: #64748b;
         text-decoration: none;
-        transition: background 0.15s ease, color 0.15s ease;
+        transition: transform 0.16s ease, background 0.16s ease, color 0.16s ease;
+      }
+      .dc-auth-tab-btn:hover {
+        color: #059669;
       }
       .dark .dc-auth-tab-btn {
         color: #94a3b8;
@@ -1741,22 +1776,23 @@ function renderAuthView(view = 'login') {
         background: linear-gradient(135deg, #059669, #10b981);
         color: #ffffff !important;
         font-weight: 800;
-        box-shadow: 0 4px 12px -4px rgba(16, 185, 129, 0.55);
+        box-shadow: 0 6px 16px -6px rgba(16, 185, 129, 0.6);
       }
 
       .dc-field-group {
         display: flex;
         flex-direction: column;
-        gap: 0.35rem;
-        margin-bottom: 0.875rem;
+        gap: 0.4rem;
+        margin-bottom: 1.05rem;
       }
       .dc-field-label {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        font-size: 0.75rem;
+        font-size: 0.76rem;
         font-weight: 700;
         color: #334155;
+        padding-left: 2px;
       }
       .dark .dc-field-label {
         color: #cbd5e1;
@@ -1768,28 +1804,29 @@ function renderAuthView(view = 'login') {
       }
       .dc-input-icon {
         position: absolute;
-        left: 0.85rem;
+        left: 0.9rem;
         font-size: 0.95rem;
         color: #94a3b8;
         pointer-events: none;
       }
       .dc-input-field {
         width: 100%;
-        padding: 0.68rem 2.4rem 0.68rem 2.5rem;
-        font-size: 0.85rem;
+        padding: 0.75rem 2.5rem 0.75rem 2.6rem;
+        font-size: 0.86rem;
         font-family: inherit;
         color: #0f172a;
         background: #f8fafc;
         border: 1.5px solid #e2e8f0;
-        border-radius: 12px;
+        border-radius: 14px;
         outline: none;
-        transition: border-color 0.15s ease, background 0.15s ease;
+        transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
         box-sizing: border-box;
       }
       .dc-input-field:focus {
         background: #ffffff;
         border-color: #10b981;
-        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
+        box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.15);
+        transform: translateY(-1px);
       }
       .dark .dc-input-field {
         background: #1e293b;
@@ -1802,15 +1839,19 @@ function renderAuthView(view = 'login') {
       }
 
       .dc-country-select {
-        height: 41px;
-        font-size: 0.75rem;
+        height: 44px;
+        font-size: 0.76rem;
         font-weight: 700;
         color: #0f172a;
         background: #f8fafc;
         border: 1.5px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 0 0.5rem;
+        border-radius: 14px;
+        padding: 0 0.55rem;
         outline: none;
+        transition: border-color 0.18s ease;
+      }
+      .dc-country-select:focus {
+        border-color: #10b981;
       }
       .dark .dc-country-select {
         background: #1e293b;
@@ -1820,21 +1861,22 @@ function renderAuthView(view = 'login') {
 
       .dc-textarea-field {
         width: 100%;
-        padding: 0.68rem 1rem 0.68rem 2.5rem;
-        font-size: 0.85rem;
+        padding: 0.75rem 1rem 0.75rem 2.6rem;
+        font-size: 0.86rem;
         font-family: inherit;
         color: #0f172a;
         background: #f8fafc;
         border: 1.5px solid #e2e8f0;
-        border-radius: 12px;
+        border-radius: 14px;
         outline: none;
         resize: vertical;
+        transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
         box-sizing: border-box;
       }
       .dc-textarea-field:focus {
         background: #ffffff;
         border-color: #10b981;
-        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
+        box-shadow: 0 0 0 3.5px rgba(16, 185, 129, 0.15);
       }
       .dark .dc-textarea-field {
         background: #1e293b;
@@ -1844,7 +1886,7 @@ function renderAuthView(view = 'login') {
 
       .dc-pass-toggle {
         position: absolute;
-        right: 0.65rem;
+        right: 0.7rem;
         top: 50%;
         transform: translateY(-50%);
         background: none;
@@ -1853,6 +1895,10 @@ function renderAuthView(view = 'login') {
         font-size: 1rem;
         padding: 0.25rem;
         cursor: pointer;
+        transition: color 0.15s ease;
+      }
+      .dc-pass-toggle:hover {
+        color: #059669;
       }
 
       .dc-strength-track {
@@ -1869,7 +1915,7 @@ function renderAuthView(view = 'login') {
         height: 100%;
         width: 0%;
         border-radius: 9999px;
-        transition: width 0.2s ease, background-color 0.2s ease;
+        transition: width 0.22s ease, background-color 0.22s ease;
       }
 
       .dc-auth-submit-btn {
@@ -1878,25 +1924,39 @@ function renderAuthView(view = 'login') {
         align-items: center;
         justify-content: center;
         gap: 8px;
-        padding: 0.8rem 1.25rem;
-        font-size: 0.9rem;
+        padding: 0.85rem 1.25rem;
+        font-size: 0.92rem;
         font-weight: 800;
         color: #ffffff;
         background: linear-gradient(135deg, #059669, #10b981);
         border: none;
-        border-radius: 13px;
-        box-shadow: 0 8px 20px -6px rgba(16, 185, 129, 0.55);
+        border-radius: 14px;
+        box-shadow: 0 10px 24px -8px rgba(16, 185, 129, 0.6);
         cursor: pointer;
-        transition: transform 0.15s ease, opacity 0.15s ease;
-        margin-top: 0.5rem;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+        margin-top: 0.65rem;
       }
       .dc-auth-submit-btn:hover {
-        transform: translateY(-1px);
+        transform: translateY(-2px);
+        box-shadow: 0 14px 28px -8px rgba(16, 185, 129, 0.7);
       }
       .dc-auth-submit-btn:disabled {
         opacity: 0.7;
         cursor: not-allowed;
         transform: none;
+      }
+
+      .dc-auth-footer-links {
+        margin-top: 1.25rem;
+        padding-top: 1rem;
+        border-top: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 0.76rem;
+      }
+      .dark .dc-auth-footer-links {
+        border-top-color: #1e293b;
       }
     </style>
 
@@ -1915,7 +1975,7 @@ function renderAuthView(view = 'login') {
             <h1 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
               ${isRegister ? 'নতুন অ্যাকাউন্ট তৈরি করুন' : 'কাস্টমার লগইন'}
             </h1>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
               ${isRegister ? 'দ্রুত ও নিরাপদ শপিংয়ের জন্য নিবন্ধন করুন' : 'আপনার অ্যাকাউন্টে প্রবেশ করুন'}
             </p>
           </div>
@@ -1962,8 +2022,8 @@ function renderAuthView(view = 'login') {
                 <span>প্রোফাইল ছবি</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
-              <div class="flex items-center gap-2">
-                <div class="w-10 h-10 rounded-xl overflow-hidden border border-emerald-500 bg-slate-100 dark:bg-slate-800 flex-shrink-0">
+              <div class="flex items-center gap-2.5">
+                <div class="w-11 h-11 rounded-xl overflow-hidden border border-emerald-500 bg-slate-100 dark:bg-slate-800 flex-shrink-0">
                   <img
                     id="auth-photo-preview"
                     src="/icon/logo.png"
@@ -1984,7 +2044,7 @@ function renderAuthView(view = 'login') {
                 </div>
                 <button
                   type="button"
-                  class="py-2.5 px-3 text-xs font-bold rounded-xl flex-shrink-0 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-slate-700 dark:text-slate-200 cursor-pointer"
+                  class="py-2.5 px-3.5 text-xs font-bold rounded-xl flex-shrink-0 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-slate-700 dark:text-slate-200 cursor-pointer transition"
                   onclick="document.getElementById('auth-photo-file-input').click();"
                 >
                   আপলোড
@@ -2004,7 +2064,7 @@ function renderAuthView(view = 'login') {
                   type="text"
                   id="auth-name"
                   required
-                  placeholder="আপনার পূর্ণ নাম লিখুন"
+                  placeholder="আপনার পূর্ণ নাম"
                   class="dc-input-field"
                 />
               </div>
@@ -2053,7 +2113,7 @@ function renderAuthView(view = 'login') {
                 <input
                   type="email"
                   id="auth-mail"
-                  placeholder="আপনার ইমেইল লিখুন"
+                  placeholder="আপনার ইমেইল ঠিকানা"
                   class="dc-input-field"
                 />
               </div>
@@ -2065,12 +2125,12 @@ function renderAuthView(view = 'login') {
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
-                <span class="dc-input-icon" style="top: 12px;">📍</span>
+                <span class="dc-input-icon" style="top: 13px;">📍</span>
                 <textarea
                   id="auth-addr"
                   required
                   rows="2"
-                  placeholder="আপনার সম্পূর্ণ ডেলিভারি ঠিকানা লিখুন"
+                  placeholder="আপনার সম্পূর্ণ ডেলিভারি ঠিকানা"
                   class="dc-textarea-field"
                 ></textarea>
               </div>
@@ -2115,12 +2175,12 @@ function renderAuthView(view = 'login') {
                   id="auth-pass"
                   required
                   minlength="4"
-                  placeholder="পাসওয়ার্ড লিখুন"
+                  placeholder="পাসওয়ার্ড"
                   class="dc-input-field"
                 />
                 <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-pass" title="পাসওয়ার্ড দেখুন">👁️</button>
               </div>
-              <div class="mt-1 space-y-1">
+              <div class="mt-1.5 space-y-1">
                 <div class="flex items-center justify-between text-[11px]">
                   <span class="text-slate-400">শক্তি:</span>
                   <span id="pwd-strength-label" class="font-extrabold text-slate-400">০%</span>
@@ -2150,7 +2210,7 @@ function renderAuthView(view = 'login') {
               </div>
             </div>
 
-            <div class="flex items-center gap-2 mb-3 text-xs text-slate-600 dark:text-slate-400">
+            <div class="flex items-center gap-2.5 mb-3 text-xs text-slate-600 dark:text-slate-400">
               <input type="checkbox" id="auth-terms" checked required class="rounded text-emerald-600" />
               <label for="auth-terms" class="cursor-pointer">
                 আমি <a href="/terms" class="text-emerald-600 font-bold underline">শর্তাবলী</a> মেনে নিচ্ছি।
@@ -2178,7 +2238,7 @@ function renderAuthView(view = 'login') {
                     id="auth-phone"
                     required
                     autocomplete="username"
-                    placeholder="মোবাইল নম্বর বা ইমেইল লিখুন"
+                    placeholder="মোবাইল নম্বর বা ইমেইল"
                     class="dc-input-field"
                   />
                 </div>
@@ -2197,14 +2257,14 @@ function renderAuthView(view = 'login') {
                   id="auth-pass"
                   required
                   autocomplete="current-password"
-                  placeholder="পাসওয়ার্ড লিখুন"
+                  placeholder="পাসওয়ার্ড"
                   class="dc-input-field"
                 />
                 <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-pass" title="পাসওয়ার্ড দেখুন">👁️</button>
               </div>
             </div>
 
-            <div class="flex items-center justify-between text-xs pt-1 pb-2">
+            <div class="flex items-center justify-between text-xs pt-1 pb-3">
               <label class="flex items-center gap-2 cursor-pointer text-slate-600 dark:text-slate-400">
                 <input type="checkbox" id="auth-remember" checked class="rounded text-emerald-600" />
                 <span>মনে রাখুন</span>
@@ -2225,12 +2285,12 @@ function renderAuthView(view = 'login') {
             <span>→</span>
           </button>
 
-          <p class="text-[11px] text-center text-slate-400 dark:text-slate-500 mt-2.5">
+          <p class="text-[11px] text-center text-slate-400 dark:text-slate-500 mt-3">
             🔒 আপনার সকল তথ্য সম্পূর্ণ নিরাপদ থাকবে।
           </p>
         </form>
 
-        <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 text-center text-xs">
+        <div class="pt-4 mt-5 border-t border-slate-100 dark:border-slate-800 text-center text-xs">
           ${isRegister ? `
             <p class="text-slate-500 dark:text-slate-400">
               ইতিমধ্যে অ্যাকাউন্ট আছে?
@@ -2244,7 +2304,7 @@ function renderAuthView(view = 'login') {
           `}
         </div>
 
-        <div class="pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs mt-3.5">
+        <div class="dc-auth-footer-links">
           <a href="/products" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">🛍️ শপ</a>
           <a href="/track" class="text-slate-500 hover:text-slate-700 font-semibold">🚚 অর্ডার ট্র্যাক</a>
           <a href="/chat" class="text-slate-500 hover:text-slate-700 font-semibold">💬 সাপোর্ট</a>
