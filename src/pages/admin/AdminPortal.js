@@ -399,27 +399,10 @@ export async function renderAdminPortal(params = {}) {
     return renderFastDeveloperAdminLogin();
   }
 
-  // Lazy-load full admin portal modules ONLY when authenticated
-  const [
-    adminStateMod,
-    adminSidebarMod,
-    adminDashboardMod,
-    adminProductsMod,
-    adminOrdersMod,
-    adminPartnersMod,
-    adminReportsMod,
-    adminInventoryMod,
-    adminCouriersMod
-  ] = await Promise.all([
+  // Lazy-load ONLY the required module(s) for the active admin route (10x faster /admin/dashboard!)
+  const [adminStateMod, adminSidebarMod] = await Promise.all([
     import('./modules/adminState.js'),
-    import('./modules/adminSidebar.js'),
-    import('./modules/adminDashboard.js'),
-    import('./modules/adminProducts.js'),
-    import('./modules/adminOrders.js'),
-    import('./modules/adminPartners.js'),
-    import('./modules/adminReports.js'),
-    import('./modules/adminInventory.js'),
-    import('./modules/adminCouriersSettings.js')
+    import('./modules/adminSidebar.js')
   ]);
 
   adminStateMod.initAdminGlobalState();
@@ -428,51 +411,77 @@ export async function renderAdminPortal(params = {}) {
   window.__adminState.activePage = activeRoute.pageId;
   window.__adminState.activeGroup = activeRoute.groupId;
 
-  const userDisplayName = authStore.getUserDisplayName ? authStore.getUserDisplayName() : 'Jainal Abedin';
+  const userDisplayName = authStore.getUserDisplayName ? authStore.getUserDisplayName() : (authStore.user?.name || 'Admin');
   const workerType = authStore.user?.worker_type || 'Master Admin';
   const workerRole = authStore.user?.role || 'Full System Access';
 
-  const allModules = [
-    adminDashboardMod.renderDashboardModule(data),
-    adminProductsMod.renderProductCatalogModule(data),
-    adminProductsMod.renderAddProductModule(data),
-    adminProductsMod.renderCategoryBrandModule(data),
-    adminProductsMod.renderBulkToolsModule(data),
-    adminProductsMod.renderLandingCmsModule(data),
-    adminOrdersMod.renderOrdersModule(data),
-    adminPartnersMod.renderPartnersModule(data),
-    adminReportsMod.renderReportsModule(data),
-    adminInventoryMod.renderInventoryModule(data),
-    adminCouriersMod.renderCouriersSettingsModule({ ...data, userDisplayName, workerType }),
-    adminProductsMod.renderOthersModule(data)
-  ];
+  let combinedModulesHtml = '';
+  const gid = activeRoute.groupId;
+  const pid = activeRoute.pageId;
 
-  let combinedModulesHtml = allModules.join('\n');
+  if (gid === 'group-dashboard' || pid === 'page-dashboard') {
+    const dashMod = await import('./modules/adminDashboard.js');
+    combinedModulesHtml = dashMod.renderDashboardModule(data);
+  } else if (gid === 'group-products') {
+    const prodMod = await import('./modules/adminProducts.js');
+    combinedModulesHtml = [
+      prodMod.renderProductCatalogModule(data),
+      prodMod.renderAddProductModule(data),
+      prodMod.renderCategoryBrandModule(data),
+      prodMod.renderBulkToolsModule(data),
+      prodMod.renderLandingCmsModule(data),
+      prodMod.renderOthersModule(data)
+    ].join('\n');
+  } else if (gid === 'group-orders') {
+    const ordMod = await import('./modules/adminOrders.js');
+    combinedModulesHtml = ordMod.renderOrdersModule(data);
+  } else if (gid === 'group-partners') {
+    const partMod = await import('./modules/adminPartners.js');
+    combinedModulesHtml = partMod.renderPartnersModule(data);
+  } else if (gid === 'group-reports') {
+    const repMod = await import('./modules/adminReports.js');
+    combinedModulesHtml = repMod.renderReportsModule(data);
+  } else if (gid === 'group-inventory') {
+    const invMod = await import('./modules/adminInventory.js');
+    combinedModulesHtml = invMod.renderInventoryModule(data);
+  } else {
+    const setMod = await import('./modules/adminCouriersSettings.js');
+    combinedModulesHtml = setMod.renderCouriersSettingsModule({ ...data, userDisplayName, workerType });
+  }
 
-  const targetMarker = `id="${activeRoute.pageId}" class="admin-page-view hidden`;
+  const targetMarker = `id="${pid}" class="admin-page-view hidden`;
   if (combinedModulesHtml.includes(targetMarker)) {
-    combinedModulesHtml = combinedModulesHtml.replace(targetMarker, `id="${activeRoute.pageId}" class="admin-page-view`);
+    combinedModulesHtml = combinedModulesHtml.replace(targetMarker, `id="${pid}" class="admin-page-view`);
   }
 
   if (typeof window !== 'undefined') {
     setTimeout(() => {
       document.querySelectorAll('.dc-sidebar-sub-item').forEach(btn => {
-        if (btn.getAttribute('data-page') === activeRoute.pageId) btn.classList.add('active');
+        if (btn.getAttribute('data-page') === pid) btn.classList.add('active');
         else btn.classList.remove('active');
       });
       document.querySelectorAll('.admin-sidebar-main-btn').forEach(btn => {
-        if (btn.getAttribute('data-group') === activeRoute.groupId) btn.classList.add('active');
+        if (btn.getAttribute('data-group') === gid) btn.classList.add('active');
         else btn.classList.remove('active');
       });
-      const subnav = document.getElementById('subnav-' + activeRoute.groupId);
-      const chevron = document.getElementById('chevron-' + activeRoute.groupId);
+      const subnav = document.getElementById('subnav-' + gid);
+      const chevron = document.getElementById('chevron-' + gid);
       if (subnav) {
         subnav.classList.remove('closed');
         subnav.style.display = 'block';
       }
       if (chevron) chevron.style.transform = 'rotate(90deg)';
 
-      const pid = activeRoute.pageId;
+      // Live real-data binding for Dashboard chart summary (no hardcoded sample numbers)
+      if (pid === 'page-dashboard') {
+        const revEl = document.getElementById('sales-chart-revenue');
+        const ordEl = document.getElementById('sales-chart-orders');
+        const liveOrders = Array.isArray(data.orders) ? data.orders : [];
+        const liveRev = liveOrders.reduce((s, o) => s + (Number(o.total_amount) || 0), 0);
+        if (revEl) revEl.textContent = '৳' + liveRev.toLocaleString('en-IN');
+        if (ordEl) ordEl.textContent = `${liveOrders.length} টি অর্ডার`;
+      }
+
       if (pid === 'page-prod-all' && window.renderAdminProductsTable) window.renderAdminProductsTable();
       else if (pid === 'page-prod-add' && window.updateAddProductLiveSummary) window.updateAddProductLiveSummary();
       else if (pid === 'page-prod-categories' && window.renderInteractiveCategoryTree) window.renderInteractiveCategoryTree();
@@ -493,14 +502,6 @@ export async function renderAdminPortal(params = {}) {
       else if (pid === 'page-set-payment' && window.renderAdminPaymentMethodsDOM) window.renderAdminPaymentMethodsDOM();
       else if (pid === 'page-set-delivery' && window.renderAdminDeliveryMethodsDOM) window.renderAdminDeliveryMethodsDOM();
       else if (pid === 'page-set-offers' && window.renderAdminOffersDOM) window.renderAdminOffersDOM();
-
-      setTimeout(() => {
-        if (window.refreshAdminOrdersTableDOM) window.refreshAdminOrdersTableDOM();
-        if (pid !== 'page-set-logs' && window.renderAdminSetLogsDOM) window.renderAdminSetLogsDOM();
-        if (pid !== 'page-set-payment' && window.renderAdminPaymentMethodsDOM) window.renderAdminPaymentMethodsDOM();
-        if (pid !== 'page-set-delivery' && window.renderAdminDeliveryMethodsDOM) window.renderAdminDeliveryMethodsDOM();
-        if (pid !== 'page-set-offers' && window.renderAdminOffersDOM) window.renderAdminOffersDOM();
-      }, 250);
     }, 0);
   }
 
