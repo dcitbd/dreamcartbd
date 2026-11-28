@@ -243,7 +243,7 @@ if (typeof window !== 'undefined' && !window.__dcbdCustomerPortalInit) {
     if (e.target.id === 'auth-photo') {
       const prev = document.getElementById('auth-photo-preview');
       if (prev) {
-        prev.src = e.target.value.trim() || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160';
+        prev.src = e.target.value.trim() || '/icon/logo.png';
       }
     }
     if (e.target.id === 'edit-c-photo') {
@@ -1651,159 +1651,105 @@ export async function renderCustomerPortal(params = {}) {
 
 function renderAuthView(view = 'login') {
   const isRegister = view === 'register';
-
-  // Auto-generate Unique Customer ID (Column A)
   const generatedCustomerId = 'CUST-' + Math.floor(100000 + Math.random() * 900000);
 
   return `
     <style id="dc-customer-auth-styles">
       .dc-auth-wrapper {
-        min-height: calc(100vh - 180px);
+        font-family: 'Plus Jakarta Sans', 'Hind Siliguri', system-ui, -apple-system, sans-serif;
+        min-height: calc(100vh - 170px);
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 2rem 1rem;
-        position: relative;
-        overflow: hidden;
-      }
-
-      .dc-auth-glow-1 {
-        position: absolute;
-        top: -80px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 600px;
-        height: 380px;
-        background: radial-gradient(circle, rgba(16, 185, 129, 0.16) 0%, rgba(5, 150, 105, 0.05) 50%, transparent 70%);
-        filter: blur(60px);
-        pointer-events: none;
-        z-index: 0;
-      }
-
-      .dc-auth-glow-2 {
-        position: absolute;
-        bottom: -60px;
-        right: 15%;
-        width: 480px;
-        height: 320px;
-        background: radial-gradient(circle, rgba(13, 148, 136, 0.14) 0%, rgba(14, 165, 233, 0.04) 50%, transparent 70%);
-        filter: blur(50px);
-        pointer-events: none;
-        z-index: 0;
-      }
-
-      .dc-auth-card {
-        position: relative;
-        z-index: 10;
-        width: 100%;
-        max-width: 500px;
-        background: #ffffff;
-        border: 1px solid rgba(226, 232, 240, 0.95);
-        border-radius: 28px;
-        padding: 2.25rem 2rem;
-        box-shadow: 0 20px 45px -10px rgba(5, 150, 105, 0.1), 0 10px 25px -5px rgba(0, 0, 0, 0.03);
+        padding: 1.5rem 1rem 3rem;
         box-sizing: border-box;
       }
-
+      .dc-auth-card {
+        width: 100%;
+        max-width: ${isRegister ? '520px' : '440px'};
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 24px;
+        padding: 1.75rem 1.5rem;
+        box-shadow: 0 18px 40px -16px rgba(15, 23, 42, 0.14);
+        box-sizing: border-box;
+      }
       .dark .dc-auth-card {
         background: #0f172a;
-        border-color: rgba(255, 255, 255, 0.08);
-        box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.55);
+        border-color: #1e293b;
+        box-shadow: 0 20px 48px -16px rgba(0, 0, 0, 0.6);
       }
-
-      @media (max-width: 640px) {
+      @media (min-width: 640px) {
         .dc-auth-card {
-          padding: 1.5rem 1.25rem;
-          border-radius: 22px;
+          padding: 2rem 2rem;
         }
       }
 
+      .dc-auth-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 1.25rem;
+      }
       .dc-brand-ring {
-        width: 60px;
-        height: 60px;
-        border-radius: 20px;
-        background: #ffffff;
-        border: 2px solid #10b981;
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        background: #ecfdf5;
+        border: 1.5px solid #10b981;
         padding: 6px;
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.2);
-        margin: 0 auto;
-        position: relative;
+        flex-shrink: 0;
       }
-
       .dark .dc-brand-ring {
-        background: #1e293b;
-        border-color: #10b981;
-      }
-
-      .dc-pulse-dot {
-        position: absolute;
-        top: -3px;
-        right: -3px;
-        width: 12px;
-        height: 12px;
-        border-radius: 9999px;
-        background: #10b981;
-        border: 2px solid #ffffff;
-        box-shadow: 0 0 10px #10b981;
-        animation: pulse 2s infinite;
+        background: rgba(16, 185, 129, 0.14);
       }
 
       .dc-auth-tabs {
-        display: flex;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         background: #f1f5f9;
         padding: 4px;
-        border-radius: 16px;
+        border-radius: 14px;
         border: 1px solid #e2e8f0;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.25rem;
         gap: 4px;
       }
-
       .dark .dc-auth-tabs {
         background: #1e293b;
-        border-color: rgba(255, 255, 255, 0.08);
+        border-color: #334155;
       }
-
       .dc-auth-tab-btn {
-        flex: 1;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.5rem;
-        padding: 0.625rem 1rem;
+        gap: 6px;
+        padding: 0.6rem 0.75rem;
         font-size: 0.8125rem;
         font-weight: 700;
-        border-radius: 12px;
+        border-radius: 10px;
         color: #64748b;
         text-decoration: none;
-        transition: all 0.2s ease;
-        cursor: pointer;
-        border: none;
-        background: transparent;
+        transition: background 0.15s ease, color 0.15s ease;
       }
-
       .dark .dc-auth-tab-btn {
         color: #94a3b8;
       }
-
       .dc-auth-tab-btn.active {
-        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        background: linear-gradient(135deg, #059669, #10b981);
         color: #ffffff !important;
-        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.32);
         font-weight: 800;
+        box-shadow: 0 4px 12px -4px rgba(16, 185, 129, 0.55);
       }
 
       .dc-field-group {
         display: flex;
         flex-direction: column;
-        gap: 0.375rem;
-        margin-bottom: 1rem;
-        text-align: left;
+        gap: 0.35rem;
+        margin-bottom: 0.875rem;
       }
-
       .dc-field-label {
         display: flex;
         align-items: center;
@@ -1812,135 +1758,101 @@ function renderAuthView(view = 'login') {
         font-weight: 700;
         color: #334155;
       }
-
       .dark .dc-field-label {
         color: #cbd5e1;
       }
-
       .dc-input-container {
         position: relative;
         display: flex;
         align-items: center;
       }
-
       .dc-input-icon {
         position: absolute;
-        left: 0.875rem;
-        font-size: 1.05rem;
+        left: 0.85rem;
+        font-size: 0.95rem;
         color: #94a3b8;
         pointer-events: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
       }
-
       .dc-input-field {
         width: 100%;
-        padding: 0.75rem 2.5rem 0.75rem 2.65rem;
-        font-size: 0.875rem;
+        padding: 0.68rem 2.4rem 0.68rem 2.5rem;
+        font-size: 0.85rem;
         font-family: inherit;
         color: #0f172a;
-        background: #ffffff;
+        background: #f8fafc;
         border: 1.5px solid #e2e8f0;
-        border-radius: 14px;
+        border-radius: 12px;
         outline: none;
-        transition: all 0.2s ease;
+        transition: border-color 0.15s ease, background 0.15s ease;
         box-sizing: border-box;
       }
-
+      .dc-input-field:focus {
+        background: #ffffff;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
+      }
       .dark .dc-input-field {
         background: #1e293b;
-        border-color: rgba(255, 255, 255, 0.1);
+        border-color: #334155;
         color: #f8fafc;
+      }
+      .dark .dc-input-field:focus {
+        background: #0f172a;
+        border-color: #10b981;
       }
 
       .dc-country-select {
-        height: 42px;
+        height: 41px;
         font-size: 0.75rem;
         font-weight: 700;
         color: #0f172a;
         background: #f8fafc;
         border: 1.5px solid #e2e8f0;
-        border-radius: 14px;
+        border-radius: 12px;
         padding: 0 0.5rem;
         outline: none;
-        transition: all 0.2s ease;
-        box-sizing: border-box;
       }
-
       .dark .dc-country-select {
         background: #1e293b;
-        border-color: rgba(255, 255, 255, 0.1);
+        border-color: #334155;
         color: #f8fafc;
-      }
-
-      .dc-country-select:focus {
-        border-color: #10b981;
-        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
-      }
-
-      .dc-input-field:focus {
-        border-color: #10b981;
-        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
-      }
-
-      .dark .dc-input-field:focus {
-        background: #0f172a;
-        border-color: #10b981;
-        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
       }
 
       .dc-textarea-field {
         width: 100%;
-        padding: 0.75rem 1rem 0.75rem 2.65rem;
-        font-size: 0.875rem;
+        padding: 0.68rem 1rem 0.68rem 2.5rem;
+        font-size: 0.85rem;
         font-family: inherit;
         color: #0f172a;
-        background: #ffffff;
+        background: #f8fafc;
         border: 1.5px solid #e2e8f0;
-        border-radius: 14px;
+        border-radius: 12px;
         outline: none;
         resize: vertical;
-        transition: all 0.2s ease;
         box-sizing: border-box;
       }
-
+      .dc-textarea-field:focus {
+        background: #ffffff;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.14);
+      }
       .dark .dc-textarea-field {
         background: #1e293b;
-        border-color: rgba(255, 255, 255, 0.1);
+        border-color: #334155;
         color: #f8fafc;
-      }
-
-      .dc-textarea-field:focus {
-        border-color: #10b981;
-        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.15);
-      }
-
-      .dark .dc-textarea-field:focus {
-        background: #0f172a;
-        border-color: #10b981;
-        box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.25);
       }
 
       .dc-pass-toggle {
         position: absolute;
-        right: 0.75rem;
+        right: 0.65rem;
         top: 50%;
         transform: translateY(-50%);
         background: none;
         border: none;
         color: #64748b;
-        font-size: 1.15rem;
-        padding: 0.25rem 0.375rem;
+        font-size: 1rem;
+        padding: 0.25rem;
         cursor: pointer;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .dc-pass-toggle:hover {
-        color: #059669;
       }
 
       .dc-strength-track {
@@ -1950,16 +1862,14 @@ function renderAuthView(view = 'login') {
         border-radius: 9999px;
         overflow: hidden;
       }
-
       .dark .dc-strength-track {
         background: #334155;
       }
-
       .dc-strength-fill {
         height: 100%;
         width: 0%;
         border-radius: 9999px;
-        transition: width 0.25s ease, background-color 0.25s ease;
+        transition: width 0.2s ease, background-color 0.2s ease;
       }
 
       .dc-auth-submit-btn {
@@ -1967,155 +1877,122 @@ function renderAuthView(view = 'login') {
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 0.625rem;
-        padding: 0.85rem 1.5rem;
-        font-size: 0.9375rem;
+        gap: 8px;
+        padding: 0.8rem 1.25rem;
+        font-size: 0.9rem;
         font-weight: 800;
         color: #ffffff;
-        background: linear-gradient(135deg, #059669 0%, #10b981 50%, #047857 100%);
+        background: linear-gradient(135deg, #059669, #10b981);
         border: none;
-        border-radius: 16px;
-        box-shadow: 0 8px 24px rgba(5, 150, 105, 0.3);
+        border-radius: 13px;
+        box-shadow: 0 8px 20px -6px rgba(16, 185, 129, 0.55);
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: transform 0.15s ease, opacity 0.15s ease;
         margin-top: 0.5rem;
       }
-
       .dc-auth-submit-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 28px rgba(5, 150, 105, 0.4);
+        transform: translateY(-1px);
       }
-
       .dc-auth-submit-btn:disabled {
-        opacity: 0.75;
+        opacity: 0.7;
         cursor: not-allowed;
         transform: none;
       }
     </style>
 
     <div class="dc-auth-wrapper">
-      
-      <!-- Ambient Glow Overlays -->
-      <div class="dc-auth-glow-1"></div>
-      <div class="dc-auth-glow-2"></div>
-
-      <!-- Main Auth Card Container -->
       <div class="dc-auth-card">
-        
-        <!-- Header Branding & Logo -->
-        <div class="text-center space-y-2 mb-5">
+        <div class="dc-auth-head">
           <div class="dc-brand-ring">
-            <span class="dc-pulse-dot"></span>
-            <img 
-              src="/icon/logo.png" 
-              alt="Dream Cart BD Logo" 
-              class="w-full h-full object-contain rounded-xl"
-              onerror="this.onerror=null; this.src='/icon/logo.png';"
+            <img
+              src="/icon/logo.png"
+              alt="Dream Cart BD"
+              decoding="async"
+              class="w-full h-full object-contain rounded-lg"
             />
           </div>
-
-          <div>
-            <h1 class="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+          <div class="min-w-0">
+            <h1 class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
               ${isRegister ? 'নতুন অ্যাকাউন্ট তৈরি করুন' : 'কাস্টমার লগইন'}
             </h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              ${isRegister ? 'দ্রুত ও নিরাপদ শপিংয়ের জন্য নিবন্ধন করুন' : 'আপনার অ্যাকাউন্টে প্রবেশ করুন'}
+            </p>
           </div>
         </div>
 
-        <!-- Segmented Tab Switcher (Login vs Register) -->
         <div class="dc-auth-tabs">
-          <a 
-            href="/customer/login" 
-            class="dc-auth-tab-btn ${!isRegister ? 'active' : ''}"
-          >
+          <a href="/customer/login" class="dc-auth-tab-btn ${!isRegister ? 'active' : ''}">
             <span>🔐</span>
-            <span>লগইন করুন</span>
+            <span>লগইন</span>
           </a>
-          <a 
-            href="/customer/register" 
-            class="dc-auth-tab-btn ${isRegister ? 'active' : ''}"
-          >
+          <a href="/customer/register" class="dc-auth-tab-btn ${isRegister ? 'active' : ''}">
             <span>📝</span>
-            <span>নতুন অ্যাকাউন্ট</span>
+            <span>রেজিস্ট্রেশন</span>
           </a>
         </div>
 
-        <!-- Dynamic Inline Error Alert Box -->
         <div id="auth-error-alert" class="hidden mb-4 p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-900 rounded-xl text-rose-700 dark:text-rose-300 text-xs flex items-start gap-2">
           <span class="text-base flex-shrink-0">⚠️</span>
           <div id="auth-error-msg" class="flex-1 font-semibold leading-relaxed"></div>
         </div>
 
-        <!-- The Main Submission Form -->
         <form id="customer-auth-form" data-auth-mode="${isRegister ? 'register' : 'login'}">
-          
           ${isRegister ? `
-            <!-- ================= REGISTER FIELDS (COLUMNS A TO H) ================= -->
-
-            <!-- Column A = Customer_ID (auto fillup, unique) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
                 <span>কাস্টমার আইডি</span>
-                <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">অটো ফিলআপ</span>
+                <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">স্বয়ংক্রিয়</span>
               </label>
               <div class="dc-input-container">
                 <span class="dc-input-icon">🏷️</span>
-                <input 
-                  type="text" 
-                  id="auth-customer-id" 
+                <input
+                  type="text"
+                  id="auth-customer-id"
                   name="customer_id"
-                  value="${generatedCustomerId}" 
-                  readonly 
-                  class="dc-input-field font-mono font-bold bg-slate-50 dark:bg-slate-800/60 text-emerald-600 dark:text-emerald-400 cursor-not-allowed select-none" 
+                  value="${generatedCustomerId}"
+                  readonly
+                  class="dc-input-field font-mono font-bold text-emerald-600 dark:text-emerald-400 cursor-not-allowed select-none"
                 />
               </div>
             </div>
 
-            <!-- Column B = Profile_photo (File Upload / Link with Live Preview - REQUIRED) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
                 <span>প্রোফাইল ছবি</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="flex items-center gap-2">
-                <div class="relative w-11 h-11 rounded-xl overflow-hidden border-2 border-emerald-500 bg-slate-100 dark:bg-slate-800 flex-shrink-0 shadow-xs">
-                  <img 
-                    id="auth-photo-preview" 
-                    src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160" 
-                    alt="Profile" 
+                <div class="w-10 h-10 rounded-xl overflow-hidden border border-emerald-500 bg-slate-100 dark:bg-slate-800 flex-shrink-0">
+                  <img
+                    id="auth-photo-preview"
+                    src="/icon/logo.png"
+                    alt="Profile"
                     class="w-full h-full object-cover"
-                    onerror="this.onerror=null; this.src='/icon/logo.png';"
                   />
                 </div>
                 <div class="dc-input-container flex-1 min-w-0">
                   <span class="dc-input-icon">🔗</span>
-                  <input 
-                    type="url" 
-                    id="auth-photo" 
+                  <input
+                    type="url"
+                    id="auth-photo"
                     required
-                    value="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=160"
-                    placeholder="ছবির লিঙ্ক দিন বা আপলোড করুন" 
-                    class="dc-input-field text-xs" 
+                    value="/icon/logo.png"
+                    placeholder="ছবির লিঙ্ক দিন বা আপলোড করুন"
+                    class="dc-input-field text-xs"
                   />
                 </div>
-                <button 
-                  type="button" 
-                  class="py-2.5 px-3 text-xs font-bold rounded-xl flex-shrink-0 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-slate-700 dark:text-slate-200 flex items-center gap-1 cursor-pointer transition"
+                <button
+                  type="button"
+                  class="py-2.5 px-3 text-xs font-bold rounded-xl flex-shrink-0 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-slate-700 dark:text-slate-200 cursor-pointer"
                   onclick="document.getElementById('auth-photo-file-input').click();"
-                  title="ডিভাইস থেকে ছবি আপলোড করুন"
                 >
-                  <span>📁</span>
-                  <span class="hidden sm:inline">আপলোড</span>
+                  আপলোড
                 </button>
-                <input 
-                  type="file" 
-                  id="auth-photo-file-input" 
-                  accept="image/*" 
-                  class="hidden" 
-                />
+                <input type="file" id="auth-photo-file-input" accept="image/*" class="hidden" />
               </div>
             </div>
 
-            <!-- Column C = Name (Required) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
                 <span>পূর্ণ নাম</span>
@@ -2123,59 +2000,49 @@ function renderAuthView(view = 'login') {
               </label>
               <div class="dc-input-container">
                 <span class="dc-input-icon">👤</span>
-                <input 
-                  type="text" 
-                  id="auth-name" 
-                  required 
-                  placeholder="যেমন: মোঃ তানভীর হাসান" 
-                  class="dc-input-field" 
+                <input
+                  type="text"
+                  id="auth-name"
+                  required
+                  placeholder="আপনার পূর্ণ নাম লিখুন"
+                  class="dc-input-field"
                 />
               </div>
             </div>
 
-            <!-- Column D = Mobile (Required, with Country Code selector, Bangladesh default) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
                 <span>মোবাইল নম্বর</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="flex items-center gap-2">
-                <!-- Country Code Selector (Default: Bangladesh +880) -->
-                <div class="relative flex-shrink-0">
-                  <select 
-                    id="auth-country-code" 
-                    class="dc-country-select"
-                    title="কান্ট্রি কোড নির্বাচন করুন"
-                  >
-                    <option value="+880" selected>🇧🇩 +880 (বাংলাদেশ)</option>
-                    <option value="+91">🇮🇳 +91 (ভারত)</option>
-                    <option value="+966">🇸🇦 +966 (সৌদি আরব)</option>
-                    <option value="+971">🇦🇪 +971 (সংযুক্ত আরব আমিরাত)</option>
-                    <option value="+974">🇶🇦 +974 (কাতার)</option>
-                    <option value="+965">🇰🇼 +965 (কুয়েত)</option>
-                    <option value="+968">🇴🇲 +968 (ওমান)</option>
-                    <option value="+60">🇲🇾 +60 (মালয়েশিয়া)</option>
-                    <option value="+65">🇸🇬 +65 (সিঙ্গাপুর)</option>
-                    <option value="+44">🇬🇧 +44 (যুক্তরাজ্য)</option>
-                    <option value="+1">🇺🇸 +1 (যুক্তরাষ্ট্র)</option>
-                  </select>
-                </div>
-                <!-- Mobile Number Input -->
+                <select id="auth-country-code" class="dc-country-select" title="কান্ট্রি কোড">
+                  <option value="+880" selected>🇧🇩 +880</option>
+                  <option value="+91">🇮🇳 +91</option>
+                  <option value="+966">🇸🇦 +966</option>
+                  <option value="+971">🇦🇪 +971</option>
+                  <option value="+974">🇶🇦 +974</option>
+                  <option value="+965">🇰🇼 +965</option>
+                  <option value="+968">🇴🇲 +968</option>
+                  <option value="+60">🇲🇾 +60</option>
+                  <option value="+65">🇸🇬 +65</option>
+                  <option value="+44">🇬🇧 +44</option>
+                  <option value="+1">🇺🇸 +1</option>
+                </select>
                 <div class="dc-input-container flex-1 min-w-0">
                   <span class="dc-input-icon">📞</span>
-                  <input 
-                    type="tel" 
-                    id="auth-phone" 
-                    required 
-                    pattern="[0-9]{11}" 
-                    placeholder="017XXXXXXXX (১১ ডিজিট)" 
-                    class="dc-input-field font-mono" 
+                  <input
+                    type="tel"
+                    id="auth-phone"
+                    required
+                    pattern="[0-9]{11}"
+                    placeholder="১১ ডিজিটের মোবাইল নম্বর"
+                    class="dc-input-field font-mono"
                   />
                 </div>
               </div>
             </div>
 
-            <!-- Column E = Mail (Email, Optional) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
                 <span>ইমেইল ঠিকানা</span>
@@ -2183,86 +2050,77 @@ function renderAuthView(view = 'login') {
               </label>
               <div class="dc-input-container">
                 <span class="dc-input-icon">✉️</span>
-                <input 
-                  type="email" 
-                  id="auth-mail" 
-                  placeholder="name@example.com" 
-                  class="dc-input-field" 
+                <input
+                  type="email"
+                  id="auth-mail"
+                  placeholder="আপনার ইমেইল লিখুন"
+                  class="dc-input-field"
                 />
               </div>
             </div>
 
-            <!-- Column F = Address (Delivery Address, Required) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
                 <span>ডেলিভারি ঠিকানা</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="dc-input-container">
-                <span class="dc-input-icon" style="top: 14px;">📍</span>
-                <textarea 
-                  id="auth-addr" 
-                  required 
-                  rows="2" 
-                  placeholder="বাসা/হোল্ডিং নং, রোড, থানা, জেলা..." 
+                <span class="dc-input-icon" style="top: 12px;">📍</span>
+                <textarea
+                  id="auth-addr"
+                  required
+                  rows="2"
+                  placeholder="আপনার সম্পূর্ণ ডেলিভারি ঠিকানা লিখুন"
                   class="dc-textarea-field"
                 ></textarea>
               </div>
             </div>
 
-            <!-- Column G = User_ID (Autofill in real-time from phone number) -->
             <div class="dc-field-group">
               <label class="dc-field-label">
                 <span>ইউজার আইডি</span>
-                <span class="text-[10px] text-blue-600 dark:text-blue-400 font-bold">মোবাইল থেকে অটো ফিল</span>
+                <span class="text-[10px] text-blue-600 dark:text-blue-400 font-bold">স্বয়ংক্রিয়</span>
               </label>
               <div class="dc-input-container">
                 <span class="dc-input-icon">🆔</span>
-                <input 
-                  type="text" 
-                  id="auth-user-id" 
+                <input
+                  type="text"
+                  id="auth-user-id"
                   name="user_id"
-                  readonly 
-                  placeholder="মোবাইল নম্বর লিখলে স্বয়ংক্রিয় বসবে" 
-                  class="dc-input-field font-mono font-bold bg-slate-50 dark:bg-slate-800/60 text-blue-600 dark:text-blue-400 cursor-not-allowed select-none" 
+                  readonly
+                  placeholder="মোবাইল নম্বর লিখলে স্বয়ংক্রিয় বসবে"
+                  class="dc-input-field font-mono font-bold text-blue-600 dark:text-blue-400 cursor-not-allowed select-none"
                 />
               </div>
             </div>
 
-            <!-- Column H = Password (Suggest-Strong + Strength Percentage Meter) -->
             <div class="dc-field-group">
-              <div class="flex items-center justify-between mb-0.5">
-                <label class="dc-field-label !mb-0 font-bold">
+              <div class="flex items-center justify-between">
+                <label class="dc-field-label !mb-0">
                   <span>পাসওয়ার্ড</span>
                   <span class="text-rose-500 font-bold">*</span>
                 </label>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   id="btn-suggest-strong-pass"
-                  class="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
-                  title="স্ট্রং পাসওয়ার্ড তৈরি করুন"
+                  class="text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
                 >
-                  <span>💡</span> <span>স্ট্রং পাসওয়ার্ড সাজেস্ট</span>
+                  স্ট্রং পাসওয়ার্ড সাজেস্ট
                 </button>
               </div>
-
               <div class="dc-input-container">
                 <span class="dc-input-icon">🔑</span>
-                <input 
-                  type="password" 
-                  id="auth-pass" 
-                  required 
+                <input
+                  type="password"
+                  id="auth-pass"
+                  required
                   minlength="4"
-                  placeholder="কমপক্ষে ৪ অক্ষরের পাসওয়ার্ড" 
-                  class="dc-input-field" 
+                  placeholder="পাসওয়ার্ড লিখুন"
+                  class="dc-input-field"
                 />
-                <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-pass" title="পাসওয়ার্ড দেখুন">
-                  👁️
-                </button>
+                <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-pass" title="পাসওয়ার্ড দেখুন">👁️</button>
               </div>
-
-              <!-- Sleek Real-Time Password Strength Meter -->
-              <div class="mt-1.5 space-y-1">
+              <div class="mt-1 space-y-1">
                 <div class="flex items-center justify-between text-[11px]">
                   <span class="text-slate-400">শক্তি:</span>
                   <span id="pwd-strength-label" class="font-extrabold text-slate-400">০%</span>
@@ -2273,7 +2131,6 @@ function renderAuthView(view = 'login') {
               </div>
             </div>
 
-            <!-- Password Confirmation -->
             <div class="dc-field-group">
               <label class="dc-field-label">
                 <span>পাসওয়ার্ড নিশ্চিত করুন</span>
@@ -2281,66 +2138,53 @@ function renderAuthView(view = 'login') {
               </label>
               <div class="dc-input-container">
                 <span class="dc-input-icon">🔐</span>
-                <input 
-                  type="password" 
-                  id="auth-confirm-pass" 
-                  required 
+                <input
+                  type="password"
+                  id="auth-confirm-pass"
+                  required
                   minlength="4"
-                  placeholder="একই পাসওয়ার্ড পুনরায় লিখুন" 
-                  class="dc-input-field" 
+                  placeholder="পাসওয়ার্ড পুনরায় লিখুন"
+                  class="dc-input-field"
                 />
-                <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-confirm-pass" title="পাসওয়ার্ড দেখুন">
-                  👁️
-                </button>
+                <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-confirm-pass" title="পাসওয়ার্ড দেখুন">👁️</button>
               </div>
             </div>
 
-            <!-- Terms agreement -->
             <div class="flex items-center gap-2 mb-3 text-xs text-slate-600 dark:text-slate-400">
               <input type="checkbox" id="auth-terms" checked required class="rounded text-emerald-600" />
               <label for="auth-terms" class="cursor-pointer">
-                আমি Dream Cart BD-এর <a href="/terms" class="text-emerald-600 font-bold underline">শর্তাবলী</a> মেনে নিচ্ছি।
+                আমি <a href="/terms" class="text-emerald-600 font-bold underline">শর্তাবলী</a> মেনে নিচ্ছি।
               </label>
             </div>
-
           ` : `
-            <!-- ================= LOGIN FIELDS ================= -->
-
-            <!-- Mobile / Email / Identifier with Country Code Selector -->
             <div class="dc-field-group">
               <label class="dc-field-label">
                 <span>মোবাইল নম্বর অথবা ইমেইল</span>
                 <span class="text-rose-500 font-bold">*</span>
               </label>
               <div class="flex items-center gap-2">
-                <div class="relative flex-shrink-0">
-                  <select 
-                    id="login-country-code" 
-                    class="dc-country-select"
-                    title="কান্ট্রি কোড"
-                  >
-                    <option value="+880" selected>🇧🇩 +880</option>
-                    <option value="+91">🇮🇳 +91</option>
-                    <option value="+966">🇸🇦 +966</option>
-                    <option value="+971">🇦🇪 +971</option>
-                    <option value="+44">🇬🇧 +44</option>
-                    <option value="+1">🇺🇸 +1</option>
-                  </select>
-                </div>
+                <select id="login-country-code" class="dc-country-select" title="কান্ট্রি কোড">
+                  <option value="+880" selected>🇧🇩 +880</option>
+                  <option value="+91">🇮🇳 +91</option>
+                  <option value="+966">🇸🇦 +966</option>
+                  <option value="+971">🇦🇪 +971</option>
+                  <option value="+44">🇬🇧 +44</option>
+                  <option value="+1">🇺🇸 +1</option>
+                </select>
                 <div class="dc-input-container flex-1 min-w-0">
                   <span class="dc-input-icon">📞</span>
-                  <input 
-                    type="text" 
-                    id="auth-phone" 
-                    required 
-                    placeholder="017XXXXXXXX বা user@gmail.com" 
-                    class="dc-input-field" 
+                  <input
+                    type="text"
+                    id="auth-phone"
+                    required
+                    autocomplete="username"
+                    placeholder="মোবাইল নম্বর বা ইমেইল লিখুন"
+                    class="dc-input-field"
                   />
                 </div>
               </div>
             </div>
 
-            <!-- Password -->
             <div class="dc-field-group">
               <label class="dc-field-label">
                 <span>পাসওয়ার্ড</span>
@@ -2348,84 +2192,64 @@ function renderAuthView(view = 'login') {
               </label>
               <div class="dc-input-container">
                 <span class="dc-input-icon">🔑</span>
-                <input 
-                  type="password" 
-                  id="auth-pass" 
-                  required 
-                  placeholder="আপনার পাসওয়ার্ড লিখুন" 
-                  class="dc-input-field" 
+                <input
+                  type="password"
+                  id="auth-pass"
+                  required
+                  autocomplete="current-password"
+                  placeholder="পাসওয়ার্ড লিখুন"
+                  class="dc-input-field"
                 />
-                <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-pass" title="পাসওয়ার্ড দেখুন">
-                  👁️
-                </button>
+                <button type="button" class="btn-toggle-auth-pass dc-pass-toggle" data-target="auth-pass" title="পাসওয়ার্ড দেখুন">👁️</button>
               </div>
             </div>
 
-            <!-- Remember me & Help Link -->
             <div class="flex items-center justify-between text-xs pt-1 pb-2">
               <label class="flex items-center gap-2 cursor-pointer text-slate-600 dark:text-slate-400">
                 <input type="checkbox" id="auth-remember" checked class="rounded text-emerald-600" />
                 <span>মনে রাখুন</span>
               </label>
-              <a 
-                href="https://wa.me/8801581703822?text=Dream%20Cart%20BD%20Customer%20Password%20Help" 
-                target="_blank" 
+              <a
+                href="https://wa.me/8801581703822?text=Dream%20Cart%20BD%20Customer%20Password%20Help"
+                target="_blank"
+                rel="noopener"
                 class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline"
               >
                 পাসওয়ার্ড ভুলে গেছেন?
               </a>
             </div>
-
           `}
 
-          <!-- SUBMIT CTA BUTTON -->
           <button type="submit" class="dc-auth-submit-btn">
             <span>${isRegister ? 'অ্যাকাউন্ট তৈরি করুন' : 'লগইন করুন'}</span>
             <span>→</span>
           </button>
 
-          <!-- Security note -->
           <p class="text-[11px] text-center text-slate-400 dark:text-slate-500 mt-2.5">
-            🔒 আপনার সকল তথ্য সম্পূর্ণ গোপন ও নিরাপদ থাকবে।
+            🔒 আপনার সকল তথ্য সম্পূর্ণ নিরাপদ থাকবে।
           </p>
-
         </form>
 
-        <!-- Switch between Login and Register -->
-        <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 text-center space-y-2 text-xs">
+        <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 text-center text-xs">
           ${isRegister ? `
             <p class="text-slate-500 dark:text-slate-400">
-              ইতিমধ্যে অ্যাকাউন্ট আছে? 
-              <a href="/customer/login" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
-                এখানে লগইন করুন →
-              </a>
+              ইতিমধ্যে অ্যাকাউন্ট আছে?
+              <a href="/customer/login" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">লগইন করুন →</a>
             </p>
           ` : `
             <p class="text-slate-500 dark:text-slate-400">
-              আপনার কোনো অ্যাকাউন্ট নেই? 
-              <a href="/customer/register" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">
-                নতুন অ্যাকাউন্ট খুলুন (ফ্রি) →
-              </a>
+              নতুন কাস্টমার?
+              <a href="/customer/register" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">নতুন অ্যাকাউন্ট খুলুন →</a>
             </p>
           `}
         </div>
 
-        <!-- Helpful Navigation Shortcuts -->
-        <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs mt-4">
-          <a href="/products" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline flex items-center gap-1">
-            <span>🛍️</span>
-            <span>শপ ভিজিট করুন</span>
-          </a>
-          <a href="/track" class="text-slate-500 hover:text-slate-700 font-semibold">
-            🚚 অর্ডার ট্র্যাক
-          </a>
-          <a href="/contact" class="text-slate-500 hover:text-slate-700 font-semibold">
-            📞 যোগাযোগ
-          </a>
+        <div class="pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs mt-3.5">
+          <a href="/products" class="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">🛍️ শপ</a>
+          <a href="/track" class="text-slate-500 hover:text-slate-700 font-semibold">🚚 অর্ডার ট্র্যাক</a>
+          <a href="/chat" class="text-slate-500 hover:text-slate-700 font-semibold">💬 সাপোর্ট</a>
         </div>
-
       </div>
-
     </div>
   `;
 }
