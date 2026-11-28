@@ -418,35 +418,39 @@ export async function renderAdminPortal(params = {}) {
   let combinedModulesHtml = '';
   const gid = activeRoute.groupId;
   const pid = activeRoute.pageId;
+  const modKey = activeRoute.module || 'dashboard';
 
-  if (gid === 'group-dashboard' || pid === 'page-dashboard') {
+  if (modKey === 'dashboard') {
     const dashMod = await import('./modules/adminDashboard.js');
     combinedModulesHtml = dashMod.renderDashboardModule(data);
-  } else if (gid === 'group-products') {
+  } else if (modKey === 'catalog') {
     const prodMod = await import('./modules/adminProducts.js');
-    if (pid === 'page-prod-all' || pid === 'page-prod-low-stock' || pid === 'page-prod-out-stock' || pid === 'page-prod-error') {
-      combinedModulesHtml = prodMod.renderProductCatalogModule(data);
-    } else if (pid === 'page-prod-add') {
-      combinedModulesHtml = prodMod.renderAddProductModule(data);
-    } else if (pid === 'page-prod-categories' || pid === 'page-prod-brands' || pid === 'page-prod-brand-add' || pid === 'page-prod-variants' || pid === 'page-prod-variant-add' || pid === 'page-prod-banners') {
-      combinedModulesHtml = prodMod.renderCategoryBrandModule(data);
-    } else if (pid === 'page-prod-bulk-add' || pid === 'page-prod-bulk-price' || pid === 'page-prod-bulk-image') {
-      combinedModulesHtml = prodMod.renderBulkToolsModule(data);
-    } else if (pid === 'page-prod-landing' || pid === 'page-prod-landing-add') {
-      combinedModulesHtml = prodMod.renderLandingCmsModule(data);
-    } else {
-      combinedModulesHtml = prodMod.renderOthersModule(data);
-    }
-  } else if (gid === 'group-orders') {
+    combinedModulesHtml = prodMod.renderProductCatalogModule(data);
+  } else if (modKey === 'addproduct') {
+    const prodMod = await import('./modules/adminProducts.js');
+    combinedModulesHtml = prodMod.renderAddProductModule(data);
+  } else if (modKey === 'catbrand') {
+    const prodMod = await import('./modules/adminProducts.js');
+    combinedModulesHtml = prodMod.renderCategoryBrandModule(data);
+  } else if (modKey === 'bulk') {
+    const prodMod = await import('./modules/adminProducts.js');
+    combinedModulesHtml = prodMod.renderBulkToolsModule(data);
+  } else if (modKey === 'landing') {
+    const prodMod = await import('./modules/adminProducts.js');
+    combinedModulesHtml = prodMod.renderLandingCmsModule(data);
+  } else if (modKey === 'others') {
+    const prodMod = await import('./modules/adminProducts.js');
+    combinedModulesHtml = prodMod.renderOthersModule(data);
+  } else if (modKey === 'orders') {
     const ordMod = await import('./modules/adminOrders.js');
     combinedModulesHtml = ordMod.renderOrdersModule(data);
-  } else if (gid === 'group-partners') {
+  } else if (modKey === 'partners') {
     const partMod = await import('./modules/adminPartners.js');
     combinedModulesHtml = partMod.renderPartnersModule(data);
-  } else if (gid === 'group-reports') {
+  } else if (modKey === 'reports') {
     const repMod = await import('./modules/adminReports.js');
     combinedModulesHtml = repMod.renderReportsModule(data);
-  } else if (gid === 'group-inventory') {
+  } else if (modKey === 'inventory') {
     const invMod = await import('./modules/adminInventory.js');
     combinedModulesHtml = invMod.renderInventoryModule(data);
   } else {
@@ -477,7 +481,6 @@ export async function renderAdminPortal(params = {}) {
       }
       if (chevron) chevron.style.transform = 'rotate(90deg)';
 
-      // Live real-data binding for Dashboard chart summary (no hardcoded sample numbers)
       if (pid === 'page-dashboard') {
         const revEl = document.getElementById('sales-chart-revenue');
         const ordEl = document.getElementById('sales-chart-orders');
@@ -487,14 +490,23 @@ export async function renderAdminPortal(params = {}) {
         if (ordEl) ordEl.textContent = `${liveOrders.length} টি অর্ডার`;
       }
 
-      if (pid === 'page-prod-all' && window.renderAdminProductsTable) window.renderAdminProductsTable();
-      else if (pid === 'page-prod-add' && window.updateAddProductLiveSummary) window.updateAddProductLiveSummary();
-      else if (pid === 'page-prod-categories' && window.renderInteractiveCategoryTree) window.renderInteractiveCategoryTree();
-      else if (pid === 'page-prod-banners' && window.renderAdminBannersList) window.renderAdminBannersList();
-      else if (pid === 'page-prod-variants' && window.renderAdminVariantsList) window.renderAdminVariantsList();
-      else if (pid === 'page-prod-landing' && window.renderSavedLandingPagesList) window.renderSavedLandingPagesList();
-      else if (pid === 'page-prod-landing-add' && window.renderLandingDraftMedia) window.renderLandingDraftMedia();
-      else if ((pid === 'page-orders-all' || pid === 'page-orders-success' || pid === 'page-orders-shipping' || pid === 'page-orders-unpaid' || pid === 'page-orders-cancelled' || pid === 'page-dashboard') && window.refreshAdminOrdersTableDOM) {
+      if ((pid === 'page-prod-all' || pid === 'page-prod-low-stock' || pid === 'page-prod-out-stock' || pid === 'page-prod-error') && window.renderAdminProductsTable) {
+        window.renderAdminProductsTable();
+      } else if (pid === 'page-prod-add' && window.updateAddProductLiveSummary) {
+        window.updateAddProductLiveSummary();
+      } else if (pid === 'page-prod-categories' && window.renderInteractiveCategoryTree) {
+        window.renderInteractiveCategoryTree();
+      } else if (pid === 'page-prod-brands' && window.renderAdminBrandCards) {
+        window.renderAdminBrandCards();
+      } else if (pid === 'page-prod-banners' && window.renderAdminBannersList) {
+        window.renderAdminBannersList();
+      } else if (pid === 'page-prod-variants' && window.renderAdminVariantsList) {
+        window.renderAdminVariantsList();
+      } else if (pid === 'page-prod-landing' && window.renderSavedLandingPagesList) {
+        window.renderSavedLandingPagesList();
+      } else if (pid === 'page-prod-landing-add' && window.renderLandingDraftMedia) {
+        window.renderLandingDraftMedia();
+      } else if ((pid === 'page-orders-all' || pid === 'page-orders-success' || pid === 'page-orders-shipping' || pid === 'page-orders-unpaid' || pid === 'page-orders-cancelled' || pid === 'page-dashboard') && window.refreshAdminOrdersTableDOM) {
         window.refreshAdminOrdersTableDOM();
         if (window.syncAdminOrdersFromSheet) window.syncAdminOrdersFromSheet(true);
       } else if (pid === 'page-orders-incomplete' && window.renderIncompleteOrdersTableDOM) {
@@ -503,10 +515,19 @@ export async function renderAdminPortal(params = {}) {
         window.renderAdminLiveVisitorsDOM();
       } else if (pid === 'page-orders-customers' && window.renderAdminCustomersTableDOM) {
         window.renderAdminCustomersTableDOM();
-      } else if (pid === 'page-set-logs' && window.renderAdminSetLogsDOM) window.renderAdminSetLogsDOM();
-      else if (pid === 'page-set-payment' && window.renderAdminPaymentMethodsDOM) window.renderAdminPaymentMethodsDOM();
-      else if (pid === 'page-set-delivery' && window.renderAdminDeliveryMethodsDOM) window.renderAdminDeliveryMethodsDOM();
-      else if (pid === 'page-set-offers' && window.renderAdminOffersDOM) window.renderAdminOffersDOM();
+      } else if (pid === 'page-orders-reviews' && window.renderAdminReviewsListDOM) {
+        window.renderAdminReviewsListDOM();
+      } else if (pid === 'page-courier-list' && window.renderCouriersGridDOM) {
+        window.renderCouriersGridDOM();
+      } else if (pid === 'page-set-logs' && window.renderAdminSetLogsDOM) {
+        window.renderAdminSetLogsDOM();
+      } else if (pid === 'page-set-payment' && window.renderAdminPaymentMethodsDOM) {
+        window.renderAdminPaymentMethodsDOM();
+      } else if (pid === 'page-set-delivery' && window.renderAdminDeliveryMethodsDOM) {
+        window.renderAdminDeliveryMethodsDOM();
+      } else if (pid === 'page-set-offers' && window.renderAdminOffersDOM) {
+        window.renderAdminOffersDOM();
+      }
     }, 0);
   }
 
